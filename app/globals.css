@@ -1,0 +1,564 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Semantic palette. Light is the :root default; .dark overrides every token,
+   so components only ever reference the semantic name (bg-surface, text-muted).
+   --------------------------------------------------------------------------- */
+:root {
+  --bg: #ffffff;
+  --bg-subtle: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --fg: #0b1220;
+  --fg-muted: #52607a;
+  --fg-subtle: #5f6b80;  /* AA: 4.91:1 on --surface-2 */
+  --accent: #0e7490;
+  --accent-hover: #155e75;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(14 116 144 / 0.09);
+  --grid: rgb(2 6 23 / 0.045);
+  --glow-a: rgb(6 182 212 / 0.14);
+  --glow-b: rgb(56 189 248 / 0.10);
+  --shadow-card: 0 1px 2px rgb(2 6 23 / 0.04), 0 8px 24px -12px rgb(2 6 23 / 0.12);
+  /* Difficulty labels — AA against --surface-2, the lightest surface they sit on. */
+  --difficulty-beginner: #047857;
+  --difficulty-advanced: #b45309;
+}
+
+.dark {
+  --bg: #080b12;
+  --bg-subtle: #0b0f1a;
+  --surface: #0f1522;
+  --surface-2: #151c2c;
+  --border: #1e293b;
+  --border-strong: #2f3f57;
+  --fg: #e8effa;
+  --fg-muted: #9aa8bd;
+  --fg-subtle: #828fa4;  /* AA: 5.20:1 on --surface-2 */
+  --accent: #22d3ee;
+  --accent-hover: #67e8f9;
+  --accent-fg: #04212a;
+  --accent-soft: rgb(34 211 238 / 0.12);
+  --grid: rgb(148 163 184 / 0.055);
+  --glow-a: rgb(34 211 238 / 0.16);
+  --glow-b: rgb(56 189 248 / 0.10);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.7);
+  --difficulty-beginner: #34d399;
+  --difficulty-advanced: #fbbf24;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-display), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --shadow-card: var(--shadow-card);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Offset anchor targets so the sticky header never covers a heading. */
+  :target {
+    scroll-margin-top: 6rem;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .container-page {
+    width: 100%;
+    margin-inline: auto;
+    max-width: 72rem;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .container-page { padding-inline: 2rem; }
+  }
+
+  /* Learn pages carry a sidebar AND a table of contents. At 72rem the middle
+     column drops to ~544px, which is too narrow for the architecture diagrams.
+     This gives the three-column layout room to breathe. */
+  .container-wide {
+    width: 100%;
+    margin-inline: auto;
+    max-width: 88rem;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .container-wide { padding-inline: 2rem; }
+  }
+
+  /* Faint engineering-drawing grid used behind the hero and section breaks. */
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, var(--grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 1px solid var(--border);
+    background-color: var(--surface-2);
+    color: var(--fg-muted);
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.01em;
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  /* ---------------------------------------------------------------------
+     Inline glossary terms: dotted underline, definition on hover/focus/click
+     --------------------------------------------------------------------- */
+  .term-wrap {
+    position: relative;
+    display: inline;
+  }
+
+  .term-trigger {
+    display: inline;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: help;
+    border-bottom: 1px dashed var(--accent);
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .term-trigger:hover {
+    color: var(--accent);
+  }
+
+  .term-popover {
+    /* Fixed, with coordinates computed and clamped in JS. Being out of flow
+       means it can never widen the page, at any viewport size. */
+    position: fixed;
+    z-index: 60;
+    display: block;
+    width: max-content;
+    max-width: min(22rem, calc(100vw - 1.5rem));
+
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 0.7rem;
+    box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.45);
+    padding: 0.85rem 0.95rem;
+    white-space: normal;
+    text-align: left;
+    font-family: var(--font-sans);
+    animation: term-in 0.16s ease both;
+  }
+
+  @keyframes term-in {
+    from { opacity: 0; transform: translateY(-0.25rem); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .term-popover__name {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+  .term-popover__short {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--fg);
+  }
+  .term-popover__analogy {
+    display: block;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    font-style: italic;
+    color: var(--fg-muted);
+  }
+  .term-popover__link {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+  }
+
+  /* Brand logos carry two colours; the theme selects the legible one. */
+  .brand-glyph {
+    color: var(--brand-light);
+  }
+  .dark .brand-glyph {
+    color: var(--brand-dark);
+  }
+
+  .diff-beginner { color: var(--difficulty-beginner); }
+  .diff-intermediate { color: var(--accent); }
+  .diff-advanced { color: var(--difficulty-advanced); }
+
+  .link-underline {
+    background-image: linear-gradient(var(--accent), var(--accent));
+    background-size: 0% 1.5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.28s ease;
+  }
+  .link-underline:hover {
+    background-size: 100% 1.5px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Long-form article typography (blog posts / project case studies)
+   --------------------------------------------------------------------------- */
+.prose-bm {
+  color: var(--fg-muted);
+  font-size: 1.0625rem;
+  line-height: 1.78;
+}
+.prose-bm > * + * { margin-top: 1.25em; }
+.prose-bm h2,
+.prose-bm h3,
+.prose-bm h4 {
+  color: var(--fg);
+  scroll-margin-top: 6rem;
+  font-weight: 600;
+}
+.prose-bm h2 {
+  margin-top: 2.5em;
+  margin-bottom: 0.6em;
+  font-size: 1.5rem;
+  padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--border);
+}
+.prose-bm h3 { margin-top: 2em; margin-bottom: 0.5em; font-size: 1.2rem; }
+.prose-bm h4 { margin-top: 1.6em; font-size: 1.05rem; }
+.prose-bm strong { color: var(--fg); font-weight: 600; }
+.prose-bm a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.prose-bm a:hover { color: var(--accent-hover); }
+.prose-bm ul,
+.prose-bm ol { padding-left: 1.4em; }
+.prose-bm ul { list-style: disc; }
+.prose-bm ol { list-style: decimal; }
+.prose-bm li { margin-top: 0.45em; }
+.prose-bm li::marker { color: var(--accent); }
+.prose-bm blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.2em 0 0.2em 1.1em;
+  color: var(--fg-muted);
+  font-style: italic;
+  background: var(--accent-soft);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+.prose-bm hr { border-color: var(--border); margin: 2.5em 0; }
+.prose-bm img { border-radius: 0.75rem; border: 1px solid var(--border); }
+.prose-bm table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+  display: block;
+  overflow-x: auto;
+}
+.prose-bm th,
+.prose-bm td {
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.8rem;
+  text-align: left;
+}
+.prose-bm th { background: var(--surface-2); color: var(--fg); font-weight: 600; }
+
+/* Inline code */
+.prose-bm :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.12em 0.4em;
+  border-radius: 0.35rem;
+  color: var(--fg);
+  word-break: break-word;
+}
+
+/* ---------------------------------------------------------------------------
+   Shiki / rehype-pretty-code — dual theme driven by the .dark class
+   --------------------------------------------------------------------------- */
+.prose-bm pre {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  padding: 1rem 0;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  background-color: var(--shiki-light-bg) !important;
+}
+.dark .prose-bm pre {
+  background-color: var(--shiki-dark-bg) !important;
+}
+.prose-bm pre code {
+  font-family: var(--font-mono);
+  display: grid;   /* one row per line, so highlighted lines span full width */
+  width: max-content;
+  min-width: 100%;
+}
+.prose-bm pre code span[data-line] {
+  padding-inline: 1rem;
+  border-left: 2px solid transparent;
+}
+.prose-bm code span { color: var(--shiki-light); }
+.dark .prose-bm code span { color: var(--shiki-dark); }
+
+/* Highlighted lines / words from rehype-pretty-code */
+.prose-bm code span[data-highlighted-line] {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+.prose-bm code mark[data-highlighted-chars] {
+  background: var(--accent-soft);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.25em;
+  color: inherit;
+}
+
+/* ---------------------------------------------------------------------------
+   Code window — chrome around every fenced block (components/learn/code-window)
+   --------------------------------------------------------------------------- */
+.prose-bm .code-window {
+  margin-top: 1.6em;
+  margin-bottom: 1.6em;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--shiki-light-bg);
+  box-shadow: var(--shadow-card);
+}
+.dark .prose-bm .code-window {
+  background: var(--shiki-dark-bg);
+}
+
+.code-window__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  min-height: 2.4rem;
+}
+
+.code-window__lights {
+  display: inline-flex;
+  gap: 0.3rem;
+  flex: none;
+}
+.code-window__lights i {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 9999px;
+  background: var(--border-strong);
+  opacity: 0.75;
+}
+.code-window__lights i:nth-child(1) { background: #ff5f57; }
+.code-window__lights i:nth-child(2) { background: #febc2e; }
+.code-window__lights i:nth-child(3) { background: #28c840; }
+
+.code-window__title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.code-window__spacer { flex: 1 1 auto; }
+
+.code-window__lang {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.35rem;
+  flex: none;
+}
+
+.code-window__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--fg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface);
+  transition: color 0.15s ease, border-color 0.15s ease;
+  flex: none;
+}
+.code-window__copy:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* The plugin still emits a figcaption for non-window contexts; hide the dupe. */
+.prose-bm .code-window figcaption[data-rehype-pretty-code-title] {
+  display: none;
+}
+.prose-bm .code-window pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  max-height: 34rem;
+}
+
+/* Optional gutter: add `showLineNumbers` after the language in the fence. */
+.prose-bm pre code[data-line-numbers] {
+  counter-reset: line;
+}
+.prose-bm pre code[data-line-numbers] > span[data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 1.6rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: var(--fg-subtle);
+  opacity: 0.55;
+  user-select: none;
+}
+.prose-bm pre code[data-line-numbers-max-digits='3'] > span[data-line]::before {
+  width: 2.1rem;
+}
+
+/* Autolinked headings: show the anchor only on hover/focus */
+.heading-anchor {
+  opacity: 0;
+  margin-left: 0.4rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 400;
+  transition: opacity 0.15s ease;
+}
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor,
+.heading-anchor:focus-visible { opacity: 1; }
+
+/* ---------------------------------------------------------------------------
+   Scroll reveal. The hidden state applies only when JS is available to undo it,
+   so a no-JS client sees fully rendered content.
+   --------------------------------------------------------------------------- */
+[data-reveal] {
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.js [data-reveal='pending'] {
+  opacity: 0;
+  transform: translateY(1rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal='pending'] { opacity: 1; transform: none; }
+  [data-reveal] { transition: none; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+.animate-fade-up {
+  animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

@@ -1,0 +1,312 @@
+---
+title: "Add a service to system_server"
+description: "A framework service outside Car Service — SystemService lifecycle, boot phases, and when this is the right layer rather than a Car subservice."
+order: 2
+difficulty: "Advanced"
+time: "2–3 hours"
+outcome: "A VegaFleetService running inside system_server, registered with ServiceManager, reachable through a manager class and visible in dumpsys."
+prerequisites:
+  - label: "A Car subservice, for comparison"
+    href: "/tutorials/framework/custom-car-subservice/"
+tags: ["system_server", "Framework", "AIDL"]
+sources:
+  - label: "SystemService lifecycle"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/services/core/java/com/android/server/SystemService.java"
+  - label: "SystemServer"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/services/java/com/android/server/SystemServer.java"
+  - label: "Adding a system service"
+    href: "https://source.android.com/docs/core/architecture/modular-system"
+---
+
+Car Service owns vehicle concerns. `system_server` owns everything else. If your
+service is about the *device* rather than the *vehicle* — fleet identity, an OEM
+account, a device-wide policy — it belongs here.
+
+<Gotcha title="Prefer a Car subservice for anything vehicle-shaped">
+`system_server` is the most sensitive process on the device: a crash there
+restarts the entire framework. A fault in Car Service restarts Car Service. If
+your service touches vehicle state at all, put it in Car Service and accept the
+smaller blast radius.
+</Gotcha>
+
+<FileTree>
+frameworks/base/
+├── core/java/android/vega/
+│   ├── IVegaFleetService.aidl
+│   └── VegaFleetManager.java
+└── services/core/java/com/android/server/vega/
+    └── VegaFleetService.java
+</FileTree>
+
+## Step 1 — Define the AIDL and register it
+
+```java title="core/java/android/vega/IVegaFleetService.aidl"
+package android.vega;
+
+/** @hide */
+interface IVegaFleetService {
+    String getFleetId();
+    boolean isEnrolled();
+    void setEnrolled(boolean enrolled);
+}
+```
+
+```makefile title="frameworks/base/Android.bp — add to the framework sources"
+# The aidl file must be listed in the framework-minus-apex filegroup, or an
+# equivalent for your release. Find where other android.* AIDLs are listed:
+#   grep -rn "core/java/android/os/IPowerManager.aidl" frameworks/base/
+```
+
+<Gotcha title="Framework AIDL registration differs by release">
+Where framework AIDL files are listed has changed across AOSP versions —
+`Android.bp` filegroups, `Android.mk` variables, or a modules list. Find how an
+existing `android.*` AIDL is registered on **your** tree and copy that pattern
+rather than the one here.
+</Gotcha>
+
+## Step 2 — Implement the service
+
+```java title="services/core/java/com/android/server/vega/VegaFleetService.java" showLineNumbers
+package com.android.server.vega;
+
+import android.content.Context;
+import android.os.SystemProperties;
+import android.util.Slog;
+import android.vega.IVegaFleetService;
+
+import com.android.server.SystemService;
+
+public final class VegaFleetService extends SystemService {
+
+    private static final String TAG = "VegaFleetService";
+    public static final String SERVICE_NAME = "vega_fleet";
+    private static final String PERMISSION = "com.oem.vega.permission.MANAGE_FLEET";
+
+    private final Context mContext;
+    private final Object mLock = new Object();
+    private final BinderService mBinder = new BinderService();
+
+    private boolean mEnrolled;
+
+    public VegaFleetService(Context context) {
+        super(context);
+        mContext = context;
+    }
+
+    // ---- SystemService lifecycle ------------------------------------------
+
+    @Override
+    public void onStart() {
+        // Called early. Publish the binder and return — do NOT do slow work,
+        // this runs on the system_server startup path.
+        publishBinderService(SERVICE_NAME, mBinder);
+        Slog.i(TAG, "published " + SERVICE_NAME);
+    }
+
+    @Override
+    public void onBootPhase(int phase) {
+        // Heavier initialisation goes in a later phase, once the things you
+        // depend on actually exist.
+        if (phase == PHASE_THIRD_PARTY_APPS_CAN_START) {
+            synchronized (mLock) {
+                mEnrolled = SystemProperties.getBoolean("persist.vega.fleet.enrolled", false);
+            }
+            Slog.i(TAG, "initialised, enrolled=" + mEnrolled);
+        }
+    }
+
+    // ---- Binder implementation --------------------------------------------
+
+    private final class BinderService extends IVegaFleetService.Stub {
+
+        @Override
+        public String getFleetId() {
+            mContext.enforceCallingOrSelfPermission(PERMISSION, "getFleetId");
+            return SystemProperties.get("ro.vega.fleet.id", "");
+        }
+
+        @Override
+        public boolean isEnrolled() {
+            mContext.enforceCallingOrSelfPermission(PERMISSION, "isEnrolled");
+            synchronized (mLock) {
+                return mEnrolled;
+            }
+        }
+
+        @Override
+        public void setEnrolled(boolean enrolled) {
+            mContext.enforceCallingOrSelfPermission(PERMISSION, "setEnrolled");
+            synchronized (mLock) {
+                mEnrolled = enrolled;
+            }
+            SystemProperties.set("persist.vega.fleet.enrolled", Boolean.toString(enrolled));
+        }
+
+        @Override
+        protected void dump(java.io.FileDescriptor fd, java.io.PrintWriter pw, String[] args) {
+            // dumpsys reaches this. Print real state.
+            synchronized (mLock) {
+                pw.println("VegaFleetService");
+                pw.println("  fleetId=" + SystemProperties.get("ro.vega.fleet.id", ""));
+                pw.println("  enrolled=" + mEnrolled);
+            }
+        }
+    }
+}
+```
+
+### The boot phases that matter
+
+| Phase | Safe to do |
+| --- | --- |
+| `onStart()` | Publish the binder. Nothing else. |
+| `PHASE_LOCK_SETTINGS_READY` | Read credential-protected storage |
+| `PHASE_SYSTEM_SERVICES_READY` | Call other system services |
+| `PHASE_ACTIVITY_MANAGER_READY` | Start activities, send broadcasts |
+| `PHASE_THIRD_PARTY_APPS_CAN_START` | Anything user-facing |
+| `PHASE_BOOT_COMPLETED` | Background work |
+
+<Gotcha title="Calling another system service from onStart() will fail">
+`onStart()` runs before most of the framework exists. Reaching for
+`PackageManager` or `ActivityManager` there gets you a null or a crash that takes
+down system_server on every boot. Move it to `PHASE_SYSTEM_SERVICES_READY`.
+</Gotcha>
+
+## Step 3 — Start it from SystemServer
+
+```java title="services/java/com/android/server/SystemServer.java"
+// In startOtherServices(), guarded so it only runs where it makes sense
+if (mPackageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)) {
+    t.traceBegin("StartVegaFleetService");
+    mSystemServiceManager.startService(VegaFleetService.class);
+    t.traceEnd();
+}
+```
+
+The feature guard matters: `SystemServer` is shared with phones and tablets, and
+an unconditional start makes your service a dependency of every Android device
+built from this tree.
+
+## Step 4 — SELinux for the service
+
+```text title="device/oem/vega/sepolicy/private/service_contexts"
+vega_fleet    u:object_r:vega_fleet_service:s0
+```
+
+```text title="device/oem/vega/sepolicy/private/service.te"
+type vega_fleet_service, system_server_service, service_manager_type;
+```
+
+```text title="device/oem/vega/sepolicy/private/system_server.te"
+# system_server may publish it
+allow system_server vega_fleet_service:service_manager add;
+```
+
+```makefile title="device/oem/vega/BoardConfig.mk"
+SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += device/oem/vega/sepolicy/private
+```
+
+## Step 5 — Write the manager
+
+```java title="core/java/android/vega/VegaFleetManager.java"
+package android.vega;
+
+import android.annotation.RequiresPermission;
+import android.content.Context;
+import android.os.RemoteException;
+import android.os.ServiceManager;
+
+public final class VegaFleetManager {
+
+    private final IVegaFleetService mService;
+
+    /** @hide */
+    public VegaFleetManager(Context context, IVegaFleetService service) {
+        mService = service;
+    }
+
+    /** Returns null when the service is not present on this build. */
+    public static VegaFleetManager get(Context context) {
+        // waitForService would block; on a trim without this service that is
+        // a hang. Ask, and degrade if it is absent.
+        android.os.IBinder b = ServiceManager.getService("vega_fleet");
+        if (b == null) return null;
+        return new VegaFleetManager(context, IVegaFleetService.Stub.asInterface(b));
+    }
+
+    @RequiresPermission("com.oem.vega.permission.MANAGE_FLEET")
+    public String getFleetId() {
+        try {
+            return mService.getFleetId();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+}
+```
+
+<Gotcha title="rethrowFromSystemServer, not a caught exception">
+If `system_server` dies, every app is about to be restarted anyway.
+`rethrowFromSystemServer()` is the framework convention: it makes the failure
+loud rather than leaving apps holding a dead binder and behaving strangely. This
+is the opposite of the Car Service convention, because the failure modes differ.
+</Gotcha>
+
+## Step 6 — Build and verify
+
+```bash
+m -j
+emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 45
+```
+
+<Verify title="Verify the service is published and dumping">
+```bash
+# 1. system_server came up — if the device boot-loops, your service threw
+adb shell ps -A | grep system_server
+
+# 2. Your service is registered
+adb shell service list | grep vega_fleet
+
+# 3. dumpsys reaches your dump()
+adb shell dumpsys vega_fleet
+# expect: VegaFleetService  fleetId=  enrolled=false
+
+# 4. Started at the right point, with no exceptions
+adb logcat -b all | grep -i VegaFleetService
+
+# 5. No denials
+adb shell dmesg | grep -c 'avc.*denied.*vega_fleet'
+```
+
+If the device boot-loops after adding this, that is your service throwing in
+`onStart()` or an early boot phase — `adb logcat -b all` while it loops will show
+the stack.
+</Verify>
+
+## Car subservice or system service?
+
+| Your service is about | Put it in |
+| --- | --- |
+| Vehicle state, audio, power, users | Car Service |
+| Device identity, fleet, OEM account | system_server |
+| Something an app could do | A system app — neither |
+| Hardware access | A HAL — neither |
+
+The blast radius argument decides most cases: a crash in `system_server` restarts
+the entire framework and everything the driver was doing. A crash in Car Service
+restarts Car Service.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Device boot-loops | Exception in `onStart()` or an early boot phase |
+| `service list` shows nothing | `publishBinderService` never called |
+| `SecurityException` | Permission not defined or not granted |
+| `dumpsys` prints nothing | `dump()` not overridden on the Binder stub |
+| Denial on `add` | Missing `service_contexts` / `service.te` entry |
+| Works on car, breaks phone builds | Missing `FEATURE_AUTOMOTIVE` guard |
+
+## Next
+
+The permission that guards both of these.

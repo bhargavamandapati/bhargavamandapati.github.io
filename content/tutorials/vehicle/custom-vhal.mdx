@@ -1,0 +1,499 @@
+---
+title: "Build your own Vehicle HAL"
+description: "A vendor VHAL that registers as IVehicle, serves its own property configs, and publishes changes — reusing AOSP's binder plumbing instead of reimplementing it."
+order: 1
+difficulty: "Advanced"
+time: "3–5 hours"
+outcome: "A vendor.vega.vehicle HAL service running on the device, registered as IVehicle/default, serving property configs that dumpsys car_service --list-properties can see."
+prerequisites:
+  - label: "Your own lunch target"
+    href: "/tutorials/platform/custom-lunch-target/"
+  - label: "SELinux policy for a vendor service"
+    href: "/tutorials/platform/custom-sepolicy/"
+  - label: "Vehicle HAL fundamentals"
+    href: "/learn/vehicle-data/vhal-fundamentals/"
+tags: ["VHAL", "AIDL", "HAL", "Vendor"]
+sources:
+  - label: "Vehicle HAL interface"
+    href: "https://source.android.com/docs/automotive/vhal/vhal-interface"
+  - label: "Reference VHAL implementation"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/impl/"
+  - label: "AIDL for HALs"
+    href: "https://source.android.com/docs/core/architecture/aidl/aidl-hals"
+---
+
+Do not implement `IVehicle` from scratch. AOSP's reference VHAL already contains
+the batching, request-ID correlation, subscription fan-out and shared-memory
+handling — thousands of lines you would otherwise rewrite and get subtly wrong.
+
+What it factors out for you is `IVehicleHardware`: a plain C++ interface with no
+AIDL in its signature. **That** is what a vendor implements.
+
+<FileTree>
+vendor/oem/vega/vehicle/
+├── Android.bp
+├── vendor.vega.vehicle.rc
+├── vendor.vega.vehicle.xml        # VINTF fragment
+├── include/VegaVehicleHardware.h
+├── src/VegaVehicleHardware.cpp
+└── src/service.cpp                # main(), wires hardware into DefaultVehicleHal
+</FileTree>
+
+## Step 1 — Read the interface you must implement
+
+Before writing anything, open the interface on **your** tree. Its exact
+signatures change between releases and copying them from a tutorial is how you
+spend an afternoon on compile errors.
+
+```bash title="Find and read it"
+cd ~/aosp
+find hardware/interfaces/automotive/vehicle -name 'IVehicleHardware.h'
+$EDITOR hardware/interfaces/automotive/vehicle/aidl/impl/hardware/include/IVehicleHardware.h
+```
+
+You are implementing roughly this shape — confirm each signature against the
+file above:
+
+```cpp title="IVehicleHardware — the vendor extension point"
+class IVehicleHardware {
+  public:
+    virtual ~IVehicleHardware() = default;
+
+    // What properties exist. This IS the contract.
+    virtual std::vector<VehiclePropConfig> getAllPropertyConfigs() const = 0;
+
+    // Reads and writes, batched, answered through a callback.
+    virtual StatusCode getValues(std::shared_ptr<const GetValuesCallback> callback,
+                                 const std::vector<GetValueRequest>& requests) const = 0;
+    virtual StatusCode setValues(std::shared_ptr<const SetValuesCallback> callback,
+                                 const std::vector<SetValueRequest>& requests) = 0;
+
+    // How you push changes up to the framework.
+    virtual void registerOnPropertyChangeEvent(
+            std::unique_ptr<const PropertyChangeCallback> callback) = 0;
+    virtual void registerOnPropertySetErrorEvent(
+            std::unique_ptr<const PropertySetErrorCallback> callback) = 0;
+
+    virtual StatusCode checkHealth() = 0;
+    virtual DumpResult dump(const std::vector<std::string>& options) = 0;
+};
+```
+
+<Gotcha title="Signatures drift; the model does not">
+`getAllPropertyConfigs` has returned different container types across releases,
+and `dump` has changed shape. The concepts — configs, batched get/set, a change
+callback — are stable. Take the shape from here and the exact signatures from
+your tree.
+</Gotcha>
+
+## Step 2 — Implement the hardware class
+
+```cpp title="vendor/oem/vega/vehicle/include/VegaVehicleHardware.h"
+#pragma once
+
+#include <IVehicleHardware.h>
+
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
+namespace android::hardware::automotive::vehicle::vega {
+
+class VegaVehicleHardware final : public IVehicleHardware {
+  public:
+    VegaVehicleHardware();
+    ~VegaVehicleHardware() override;
+
+    std::vector<aidl::android::hardware::automotive::vehicle::VehiclePropConfig>
+    getAllPropertyConfigs() const override;
+
+    aidl::android::hardware::automotive::vehicle::StatusCode getValues(
+            std::shared_ptr<const GetValuesCallback> callback,
+            const std::vector<aidl::android::hardware::automotive::vehicle::GetValueRequest>&
+                    requests) const override;
+
+    aidl::android::hardware::automotive::vehicle::StatusCode setValues(
+            std::shared_ptr<const SetValuesCallback> callback,
+            const std::vector<aidl::android::hardware::automotive::vehicle::SetValueRequest>&
+                    requests) override;
+
+    void registerOnPropertyChangeEvent(
+            std::unique_ptr<const PropertyChangeCallback> callback) override;
+    void registerOnPropertySetErrorEvent(
+            std::unique_ptr<const PropertySetErrorCallback> callback) override;
+
+    aidl::android::hardware::automotive::vehicle::StatusCode checkHealth() override;
+    DumpResult dump(const std::vector<std::string>& options) override;
+
+  private:
+    void VehicleNetworkLoop();   // your CAN / SOME/IP thread lives here
+
+    mutable std::mutex mLock;
+    std::unordered_map<int64_t, aidl::android::hardware::automotive::vehicle::VehiclePropValue>
+            mValues;             // keyed by (prop, areaId)
+    std::unique_ptr<const PropertyChangeCallback> mOnChange;
+    std::thread mNetworkThread;
+    std::atomic<bool> mRunning{true};
+};
+
+}  // namespace android::hardware::automotive::vehicle::vega
+```
+
+```cpp title="vendor/oem/vega/vehicle/src/VegaVehicleHardware.cpp" showLineNumbers
+#define LOG_TAG "VegaVHAL"
+
+#include "VegaVehicleHardware.h"
+
+#include <android-base/logging.h>
+#include <utils/SystemClock.h>
+
+namespace android::hardware::automotive::vehicle::vega {
+
+using ::aidl::android::hardware::automotive::vehicle::StatusCode;
+using ::aidl::android::hardware::automotive::vehicle::VehicleArea;
+using ::aidl::android::hardware::automotive::vehicle::VehiclePropConfig;
+using ::aidl::android::hardware::automotive::vehicle::VehiclePropertyAccess;
+using ::aidl::android::hardware::automotive::vehicle::VehiclePropertyChangeMode;
+using ::aidl::android::hardware::automotive::vehicle::VehiclePropertyStatus;
+using ::aidl::android::hardware::automotive::vehicle::VehiclePropValue;
+using ::aidl::android::hardware::automotive::vehicle::VehicleProperty;
+
+namespace {
+// Values are addressed by property AND area, so key on both.
+int64_t Key(int32_t prop, int32_t areaId) {
+    return (static_cast<int64_t>(prop) << 32) | static_cast<uint32_t>(areaId);
+}
+}  // namespace
+
+VegaVehicleHardware::VegaVehicleHardware() {
+    // Seed the cache so early reads return something valid rather than failing.
+    const int32_t speed = toInt(VehicleProperty::PERF_VEHICLE_SPEED);
+    VehiclePropValue v{
+            .timestamp = elapsedRealtimeNano(),
+            .areaId = 0,
+            .prop = speed,
+            .status = VehiclePropertyStatus::AVAILABLE,
+    };
+    v.value.floatValues = {0.0f};
+    mValues[Key(speed, 0)] = std::move(v);
+
+    mNetworkThread = std::thread(&VegaVehicleHardware::VehicleNetworkLoop, this);
+}
+
+VegaVehicleHardware::~VegaVehicleHardware() {
+    mRunning = false;
+    if (mNetworkThread.joinable()) mNetworkThread.join();
+}
+
+std::vector<VehiclePropConfig> VegaVehicleHardware::getAllPropertyConfigs() const {
+    return {
+            VehiclePropConfig{
+                    .prop = toInt(VehicleProperty::PERF_VEHICLE_SPEED),
+                    .access = VehiclePropertyAccess::READ,
+                    .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
+                    .minSampleRate = 1.0f,
+                    .maxSampleRate = 10.0f,
+            },
+            VehiclePropConfig{
+                    .prop = toInt(VehicleProperty::GEAR_SELECTION),
+                    .access = VehiclePropertyAccess::READ,
+                    .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+            },
+    };
+}
+
+StatusCode VegaVehicleHardware::getValues(
+        std::shared_ptr<const GetValuesCallback> callback,
+        const std::vector<GetValueRequest>& requests) const {
+    std::vector<GetValueResult> results;
+    results.reserve(requests.size());
+
+    {
+        std::lock_guard<std::mutex> lock(mLock);
+        for (const auto& request : requests) {
+            GetValueResult result;
+            // EVERY request must produce exactly one result, including failures.
+            result.requestId = request.requestId;
+
+            auto it = mValues.find(Key(request.prop.prop, request.prop.areaId));
+            if (it == mValues.end()) {
+                result.status = StatusCode::INVALID_ARG;
+            } else {
+                result.status = StatusCode::OK;
+                result.prop = it->second;
+            }
+            results.push_back(std::move(result));
+        }
+    }
+
+    (*callback)(std::move(results));
+    return StatusCode::OK;
+}
+
+StatusCode VegaVehicleHardware::setValues(
+        std::shared_ptr<const SetValuesCallback> callback,
+        const std::vector<SetValueRequest>& requests) {
+    std::vector<SetValueResult> results;
+    results.reserve(requests.size());
+
+    for (const auto& request : requests) {
+        SetValueResult result;
+        result.requestId = request.requestId;
+        // Everything declared above is READ-only, so refuse writes honestly.
+        result.status = StatusCode::ACCESS_DENIED;
+        results.push_back(std::move(result));
+    }
+
+    (*callback)(std::move(results));
+    return StatusCode::OK;
+}
+
+void VegaVehicleHardware::registerOnPropertyChangeEvent(
+        std::unique_ptr<const PropertyChangeCallback> callback) {
+    std::lock_guard<std::mutex> lock(mLock);
+    mOnChange = std::move(callback);
+}
+
+void VegaVehicleHardware::registerOnPropertySetErrorEvent(
+        std::unique_ptr<const PropertySetErrorCallback> /*callback*/) {
+    // Nothing is writable yet; wire this up when it is.
+}
+
+StatusCode VegaVehicleHardware::checkHealth() {
+    return mRunning ? StatusCode::OK : StatusCode::INTERNAL_ERROR;
+}
+
+DumpResult VegaVehicleHardware::dump(const std::vector<std::string>& /*options*/) {
+    std::lock_guard<std::mutex> lock(mLock);
+    DumpResult result;
+    result.callerShouldDumpState = false;
+    result.buffer = "VegaVehicleHardware: " + std::to_string(mValues.size()) + " cached values\n";
+    return result;
+}
+
+void VegaVehicleHardware::VehicleNetworkLoop() {
+    // Stand-in for a real CAN / SOME/IP reader.
+    float speed = 0.0f;
+    while (mRunning) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        speed = speed >= 120.0f ? 0.0f : speed + 1.0f;
+
+        VehiclePropValue update{
+                // CLOCK_BOOTTIME nanoseconds. Not wall clock, not millis.
+                .timestamp = elapsedRealtimeNano(),
+                .areaId = 0,
+                .prop = toInt(VehicleProperty::PERF_VEHICLE_SPEED),
+                .status = VehiclePropertyStatus::AVAILABLE,
+        };
+        update.value.floatValues = {speed};
+
+        std::unique_ptr<const PropertyChangeCallback>* cb = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(mLock);
+            mValues[Key(update.prop, update.areaId)] = update;
+            if (!mOnChange) continue;
+            cb = &mOnChange;
+        }
+        // Call OUT of the lock — the framework may re-enter us.
+        (**cb)(std::vector<VehiclePropValue>{std::move(update)});
+    }
+}
+
+}  // namespace android::hardware::automotive::vehicle::vega
+```
+
+<Gotcha title="Never invoke the change callback while holding your lock">
+The framework may call back into your `getValues` from inside that callback. Do
+it under `mLock` and you have a deadlock that appears only under load, on a
+vehicle, months later.
+</Gotcha>
+
+## Step 3 — Write the service entry point
+
+```cpp title="vendor/oem/vega/vehicle/src/service.cpp"
+#define LOG_TAG "VegaVHALService"
+
+#include <DefaultVehicleHal.h>
+#include <android-base/logging.h>
+#include <android/binder_manager.h>
+#include <android/binder_process.h>
+
+#include "VegaVehicleHardware.h"
+
+int main(int /*argc*/, char** /*argv*/) {
+    auto hardware = std::make_unique<
+            android::hardware::automotive::vehicle::vega::VegaVehicleHardware>();
+
+    // AOSP's DefaultVehicleHal provides all the AIDL plumbing.
+    auto vhal = ndk::SharedRefBase::make<
+            android::hardware::automotive::vehicle::DefaultVehicleHal>(std::move(hardware));
+
+    const std::string instance =
+            std::string(decltype(vhal)::element_type::descriptor) + "/default";
+    binder_status_t status =
+            AServiceManager_addService(vhal->asBinder().get(), instance.c_str());
+    CHECK_EQ(status, STATUS_OK) << "failed to register " << instance;
+
+    LOG(INFO) << "registered " << instance;
+
+    ABinderProcess_setThreadPoolMaxThreadCount(4);
+    ABinderProcess_joinThreadPool();
+    return EXIT_FAILURE;   // joinThreadPool never returns
+}
+```
+
+## Step 4 — Soong module, init and VINTF
+
+```json title="vendor/oem/vega/vehicle/Android.bp"
+cc_binary {
+    name: "vendor.vega.vehicle",
+    vendor: true,
+    relative_install_path: "hw",
+
+    srcs: [
+        "src/VegaVehicleHardware.cpp",
+        "src/service.cpp",
+    ],
+    local_include_dirs: ["include"],
+
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libutils",
+        "libbinder_ndk",
+        "android.hardware.automotive.vehicle-V3-ndk",
+    ],
+    static_libs: [
+        // Names vary by release — check the reference impl's Android.bp
+        "DefaultVehicleHal",
+        "VehicleHalUtils",
+    ],
+
+    cflags: ["-Wall", "-Werror"],
+
+    init_rc: ["vendor.vega.vehicle.rc"],
+    vintf_fragments: ["vendor.vega.vehicle.xml"],
+}
+```
+
+```text title="vendor/oem/vega/vehicle/vendor.vega.vehicle.rc"
+service vendor.vega.vehicle /vendor/bin/hw/vendor.vega.vehicle
+    class hal
+    user vehicle_network
+    group system inet
+```
+
+```xml title="vendor/oem/vega/vehicle/vendor.vega.vehicle.xml"
+<manifest version="1.0" type="device">
+    <hal format="aidl">
+        <name>android.hardware.automotive.vehicle</name>
+        <version>3</version>
+        <fqname>IVehicle/default</fqname>
+    </hal>
+</manifest>
+```
+
+<Gotcha title="Two VHALs cannot both own IVehicle/default">
+Your product still inherits the AOSP reference VHAL from its base. Both will try
+to register the same instance and one will lose — usually with a confusing
+"service already registered" or a Car Service that talks to the wrong one.
+Remove the base VHAL from `PRODUCT_PACKAGES` when you add yours.
+</Gotcha>
+
+## Step 5 — Swap it into your product
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_PACKAGES += vendor.vega.vehicle
+
+# Do not ship the reference VHAL alongside yours. The exact module name is in
+# the reference impl's Android.bp — find it before removing it.
+PRODUCT_PACKAGES_ENG := $(filter-out android.hardware.automotive.vehicle@V3-default-service,$(PRODUCT_PACKAGES_ENG))
+```
+
+```bash title="Find what the base product ships"
+grep -rn "automotive.vehicle" device/generic/car/ | grep -i PRODUCT_PACKAGES
+```
+
+## Step 6 — Policy
+
+```text title="device/oem/vega/sepolicy/vendor/vendor_vega_vehicle.te"
+type vendor_vega_vehicle, domain;
+type vendor_vega_vehicle_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(vendor_vega_vehicle)
+
+# Serve the vehicle HAL interface
+hal_server_domain(vendor_vega_vehicle, hal_vehicle)
+
+# Your vehicle network device, when you have one
+# allow vendor_vega_vehicle vendor_can_device:chr_file rw_file_perms;
+```
+
+```text title="device/oem/vega/sepolicy/vendor/file_contexts"
+/vendor/bin/hw/vendor\.vega\.vehicle    u:object_r:vendor_vega_vehicle_exec:s0
+```
+
+## Step 7 — Build, flash and verify
+
+```bash
+m vendor.vega.vehicle && m -j
+emulator -wipe-data -no-snapshot &
+adb wait-for-device && sleep 40
+```
+
+<Verify title="Verify the HAL is registered and serving">
+```bash
+# 1. Registered as the vehicle HAL
+adb shell lshal | grep -i automotive.vehicle
+# expect: android.hardware.automotive.vehicle.IVehicle/default
+
+# 2. Running in your own domain
+adb shell ps -Z | grep vega.vehicle
+# expect: u:r:vendor_vega_vehicle:s0
+
+# 3. Car Service can see your configs
+adb shell dumpsys car_service --list-properties | grep -iE 'PERF_VEHICLE_SPEED|GEAR_SELECTION'
+
+# 4. Values are actually moving
+adb shell dumpsys car_service --get-property 0x11600207
+sleep 2
+adb shell dumpsys car_service --get-property 0x11600207   # different value
+
+# 5. Enforcing, no denials
+adb shell getenforce && adb shell dmesg | grep -c 'avc.*denied.*vega'
+```
+</Verify>
+
+## Step 8 — Run VTS against it
+
+```bash title="Prove it is a valid HAL, not just a working one"
+atest VtsHalAutomotiveVehicle_TargetTest
+```
+
+VTS checks structural things your own testing will not: config well-formedness,
+area consistency, range enforcement, and required-property presence. Run it now,
+while the HAL is small enough to fix easily.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `lshal` shows nothing | VINTF fragment missing, or service crashed at start |
+| Two VHAL entries | Base VHAL still in `PRODUCT_PACKAGES` |
+| Car Service never starts | Your HAL registered but never answers `getAllPropConfigs` |
+| Framework hangs on a read | A request in the batch produced no result |
+| Values never update | Change callback registered but never invoked |
+| Deadlock under load | Callback invoked while holding your mutex |
+| `CANNOT LINK` at start | System-only library in a `vendor: true` module |
+
+## What you have now
+
+A vendor VHAL of your own, serving real property configs to Car Service, with its
+own SELinux domain and a vehicle-network thread ready to be pointed at real
+hardware.
+
+## Next
+
+Add a property that AOSP does not define.

@@ -1,0 +1,293 @@
+---
+title: "Android Automotive OS vs Android Auto"
+description: "Start here. The single most common confusion in this field, cleared up slowly — with everyday comparisons, a worked example, and what each one means for the code you will actually write."
+order: 1
+difficulty: "Beginner"
+tags: ["AAOS", "Fundamentals"]
+sources:
+  - label: "Android Automotive OS — platform overview (source.android.com)"
+    href: "https://source.android.com/docs/automotive/start/what_automotive"
+  - label: "Build apps for Android Automotive OS (developer.android.com)"
+    href: "https://developer.android.com/training/cars"
+  - label: "Android for Cars overview"
+    href: "https://developer.android.com/training/cars/overview"
+---
+
+If you are new to this field, start here. Almost every confusing conversation
+about "Android in cars" comes from two people using the same words to mean
+completely different things — and until that is sorted out, nothing else makes
+sense.
+
+## The problem this page solves
+
+Imagine you join a team and someone says:
+
+> "We're building an Android Auto app for the new vehicle programme."
+
+That sentence is ambiguous, and the two possible meanings lead to completely
+different jobs:
+
+- One of them means writing an app that runs **on a phone**, using a public SDK,
+  shipping on the Play Store whenever you like, with no access to the car.
+- The other means writing software that runs **inside the car**, possibly
+  modifying the operating system itself, shipping when the car maker ships, with
+  deep access to vehicle data.
+
+Same sentence. Different skills, different tools, different timelines. So let us
+take the two apart carefully.
+
+## Two products with confusingly similar names
+
+### Android Auto — your phone, projected
+
+<T>Android Auto</T> is a **projection** system. That word is doing all the work,
+so let us unpack it.
+
+Your phone runs the app. Your phone draws a simplified, car-safe version of the
+screen. Then it sends that picture, as pixels, over a USB cable or a wireless
+link, to the display in the car. The car's screen shows the picture. When you
+touch the car's screen, the touch is sent back to the phone, and the phone
+decides what happens.
+
+The car, in this arrangement, is a monitor and a touchpad. Nothing more.
+
+<Analogy title="Like plugging a laptop into a TV">
+When you connect a laptop to a television with an HDMI cable, the TV shows what
+the laptop is doing. The TV is not running your spreadsheet — it is displaying a
+picture of it. Unplug the laptop and the spreadsheet goes with it, because it was
+never on the TV in the first place.
+
+That is Android Auto. Unplug the phone and the navigation, music and messaging
+all leave, because they were never in the car.
+</Analogy>
+
+### Android Automotive OS — Android is the car's operating system
+
+<T>AAOS</T> is a complete Android operating system installed on the vehicle's
+<T>head unit</T> at the factory.
+
+It boots when the car starts. It owns the screens, the speakers, the climate
+controls. It is running whether or not any phone is nearby, and whether or not
+the driver has ever owned a smartphone. It is not an app — it is the software the
+car runs.
+
+<Analogy title="Like a smart TV">
+A smart TV does not need anything plugged into it. Turn it on and Netflix is
+already there, because the software is installed in the television.
+
+That is AAOS. The car is the computer.
+</Analogy>
+
+<Plain>
+**Android Auto** = your phone doing the work, the car showing the picture.
+
+**Android Automotive OS** = Android *is* the car's software, running on the car's
+own computer.
+
+They are not abbreviations of each other, and they are not versions of each other.
+They are separate products that happen to have similar names.
+</Plain>
+
+## Why the distinction changes everything you do
+
+Here is the same feature — "show the driver their cabin temperature" — attempted
+in both worlds.
+
+**On Android Auto:** you cannot. Your app is on a phone. The phone has no idea
+what the cabin temperature is, and there is no mechanism for it to ask. The
+feature is impossible, full stop.
+
+**On AAOS:** your app asks the platform for a value called
+`HVAC_TEMPERATURE_CURRENT` for a particular seat. The platform checks whether
+your app is allowed to know that, then fetches it from the car's electronics and
+hands it back.
+
+That is not a small difference in capability. It is the difference between a
+feature existing and not existing.
+
+<DiagramFrame
+  title="Where the code actually runs"
+  caption="This is the AAOS path — five translations between an electronic control unit in the car and the number on screen. In Android Auto none of this exists, because your process is not in the vehicle at all."
+>
+  <VhalDataFlow />
+</DiagramFrame>
+
+Do not worry about the details of that diagram yet — the next few topics unpack
+every box in it. The point for now is simply that a path exists, and that it
+exists only in AAOS.
+
+## The comparison table
+
+| | Android Auto | Android Automotive OS |
+| --- | --- | --- |
+| Where the app runs | The driver's phone | The car's head unit |
+| Needs a phone present | Yes | No |
+| Can read vehicle data | No | Yes, through the platform |
+| Who installs the operating system | Nobody — it is a phone app | The car maker, at the factory |
+| How your app updates | Play Store, whenever you like | Depends — see below |
+| Can you modify the platform | No | Yes, if you work for the car maker or their supplier |
+| Typical job title | Android app developer | Platform / automotive engineer |
+
+## A third thing people confuse: AAOS versus GAS
+
+Once the first distinction is clear, a second one appears.
+
+<T>AAOS</T> is **open source**. It lives in <T>AOSP</T>, the public Android source
+code. Any car maker can download it and build a vehicle from it without asking
+Google for permission or paying anyone.
+
+<T>GAS</T> — Google Automotive Services — is a **separate, licensed bundle** that
+sits on top: Google Maps, Google Assistant, and the Play Store. A car maker who
+wants those must sign an agreement with Google and pass Google's compatibility
+tests.
+
+<Scenario title="Two vehicles, both running AAOS">
+**Vehicle A** ships with GAS. The driver opens the Play Store, installs Spotify,
+says "Hey Google, navigate home", and Google Maps appears. Your media app can
+reach these customers through the Play Store, on your own release schedule.
+
+**Vehicle B** runs pure AAOS with no GAS. There is no Play Store. Navigation is
+the car maker's own. The voice assistant is the car maker's own. If the car maker
+wants your app on that vehicle, they include it in the vehicle's software image —
+which means it ships when they ship, not when you do.
+
+Both vehicles are "running Android Automotive". The commercial reality for you as
+a developer is completely different.
+</Scenario>
+
+<Plain>
+AAOS is the operating system, and it is free and open.
+
+GAS is a paid bundle of Google apps on top of it.
+
+"Does this car have the Play Store?" is really the question "did the car maker
+license GAS?"
+</Plain>
+
+## What "developing for AAOS" actually means
+
+The phrase covers three genuinely different jobs. When someone offers you AAOS
+work, find out which one they mean.
+
+### 1. App development
+
+You build an APK — a media player, a navigation app, a parking app, an app for
+the car maker. You use the `android.car` library to read vehicle data. You obey
+the driver distraction rules. You do not modify the operating system.
+
+This is closest to ordinary Android development. The unfamiliar parts are the
+vehicle APIs and the safety rules.
+
+### 2. Platform and framework development
+
+You work inside <T>AOSP</T> itself: modifying <T>Car Service</T>, adding new
+system services, changing the system bars, adapting the framework for a specific
+head unit.
+
+You do not build an APK — you build the entire operating system image, which
+takes hours, and then flash it onto a device.
+
+### 3. HAL and board bring-up
+
+You work below the framework: writing the code that connects Android to the car's
+electronics, writing security policy, and getting Android to boot at all on
+hardware that has never run it before.
+
+<Plain>
+Most of this curriculum is about jobs 2 and 3, because that is where the public
+documentation is thinnest and where the AOSP source is often the only real
+reference.
+
+If you are doing job 1 — building an app — the **Apps & Media** module is written
+for you, and you can treat the platform modules as background reading.
+</Plain>
+
+## The four pieces you will meet constantly
+
+Everything in AAOS routes through a small number of components. You will see
+these names on every page from here on, so it is worth meeting them now — even
+loosely.
+
+**<T>Vehicle HAL</T>** — the single doorway between Android and the car's
+electronics. Every piece of vehicle information an app can see came through here.
+
+**<T>Car Service</T>** — the part of Android that owns everything car-related:
+vehicle data, audio zones, power state, user accounts, driver distraction.
+
+**<T>android.car</T>** — the library apps use to reach those features. Where a
+phone app uses `android.media` for audio, a car app uses `android.car` for the
+vehicle.
+
+**<T>CarSystemUI</T>** — the bars and panels around the edge of the screen that
+are always there: the clock, the climate controls, the home button.
+
+You do not need to understand how any of them work yet. The next topic maps them
+onto a single diagram.
+
+## Why the platform looks the way it does
+
+Three constraints shaped almost every design decision in AAOS. Knowing them makes
+the rest of the platform far more predictable — instead of a list of arbitrary
+rules, it starts to look like a set of reasonable responses to hard problems.
+
+### Safety
+
+A car can kill people. So the platform does not politely ask apps to be
+responsible — it **enforces** limits in the operating system itself.
+
+That is why your scrolling list of 200 albums gets cut to nine items above 5 km/h
+whether you cooperate or not. It is not the platform being awkward. It is the
+platform refusing to let one badly written app create a hazard.
+
+### Longevity
+
+A car is sold and then driven for ten to fifteen years. The software written for
+it today must still work, and still receive security fixes, in 2040.
+
+That is why the platform is so strict about keeping hardware code and Android
+code separate (<T>Treble</T>) — so Android can be updated years later without
+every supplier having to rewrite everything they delivered.
+
+### Every car is different
+
+No two vehicle programmes have the same sensors, the same screens, or the same
+speaker layout. A feature that exists on the premium trim may be physically
+absent on the base one.
+
+That is why the platform is deliberately unopinionated in places that look like
+they should have an obvious answer. The <T>VHAL</T> abstraction, configurable
+<T>audio zone</T>s and overlay theming all exist so that car makers can differ
+without forking Android.
+
+<Scenario title="Why 'it works on my machine' is not enough here">
+You build a seat massage control. It works perfectly on your development head
+unit.
+
+Then it ships. On the base trim there is no massage motor, so the property does
+not exist — and your app crashes on startup for every customer who bought the
+cheaper car.
+
+The platform gave you a way to ask "does this vehicle have this feature?" You did
+not use it. This is the single most common category of automotive app defect, and
+it is why so much of this curriculum keeps repeating: **ask the vehicle, do not
+assume.**
+</Scenario>
+
+<Recap>
+- **Android Auto** runs on a phone and projects a picture into the car. It cannot
+  read vehicle data.
+- **Android Automotive OS (AAOS)** *is* the car's operating system. It can.
+- **GAS** is a separate licensed bundle of Google apps — Maps, Assistant, Play
+  Store — that some AAOS vehicles have and others do not.
+- "AAOS development" means one of three quite different jobs: app development,
+  platform development, or hardware bring-up.
+- The platform is shaped by three constraints: **safety** (rules are enforced,
+  not requested), **longevity** (fifteen years of updates), and **variation** (no
+  two cars are the same).
+</Recap>
+
+## Next
+
+The architecture overview draws every layer you have just met on one diagram, and
+follows a single value all the way from a sensor in the car to a number on the
+screen.

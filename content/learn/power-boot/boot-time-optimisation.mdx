@@ -1,0 +1,147 @@
+---
+title: "Boot time optimisation"
+description: "The milestones an OEM measures, where the seconds actually go, and the changes that move the number — as opposed to the ones that feel productive."
+order: 2
+difficulty: "Advanced"
+tags: ["Boot", "Performance", "Optimisation"]
+sources:
+  - label: "Boot time optimization"
+    href: "https://source.android.com/docs/core/perf/boot-times"
+  - label: "bootstat"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/core/bootstat/"
+  - label: "Perfetto tracing"
+    href: "https://perfetto.dev/docs/"
+---
+
+Boot time is contractual on automotive programmes. There is a number in a
+requirements document, somebody committed to it, and it is measured on the
+target — not on your laptop.
+
+<DiagramFrame
+  title="The milestones that get measured"
+  caption="The first two have legal deadlines in most markets. The rest are commercial commitments, and all of them are measured from the ignition signal, not from when Android starts."
+>
+  <BootTimeline />
+</DiagramFrame>
+
+## Measure before optimising
+
+```bash title="Where the time went"
+adb shell bootstat --print                     # per-milestone timings
+adb logcat -b events | grep boot_progress      # framework boot events
+adb shell dmesg | grep -iE 'initcall|took|probe'   # kernel and driver init
+adb shell dumpsys SurfaceFlinger --timestats   # first frame
+```
+
+```bash title="A trace across the whole boot"
+adb shell perfetto -o /data/misc/perfetto-traces/boot \
+  --txt -c - <<'CFG'
+buffers { size_kb: 131072 }
+data_sources { config { name: "linux.ftrace"
+  ftrace_config { ftrace_events: "sched/sched_switch"
+                  ftrace_events: "power/cpu_frequency"
+                  atrace_categories: "am" atrace_categories: "wm"
+                  atrace_categories: "ss" atrace_categories: "binder_driver" } } }
+duration_ms: 40000
+CFG
+adb pull /data/misc/perfetto-traces/boot
+```
+
+<Callout type="warning" title="Optimise what the trace shows, not what you suspect">
+Every team has a theory about why boot is slow. The theory is wrong about half
+the time, and the cost of acting on it is a sprint. Take the trace first.
+</Callout>
+
+## Where the seconds usually are
+
+In rough order of how often they turn out to be the culprit:
+
+**1. Services started eagerly.** Every service in `init.rc` and every persistent
+app competes for CPU during the busiest thirty seconds the device ever has.
+Starting late is nearly free; starting eagerly is not.
+
+```text title="init.rc — start on a trigger, not at boot"
+# Before: starts immediately, competing with everything
+service vendor.telematics /vendor/bin/telematics
+    class main
+
+# After: starts once the system is up and the CPU is free
+service vendor.telematics /vendor/bin/telematics
+    class late_start
+    disabled
+
+on property:sys.boot_completed=1
+    start vendor.telematics
+```
+
+**2. Blocking work in a Car Service subservice's `init()`.** This one delays the
+entire platform, because Car Service is on the critical path for everything
+automotive.
+
+**3. Slow VHAL initialisation.** Car Service waits for the HAL. A HAL that scans
+a bus or reads a large config synchronously at startup adds that time directly to
+boot.
+
+**4. Package scanning.** A large system image with many APKs costs real time on
+first boot and after an update.
+
+**5. Filesystem checks and mount.** Usually a one-off after an unclean shutdown,
+but worth ruling out.
+
+**6. Zygote preload and dex state.** A profile-guided, pre-compiled system image
+boots measurably faster than one that JITs on first use.
+
+## The changes that actually move the number
+
+**Defer everything you can.** Start on `sys.boot_completed`, or on the first
+event that genuinely needs you. Most background services do not need to exist
+during boot.
+
+**Parallelise the HAL.** Return from initialisation quickly and populate caches
+on a worker thread. Car Service needs `getAllPropConfigs()` to answer — it does
+not need every value to be current.
+
+```cpp title="Return fast, fill in behind"
+StatusCode VendorVehicleHardware::init() {
+    loadStaticConfigs();                    // cheap, needed immediately
+    mWorker = std::thread([this] {
+        connectToVehicleNetwork();          // slow — off the critical path
+        primeValueCache();
+    });
+    return StatusCode::OK;                  // Car Service can proceed now
+}
+```
+
+**Trim the image.** Every APK in `/system` and `/product` costs scan time. Ship
+what the vehicle needs, not everything the platform team found useful.
+
+**Use a snapshot for resume.** Most of the time the head unit is resuming from
+suspend, not cold booting. Resume performance is what the driver experiences
+daily; cold boot is what the requirement document measures. Optimise both, but
+know which one customers feel.
+
+**Move the camera off the critical path entirely.** If the reversing image
+depends on Android booting, no amount of Android optimisation will meet a
+two-second deadline. That is the EVS architecture, and it is a design decision,
+not a tuning one.
+
+## What does not help
+
+- **Micro-optimising app startup** while a service is blocking init for four
+  seconds.
+- **Removing logging** — real, but tiny, and it costs you debuggability.
+- **Raising CPU governor limits** during boot without measuring thermals; the
+  gain is often taken back by throttling.
+- **Cutting animations.** Visually faster, actually identical, and it fools the
+  team into thinking the problem is solved.
+
+<Callout type="tip" title="Guard the number in CI">
+Boot time regresses one commit at a time and nobody notices until it misses the
+requirement. Measure it on real hardware in CI, publish the trend, and fail the
+build on a regression beyond a threshold. It is the only thing that keeps a
+number honest over a multi-year programme.
+</Callout>
+
+## Next
+
+The performance module — what happens after boot, when memory runs out.

@@ -1,0 +1,179 @@
+---
+title: "Build a custom boot animation"
+description: "The OEM's first impression — a correctly packaged bootanimation.zip, sized for the real display, that does not add a second to boot."
+order: 2
+difficulty: "Beginner"
+time: "1 hour"
+outcome: "A branded boot animation playing on your product, correctly packaged, with a boot-time cost you have measured rather than assumed."
+prerequisites:
+  - label: "Your own lunch target"
+    href: "/tutorials/platform/custom-lunch-target/"
+tags: ["Boot animation", "Branding", "Product config"]
+sources:
+  - label: "Boot animation format"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/cmds/bootanimation/FORMAT.md"
+  - label: "bootanimation source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/cmds/bootanimation/"
+  - label: "Boot time optimization"
+    href: "https://source.android.com/docs/core/perf/boot-times"
+---
+
+The boot animation is the OEM's first impression and one of the easiest things to
+get wrong in a way that costs boot time. The format is simple; the packaging is
+fussy and unforgiving.
+
+## Step 1 — Understand the format
+
+A `bootanimation.zip` is a **stored** (uncompressed) zip containing a `desc.txt`
+and one directory of PNG frames per part.
+
+```text title="desc.txt"
+1920 720 30
+p 1 0 part0
+p 0 12 part1
+```
+
+Line 1 is `width height fps`. Then one line per part:
+
+```text
+p <loop count> <pause frames> <directory>
+```
+
+- **loop count** — how many times to play; `0` means loop forever
+- **pause frames** — frames to hold after the part
+- **directory** — the folder of PNGs, played in filename order
+
+So the example above plays `part0` once, then loops `part1` forever with a
+12-frame pause each cycle — the standard "intro then loop until boot completes"
+shape.
+
+## Step 2 — Produce the frames
+
+```bash title="From a source video"
+mkdir -p bootanim/part0 bootanim/part1
+
+# Intro: 30 frames at 1920x720
+ffmpeg -i intro.mp4 -vf "scale=1920:720,fps=30" -frames:v 30 \
+  bootanim/part0/%04d.png
+
+# Loop: 60 frames
+ffmpeg -i loop.mp4 -vf "scale=1920:720,fps=30" -frames:v 60 \
+  bootanim/part1/%04d.png
+```
+
+```bash title="Optimise the PNGs — this matters more than it sounds"
+# Every byte is read from flash during the busiest seconds of boot
+optipng -o5 bootanim/part*/*.png
+# or, much faster and nearly as good:
+pngquant --quality=70-90 --ext .png --force bootanim/part*/*.png
+
+du -sh bootanim/
+```
+
+<Gotcha title="Frame count and resolution are a boot-time cost">
+Every frame is a PNG decoded during the busiest part of boot. A 300-frame 4K
+animation competes for I/O and CPU with everything else starting up. Keep the
+intro short, the loop small, and the resolution exactly the panel's — not larger.
+</Gotcha>
+
+## Step 3 — Package it correctly
+
+```bash title="The zip MUST be stored, not compressed"
+cd bootanim
+
+# -0 means no compression. bootanimation mmaps the entries; a deflated zip
+# either fails to play or costs decompression time you cannot afford.
+zip -0 -r ../bootanimation.zip desc.txt part0 part1
+
+cd .. && unzip -v bootanimation.zip | head
+# The Method column must read "Stored" for every entry
+```
+
+<Gotcha title="A compressed zip is the classic failure">
+`zip -r` without `-0` produces a file that looks correct, installs fine, and
+shows a black screen at boot. There is no error message. Check the `Method`
+column before you flash.
+</Gotcha>
+
+## Step 4 — Install it into the product
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_COPY_FILES += \
+    device/oem/vega/bootanimation.zip:$(TARGET_COPY_OUT_PRODUCT)/media/bootanimation.zip
+```
+
+The search order is `/product/media`, then `/oem/media`, then `/system/media`.
+Placing yours on `/product` means it wins without touching the system image.
+
+```bash
+m -j && emulator -wipe-data -no-snapshot &
+```
+
+<Verify title="Verify it plays and is correctly packaged">
+```bash
+# 1. It landed in the image
+adb shell ls -la /product/media/bootanimation.zip
+
+# 2. It is stored, not deflated
+adb pull /product/media/bootanimation.zip /tmp/ba.zip
+unzip -v /tmp/ba.zip | awk '{print $3}' | sort -u    # expect: Stored
+
+# 3. bootanimation ran and did not complain
+adb logcat -b all | grep -i bootanimation
+
+# 4. Play it on demand, without rebooting
+adb shell setprop service.bootanim.exit 0
+adb shell start bootanim
+sleep 6
+adb shell setprop service.bootanim.exit 1
+```
+
+Step 4 is the iteration loop — push a new zip and replay it in seconds rather
+than rebooting each time.
+</Verify>
+
+## Step 5 — Measure what it cost
+
+```bash title="Boot time, before and after"
+adb shell bootstat --print
+adb logcat -b events | grep boot_progress
+```
+
+Compare against your baseline from before the animation. If the delta is more
+than a fraction of a second, the frames are too large or too many.
+
+<Gotcha title="The animation must not gate boot completion">
+`bootanimation` exits when the system sets `service.bootanim.exit`. A very long
+intro does not delay boot — but a huge one competes for I/O and can. Measure
+rather than assume, especially on a device with slow flash.
+</Gotcha>
+
+## Step 6 — Match the real display
+
+```bash title="What is the panel actually?"
+adb shell dumpsys display | grep -E 'real [0-9]+ x [0-9]+|density'
+adb shell wm size
+adb shell wm density
+```
+
+The first line of `desc.txt` must match. A mismatch produces a stretched or
+letterboxed animation, and on a multi-display cockpit the boot animation plays on
+the primary display only — check which one that is on your board.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Black screen at boot | Zip is compressed, not stored |
+| Animation stretched | `desc.txt` resolution does not match the panel |
+| Plays too fast or slow | Wrong fps in `desc.txt` |
+| Only the first part plays | Loop count in the wrong column |
+| Default Android animation | File not found at any search path |
+| Boot time regressed | Too many frames, or frames too large |
+| Wrong display on a multi-screen board | Primary display is not the one you expected |
+
+## What you have now
+
+Every customisation surface in the platform track is now yours: a product, a
+daemon, policy, a HAL, properties, framework services, apps, theming, audio and
+branding. That is the full set an OEM programme actually touches.

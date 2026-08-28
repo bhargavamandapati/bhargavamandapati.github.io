@@ -1,0 +1,131 @@
+---
+title: "Functional safety and ASIL for Android engineers"
+description: "What ISO 26262 actually asks for, why Android is almost never the safety-relevant component, and how to recognise a requirement that has been assigned to the wrong system."
+order: 2
+difficulty: "Advanced"
+tags: ["ISO 26262", "ASIL", "Safety"]
+sources:
+  - label: "ISO 26262 — road vehicles functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+  - label: "Android automotive architecture"
+    href: "https://source.android.com/docs/automotive/start/architecture"
+  - label: "Driver distraction guidelines"
+    href: "https://source.android.com/docs/automotive/driver_distraction/guidelines"
+---
+
+You will not certify Android to ISO 26262. What you will do is work alongside
+systems that are certified, and recognise when a requirement has landed on the
+wrong side of that line.
+
+## What ASIL means
+
+ISO 26262 classifies hazards by severity, exposure and controllability, producing
+an Automotive Safety Integrity Level:
+
+| Level | Rough character | Example |
+| --- | --- | --- |
+| **QM** | Quality managed — no safety requirement | Media playback |
+| **ASIL A** | Lowest safety integrity | Rear fog lamp indication |
+| **ASIL B** | Low–medium | Instrument cluster telltales |
+| **ASIL C** | Medium–high | Some braking and steering functions |
+| **ASIL D** | Highest | Airbag deployment, steering-by-wire |
+
+The level determines the process rigour required: development methods, testing
+depth, tool qualification and independence of review.
+
+## Why Android is QM
+
+A general-purpose operating system with a preemptive scheduler, a garbage
+collector, dynamic memory allocation and millions of lines of third-party code
+cannot practically demonstrate the freedom from interference and determinism that
+ASIL rating demands.
+
+So on essentially every production vehicle, **AAOS is QM**, and anything with an
+ASIL rating lives elsewhere: a separate ECU, a safety-rated hypervisor guest, or
+a microcontroller.
+
+<Callout type="warning" title="&quot;Make Android ASIL B&quot; is not a work item">
+It appears in requirement documents occasionally. It is not achievable within a
+vehicle programme's time and budget, and pretending otherwise defers the real
+architectural conversation until it is expensive. The correct response is to
+identify which function actually carries the rating and move it.
+</Callout>
+
+## Where the boundary falls in practice
+
+| Function | Rated | Runs on |
+| --- | --- | --- |
+| Speedometer value | ASIL | Cluster / safety domain |
+| Telltales and warning lamps | ASIL | Cluster / safety domain |
+| Rear-view camera image | Regulated availability | EVS / dedicated path |
+| ADAS visualisation | ASIL | ADAS domain |
+| Media, navigation UI, settings | QM | Android |
+| Infotainment cards on the cluster | QM | Android → cluster |
+
+Android contributes content to safety-relevant displays. It is not responsible
+for their integrity. The cluster renders Android's navigation card in its
+infotainment zone, and if Android stops sending, the cluster shows its own
+fallback and every rated element keeps working.
+
+## Freedom from interference
+
+Where Android shares hardware with a rated system — a hypervisor with an Android
+guest and a cluster guest — ISO 26262 requires **freedom from interference**:
+the QM component must not be able to compromise the rated one.
+
+That is enforced by the hypervisor: partitioned CPU, partitioned memory,
+controlled communication channels, and a rated component that continues correctly
+if the QM guest crashes, hangs or floods its channel.
+
+Design consequences you will feel:
+
+- **Your channel to the rated system is bounded.** You cannot flood it, and the
+  far end will drop you rather than degrade.
+- **The rated system does not trust your data.** It validates and has a fallback.
+- **Your crash must be survivable.** Test it: kill Android and confirm the
+  cluster still works.
+
+```bash title="A test worth running deliberately"
+# On a dev unit, kill the infotainment side and observe the cluster
+adb shell stop
+# Telltales, speed and warnings must remain correct and visible.
+adb shell start
+```
+
+If anything safety-relevant goes blank during that, the architecture has a
+problem that no amount of Android robustness will fix.
+
+## Distraction is a different regime
+
+Driver distraction requirements come from a different place — regulations and
+guidelines about how much attention a UI may demand — and *those* apply squarely
+to Android, because Android draws the infotainment UI.
+
+That is what `CarUxRestrictions` and `distractionOptimized` implement. It is not
+ISO 26262, and confusing the two leads to the wrong conversation: distraction
+compliance is your responsibility, functional safety integrity generally is not.
+
+## Recognising a misassigned requirement
+
+Warning signs that a requirement has landed on Android that should not have:
+
+- "The head unit **shall** display the brake warning lamp."
+- "The infotainment system **shall** place the emergency call."
+- "The Android application **shall** guarantee the speed value is correct."
+- Any requirement with an availability figure Android cannot meet — "within 200
+  ms of power-on", "99.99% availability".
+
+The correct response is not to attempt it and hope. It is to raise it as an
+architectural finding, name the system that should own it, and let the safety
+engineer reassign it. Doing that early is cheap; doing it during homologation is
+not.
+
+<Callout type="tip" title="Learn who the safety engineer is">
+Every vehicle programme has one, and they are usually delighted to be asked. Five
+minutes with them resolves questions that otherwise circulate through three teams
+for a fortnight.
+</Callout>
+
+## Next
+
+The other regulated regime — cybersecurity, which does apply to Android directly.

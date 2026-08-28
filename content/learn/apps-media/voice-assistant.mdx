@@ -1,0 +1,150 @@
+---
+title: "Voice assistants and hands-free interaction"
+description: "The only interaction model that is genuinely safe at speed. How the assistant slot works, how apps expose actions to it, and why voice is not a feature you bolt on."
+order: 4
+difficulty: "Intermediate"
+tags: ["Voice", "Assistant", "Accessibility"]
+sources:
+  - label: "Voice interactions in cars"
+    href: "https://developer.android.com/training/cars/voice"
+  - label: "VoiceInteractionService reference"
+    href: "https://developer.android.com/reference/android/service/voice/VoiceInteractionService"
+  - label: "Notification semantic actions"
+    href: "https://developer.android.com/reference/android/app/Notification.Action"
+---
+
+Every other input method competes with driving for attention. Voice does not, or
+at least does so far less. That is why voice is architecturally privileged on
+AAOS rather than being an optional extra.
+
+## The assistant slot
+
+A vehicle has one active assistant, bound as a `VoiceInteractionService`. On GAS
+builds it is usually Google Assistant. On others it is the OEM's own, or a
+licensed third party.
+
+Whichever it is, apps interact with it the same way: **by exposing structured
+actions**, not by talking to it directly.
+
+## Media apps get voice for free — if they do the basics
+
+```kotlin title="The three things that make voice work for a media app"
+session.setCallback(object : MediaSessionCompat.Callback() {
+
+    // 1. "Play some jazz"
+    override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+        val results = if (query.isNullOrBlank()) resumeOrShuffle() else search(query)
+        play(results)
+    }
+
+    // 2. "Play the album Blue Train"
+    override fun onPlayFromMediaId(mediaId: String, extras: Bundle?) = play(mediaId)
+
+    // 3. Declare that you support it, or the assistant will not offer it
+    // (see ACTION_PLAY_FROM_SEARCH in setActions)
+})
+```
+
+The empty-query case is the one people forget. "Hey Assistant, play music" gives
+you a blank query, and the correct response is to resume or shuffle something —
+not to fail.
+
+## Notifications: semantic actions
+
+The assistant can read a message aloud and take a spoken reply, but only if your
+notification says what its actions *mean*.
+
+```kotlin title="Semantics, not just labels"
+val reply = Notification.Action.Builder(icon, "Reply", replyIntent)
+    .addRemoteInput(RemoteInput.Builder(KEY_REPLY).setLabel("Reply").build())
+    .setSemanticAction(Notification.Action.SEMANTIC_ACTION_REPLY)
+    .setAllowGeneratedReplies(true)
+    .build()
+
+val markRead = Notification.Action.Builder(icon, "Mark as read", readIntent)
+    .setSemanticAction(Notification.Action.SEMANTIC_ACTION_MARK_AS_READ)
+    .setShowsUserInterface(false)   // it must not open a screen
+    .build()
+```
+
+`setShowsUserInterface(false)` is important: it tells the platform this action can
+complete without the driver looking at anything, which is what makes it usable
+while moving.
+
+## App Actions and deep intents
+
+Beyond media and messaging, apps expose capabilities through App Actions —
+declared intents the assistant can fulfil.
+
+```xml title="res/xml/shortcuts.xml"
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <capability android:name="actions.intent.START_EXERCISE">
+        <intent android:action="com.example.START"
+                android:targetPackage="com.example"
+                android:targetClass="com.example.MainActivity">
+            <parameter android:name="exercise.name" android:key="type"/>
+        </intent>
+    </capability>
+</shortcuts>
+```
+
+The value of the declarative form is that the assistant handles the language
+understanding. You receive a structured intent with parameters, not a transcript
+to parse.
+
+## Designing for voice-first
+
+The teams that do this well design the **spoken** flow first and the visual one
+as a fallback. Practical rules:
+
+**One utterance, one outcome.** "Play my running playlist" should complete. A
+voice flow that requires three follow-up questions is worse than a button.
+
+**Confirm by ear, not by eye.** Speak or chime the result. If the driver must
+look at the screen to know whether it worked, voice bought nothing.
+
+**Fail into something useful.** "I could not find that playlist — playing recent
+tracks instead" beats silence or an error the driver cannot read.
+
+**Do not require exact phrasing.** People say "put on some music", "play
+something", "music" and mean the same thing. The assistant normalises much of
+this, but your handling of the resulting empty or vague query must be generous.
+
+<Callout type="tip" title="Test with the screen covered">
+Run through your app's core tasks by voice with a hand over the display. Anything
+you cannot complete is a task the driver cannot safely do either. This is a
+five-minute test that reliably finds real design problems.
+</Callout>
+
+## Text-to-speech and audio routing
+
+Assistant speech is not media. It uses `USAGE_ASSISTANT` or
+`USAGE_ASSISTANCE_NAVIGATION_GUIDANCE`, routes to the voice bus, and takes
+transient focus.
+
+```kotlin title="Speaking correctly"
+val speechAttrs = AudioAttributes.Builder()
+    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+    .build()
+
+tts.setAudioAttributes(speechAttrs)
+```
+
+An app that speaks with `USAGE_MEDIA` will duck itself, be routed to the media
+bus, and be silenced by a rear passenger's volume control.
+
+## Testing
+
+```bash title="What the platform sees"
+adb shell settings get secure voice_interaction_service
+adb shell dumpsys voiceinteraction
+adb shell dumpsys media_session | grep -i -A5 'queue\|actions'
+
+# Fire a media voice command without speaking
+adb shell am start -a android.media.action.MEDIA_PLAY_FROM_SEARCH -e query "jazz"
+```
+
+## Next
+
+Getting an app onto a vehicle at all — distribution, signing and OEM inclusion.

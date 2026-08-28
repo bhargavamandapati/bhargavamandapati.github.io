@@ -1,0 +1,147 @@
+---
+title: "Getting an app onto a vehicle"
+description: "Play Store on GAS builds, OEM stores, system-image inclusion and sideloading for development — four very different routes with very different timelines."
+order: 5
+difficulty: "Beginner"
+tags: ["Distribution", "Play Store", "Signing"]
+sources:
+  - label: "Distribute apps for Android Automotive OS"
+    href: "https://developer.android.com/training/cars/distribute"
+  - label: "Car app quality guidelines"
+    href: "https://developer.android.com/docs/quality-guidelines/car-app-quality"
+  - label: "Privileged permission allowlisting"
+    href: "https://source.android.com/docs/core/permissions/perms-allowlist"
+---
+
+"How do users get this app?" has four answers on AAOS, and choosing wrong early
+costs quarters, not sprints.
+
+## The four routes
+
+| Route | Who decides | Cadence | Permissions available |
+| --- | --- | --- | --- |
+| **Play Store (GAS)** | Google + you | Your release cycle | Normal / dangerous only |
+| **OEM store** | The OEM | Their review cycle | Normal / dangerous, sometimes more |
+| **System image** | The OEM | Vehicle programme gates | Anything, including signature |
+| **Sideload** | You, on a dev unit | Immediate | Whatever the build allows |
+
+## Play Store on GAS vehicles
+
+Only vehicles licensed for Google Automotive Services have Play. Your app is
+distributed like a phone app, with an automotive-specific review against the car
+app quality guidelines.
+
+```xml title="Targeting automotive in the manifest"
+<uses-feature
+    android:name="android.hardware.type.automotive"
+    android:required="true"/>
+
+<!-- Declare what you do not need, or the store will filter you out -->
+<uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+<uses-feature android:name="android.hardware.camera" android:required="false"/>
+<uses-feature android:name="android.hardware.telephony" android:required="false"/>
+```
+
+<Callout type="warning" title="Implicit feature requirements silently exclude vehicles">
+Some permissions imply hardware features. Requesting `CAMERA` implies
+`android.hardware.camera`, which many head units do not report — and your app is
+filtered out of the store on those vehicles with no error anywhere. Mark every
+non-essential feature `required="false"` explicitly.
+</Callout>
+
+Review is stricter than for phones. The recurring rejection reasons:
+
+- An activity marked `distractionOptimized` that clearly is not.
+- Text entry available while driving.
+- A media app whose browse tree is too deep or too long.
+- Video playable while the vehicle is moving.
+- No voice path for a core task.
+
+## OEM stores
+
+Non-GAS vehicles have the OEM's own store, or none. Each has its own submission
+process, its own review criteria, and often its own SDK for billing and
+identity. Practically this means a per-OEM integration project, not a single
+release.
+
+Ask three questions before committing:
+
+1. What is the review turnaround, and is it tied to vehicle programme gates?
+2. Are additional permissions available to store apps, or only to system apps?
+3. Is there a test fleet, or does validation require a physical vehicle?
+
+## Inclusion in the system image
+
+The route for anything that actuates the vehicle. Your APK is built into
+`/product` or `/system`, signed as part of the image, and can hold
+signature-level permissions.
+
+```xml title="What inclusion buys you"
+<uses-permission android:name="android.car.permission.CONTROL_CAR_CLIMATE"/>
+<uses-permission android:name="android.car.permission.CONTROL_CAR_SEATS"/>
+```
+
+```xml title="…and the allowlist it requires"
+<!-- /product/etc/permissions/privapp-permissions-oem.xml -->
+<permissions>
+  <privapp-permissions package="com.oem.climate">
+    <permission name="android.car.permission.CONTROL_CAR_CLIMATE"/>
+    <permission name="android.car.permission.CONTROL_CAR_SEATS"/>
+  </privapp-permissions>
+</permissions>
+```
+
+The cost is your release cadence becomes the vehicle's. A fix ships when the OEM
+ships an OTA — measured in months, scheduled around gates.
+
+<Callout type="warning" title="Decide this during scoping, not integration">
+Teams routinely design a feature, build it, and then discover it needs
+`CONTROL_CAR_WINDOWS` and therefore must be in the system image, and therefore
+the OEM must agree to ship it, and therefore the launch date moves by two
+quarters. Ask "what permission does this need" in week one.
+</Callout>
+
+## Sideloading for development
+
+```bash title="Installing on a dev head unit"
+# Install for the CURRENT foreground user — not user 0
+adb install -r --user current app.apk
+
+# Which user am I actually on?
+adb shell am get-current-user
+
+# Install for all users (userdebug builds)
+adb install -r --user all app.apk
+
+# Grant a runtime permission without the dialog
+adb shell pm grant com.example android.car.permission.CAR_SPEED
+```
+
+The `--user` flag is the one that trips people up. `adb install` targets the
+current user; if you then switch users, your app has vanished. This is not a bug.
+
+## Signing
+
+| Route | Key |
+| --- | --- |
+| Play Store | Your upload key; Play signs the distributed artefact |
+| OEM store | Usually your key, registered with the OEM |
+| System image | **The OEM's platform key** — they sign, not you |
+
+That last row has a consequence worth stating: an app signed with the platform
+key cannot also be distributed through Play under the same package name, because
+the signatures differ. If you need both routes, you need two variants, and you
+should design for that from the start.
+
+## A practical decision order
+
+1. **Does it actuate the vehicle?** → system image. Talk to the OEM now.
+2. **Is it media or templated, on a GAS vehicle?** → Play Store. Read the quality
+   guidelines before designing.
+3. **Non-GAS?** → OEM store, per OEM, with per-OEM integration work.
+4. **Still exploring?** → sideload on a dev unit, but do not let the prototype's
+   permissions set expectations the distribution route cannot meet.
+
+## Next
+
+The cluster and camera module — where AAOS stops resembling Android at all.

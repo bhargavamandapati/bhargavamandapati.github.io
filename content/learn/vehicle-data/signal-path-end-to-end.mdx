@@ -1,0 +1,340 @@
+---
+title: "From sensor to pixel: the complete path"
+description: "One cabin temperature reading, followed through every hop — thermistor, ECU, CAN frame, kernel driver, vendor service, VHAL, Binder, Car Service, app, screen — with the mechanism named at each boundary."
+order: 3
+difficulty: "Advanced"
+tags: ["Architecture", "VHAL", "Binder", "Debugging"]
+sources:
+  - label: "Vehicle HAL (source.android.com)"
+    href: "https://source.android.com/docs/automotive/vhal"
+  - label: "SocketCAN in the Linux kernel"
+    href: "https://docs.kernel.org/networking/can.html"
+  - label: "CarPropertyService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/CarPropertyService.java"
+  - label: "Perfetto tracing"
+    href: "https://perfetto.dev/docs/"
+---
+
+The architecture overview showed the layers. This page follows a single value
+through all of them, naming the actual mechanism at every boundary — because
+"the layers talk to each other" is not enough to debug with.
+
+The value: **cabin temperature, driver's side.** It starts as a voltage and ends
+as the characters `21.5°` on a screen.
+
+<DiagramFrame
+  title="Eight hops, eight different mechanisms"
+  caption="Notice the right-hand column. The mechanism changes at every boundary — a voltage becomes a bus frame becomes an interrupt becomes a socket read becomes a Binder transaction. Each change is a place a value can be corrupted or lost."
+>
+  <SignalPathFull />
+</DiagramFrame>
+
+## Hop 1 — A thermistor, and a voltage
+
+A thermistor in the cabin changes resistance with temperature. An <T>ECU</T>
+puts a known voltage across it and measures what comes back through an
+analogue-to-digital converter.
+
+The ECU now has a number — say `2048` out of `4095`. That is not a temperature.
+It is a raw ADC reading that only means something with the thermistor's curve
+applied.
+
+<Plain>
+Nothing digital has left the ECU yet, and Android is nowhere near. If the sensor
+is faulty or disconnected, this is where the problem is, and no amount of
+software debugging will find it.
+
+This is why bring-up always starts with "what does the ECU think?" rather than
+"what does the app show?"
+</Plain>
+
+## Hop 2 — The ECU broadcasts a CAN frame
+
+The ECU converts its reading into the units the vehicle's network specification
+says it should send, packs it into a small message, and broadcasts it.
+
+```text title="A CAN frame, conceptually"
+ID:     0x1A4          ← which message this is (not who sent it)
+Length: 8 bytes
+Data:   [ 0x8F 0x02 0x00 0x00 0x1B 0x00 0x00 0x00 ]
+          └─┬──┘
+            cabin temperature lives in bytes 0-1
+```
+
+<Analogy title="Like a station announcement">
+A CAN frame is not addressed to anyone. The ECU announces "message 0x1A4 says
+this", and anything on the wire that cares about 0x1A4 listens.
+
+Nobody replies. Nobody acknowledges. The ECU just says it again in 100 ms.
+</Analogy>
+
+The two bytes `0x8F 0x02` are `655` as a little-endian 16-bit value. The vehicle's
+signal database says this signal is `raw × 0.1 − 40`, so `655` means **25.5 °C**.
+
+<Plain>
+Hold on to that scaling rule. It is the single most common place a value goes
+subtly wrong, and it is invisible — the number that reaches the screen is a
+plausible temperature, just not the right one.
+</Plain>
+
+## Hop 3 — The kernel receives it
+
+The CAN transceiver on the board raises an interrupt. A kernel driver reads the
+frame out of the controller's buffer and hands it to the networking stack.
+
+On Linux this is usually **SocketCAN**, which presents CAN as a network
+interface, so user-space code reads frames from a socket.
+
+```bash title="Watching raw frames on a development board"
+ip link set can0 up type can bitrate 500000
+candump can0
+
+# can0  1A4   [8]  8F 02 00 00 1B 00 00 00
+```
+
+<Plain>
+`candump` is the ground truth. If the value is wrong on screen, this tells you
+whether it was already wrong before Android touched it — which immediately halves
+the search space and tells you which team owns the problem.
+
+Not every vehicle exposes CAN this directly. Some route it through a companion
+microcontroller over SPI; some pass it between hypervisor guests through shared
+memory. The principle holds: there is a lowest level where you can see the raw
+value, and finding it is worth the effort once.
+</Plain>
+
+## Hop 4 — The vendor service translates
+
+Now we cross into software somebody wrote for this vehicle. This layer is **not
+in AOSP** — it is the car maker's or their supplier's.
+
+Its job is to turn bus traffic into the values the <T>VHAL</T> promised.
+
+```cpp title="What this layer actually does"
+void OnCanFrame(const CanFrame& frame) {
+    if (frame.id != 0x1A4) return;
+
+    // Extract the bits this signal occupies
+    uint16_t raw = frame.data[0] | (frame.data[1] << 8);
+
+    // Apply the scaling from the signal database. Exactly once.
+    float celsius = raw * 0.1f - 40.0f;
+
+    publisher_.Update(kHvacTemperatureCurrent, kAreaDriver, celsius);
+}
+```
+
+<Scenario title="The scaling bug, and why it is so hard to spot">
+A supplier implements this and applies the factor. Later, someone adds a
+convenience wrapper that also applies it, because the raw value "looked wrong".
+
+Now `655` becomes `25.5`, then `25.5 × 0.1 − 40` = **−37.5 °C**.
+
+Nothing crashes. No log line appears. The UI shows a cold cabin on a summer day,
+and three teams each demonstrate that their layer is fine.
+
+`candump` says `655`. The VHAL says `−37.5`. That pair of facts locates the bug
+in one layer, in about a minute. Without it, this is a two-week argument.
+</Scenario>
+
+## Hop 5 — The Vehicle HAL publishes
+
+The <T>VHAL</T> stores the value in its cache and, if anyone is subscribed,
+publishes a change event.
+
+```cpp title="Publishing a value"
+VehiclePropValue update{
+    // CLOCK_BOOTTIME nanoseconds — nanoseconds since the device booted.
+    // Not wall clock. Not milliseconds.
+    .timestamp = elapsedRealtimeNano(),
+    .areaId = SEAT_ROW_1_LEFT,
+    .prop = toInt(VehicleProperty::HVAC_TEMPERATURE_CURRENT),
+    .status = VehiclePropertyStatus::AVAILABLE,
+};
+update.value.floatValues = {25.5f};
+
+property_change_callback_(std::vector{std::move(update)});
+```
+
+<Plain>
+Two fields here are load-bearing and both fail silently when wrong.
+
+`timestamp` must be `CLOCK_BOOTTIME` in nanoseconds. Get it wrong and Android's
+staleness logic compares incompatible clocks — and every latency figure anyone
+measures is meaningless.
+
+`status` must be honest. If the ECU has not reported yet, this is `UNAVAILABLE`,
+not `AVAILABLE` with a zero. The difference is a dash on screen versus a
+confident, wrong number.
+</Plain>
+
+```bash title="Checking what the HAL believes"
+adb shell dumpsys car_service --get-property 0x11600203 -a 1
+```
+
+## Hop 6 — Binder into Car Service
+
+The VHAL is a separate process from <T>Car Service</T>. The change event crosses
+that boundary as a <T>Binder</T> transaction — the mechanism from the previous
+module.
+
+`CarPropertyService` receives it and does four things:
+
+1. **Updates its own cache**, so a later `get` does not need to reach the HAL.
+2. **Checks which apps are subscribed** to this property and area.
+3. **Filters by user** — a background user's app should not receive events it
+   should not see.
+4. **Fans out** one HAL event to every subscribed app.
+
+<Plain>
+Step 4 is why one badly written app affects everybody. Car Service opens **one**
+subscription to the HAL, at the fastest rate any app requested. An app asking for
+100 Hz raises the cost for the entire system, including apps that wanted 1 Hz.
+</Plain>
+
+```bash title="Who is subscribed, and how fast"
+adb shell dumpsys car_service --services CarPropertyService
+```
+
+## Hop 7 — Binder into your app
+
+Another process boundary, another Binder transaction. Your callback runs.
+
+```kotlin title="Where your code re-enters the story"
+override fun onChangeEvent(value: CarPropertyValue<*>) {
+    // This is a BINDER THREAD, not your main thread.
+    if (value.status != CarPropertyValue.STATUS_AVAILABLE) return
+
+    pendingTemperature = value.value as Float
+    scheduleRender()      // hand off; do not draw here
+}
+```
+
+<Scenario title="Doing work here is a mistake with a long fuse">
+An engineer parses, formats and updates a view directly inside `onChangeEvent`.
+It works fine — the property changes every few seconds.
+
+Later, someone raises the subscription rate for a smooth gauge. Now the callback
+runs ten times a second, doing layout work on a binder thread.
+
+Your process's own binder pool starts backing up. Calls *into* your app queue.
+Profiling shows the UI thread waiting, and the cause is a callback that was
+never supposed to be doing that work.
+
+**Callbacks receive and hand off. They do not process.**
+</Scenario>
+
+## Hop 8 — Onto the screen
+
+Your handler posts to the main thread, the view or composable updates,
+SurfaceFlinger composites the frame, and the display shows it.
+
+```kotlin title="Rendering at the rate the eye needs, not the rate data arrives"
+private fun scheduleRender() {
+    // A gauge at 60 fps does not need 60 Hz of data. Interpolate between
+    // samples instead of redrawing on every event.
+    if (!renderScheduled) {
+        renderScheduled = true
+        mainHandler.post { render(pendingTemperature); renderScheduled = false }
+    }
+}
+```
+
+## The whole path as a debugging tool
+
+This is the real payoff. When a value is wrong, you now have **eight places to
+look and a command for most of them**.
+
+| Hop | Question | How to check |
+| --- | --- | --- |
+| 1–2 | Is the ECU sending anything? | `candump can0` |
+| 2 | Is the raw value right? | Compare against the signal database |
+| 3 | Does the kernel see frames? | `ip -s link show can0` |
+| 4 | Did the vendor layer scale it correctly? | Compare `candump` with the next row |
+| 5 | What does the HAL hold? | `dumpsys car_service --get-property` |
+| 5 | Is the HAL even running? | `lshal \| grep vehicle` |
+| 6 | Does Car Service know the property? | `dumpsys car_service --list-properties` |
+| 6 | Is anything blocked by policy? | `dmesg \| grep avc` |
+| 7 | Does the app hold the permission? | `dumpsys package <pkg>` |
+| 7–8 | Is the app rendering what it received? | Log the callback value |
+
+<Plain>
+Two comparisons resolve most defects on their own:
+
+**`candump` versus `--get-property`.** If they disagree, the bug is in hop 4 —
+the vendor translation layer.
+
+**`--get-property` versus what the app logs.** If they disagree, the bug is in
+hops 6–8 — permissions, subscription, or your own rendering.
+
+If they all agree and the screen is still wrong, the problem is in hop 1: the
+sensor.
+</Plain>
+
+## Timing: where the milliseconds go
+
+For a driver-visible value, the whole path usually needs to complete in under
+about 200 ms. A rough breakdown:
+
+| Hop | Typical cost |
+| --- | --- |
+| ECU sample and broadcast interval | 10–100 ms |
+| Kernel receive | under 1 ms |
+| Vendor translation | under 1 ms |
+| VHAL publish | under 1 ms |
+| Binder to Car Service | 1–5 ms |
+| Car Service fan-out | 1–5 ms |
+| Binder to app | 1–5 ms |
+| Render | 16 ms (one frame) |
+
+<Plain>
+Notice where the time actually is: **the ECU's broadcast interval dominates
+everything else.** If a signal is only sent every 100 ms, no amount of software
+optimisation makes the UI more responsive than that.
+
+The second largest cost is Binder, and it is only a few milliseconds — unless a
+thread pool is saturated, at which point it becomes unbounded. That is the
+failure mode worth watching for.
+</Plain>
+
+```bash title="Measuring it properly"
+adb shell perfetto -o /data/misc/perfetto-traces/t -t 20s \
+  sched freq binder_driver am wm gfx view hal
+```
+
+`binder_driver` is the category that makes the two IPC hops visible. Without it,
+a trace shows your app waiting and gives no clue why.
+
+## What changes on a virtualised head unit
+
+On a consolidated cockpit computer, hop 3 is different: instead of a CAN driver,
+Android is a guest under a <T>hypervisor</T> and receives values from another
+guest through shared memory or a virtio channel.
+
+<Plain>
+Everything from hop 4 upward is unchanged. What changes is that
+`candump` may not exist inside the Android guest at all — the raw frames arrive
+in a different guest entirely.
+
+On such a programme, the highest-value tooling investment is a **correlated trace
+across guests with one clock**. Without it, every latency question becomes two
+teams each proving it is not their layer.
+</Plain>
+
+<Recap>
+- A value crosses **eight hops**, and the mechanism changes at every one: voltage,
+  CAN frame, kernel interrupt, socket read, in-process call, Binder, Binder,
+  render.
+- **Scaling happens exactly once**, in the vendor layer. Applying it twice or not
+  at all produces a plausible wrong number with no error anywhere.
+- `timestamp` is `CLOCK_BOOTTIME` nanoseconds; `status` must report `UNAVAILABLE`
+  honestly. Both fail silently.
+- Callbacks arrive on a **binder thread**. Receive and hand off — do not process.
+- **`candump` vs `--get-property` vs what the app logs** — those three
+  comparisons locate almost any wrong value in minutes.
+- The **ECU's broadcast interval usually dominates latency**, not your software.
+</Recap>
+
+## Next
+
+Building a property of your own that travels this whole path.

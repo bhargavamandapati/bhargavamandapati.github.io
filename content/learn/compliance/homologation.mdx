@@ -1,0 +1,144 @@
+---
+title: "Homologation and regional variation"
+description: "The approval process that decides whether a vehicle can be sold in a market — and the surprising number of software behaviours it constrains."
+order: 4
+difficulty: "Intermediate"
+tags: ["Homologation", "Regulation", "Variants"]
+sources:
+  - label: "UNECE vehicle regulations"
+    href: "https://unece.org/transport/vehicle-regulations"
+  - label: "Driver distraction guidelines"
+    href: "https://source.android.com/docs/automotive/driver_distraction/guidelines"
+  - label: "Android internationalisation"
+    href: "https://source.android.com/docs/core/settings/i18n"
+---
+
+Homologation is the process by which a regulator certifies a vehicle type as
+legal to sell. It is mostly about brakes, lights and emissions — but a
+surprising amount of it lands on the infotainment system.
+
+## What software gets asked about
+
+**Driver distraction.** Limits on what may be displayed and interacted with while
+moving. The thresholds and rules differ by market, which is why
+`CarUxRestrictions` is configuration rather than constants.
+
+**Rear-view camera.** Availability within a defined time of selecting reverse,
+minimum field of view, and behaviour on failure. Required in several markets.
+
+**Telltales and warnings.** Which lamps, what colour, what symbol, how bright, and
+how available. Colour and symbology are specified in regulation, not chosen by a
+designer.
+
+**Units and language.** Speed in km/h or mph, temperature in Celsius or
+Fahrenheit, and the languages that must be offered.
+
+**Emergency call.** Mandatory in some markets, absent in others, with different
+data sets and behaviours.
+
+**Speed warning.** Some markets require an audible or visual warning above a
+limit, or intelligent speed assistance behaviour.
+
+## Why this produces variants
+
+Every regional difference becomes a build variant, a configuration flag or a
+runtime switch. The matrix multiplies quickly:
+
+```text title="One vehicle, many builds"
+Markets      × Trims        × Model years
+EU, UK,        base,          MY26,
+US, CN,        mid,           MY27,
+JP, KR         premium        MY28
+```
+
+The engineering answer is to make regional behaviour **configuration**, never
+code:
+
+```xml title="Region-specific resources"
+res/values/config.xml               <!-- default -->
+res/values-en-rGB/config.xml        <!-- UK -->
+res/values-de/config.xml
+res/values-ja/config.xml
+```
+
+```xml title="Regional behaviour as a flag, not a branch"
+<!-- res/values/config.xml -->
+<bool name="config_speed_warning_required">false</bool>
+<integer name="config_max_content_items_driving">9</integer>
+<string name="config_default_speed_unit">kph</string>
+
+<!-- res/values-en-rUS/config.xml -->
+<string name="config_default_speed_unit">mph</string>
+```
+
+<Callout type="warning" title="Never branch the codebase per market">
+A per-market fork looks like the fast answer and becomes unmaintainable within a
+model year — a fix must then be applied and validated six times. Regional
+differences belong in resources, overlays and runtime configuration, so one
+binary serves every market.
+</Callout>
+
+## Units are not cosmetic
+
+Getting units wrong is a homologation failure, not a bug report.
+
+```kotlin title="Ask the vehicle, do not infer from locale"
+val units = properties.getIntProperty(
+    VehiclePropertyIds.DISTANCE_DISPLAY_UNITS,
+    VehicleAreaType.VEHICLE_AREA_TYPE_GLOBAL,
+)
+
+val speedText = when (units) {
+    VehicleUnit.MILES_PER_HOUR -> "%d mph".format(kph.toMph())
+    else -> "%d km/h".format(kph)
+}
+```
+
+Locale is not the answer. A vehicle sold in the UK displays mph while the user
+interface may be in Polish. The vehicle's unit setting is authoritative, and it
+is a property for exactly this reason.
+
+## Language and text expansion
+
+Required languages vary by market, and translations change layout:
+
+- German runs roughly 30% longer than English.
+- CJK languages need more vertical space and different line breaking.
+- RTL languages require mirrored layouts, not just translated strings.
+
+```xml title="Layouts that survive translation"
+<!-- Use start/end, never left/right -->
+<TextView
+    android:layout_marginStart="@dimen/spacing_medium"
+    android:textAlignment="viewStart"
+    android:maxLines="2"
+    android:ellipsize="end"/>
+```
+
+```bash title="Testing without a translated build"
+adb shell setprop debug.force_rtl 1     # pseudo-RTL
+adb shell am start -a android.settings.LOCALE_SETTINGS
+```
+
+Combined with UX restrictions truncating strings, a label that only fits in
+English will be unreadable in German while driving.
+
+## Approval is per vehicle type, and changes are re-approvals
+
+Once a vehicle type is approved, a change to a regulated function may require
+re-approval. That is why platform freeze exists, and why "just add a warning
+chime" late in a programme is not a small request.
+
+Practical consequence: **anything touching a regulated behaviour must be
+identified early**, because its change control is stricter than everything around
+it.
+
+<Callout type="tip" title="Ask which of your features are regulated">
+Most engineers on a programme cannot name which parts of their work are subject
+to homologation. Find out in week one. It changes how you version, how you test,
+and how much notice you must give before changing something.
+</Callout>
+
+## Next
+
+Into the build system that produces all these variants.

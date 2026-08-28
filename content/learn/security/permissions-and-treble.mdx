@@ -1,0 +1,173 @@
+---
+title: "Car permissions and the Treble boundary"
+description: "Which permissions an ordinary app can hold, why anything that actuates the vehicle is signature-level, and the partition rules that will not bend for your schedule."
+order: 2
+difficulty: "Advanced"
+tags: ["Permissions", "Treble", "Security"]
+sources:
+  - label: "Project Treble"
+    href: "https://source.android.com/docs/core/architecture/treble"
+  - label: "Vendor Interface Object (VINTF)"
+    href: "https://source.android.com/docs/core/architecture/vintf"
+  - label: "Privileged permission allowlisting"
+    href: "https://source.android.com/docs/core/permissions/perms-allowlist"
+---
+
+Two rules decide whether a feature is even buildable by your team. Learn them
+before scoping, not during integration.
+
+## The permission tiers
+
+**Tier 1 — normal and dangerous.** Any app can declare them; dangerous ones
+prompt the user.
+
+```xml
+<uses-permission android:name="android.car.permission.CAR_INFO"/>
+<uses-permission android:name="android.car.permission.CAR_SPEED"/>
+<uses-permission android:name="android.car.permission.CAR_ENERGY"/>
+<uses-permission android:name="android.car.permission.CAR_EXTERIOR_ENVIRONMENT"/>
+```
+
+Broadly: **reading non-sensitive vehicle state**.
+
+**Tier 2 — signature and privileged.** Only apps signed with the platform key, or
+installed as privileged system apps with an explicit allowlist entry.
+
+```xml
+<uses-permission android:name="android.car.permission.CONTROL_CAR_CLIMATE"/>
+<uses-permission android:name="android.car.permission.CONTROL_CAR_DOORS"/>
+<uses-permission android:name="android.car.permission.CONTROL_CAR_WINDOWS"/>
+<uses-permission android:name="android.car.permission.CONTROL_CAR_SEATS"/>
+<uses-permission android:name="android.car.permission.CAR_POWER"/>
+```
+
+Broadly: **anything that actuates the vehicle**, plus platform-level control.
+
+<Callout type="warning" title="This decides your release cadence, not just your access">
+If your feature needs a signature permission, your APK ships inside the OEM's
+system image. Your releases become their releases — measured in months and tied
+to vehicle programmes, not to your sprint. Discover this during scoping.
+</Callout>
+
+## Privileged permission allowlisting
+
+A privileged app cannot simply request a signature permission. It must be listed:
+
+```xml title="/vendor/etc/permissions/privapp-permissions-oem.xml"
+<permissions>
+  <privapp-permissions package="com.oem.car.climate">
+    <permission name="android.car.permission.CONTROL_CAR_CLIMATE"/>
+    <permission name="android.car.permission.CONTROL_CAR_SEATS"/>
+  </privapp-permissions>
+</permissions>
+```
+
+```bash title="When the image will not boot after adding a permission"
+adb logcat -b all | grep -i 'privapp\|Signature\|not allowlisted'
+```
+
+On `userdebug` builds a missing entry **stops the boot**. That is intentional: a
+silent security gap becomes an obvious failure. If your image stopped booting
+right after you added a permission, this is why.
+
+## Defining OEM permissions
+
+```xml title="Declaring your own"
+<permission
+    android:name="com.oem.car.permission.CONTROL_SEAT_MASSAGE"
+    android:protectionLevel="signature|privileged"
+    android:label="@string/perm_seat_massage_label"
+    android:description="@string/perm_seat_massage_desc"/>
+```
+
+Guidance that survives review:
+
+- **One permission per capability**, not one per app. `CONTROL_SEAT_MASSAGE`, not
+  `COMFORT_APP_PERMISSIONS`.
+- **Separate read from write.** Reading seat position and moving the seat are
+  different risks and should be separately grantable.
+- **`signature|privileged` for anything that actuates.** No exceptions worth
+  making.
+- **Write the description properly.** Somebody in a security review will read it,
+  and "internal use" is not an answer.
+
+## The Treble boundary
+
+Treble split Android into partitions that upgrade independently:
+
+| Partition | Contents | Who updates it |
+| --- | --- | --- |
+| `/system` | Android framework | Google / platform team |
+| `/vendor` | HALs, hardware-specific code | Supplier |
+| `/product` | OEM apps and customisation | OEM |
+| `/odm` | Board-specific overrides | ODM |
+
+They talk only through **versioned, stable interfaces** — AIDL or HIDL, declared
+in VINTF manifests.
+
+```xml title="/vendor/etc/vintf/manifest.xml"
+<manifest version="1.0" type="device">
+    <hal format="aidl">
+        <name>android.hardware.automotive.vehicle</name>
+        <version>2</version>
+        <fqname>IVehicle/default</fqname>
+    </hal>
+</manifest>
+```
+
+```bash title="Checking the vendor interface"
+adb shell lshal
+adb shell lshal --init-vintf     # what the manifest declares
+adb shell vintf                  # compatibility check
+```
+
+## What the boundary forbids
+
+You **cannot**:
+
+- Call a framework class from a vendor HAL.
+- Share a header or a data structure across the boundary informally.
+- Add a field to a released HAL interface without versioning it.
+- Have a `/vendor` process read `/data` app storage.
+
+You **must**:
+
+- Version every interface change.
+- Keep old versions working while new ones roll out.
+- Declare everything in VINTF.
+
+<Callout type="warning" title="&quot;Just add a field to the struct&quot;">
+This request arrives on every programme. The answer is that a released HAL
+interface is a versioned contract with binary compatibility guarantees. Adding a
+field means a new interface version, both supported in parallel. It is not
+bureaucracy — it is what lets the framework be upgraded without recertifying
+every HAL the supplier shipped in 2019.
+</Callout>
+
+## Why this exists at all
+
+A vehicle ships and lives 10–15 years. Android releases annually. Without a
+stable vendor interface, every framework upgrade would require every supplier to
+rebuild and revalidate every HAL — which in practice means the upgrade never
+happens and vehicles ship on ancient, unpatched platforms.
+
+Treble is what makes a security patch to the framework possible in year seven of
+a vehicle programme. Every restriction it imposes is buying that.
+
+## A design checklist
+
+Before committing to a feature:
+
+1. Does it read or actuate? Actuation is signature-level.
+2. Is a system property enough, or do you need a new vendor property?
+3. Does anything need to cross the Treble boundary? If so, it needs a versioned
+   interface — plan the schedule accordingly.
+4. Who signs the APK, and does the OEM agree to include it?
+5. Is there a `privapp-permissions` entry, and is it in the right partition?
+
+Answering these in week one avoids the conversation in month six where a feature
+turns out to require the OEM to ship your code and nobody had asked them.
+
+## Next
+
+The SDV module, where the vehicle network meets the Android middleware.

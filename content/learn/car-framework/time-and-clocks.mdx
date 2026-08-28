@@ -1,0 +1,228 @@
+---
+title: "Time, clocks and time zones"
+description: "Getting the time right in a vehicle is genuinely hard — three different clocks, no network for weeks, a driver who crosses borders, and a timestamp field that fails silently if you pick the wrong one."
+order: 9
+difficulty: "Intermediate"
+tags: ["Time", "Clocks", "Framework"]
+sources:
+  - label: "Time in Android"
+    href: "https://source.android.com/docs/core/connect/time"
+  - label: "SystemClock reference"
+    href: "https://developer.android.com/reference/android/os/SystemClock"
+  - label: "Time zone rules updates"
+    href: "https://source.android.com/docs/core/permissions/timezone-rules"
+---
+
+Time looks like a solved problem until you work on a vehicle. Then you discover
+that a car can sit unpowered for six weeks, cross three time zones in an
+afternoon, and have no network connection for any of it.
+
+## Three clocks, and picking the wrong one is a silent bug
+
+Android has several notions of "now", and they are not interchangeable.
+
+| Clock | What it measures | Survives reboot | Can jump |
+| --- | --- | --- | --- |
+| `System.currentTimeMillis()` | Wall clock — 1970 epoch | Yes | **Yes** |
+| `SystemClock.elapsedRealtime()` | Since boot, including sleep | No | No |
+| `SystemClock.uptimeMillis()` | Since boot, excluding sleep | No | No |
+
+<Plain>
+The critical difference is the last column.
+
+Wall clock time **can jump backwards**. When the vehicle gets a network
+connection or a satellite fix and discovers its clock was six minutes fast, it
+corrects — and any code measuring a duration by subtracting two wall-clock
+readings now has a negative answer.
+
+The monotonic clocks never jump. That is the whole reason they exist.
+</Plain>
+
+<Scenario title="The timeout that fired instantly">
+A service records `startTime = System.currentTimeMillis()` and checks every
+second whether 30 seconds have passed.
+
+Twenty seconds in, the vehicle acquires a satellite fix and corrects the clock
+forward by two minutes. The next check computes an elapsed time of 140 seconds
+and the timeout fires immediately.
+
+It happens once in a hundred boots, only on cold starts, only when the fix
+arrives at the wrong moment. Almost impossible to reproduce deliberately, and it
+is entirely explained by using the wrong clock.
+
+**Durations use `elapsedRealtime()`. Always.**
+</Scenario>
+
+<Plain>
+The rule is simple once stated:
+
+- **"When did this happen, in human terms?"** → wall clock.
+- **"How long has it been?"** → `elapsedRealtime()`.
+
+If a value will be compared with another value to produce a duration, it must be
+monotonic.
+</Plain>
+
+## The VHAL timestamp, again
+
+This is why the <T>VHAL</T> topics keep insisting on it. A `VehiclePropValue`
+timestamp is `CLOCK_BOOTTIME` in nanoseconds — the native equivalent of
+`elapsedRealtime()`.
+
+```cpp title="Correct"
+.timestamp = elapsedRealtimeNano(),
+```
+
+```cpp title="Silently wrong"
+.timestamp = std::chrono::system_clock::now().time_since_epoch().count(),
+```
+
+<Plain>
+The second one compiles, runs, and produces a large plausible number. Nothing
+errors. But the framework's staleness checks now compare a 1970-based value
+against boot-based ones, and every latency measurement anyone takes is nonsense.
+
+This is one of the highest-value things to check in a new VHAL, and it takes ten
+seconds: does the timestamp look like *nanoseconds since boot* (billions) or
+*since 1970* (quintillions)?
+</Plain>
+
+## Where the vehicle gets the actual time
+
+A phone asks the network. A vehicle often cannot.
+
+The sources, in rough order of preference:
+
+**<T>GNSS</T>.** Satellites broadcast extremely accurate time, and a vehicle
+usually has a receiver. This is the best source and needs no network at all.
+
+**Network time.** If the vehicle is connected, NTP works as it does anywhere.
+
+**The <T>RTC</T>.** A small battery-backed clock that keeps running while the car
+is off. It drifts — seconds per week — but it means the vehicle knows roughly
+what time it is the instant it powers on.
+
+**The vehicle network.** Some vehicles distribute time from a gateway ECU.
+
+<Scenario title="Six weeks in an airport car park">
+A vehicle is parked for six weeks. The RTC drifts by about four minutes.
+
+The driver returns. The car powers up with a four-minute error, and shows it,
+because there is no signal in the car park.
+
+They drive out, get a satellite fix, and the clock corrects. Anything that was
+scheduled or timed in those first few minutes just experienced a time jump.
+
+This is not an edge case. It is what happens to every vehicle at every airport.
+</Scenario>
+
+## Time zones and a moving vehicle
+
+A phone changes time zone when its network does. A vehicle drives across borders.
+
+```kotlin title="Reacting to a time zone change"
+context.registerReceiver(
+    object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            // Everything you have formatted and cached is now wrong.
+            reformatAllDisplayedTimes()
+        }
+    },
+    IntentFilter(Intent.ACTION_TIMEZONE_CHANGED),
+)
+```
+
+<Plain>
+Two mistakes to avoid.
+
+**Do not cache formatted times.** "Departs 14:30" computed once and stored is
+wrong the moment the vehicle crosses a border. Store the instant; format at
+display time.
+
+**Do not assume the change is small.** A vehicle can be driven onto a ferry and
+arrive in a different country.
+</Plain>
+
+Whether a vehicle *should* follow the local zone automatically is a product
+decision with genuine arguments on both sides — a driver near a border may not
+want the clock flipping back and forth. Check what your programme decided rather
+than assuming.
+
+## Scheduling across sleep
+
+The head unit suspends. An alarm set for 3am has to survive that.
+
+```kotlin title="Alarms that fire while the vehicle is asleep"
+val alarmManager = context.getSystemService(AlarmManager::class.java)
+
+// RTC_WAKEUP wakes the device at a wall-clock time
+alarmManager.setExactAndAllowWhileIdle(
+    AlarmManager.RTC_WAKEUP,
+    triggerAtMillis,
+    pendingIntent,
+)
+
+// ELAPSED_REALTIME_WAKEUP wakes it after a duration, immune to clock jumps
+alarmManager.setExactAndAllowWhileIdle(
+    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+    SystemClock.elapsedRealtime() + delayMillis,
+    pendingIntent,
+)
+```
+
+<Plain>
+Prefer the `ELAPSED_REALTIME` variants for anything expressed as "in N minutes",
+because a clock correction will not disturb them.
+
+Use `RTC_WAKEUP` only when the requirement genuinely is a wall-clock moment —
+"start preconditioning at 07:00".
+
+And remember waking a parked vehicle costs battery. Every wakeup should be
+justified against the quiescent current budget from the power topic.
+</Plain>
+
+## Logs, and why timestamps disagree
+
+```bash title="Which clock is each log using?"
+adb shell dmesg | head -3          # seconds since boot
+adb logcat -v threadtime | head -3 # wall clock
+adb shell bootstat --print         # milliseconds since boot
+```
+
+<Plain>
+Kernel logs are boot-relative. Logcat is wall-clock. Correlating a kernel event
+with a framework event means converting between them — and if the clock was
+corrected in between, a naive conversion is wrong by exactly that correction.
+
+`adb logcat -v uptime` prints boot-relative timestamps, which makes correlation
+straightforward. It is worth knowing about the first time you have to line up a
+driver event against an app event.
+</Plain>
+
+## A checklist
+
+- Measuring a duration? **`elapsedRealtime()`**, never wall clock.
+- Writing a VHAL timestamp? **`CLOCK_BOOTTIME` nanoseconds.**
+- Storing a moment for later display? **Store the instant, format at render.**
+- Handling `ACTION_TIMEZONE_CHANGED`? **Reformat, do not assume.**
+- Setting an alarm? **`ELAPSED_REALTIME_WAKEUP` unless it is genuinely a
+  wall-clock moment.**
+- Correlating logs? **`logcat -v uptime`.**
+
+<Recap>
+- Three clocks. **Wall clock can jump; the monotonic ones cannot.** Durations must
+  use `elapsedRealtime()`.
+- The VHAL timestamp is **`CLOCK_BOOTTIME` nanoseconds** — a very common silent
+  bug.
+- A vehicle gets time from **satellites, network, RTC or the vehicle bus** —
+  frequently with no network for weeks.
+- A parked car's **RTC drifts**, so a clock correction on startup is normal, not
+  exceptional.
+- Vehicles **cross time zones while running**. Never cache formatted times.
+- Alarms that must survive suspend need **`AllowWhileIdle`**, and waking a parked
+  car costs battery.
+</Recap>
+
+## Next
+
+Accessibility — a surface that is easy to forget and increasingly required.

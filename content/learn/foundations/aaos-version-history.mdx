@@ -1,0 +1,125 @@
+---
+title: "How AAOS changed, release by release"
+description: "The inflection points that matter when you inherit a codebase — HIDL to AIDL, the Car UI Library, occupant zones — and how to work out what your platform version actually supports."
+order: 5
+difficulty: "Beginner"
+tags: ["Versions", "AOSP", "Migration"]
+sources:
+  - label: "Android release notes for automotive"
+    href: "https://source.android.com/docs/automotive/start/releases"
+  - label: "AOSP release branches"
+    href: "https://source.android.com/docs/setup/reference/build-numbers"
+  - label: "Compatibility Definition Documents by release"
+    href: "https://source.android.com/docs/compatibility/cdd"
+---
+
+You will rarely start a programme on the newest platform. You will inherit one
+frozen two or three releases back, and the first question is always "what does
+this version actually have?"
+
+This is a map of the inflection points, not a changelog.
+
+## The shape of the timeline
+
+| Era | What defined it |
+| --- | --- |
+| **Android 9 (2018)** | AAOS appears in AOSP. Mostly a reference; nobody shipped much yet. |
+| **Android 10 (2019)** | The model settles — headless system user, Car Service subservices, HIDL VHAL. First serious programmes start here. |
+| **Android 11 (2020)** | Car UI Library becomes the standard component vocabulary. Automotive notifications mature. Polestar 2 ships with GAS. |
+| **Android 12 (2021)** | Multi-display and occupant zones become usable rather than theoretical. Rear-seat and passenger screens get real support. |
+| **Android 13 (2022)** | **AIDL VHAL lands** — the single biggest interface change in the platform's history. HIDL enters long-tail maintenance. |
+| **Android 14 onward** | Consolidation. VHAL AIDL versioning, more system properties, tighter compliance requirements, better tooling. |
+
+<Callout type="note" title="Ship dates lag AOSP by years">
+A vehicle launching in 2026 may be running a platform branched in 2023. When
+someone says "the new Android", ask which release the *programme* is on — it is
+almost never the one in the news.
+</Callout>
+
+## The three changes that actually affect your code
+
+### HIDL → AIDL VHAL (Android 13)
+
+The Vehicle HAL moved from HIDL to AIDL. Same conceptual model — properties,
+areas, three operations — but a different interface definition, different
+generated code, and batched requests instead of per-call ones.
+
+If you inherit a HIDL VHAL, you inherit a migration. It is scheduled work, not a
+weekend refactor, and it is covered in its own topic in this module.
+
+### Car UI Library (Android 10–11)
+
+Before it, every OEM built its own component set and every one diverged. After
+it, there is a shared vocabulary that RROs can restyle wholesale.
+
+A codebase predating it will have hand-rolled lists and toolbars that cannot be
+themed by overlay. Recognising this early tells you whether "just re-skin it" is
+a two-week job or a two-quarter one.
+
+### Occupant zones and multi-display (Android 12)
+
+Earlier releases treated the head unit as one screen with one user. From 12
+onwards the platform models seats, displays and users as a proper graph. If your
+programme has a passenger display, the platform version determines whether that
+is supported or improvised.
+
+## Working out what your build has
+
+Do not trust the documentation for the latest release. Ask the device.
+
+```bash title="Establish the ground truth"
+# Platform release and API level
+adb shell getprop ro.build.version.release
+adb shell getprop ro.build.version.sdk
+adb shell getprop ro.build.fingerprint
+
+# Car-specific: is this an automotive build, and which car API level?
+adb shell pm list features | grep automotive
+adb shell getprop | grep -i car
+```
+
+```bash title="Which VHAL interface is in use?"
+adb shell lshal | grep -i vehicle
+# android.hardware.automotive.vehicle@2.0::IVehicle   -> HIDL
+# android.hardware.automotive.vehicle.IVehicle/default -> AIDL
+```
+
+That one command tells you more about the age and shape of the codebase than any
+document will.
+
+```bash title="What does the platform actually expose?"
+adb shell dumpsys car_service --list
+adb shell dumpsys car_service --help
+adb shell dumpsys car_service --list-properties | wc -l
+```
+
+The property count is a rough but reliable age signal: the system property
+catalogue has grown steadily with every release.
+
+## Reading AOSP at the right version
+
+Code Search defaults to `main`, which is ahead of every shipping vehicle. When
+you are debugging a specific build, switch branches:
+
+```text title="Same file, different revisions"
+main:      .../+/main:packages/services/Car/...
+Android 14: .../+/android14-release:packages/services/Car/...
+Android 13: .../+/android13-release:packages/services/Car/...
+```
+
+<Callout type="warning" title="Half of &quot;the docs are wrong&quot; is a version mismatch">
+`source.android.com` documents the current release. If your programme is two
+releases back, some of what you read does not exist in your build. Check the
+branch before concluding the platform is broken.
+</Callout>
+
+## Choosing a branch for learning
+
+Track a recent release tag rather than `main`. `main` moves daily and a build
+failure there is usually someone else's half-landed refactor, not your mistake.
+Learn on something stable, then move.
+
+## Next
+
+The other half of the context: how automotive programmes are actually scheduled,
+and why that shapes every technical decision you will make.

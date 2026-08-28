@@ -1,0 +1,160 @@
+---
+title: "Profiling with Perfetto"
+description: "Jank, binder saturation and the scheduling problems that only appear on a loaded head unit — how to capture a useful trace and what to look for in it."
+order: 2
+difficulty: "Advanced"
+tags: ["Perfetto", "Profiling", "Jank"]
+sources:
+  - label: "Perfetto documentation"
+    href: "https://perfetto.dev/docs/"
+  - label: "Tracing on Android"
+    href: "https://source.android.com/docs/core/tests/debug/systrace"
+  - label: "Binder tracing"
+    href: "https://perfetto.dev/docs/data-sources/atrace"
+---
+
+"The UI is janky" is not a bug report. Perfetto turns it into one.
+
+## Capturing a trace
+
+```bash title="A general-purpose automotive trace"
+adb shell perfetto -o /data/misc/perfetto-traces/trace -t 20s \
+  sched freq idle am wm gfx view binder_driver hal res memory
+
+adb pull /data/misc/perfetto-traces/trace
+# open at ui.perfetto.dev
+```
+
+`binder_driver` is the category that matters most on AAOS and the one people
+forget. Almost every Car API call is a binder transaction, and binder problems
+present as rendering problems.
+
+```bash title="A config file, for anything non-trivial"
+cat > trace.cfg <<'CFG'
+buffers { size_kb: 131072 fill_policy: RING_BUFFER }
+
+data_sources {
+  config {
+    name: "linux.ftrace"
+    ftrace_config {
+      ftrace_events: "sched/sched_switch"
+      ftrace_events: "sched/sched_waking"
+      ftrace_events: "binder/binder_transaction"
+      ftrace_events: "binder/binder_transaction_received"
+      atrace_categories: "am" atrace_categories: "wm"
+      atrace_categories: "gfx" atrace_categories: "view"
+      atrace_categories: "binder_driver" atrace_categories: "hal"
+      atrace_apps: "com.android.car"
+      atrace_apps: "com.example.app"
+    }
+  }
+}
+
+data_sources { config { name: "linux.process_stats" } }
+duration_ms: 20000
+CFG
+
+adb push trace.cfg /data/local/tmp/
+adb shell perfetto --txt -c /data/local/tmp/trace.cfg -o /data/misc/perfetto-traces/trace
+```
+
+`atrace_apps` is important — without naming your process, you get scheduler data
+but none of the app's own trace sections.
+
+## Instrumenting your own code
+
+```kotlin title="Named sections show up in the trace"
+Trace.beginSection("loadBrowseTree")
+try {
+    val items = repository.loadChildren(parentId)
+    Trace.beginSection("mapToMediaItems")
+    try { return items.map { it.toMediaItem() } } finally { Trace.endSection() }
+} finally {
+    Trace.endSection()
+}
+```
+
+```kotlin title="Async work needs the async variants"
+Trace.beginAsyncSection("syncCatalogue", cookie)
+scope.launch {
+    try { sync() } finally { Trace.endAsyncSection("syncCatalogue", cookie) }
+}
+```
+
+Trace sections are cheap when tracing is off. Instrument the operations you would
+otherwise guess about.
+
+## What to look for
+
+### Jank
+
+Find the frame that missed. In the Perfetto UI, the `Frames` track shows expected
+versus actual frame timing. Click a janky frame and it tells you which process
+and which slice overran.
+
+The usual causes, in order:
+
+1. **Work on the main thread** — inflation, decoding, JSON parsing, disk.
+2. **A synchronous binder call** from the UI thread that blocked.
+3. **A GC pause** caused by allocation churn during scroll.
+4. **CPU contention** — another process saturating the cores.
+
+### Binder saturation
+
+This is the automotive-specific one. Car Service has a bounded binder thread
+pool. When all threads are busy, new calls queue, and every caller stalls.
+
+```text title="What it looks like in a trace"
+com.android.car
+  Binder:1234_1  ████████████████  blocked in getProperty
+  Binder:1234_2  ████████████████  blocked in getProperty
+  Binder:1234_3  ████████████████  blocked in getProperty
+  Binder:1234_4  ████████████████  blocked in getProperty
+                 ▲
+                 pool exhausted — every other caller now waits
+```
+
+Causes worth checking: an app polling properties in a loop; a subservice doing
+slow work while holding a lock; a VHAL that is slow to answer, backing up
+everything behind it.
+
+<Callout type="warning" title="A slow HAL presents as a janky UI">
+If the vehicle HAL takes 200 ms to answer a `get`, the Car Service binder thread
+handling it is blocked for 200 ms. Enough of those and the pool is exhausted, and
+an unrelated app's UI stutters. Profiling inside that app will show it waiting on
+binder and explain nothing. Trace the whole system, not one process.
+</Callout>
+
+### Scheduling and frequency
+
+`sched` and `freq` tracks show whether a thread was runnable but not running —
+CPU contention — and whether the governor had clocked down. On a thermally
+constrained head unit, sustained load leads to throttling, and throttling looks
+exactly like a software regression.
+
+## Turning a trace into a fix
+
+The discipline that makes profiling productive:
+
+1. **Reproduce with a trace running.** Not afterwards from memory.
+2. **Find the specific slice.** "Startup is slow" becomes "inflating
+   `browse_item.xml` takes 14 ms and happens 40 times".
+3. **Fix one thing.**
+4. **Re-trace and compare.** Keep the before trace.
+5. **Add a regression test** if you can express the budget numerically.
+
+```bash title="Measurable startup, for CI"
+adb shell am start -W -n com.example/.MainActivity
+# TotalTime is the number to track over time
+```
+
+<Callout type="tip" title="Keep traces from your good days">
+A trace of the system behaving well is as valuable as one of it behaving badly.
+Without a baseline, you cannot tell whether 90 ms of binder time in Car Service
+is a problem or normal. Capture one now, while nothing is wrong.
+</Callout>
+
+## Next
+
+App startup and perceived responsiveness — the performance the driver actually
+notices.

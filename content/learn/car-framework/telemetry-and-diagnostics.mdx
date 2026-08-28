@@ -1,0 +1,154 @@
+---
+title: "Telemetry and vehicle diagnostics"
+description: "CarTelemetryService for platform metrics, CarDiagnosticManager for OBD-II frames, and the privacy boundary you must not cross when collecting either."
+order: 7
+difficulty: "Advanced"
+tags: ["Telemetry", "Diagnostics", "OBD-II"]
+sources:
+  - label: "Car telemetry"
+    href: "https://source.android.com/docs/automotive/telemetry"
+  - label: "CarDiagnosticManager reference"
+    href: "https://developer.android.com/reference/android/car/diagnostic/CarDiagnosticManager"
+  - label: "CarTelemetryService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/telemetry/"
+---
+
+Two different things get called "telemetry" on a vehicle programme, and confusing
+them wastes a lot of meetings. One is *platform* metrics — is Android healthy.
+The other is *vehicle* diagnostics — is the car healthy. Different services,
+different data, very different privacy rules.
+
+## CarTelemetryService — platform metrics
+
+`CarTelemetryService` collects metrics about the Android system itself: process
+memory, CPU, connectivity state, app startup, wakeups. It exists because a fleet
+of head units in the field is the only place some defects appear.
+
+Its model is unusual and worth understanding: you submit a **script** that runs
+on the device and reports a summary, rather than streaming raw data off it.
+
+```lua title="A telemetry script — runs on the vehicle"
+-- Called with each published data bundle; state persists across invocations.
+function onProcessMemory(published_data, state)
+    local total = state.total or 0
+    local count = state.count or 0
+
+    for i, rss in ipairs(published_data.rss_bytes) do
+        total = total + rss
+        count = count + 1
+    end
+
+    if count >= 100 then
+        -- Emit a summary and finish; raw samples never leave the vehicle.
+        on_script_finished({ mean_rss = total / count, samples = count })
+    else
+        on_success({ total = total, count = count })
+    end
+end
+```
+
+The point is data minimisation. The vehicle computes the aggregate; only the
+aggregate is uploaded. That is a privacy property and a bandwidth one — a fleet
+of a million vehicles streaming raw process stats is not a viable design.
+
+```bash title="Inspecting telemetry on a device"
+adb shell dumpsys car_service --services CarTelemetryService
+adb shell cmd car_service telemetry list
+```
+
+## CarDiagnosticManager — OBD-II
+
+The other kind. `CarDiagnosticManager` exposes **live frames** (current sensor
+readings) and **freeze frames** (a snapshot captured when a fault code was set).
+
+```kotlin title="Reading diagnostics"
+val diagnostics = car.getCarManager(Car.DIAGNOSTIC_SERVICE) as CarDiagnosticManager
+
+diagnostics.registerListener(
+    object : CarDiagnosticManager.OnDiagnosticEventListener {
+        override fun onDiagnosticEvent(event: CarDiagnosticEvent) {
+            val rpm = event.getSystemFloatSensor(
+                CarDiagnosticEvent.FloatSensorIndex.ENGINE_RPM,
+            )
+            val coolant = event.getSystemFloatSensor(
+                CarDiagnosticEvent.FloatSensorIndex.ENGINE_COOLANT_TEMPERATURE,
+            )
+            record(rpm, coolant)
+        }
+    },
+    CarDiagnosticManager.FRAME_TYPE_LIVE,
+    /* rate = */ CarDiagnosticManager.FRAME_TYPE_LIVE,
+)
+
+// Fault codes captured at the moment something went wrong
+diagnostics.freezeFrameTimestamps.forEach { ts ->
+    val frame = diagnostics.getFreezeFrame(ts)
+    Log.d(TAG, "DTC ${frame?.dtc} at $ts")
+}
+```
+
+This needs `android.car.permission.CAR_DIAGNOSTICS` — signature-level, because
+freeze frames reveal a great deal about how a vehicle has been driven.
+
+<Callout type="warning" title="Diagnostic data is personal data">
+Speed, RPM and fault history, correlated with time, describe a person's driving.
+In most jurisdictions that is personal data with all the obligations that
+implies — purpose limitation, retention limits, a lawful basis. "It is just
+engine telemetry" is not a defence anyone has won with.
+</Callout>
+
+## The privacy boundary
+
+The rules that keep a telemetry design defensible:
+
+**Aggregate on the vehicle.** Upload distributions and counts, not event
+streams. `CarTelemetryService`'s script model exists to make this the easy path.
+
+**Never correlate with location** unless you have an explicit, specific consent
+for that exact purpose. Speed plus GPS plus timestamps is a movement history.
+
+**Bound retention on device.** A ring buffer that overwrites is a feature.
+Unbounded local logs become a subject-access request problem and a flash-wear
+problem simultaneously.
+
+**Separate diagnostics from analytics.** A fault code needed for warranty is a
+different purpose, with a different lawful basis, from usage analytics. Mixing
+them in one pipeline means the strictest rule applies to everything.
+
+**Respect the user profile.** Diagnostics are about the vehicle and belong to
+user 0. Usage analytics are about a person and belong to their profile — and
+should not follow them into a guest session.
+
+## Building your own metrics pipeline
+
+Most programmes end up with an OEM telemetry service alongside the platform one.
+The shape that survives review:
+
+1. **Define the metric set explicitly** — a schema, versioned, reviewed. Not
+   "log whatever might be useful".
+2. **Aggregate in-process**, emit on a schedule, never per event.
+3. **Write in Garage Mode**, not while driving — CarWatchdog is watching your
+   I/O and the driver's bandwidth is not yours.
+4. **Make it switchable off** at runtime, per market, without a rebuild.
+5. **Document retention and purpose** next to the schema, because someone will
+   ask, and the answer needs to already exist.
+
+```kotlin title="Bounded, batched, deferrable"
+private val ring = RingBuffer<Metric>(capacity = 5_000)   // bounded on purpose
+
+fun record(m: Metric) = ring.add(m)   // never touches disk
+
+// Runs in Garage Mode only
+class MetricUploadJob : JobService() {
+    override fun onStartJob(params: JobParameters): Boolean {
+        val batch = ring.drain()
+        upload(aggregate(batch))      // aggregate first, then upload
+        jobFinished(params, false)
+        return true
+    }
+}
+```
+
+## Next
+
+Adding a subservice of your own to Car Service.

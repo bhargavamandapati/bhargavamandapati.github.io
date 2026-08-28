@@ -1,0 +1,238 @@
+---
+title: "Accessibility in a vehicle"
+description: "Screen readers, large text and switch access in a car — where automotive accessibility differs from a phone, and why the distraction rules and accessibility rules sometimes pull in opposite directions."
+order: 7
+difficulty: "Intermediate"
+tags: ["Accessibility", "HMI", "Inclusive design"]
+sources:
+  - label: "Android accessibility overview"
+    href: "https://source.android.com/docs/core/accessibility"
+  - label: "Build accessible apps"
+    href: "https://developer.android.com/guide/topics/ui/accessibility"
+  - label: "car-ui-lib source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/libs/car-ui-lib/"
+---
+
+Accessibility in a vehicle is easy to skip and increasingly not optional. It is
+also genuinely different from a phone, because the driver is not the only user
+and the platform is already restricting the interface for safety reasons.
+
+## Who this is actually for
+
+<Plain>
+The obvious answer is drivers and passengers with disabilities, and that is
+reason enough.
+
+But automotive accessibility has an unusually large second audience: **everybody,
+some of the time.** A driver with sunglasses in low light has reduced contrast. A
+driver on a rough road cannot hit small targets. A driver whose attention is on
+the road is, functionally, using the screen with impaired vision.
+
+Designing for the first group produces an interface that is measurably better for
+the second. This is more true in a car than almost anywhere else.
+</Plain>
+
+## The tension nobody warns you about
+
+<Scenario title="Two rules pulling in opposite directions">
+Accessibility guidance says: let users increase text size, so they can read it.
+
+Driver distraction rules say: limit how much text is displayed, so drivers do not
+read while moving.
+
+A user turns font scaling up to 200%. Your list item now needs three lines
+instead of one. But the <T>UX restrictions</T> limit says you may show nine items,
+and nine three-line items do not fit on the screen.
+
+There is no rule that resolves this for you. What works in practice: honour the
+font scale, honour the item limit, and let the list scroll — a shorter visible
+list that is readable serves the user better than a full list they cannot read.
+</Scenario>
+
+## Content descriptions, and why they matter more here
+
+Every non-text control needs a label a screen reader can announce.
+
+```xml title="Wrong — a screen reader announces nothing useful"
+<ImageButton
+    android:id="@+id/climate"
+    android:src="@drawable/ic_climate"/>
+```
+
+```xml title="Right"
+<ImageButton
+    android:id="@+id/climate"
+    android:src="@drawable/ic_climate"
+    android:contentDescription="@string/open_climate_controls"/>
+```
+
+```kotlin title="And in Compose"
+Icon(
+    painter = painterResource(R.drawable.ic_climate),
+    contentDescription = stringResource(R.string.open_climate_controls),
+)
+```
+
+<Plain>
+Write the description as **what the control does**, not what the picture is.
+
+"Snowflake icon" tells a user nothing. "Turn on air conditioning" tells them
+everything, and it is also what a voice assistant needs in order to invoke the
+control on the user's behalf.
+
+That second benefit is the one people miss: good content descriptions make voice
+control work, and voice is the safest input method in a moving vehicle.
+</Plain>
+
+Mark purely decorative images so they are skipped rather than announced:
+
+```xml
+<ImageView
+    android:src="@drawable/decorative_divider"
+    android:importantForAccessibility="no"/>
+```
+
+## Touch targets
+
+Android's general guidance is 48dp. Automotive guidance is larger — the
+<T>car-ui-lib</T> defaults are well above it — because the user is at arm's
+length, the vehicle is moving, and precision is not available.
+
+```xml title="Read the platform's value rather than inventing one"
+<Button
+    android:minWidth="@dimen/car_ui_touch_target_size"
+    android:minHeight="@dimen/car_ui_touch_target_size"/>
+```
+
+<Plain>
+Using the platform dimension rather than a hard-coded number means an OEM overlay
+can enlarge every target at once for a vehicle with a screen further from the
+driver. Hard-coding `76dp` because that is what the reference build used defeats
+the whole theming system.
+</Plain>
+
+## Focus order is accessibility and rotary at once
+
+The keyboard and rotary navigation work from the same topic applies directly
+here. A screen that can be navigated with a rotary controller can be navigated by
+switch access and by a keyboard.
+
+```xml title="Group related controls so focus moves sensibly"
+<com.android.car.ui.FocusArea
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <LinearLayout android:orientation="horizontal">
+        <Button android:id="@+id/temp_down" .../>
+        <TextView android:id="@+id/temp_value" .../>
+        <Button android:id="@+id/temp_up" .../>
+    </LinearLayout>
+</com.android.car.ui.FocusArea>
+```
+
+<Plain>
+This is a rare case where one piece of work satisfies three requirements at once:
+rotary support, keyboard accessibility, and switch access. The input methods
+topic covers the mechanics; the point here is that it is not extra work.
+</Plain>
+
+## Announcing changes the user cannot see
+
+When something changes without user action — a value updates, an error appears —
+a sighted user notices. A screen reader user does not, unless you say so.
+
+```kotlin title="Announce a change that matters"
+view.announceForAccessibility(
+    context.getString(R.string.charging_started),
+)
+```
+
+```kotlin title="Or mark a region as live"
+statusText.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+```
+
+<Plain>
+`POLITE` waits for a gap; `ASSERTIVE` interrupts. Use `ASSERTIVE` only for
+something that genuinely cannot wait — an error the user must act on.
+
+A status area that announces every temperature tick is worse than one that
+announces nothing.
+</Plain>
+
+## Colour and contrast
+
+The general standard is 4.5:1 for normal text. In a vehicle the practical
+requirement is higher, because the viewing conditions are far worse than a desk:
+direct sunlight, headlight glare, polarised sunglasses, a screen at an angle.
+
+<Plain>
+Two rules specific to this environment:
+
+**Never use colour alone to carry meaning.** A red bar and a green bar look
+identical to a colour-blind driver, and nearly identical through polarised
+lenses. Add a shape, an icon or a label.
+
+**Test in night mode.** A palette that reads well at noon can be both
+unreadable and dazzling at 2am, and night mode is the condition where a driver
+most needs the interface to be effortless.
+</Plain>
+
+## Testing it
+
+```bash title="Turn the tools on"
+# Screen reader
+adb shell settings put secure enabled_accessibility_services \
+  com.google.android.marvin.talkback/.TalkBackService
+adb shell settings put secure accessibility_enabled 1
+
+# Font scaling
+adb shell settings put system font_scale 1.5
+adb shell settings put system font_scale 1.0   # restore
+
+# Display size
+adb shell wm density 200
+adb shell wm density reset
+```
+
+<Plain>
+The highest-value manual test takes five minutes: **turn the screen reader on and
+complete one core task without looking at the display.**
+
+Anything you cannot finish is something a driver cannot do safely either, because
+"cannot look at the screen" is the normal condition while driving. This test
+finds distraction problems and accessibility problems at the same time.
+</Plain>
+
+```kotlin title="Automating the basics"
+@Test fun everyInteractiveControlHasALabel() {
+    launchActivity<ClimateActivity>()
+
+    onView(withId(R.id.climate_root)).check { view, _ ->
+        view.findViewsWithMissingContentDescription().let {
+            assertThat(it).isEmpty()
+        }
+    }
+}
+```
+
+Accessibility Scanner and the `accessibility-test-framework` checks integrate
+with Espresso and catch missing labels, small targets and low contrast
+automatically.
+
+<Recap>
+- Automotive accessibility helps a **much wider group than usual** — every driver
+  is operating with divided attention.
+- Content descriptions say **what the control does**, and doubling as voice
+  targets makes them doubly valuable.
+- **Use the platform's touch-target dimension**, so overlays can adjust it per
+  vehicle.
+- Focus grouping serves **rotary, keyboard and switch access at once** — it is not
+  extra work.
+- **Announce changes** the user cannot see, sparingly.
+- **Never carry meaning in colour alone**, and always test in night mode.
+- The best five-minute test: **complete a task with the screen reader on and the
+  display ignored.**
+</Recap>
+
+## Next
+
+The settings surface, where much of this configuration lives.

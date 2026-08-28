@@ -1,0 +1,127 @@
+---
+title: "How automotive software actually ships"
+description: "Sample phases, freeze dates, start of production and a fifteen-year support tail — the rhythm that explains why platform work is scheduled the way it is."
+order: 6
+difficulty: "Beginner"
+tags: ["Process", "Delivery", "OEM"]
+sources:
+  - label: "Android release and update model"
+    href: "https://source.android.com/docs/setup/about/build-numbers"
+  - label: "Project Treble — why upgrades are possible at all"
+    href: "https://source.android.com/docs/core/architecture/treble"
+---
+
+Engineers arriving from consumer software are usually blindsided not by the
+technology but by the *cadence*. Understanding it explains most of the decisions
+that otherwise look irrational.
+
+## The sample phases
+
+Vehicle programmes progress through hardware maturity gates. Software is judged
+against whichever gate the vehicle is at.
+
+| Phase | Hardware | What software is expected to do |
+| --- | --- | --- |
+| **A-sample** | Breadboards, dev kits | Prove the concept works at all |
+| **B-sample** | Near-production boards | Features present, stability optional |
+| **C-sample** | Production-intent | Feature complete, defects being closed |
+| **D-sample / PPAP** | Production tooling | Frozen; only critical fixes |
+| **SOP** | Start of production | Vehicles are being built |
+
+Each gate has a date fixed years in advance, tied to a factory slot. The factory
+does not move because a feature is late. This is the single biggest cultural
+difference from consumer software: **the date is the requirement, and scope is
+what flexes.**
+
+<Callout type="warning" title="Platform freeze comes long before SOP">
+The Android platform version is typically frozen at C-sample, sometimes earlier.
+After that, "just take the new AOSP release" is not an option — it invalidates
+every validation cycle already completed. Plan platform upgrades around gates,
+never between them.
+</Callout>
+
+## Why the vendor boundary exists in schedule terms
+
+A supplier delivers a HAL at B-sample. It is validated at C-sample. It ships at
+SOP. Then it must keep working for the vehicle's whole life, while the Android
+framework above it may be updated several times.
+
+That is the schedule reality Treble was designed for. When someone asks you to
+break the vendor interface for convenience, the real cost is not architectural
+purity — it is that the HAL must be re-validated, and revalidation is measured in
+months and tied to a gate.
+
+## Variants multiply everything
+
+One vehicle programme is not one build. It is a matrix:
+
+- **Trims** — base, mid, premium, each with different hardware present
+- **Markets** — different regulations, languages, map data, radio bands
+- **Model years** — the same vehicle, re-released annually with changes
+- **Platforms** — the same infotainment stack across several vehicle lines
+
+A feature is not done when it works. It is done when it works, or degrades
+correctly, across the matrix.
+
+```kotlin title="This is why feature detection is not optional"
+// Wrong: assumes the option package this trim may not have
+setSeatMassage(level)
+
+// Right: ask the vehicle in front of you
+if (properties.isPropertyAvailable(SEAT_MASSAGE_INTENSITY, areaId)) {
+    setSeatMassage(level)
+} else {
+    hideMassageControls()
+}
+```
+
+Hard-coding a spec document into an app is the defect that ships to exactly one
+trim and is found by a customer.
+
+## The support tail
+
+A vehicle sold in 2026 may still be receiving security updates in 2041. Practical
+consequences:
+
+- **Dependencies are liabilities.** A library abandoned in year four is a problem
+  in year nine. Prefer platform APIs and small, boring dependencies.
+- **Your code will be maintained by strangers.** The person fixing your VHAL in
+  2035 has never met you. Comments explaining *why* are worth more than clever
+  code.
+- **Protocols must be versioned.** Anything crossing a process, a partition or an
+  ECU boundary will outlive the assumption that both ends update together.
+
+## Where the time actually goes
+
+Engineers consistently underestimate the same three things:
+
+1. **Integration.** Your feature works. It works with the other twelve features
+   landing the same sprint is a different claim, and finding out takes longer
+   than building it.
+2. **Multi-variant validation.** One feature, six trims, four markets. QA cycles
+   are the long pole far more often than development.
+3. **Defect triage across organisations.** A wrong value on screen might be
+   Android, the supplier's HAL, the ECU, or the ARXML. Proving which — with
+   evidence, to another company — is a real and recurring cost.
+
+<Callout type="tip" title="Invest in evidence, early">
+The teams that hit their gates are the ones that can say "here is the signal on
+the bus, here is what the HAL published, here is what Car Service reported" in an
+afternoon. A capture script and a signal simulator pay for themselves in the
+first cross-company defect argument.
+</Callout>
+
+## What this means for how you work
+
+- **Land things early in a gate**, not the week before it.
+- **Make features degrade**, so a missing option package is a hidden control
+  rather than a crash.
+- **Write down why**, because the reader is a decade away.
+- **Automate the capture**, because the argument is coming.
+
+None of that is exotic engineering practice. It is just that automotive punishes
+the absence of it more visibly than most software does.
+
+## Next
+
+Into the platform itself — the Vehicle HAL, which everything else depends on.

@@ -1,0 +1,372 @@
+---
+title: "Add a subservice to Car Service"
+description: "An OEM service inside com.android.car, with its own AIDL, its own manager class in car-lib, and the threading rules that keep the platform booting."
+order: 1
+difficulty: "Advanced"
+time: "3–4 hours"
+outcome: "A CarComfortService running inside Car Service, reachable from an app as CarComfortManager, visible in dumpsys car_service --services."
+prerequisites:
+  - label: "A custom vehicle property to expose"
+    href: "/tutorials/vehicle/custom-vehicle-property/"
+  - label: "How Car Service is put together"
+    href: "/learn/car-framework/car-service-architecture/"
+tags: ["Car Service", "AIDL", "Framework"]
+sources:
+  - label: "packages/services/Car"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/"
+  - label: "ICarImpl — the subservice registry"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/ICarImpl.java"
+  - label: "AIDL language reference"
+    href: "https://source.android.com/docs/core/architecture/aidl/aidl-language"
+---
+
+A vendor property gives apps raw vehicle state. A subservice gives them a
+*feature* — with business logic, state and a proper API — running in the process
+that already owns the vehicle connection.
+
+<FileTree>
+packages/services/Car/
+├── car-lib/src/android/car/comfort/
+│   ├── ICarComfort.aidl
+│   ├── ICarComfortListener.aidl
+│   └── CarComfortManager.java
+└── service/src/com/android/car/comfort/
+    └── CarComfortService.java
+</FileTree>
+
+<Gotcha title="You are modifying AOSP here">
+Unlike everything else in these tutorials, a Car subservice lives inside
+`packages/services/Car` — an AOSP repository. Track your changes as commits on a
+branch you can rebase, or they will be lost on the next `repo sync`. On a real
+programme this is a managed fork with a re-merge cost at every platform upgrade,
+and that cost should be a conscious decision.
+</Gotcha>
+
+## Step 1 — Define the AIDL
+
+```java title="car-lib/src/android/car/comfort/ICarComfort.aidl"
+package android.car.comfort;
+
+import android.car.comfort.ICarComfortListener;
+
+/** @hide */
+interface ICarComfort {
+    int getMassageIntensity(int seatAreaId);
+    void setMassageIntensity(int seatAreaId, int level);
+    int[] getSupportedSeats();
+
+    void registerListener(in ICarComfortListener listener);
+    void unregisterListener(in ICarComfortListener listener);
+}
+```
+
+```java title="car-lib/src/android/car/comfort/ICarComfortListener.aidl"
+package android.car.comfort;
+
+/** @hide */
+oneway interface ICarComfortListener {
+    void onIntensityChanged(int seatAreaId, int level);
+}
+```
+
+<Gotcha title="Method order is frozen the day a vehicle ships">
+AIDL assigns transaction IDs by declaration order. Reordering or inserting a
+method in the middle breaks every app compiled against the old interface — apps
+that will be running on that vehicle for a decade. Append only.
+</Gotcha>
+
+## Step 2 — Implement the service
+
+```java title="service/src/com/android/car/comfort/CarComfortService.java" showLineNumbers
+package com.android.car.comfort;
+
+import android.car.Car;
+import android.car.comfort.ICarComfort;
+import android.car.comfort.ICarComfortListener;
+import android.content.Context;
+import android.os.RemoteCallbackList;
+import android.util.SparseIntArray;
+
+import com.android.car.CarLog;
+import com.android.car.CarServiceBase;
+import com.android.car.internal.util.IndentingPrintWriter;
+import com.android.internal.annotations.GuardedBy;
+
+public final class CarComfortService extends ICarComfort.Stub implements CarServiceBase {
+
+    private static final String TAG = CarLog.tagFor(CarComfortService.class);
+    private static final String PERMISSION = "com.oem.vega.permission.CONTROL_SEAT_MASSAGE";
+    private static final int MAX_LEVEL = 5;
+
+    private final Context mContext;
+    private final Object mLock = new Object();
+
+    @GuardedBy("mLock")
+    private final SparseIntArray mIntensityByArea = new SparseIntArray();
+
+    private final RemoteCallbackList<ICarComfortListener> mListeners = new RemoteCallbackList<>();
+
+    public CarComfortService(Context context) {
+        mContext = context;
+    }
+
+    // ---- CarServiceBase ----------------------------------------------------
+
+    @Override
+    public void init() {
+        // Runs on the Car Service startup path. Register and return.
+        // Anything slow goes on your own handler — never block here.
+        synchronized (mLock) {
+            mIntensityByArea.put(SEAT_ROW_1_LEFT, 0);
+            mIntensityByArea.put(SEAT_ROW_1_RIGHT, 0);
+        }
+    }
+
+    @Override
+    public void release() {
+        mListeners.kill();
+        synchronized (mLock) {
+            mIntensityByArea.clear();
+        }
+    }
+
+    // ---- ICarComfort -------------------------------------------------------
+
+    @Override
+    public int getMassageIntensity(int seatAreaId) {
+        // Every Binder entry point checks permission. It is reachable by any
+        // process that can find the service.
+        mContext.enforceCallingOrSelfPermission(PERMISSION, "getMassageIntensity");
+        synchronized (mLock) {
+            return mIntensityByArea.get(seatAreaId, 0);
+        }
+    }
+
+    @Override
+    public void setMassageIntensity(int seatAreaId, int level) {
+        mContext.enforceCallingOrSelfPermission(PERMISSION, "setMassageIntensity");
+        if (level < 0 || level > MAX_LEVEL) {
+            throw new IllegalArgumentException("level out of range: " + level);
+        }
+        synchronized (mLock) {
+            if (mIntensityByArea.indexOfKey(seatAreaId) < 0) {
+                throw new IllegalArgumentException("unsupported seat: " + seatAreaId);
+            }
+            mIntensityByArea.put(seatAreaId, level);
+        }
+        // Notify OUTSIDE the lock — listeners may call back into us.
+        notifyListeners(seatAreaId, level);
+    }
+
+    @Override
+    public int[] getSupportedSeats() {
+        mContext.enforceCallingOrSelfPermission(PERMISSION, "getSupportedSeats");
+        synchronized (mLock) {
+            int[] seats = new int[mIntensityByArea.size()];
+            for (int i = 0; i < mIntensityByArea.size(); i++) {
+                seats[i] = mIntensityByArea.keyAt(i);
+            }
+            return seats;
+        }
+    }
+
+    @Override
+    public void registerListener(ICarComfortListener listener) {
+        mContext.enforceCallingOrSelfPermission(PERMISSION, "registerListener");
+        // RemoteCallbackList handles clients dying, which they will.
+        mListeners.register(listener);
+    }
+
+    @Override
+    public void unregisterListener(ICarComfortListener listener) {
+        mListeners.unregister(listener);
+    }
+
+    private void notifyListeners(int seatAreaId, int level) {
+        int n = mListeners.beginBroadcast();
+        for (int i = 0; i < n; i++) {
+            try {
+                mListeners.getBroadcastItem(i).onIntensityChanged(seatAreaId, level);
+            } catch (Exception ignored) {
+                // Client died; RemoteCallbackList removes it for us.
+            }
+        }
+        mListeners.finishBroadcast();
+    }
+
+    // ---- Diagnostics -------------------------------------------------------
+
+    @Override
+    public void dump(IndentingPrintWriter writer) {
+        writer.println("*CarComfortService*");
+        writer.increaseIndent();
+        synchronized (mLock) {
+            for (int i = 0; i < mIntensityByArea.size(); i++) {
+                writer.printf("area=0x%x intensity=%d\n",
+                        mIntensityByArea.keyAt(i), mIntensityByArea.valueAt(i));
+            }
+        }
+        writer.printf("listeners=%d\n", mListeners.getRegisteredCallbackCount());
+        writer.decreaseIndent();
+    }
+}
+```
+
+<Gotcha title="Never call a listener while holding your lock">
+`notifyListeners` runs outside `mLock` deliberately. A listener that calls back
+into `getMassageIntensity` from inside `onIntensityChanged` would deadlock — and
+it will only happen under load, on a vehicle.
+</Gotcha>
+
+## Step 3 — Register it in ICarImpl
+
+```java title="service/src/com/android/car/ICarImpl.java"
+// Field
+private final CarComfortService mCarComfortService;
+
+// In the constructor, AFTER anything it depends on
+mCarComfortService = constructWithTrace(
+        t, CarComfortService.class,
+        () -> new CarComfortService(serviceContext), allServices);
+```
+
+```java title="…and in the getCarService switch"
+case Car.CAR_COMFORT_SERVICE:
+    return mCarComfortService;
+```
+
+```java title="car-lib/src/android/car/Car.java"
+/** @hide */
+public static final String CAR_COMFORT_SERVICE = "comfort";
+```
+
+<Gotcha title="Construction order is dependency order">
+`ICarImpl` builds subservices in sequence. One constructed before a dependency
+receives null and fails in a way that surfaces as an unrelated boot problem —
+often "Car Service did not start" with no useful stack.
+</Gotcha>
+
+## Step 4 — Write the manager
+
+Apps must never see your Binder stub.
+
+```java title="car-lib/src/android/car/comfort/CarComfortManager.java"
+package android.car.comfort;
+
+import android.annotation.RequiresPermission;
+import android.car.Car;
+import android.car.CarManagerBase;
+import android.os.IBinder;
+import android.os.RemoteException;
+
+public final class CarComfortManager extends CarManagerBase {
+
+    private final ICarComfort mService;
+
+    /** @hide */
+    public CarComfortManager(Car car, IBinder service) {
+        super(car);
+        mService = ICarComfort.Stub.asInterface(service);
+    }
+
+    @RequiresPermission("com.oem.vega.permission.CONTROL_SEAT_MASSAGE")
+    public int getMassageIntensity(int seatAreaId) {
+        try {
+            return mService.getMassageIntensity(seatAreaId);
+        } catch (RemoteException e) {
+            // Car Service died. Return a sane default rather than crashing the
+            // app; the lifecycle listener will hand back a fresh manager.
+            return handleRemoteExceptionFromCarService(e, 0);
+        }
+    }
+
+    @RequiresPermission("com.oem.vega.permission.CONTROL_SEAT_MASSAGE")
+    public void setMassageIntensity(int seatAreaId, int level) {
+        try {
+            mService.setMassageIntensity(seatAreaId, level);
+        } catch (RemoteException e) {
+            handleRemoteExceptionFromCarService(e);
+        }
+    }
+
+    @Override
+    protected void onCarDisconnected() {
+        // This manager instance is now dead. Drop any cached state.
+    }
+}
+```
+
+```java title="car-lib — wire the manager into Car.getCarManager()"
+case Car.CAR_COMFORT_SERVICE:
+    manager = new CarComfortManager(this, binder);
+    break;
+```
+
+## Step 5 — Build and verify
+
+```bash
+m -j
+adb install-multiple -r $ANDROID_PRODUCT_OUT/system/priv-app/CarService/*.apk 2>/dev/null \
+  || { m -j && emulator -wipe-data -no-snapshot & }
+adb wait-for-device && sleep 40
+```
+
+<Verify title="Verify the subservice is registered and dumping">
+```bash
+# 1. Car Service came up at all — if not, your init() blocked or threw
+adb shell dumpsys car_service --help
+
+# 2. Your service is in the list
+adb shell dumpsys car_service --list | grep -i comfort
+
+# 3. Your dump() output appears
+adb shell dumpsys car_service --services CarComfortService
+# expect: *CarComfortService*  area=0x1 intensity=0 ...
+
+# 4. No crashes on the Car Service startup path
+adb logcat -b all | grep -iE 'CarService.*(crash|fatal)|CarComfortService'
+```
+
+Item 1 first, always. If Car Service does not start, nothing else matters — and
+the usual cause is something slow or throwing inside your `init()`.
+</Verify>
+
+## Step 6 — Use it from an app
+
+```kotlin title="Consuming your manager"
+val car = Car.createCar(context, null, Car.CAR_WAIT_TIMEOUT_DO_NOT_WAIT) { c, ready ->
+    if (!ready) return@createCar
+    val comfort = c.getCarManager(Car.CAR_COMFORT_SERVICE) as CarComfortManager
+    comfort.setMassageIntensity(VehicleAreaSeat.SEAT_ROW_1_LEFT, 3)
+}
+```
+
+## Should this be a subservice at all?
+
+Be honest before taking on a fork of `packages/services/Car`:
+
+| Situation | Better answer |
+| --- | --- |
+| Just exposing vehicle state | A vendor VHAL property — no fork needed |
+| Request/response with errors | A vendor AIDL HAL — no fork needed |
+| Logic that must run with no user logged in | A subservice, or a user-0 system app |
+| Coordination across several Car subservices | A subservice |
+| Anything an app could do itself | A system app |
+
+A subservice is the right answer less often than teams assume, and it is the
+most expensive of these options to carry across platform upgrades.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Car Service will not start | Blocking or throwing `init()` |
+| `getCarManager` returns null | Missing case in `ICarImpl` or in `Car.getCarManager` |
+| `SecurityException` from an app | Permission not declared or not granted |
+| Deadlock under load | Listener notified while holding the lock |
+| Listener list grows | Not using `RemoteCallbackList` |
+| Changes lost after `repo sync` | Unmanaged edits to an AOSP repository |
+
+## Next
+
+The same idea one layer out — a service in `system_server`.

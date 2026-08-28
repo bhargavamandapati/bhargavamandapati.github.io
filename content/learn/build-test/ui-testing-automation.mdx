@@ -1,0 +1,185 @@
+---
+title: "UI test automation on head units"
+description: "Espresso, UI Automator and the vehicle state your tests must fake. Building a suite that runs on real hardware and does not become the thing everyone ignores."
+order: 2
+difficulty: "Intermediate"
+tags: ["Testing", "Espresso", "Automation"]
+sources:
+  - label: "Espresso testing"
+    href: "https://developer.android.com/training/testing/espresso"
+  - label: "UI Automator"
+    href: "https://developer.android.com/training/testing/other-components/ui-automator"
+  - label: "Car service test sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/tests/"
+---
+
+Automotive UI tests fail for reasons phone tests do not: the vehicle is in the
+wrong state, the user is wrong, the display is wrong, or Car Service restarted
+halfway through. Building a suite that survives that is mostly about controlling
+those variables explicitly.
+
+## Fake the vehicle first
+
+A test that depends on ambient vehicle state is flaky by construction. Set the
+state, then assert.
+
+```kotlin title="A test rule that owns vehicle state" showLineNumbers
+class VehicleStateRule : TestWatcher() {
+
+    override fun starting(description: Description) {
+        // Known baseline: parked, no restrictions
+        setProperty(VehiclePropertyIds.PERF_VEHICLE_SPEED, 0f)
+        setProperty(VehiclePropertyIds.GEAR_SELECTION, VehicleGear.GEAR_PARK)
+        setProperty(VehiclePropertyIds.PARKING_BRAKE_ON, true)
+        awaitUxRestrictions(restricted = false)
+    }
+
+    fun drive(kph: Float) {
+        setProperty(VehiclePropertyIds.PARKING_BRAKE_ON, false)
+        setProperty(VehiclePropertyIds.GEAR_SELECTION, VehicleGear.GEAR_DRIVE)
+        setProperty(VehiclePropertyIds.PERF_VEHICLE_SPEED, kph)
+        // Wait for the derived state, not for a fixed duration
+        awaitUxRestrictions(restricted = true)
+    }
+
+    private fun setProperty(id: Int, value: Any) =
+        device.executeShellCommand("dumpsys car_service --set-property $id $value")
+}
+```
+
+<Callout type="warning" title="Never sleep waiting for vehicle state">
+`Thread.sleep(2000)` after setting speed is the source of most automotive test
+flakiness. The derivation chain — property → driving state → UX restrictions →
+UI — takes a variable amount of time. Poll for the observable outcome with a
+timeout instead.
+</Callout>
+
+## Test both states, always
+
+```kotlin title="The pair of tests worth writing for every screen"
+@get:Rule val vehicle = VehicleStateRule()
+
+@Test fun browseShowsFullCatalogueWhenParked() {
+    launchActivity<BrowseActivity>()
+    onView(withId(R.id.list)).check(matches(hasMinimumChildCount(20)))
+    onView(withId(R.id.search)).check(matches(isEnabled()))
+}
+
+@Test fun browseIsRestrictedWhileDriving() {
+    vehicle.drive(kph = 60f)
+    launchActivity<BrowseActivity>()
+
+    val limit = currentUxRestrictions().maxCumulativeContentItems
+    onView(withId(R.id.list)).check(matches(hasItemCountAtMost(limit)))
+    onView(withId(R.id.search)).check(matches(not(isEnabled())))
+}
+```
+
+Note that the second test reads the limit from the platform rather than asserting
+a hard-coded nine. The number differs per OEM and market, and a test that encodes
+one will fail on the next product.
+
+## Rotary and keyboard navigation
+
+The D-pad walk from the input topic makes an excellent automated test:
+
+```kotlin title="Every control must be reachable without touch"
+@Test fun everyControlIsReachableByDpad() {
+    launchActivity<PlayerActivity>()
+
+    val reachable = mutableSetOf<Int>()
+    repeat(30) {
+        device.pressDPadDown()
+        currentFocusedViewId()?.let(reachable::add)
+    }
+
+    assertThat(reachable).containsAtLeast(
+        R.id.play_pause, R.id.skip_next, R.id.skip_previous, R.id.queue,
+    )
+}
+```
+
+This one test catches the entire class of "works with a finger, unusable with a
+knob" defects, and it costs almost nothing to maintain.
+
+## Crossing app boundaries
+
+Espresso is scoped to your app. Anything involving system UI, the launcher,
+another app or a permission dialog needs UI Automator.
+
+```kotlin title="UI Automator for the system surfaces"
+private val device = UiDevice.getInstance(getInstrumentation())
+
+@Test fun mediaAppAppearsInCarMediaSwitcher() {
+    device.executeShellCommand("am start -n com.android.car.media/.MediaActivity")
+    device.wait(Until.hasObject(By.pkg("com.android.car.media")), 5_000)
+
+    device.findObject(By.desc("Change media source")).click()
+    assertThat(device.wait(Until.hasObject(By.text("Example Music")), 3_000)).isTrue()
+}
+```
+
+## The environment variables that cause flakes
+
+**The wrong user.** Instrumentation runs for a specific user, and your app may be
+installed for another.
+
+```bash title="Pin the user explicitly"
+adb shell am get-current-user
+adb install -r --user current app-debug.apk
+adb shell am instrument --user current -w com.example.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+**The wrong display.** On a multi-display target, launch explicitly rather than
+letting the system pick.
+
+```bash
+adb shell am instrument -e displayId 0 -w com.example.test/...
+```
+
+**Car Service restarting.** Reconnect rather than failing.
+
+```kotlin
+@Before fun connect() {
+    car = Car.createCar(context, null, Car.CAR_WAIT_TIMEOUT_WAIT_FOREVER) { c, ready ->
+        if (ready) managers = fetchManagers(c)
+    }
+}
+```
+
+**Leftover state.** Reset properties, clear app data and reset UX restrictions
+between tests. A test that passes alone and fails in a suite is almost always
+this.
+
+## Running the suite
+
+```bash title="Local and CI"
+atest CarMediaAppTests
+atest CarMediaAppTests:BrowseRestrictionTest#browseIsRestrictedWhileDriving
+
+# Directly, with instrumentation arguments
+adb shell am instrument --user current -w \
+  -e class com.example.BrowseRestrictionTest \
+  com.example.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+<Callout type="tip" title="Quarantine flaky tests immediately">
+One test that fails randomly teaches the team to ignore red builds, and then the
+suite protects nothing. Move a flake out of the gating set the day it is
+identified, file it, and fix it — do not leave it failing intermittently while
+people learn to re-run the job.
+</Callout>
+
+## What is worth automating
+
+Not everything. The tests that repay their maintenance cost on an automotive
+programme:
+
+- **Restricted-state behaviour** for every driver-facing screen.
+- **D-pad reachability** of every control.
+- **Media resume** after a transient audio focus loss.
+- **Multi-variant degradation** — behaviour when a property is unavailable.
+- **User switch** survival for anything holding state.
+
+Those five cover the defects that actually reach customers. Pixel-perfect layout
+assertions do not, and they break on every theme change.

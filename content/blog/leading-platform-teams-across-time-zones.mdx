@@ -1,0 +1,78 @@
+---
+title: "Leading a Platform Team Across Two Time Zones"
+description: "What a decade of onsite-offshore automotive delivery taught me about handoffs, blockers, and the difference between a status update and a decision."
+date: "2026-06-18"
+tags: ["Leadership", "Engineering Management", "Automotive"]
+featured: false
+draft: false
+---
+
+Most of my delivery career has run on a split clock: an OEM team in one time zone, the
+platform team in another, and a four-hour overlap where everything of consequence
+happens. That constraint teaches you things that a co-located team never has to learn.
+
+## The overlap is for decisions, not status
+
+The first instinct on a distributed programme is to spend the overlap window on a
+status call. It is the worst possible use of it. Status is asynchronous by nature —
+a written update read at any hour conveys the same information.
+
+What cannot be asynchronous is a decision with more than one defensible answer. Should
+this property live in the VHAL or in a system service? Do we ship the variant with the
+known cluster defect or slip a week? Those need the people who disagree in the same
+room, even a virtual one.
+
+So the rule I hold teams to: **if it can be written down, write it down; the call is
+for the things that cannot.**
+
+## Blockers have a half-life
+
+A blocker raised at the end of an offshore day and answered at the end of the onshore
+day has cost twenty-four hours. Three of those in a sprint is a lost week, and nobody
+notices because every individual delay looked reasonable.
+
+The countermeasure is unglamorous: someone senior reads the blocker channel first
+thing, every day, and either answers it or escalates it within the hour. On the teams I
+have led this single habit moved delivery more than any process change.
+
+<Callout type="tip" title="Make the blocker visible before it is urgent">
+A blocker that has been open for two days should look different in the tracker than one
+opened this morning. If your board renders them identically, the age of a problem is
+invisible until it is a schedule risk.
+</Callout>
+
+## Mentoring is throughput, not charity
+
+On an AOSP programme the ramp is long. Framework modification, SEPolicy, board
+bring-up — none of it is learnable from public documentation alone, because the
+interesting parts are always vendor-specific.
+
+Teams treat mentoring as a cost centre until they measure it. An engineer who can debug
+a SELinux denial without escalating removes a dependency on the two people who could
+already do it. That is not generosity; that is removing a bottleneck.
+
+Concretely, what worked:
+
+- **Pair on the first bring-up, not the third.** The instinct is to let someone struggle
+  and then help. On platform work the failure modes are too obscure for that to teach
+  anything.
+- **Write the runbook while it hurts.** The best documentation for a gnarly integration
+  is written the day it was solved, by the person who solved it.
+- **Rotate the boring work.** If one engineer owns all the variant rollouts, you have a
+  single point of failure and a bored engineer.
+
+## Travel when the problem is not technical
+
+I once spent a stretch in Shanghai supporting a launch. Almost nothing I did there was
+work I could not have done remotely. What changed was the latency of trust — questions
+that had been taking a day of email got answered by turning around in a chair.
+
+That is the honest case for travel on a distributed programme. Not the code. The
+bandwidth between the people writing it.
+
+## What I would tell a new lead
+
+Protect the overlap. Answer blockers before they age. Treat the ramp of your least
+experienced engineer as a delivery metric, because it is one. And write things down
+relentlessly — on a two-time-zone programme, the written record is the only thing
+everybody actually shares.

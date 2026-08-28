@@ -1,0 +1,220 @@
+---
+title: "CarPropertyManager and Car Service"
+description: "The framework side of the vehicle interface — connecting to Car Service, subscription rates, error semantics, and the lifecycle bugs that only appear on a real head unit."
+order: 5
+difficulty: "Intermediate"
+tags: ["Car API", "CarPropertyManager", "App development"]
+sources:
+  - label: "CarPropertyManager reference"
+    href: "https://developer.android.com/reference/android/car/hardware/property/CarPropertyManager"
+  - label: "CarPropertyManager source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/hardware/property/CarPropertyManager.java"
+  - label: "CarPropertyService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/CarPropertyService.java"
+---
+
+`CarPropertyManager` is where most engineers meet the vehicle for the first time.
+It looks like a simple getter API. The places it surprises people are all about
+lifecycle, asynchrony and error handling.
+
+## Getting a Car instance
+
+`Car` is the entry point to every automotive manager. The subtlety is that Car
+Service is a separate process that can restart independently of your app.
+
+```kotlin title="Connecting to Car Service" showLineNumbers
+class VehicleClient(private val context: Context) {
+
+    private var car: Car? = null
+    private var properties: CarPropertyManager? = null
+
+    fun connect() {
+        // Non-blocking form: the listener fires on connect AND on reconnect
+        // after a Car Service crash. Prefer this over createCar(context).
+        car = Car.createCar(
+            context,
+            /* handler = */ null,
+            Car.CAR_WAIT_TIMEOUT_DO_NOT_WAIT,
+        ) { car, ready ->
+            if (ready) {
+                properties = car.getCarManager(Car.PROPERTY_SERVICE)
+                        as CarPropertyManager
+                subscribe()
+            } else {
+                // Car Service died. Every manager you hold is now dead too.
+                properties = null
+            }
+        }
+    }
+
+    fun disconnect() {
+        car?.disconnect()
+        car = null
+        properties = null
+    }
+}
+```
+
+<Callout type="warning" title="Manager objects do not survive a Car Service restart">
+`Car.createCar(context)` blocks until connected and gives you no restart signal.
+When Car Service crashes and restarts — which happens on real hardware — your
+cached `CarPropertyManager` becomes permanently useless and every call throws.
+Use the lifecycle-listener form and re-fetch your managers when `ready` is true.
+</Callout>
+
+## Reading
+
+```kotlin title="Typed reads"
+val speed = properties.getFloatProperty(
+    VehiclePropertyIds.PERF_VEHICLE_SPEED,
+    VehicleAreaType.VEHICLE_AREA_TYPE_GLOBAL,   // areaId 0
+)
+
+val gear = properties.getIntProperty(
+    VehiclePropertyIds.GEAR_SELECTION,
+    VehicleAreaType.VEHICLE_AREA_TYPE_GLOBAL,
+)
+
+// The general form, when you also need status and timestamp
+val value: CarPropertyValue<Float>? = properties.getProperty(
+    Float::class.java,
+    VehiclePropertyIds.HVAC_TEMPERATURE_CURRENT,
+    VehicleAreaSeat.SEAT_ROW_1_LEFT,
+)
+```
+
+Prefer `getProperty` when correctness matters. The typed convenience methods give
+you a bare value with no way to distinguish "21.5 degrees" from "the HAL has no
+idea and this is a default".
+
+```kotlin title="Checking status before trusting a value"
+val value = properties.getProperty(
+    Float::class.java, propertyId, areaId,
+)
+
+when (value?.status) {
+    CarPropertyValue.STATUS_AVAILABLE   -> render(value.value)
+    CarPropertyValue.STATUS_UNAVAILABLE -> showNotReady()   // warming up / asleep
+    CarPropertyValue.STATUS_ERROR       -> showFault()
+    null                                -> showNotSupported()
+}
+```
+
+## Subscribing
+
+Polling a vehicle property in a loop is always wrong. Subscribe.
+
+```kotlin title="Subscription with rate selection"
+properties.registerCallback(
+    callback,
+    VehiclePropertyIds.PERF_VEHICLE_SPEED,
+    CarPropertyManager.SENSOR_RATE_UI,   // ~5 Hz
+)
+```
+
+The rate constants are requests, not guarantees — the HAL's declared
+`minSampleRate`/`maxSampleRate` win:
+
+| Constant | Approx. rate | Use for |
+| --- | --- | --- |
+| `SENSOR_RATE_ONCHANGE` | on change only | Gear, doors, anything `ON_CHANGE` |
+| `SENSOR_RATE_NORMAL` | ~1 Hz | Fuel level, range, ambient temperature |
+| `SENSOR_RATE_UI` | ~5 Hz | Anything a person watches move |
+| `SENSOR_RATE_FAST` | ~10 Hz | Responsive gauges |
+| `SENSOR_RATE_FASTEST` | ~100 Hz | Rarely justified — measure before using |
+
+<Callout type="tip" title="Rate is a power decision">
+Every subscription wakes the HAL, the vehicle network thread and your process.
+`SENSOR_RATE_FASTEST` on a property nobody watches at 100 Hz is a measurable
+drain on a parked vehicle. Pick the slowest rate that still looks correct.
+</Callout>
+
+## Writing, and why errors arrive elsewhere
+
+```kotlin title="Setting a property"
+properties.setIntProperty(
+    VehiclePropertyIds.HVAC_FAN_SPEED,
+    VehicleAreaSeat.SEAT_ROW_1_LEFT,
+    3,
+)
+```
+
+This call returns quickly. It does **not** mean the vehicle accepted the value.
+The request travels to the HAL, then to an ECU, which may refuse. That refusal
+arrives on `onErrorEvent`:
+
+```kotlin title="The callback pair"
+private val callback = object : CarPropertyManager.CarPropertyEventCallback {
+
+    override fun onChangeEvent(value: CarPropertyValue<*>) {
+        // The authoritative vehicle state. Render from here, always.
+        if (value.status == CarPropertyValue.STATUS_AVAILABLE) {
+            render(value.areaId, value.value)
+        }
+    }
+
+    override fun onErrorEvent(propertyId: Int, areaId: Int) {
+        // A set was rejected. Re-read so the UI matches the vehicle again.
+        resync(propertyId, areaId)
+    }
+}
+```
+
+The correct pattern is **never render optimistically**. Send the set, keep showing
+the last known vehicle state, and update only when `onChangeEvent` confirms it.
+A fan-speed slider that jumps to 3 and then silently stays there while the
+vehicle is at 1 is worse than one that takes 150 ms to move.
+
+## Availability is per area and changes over time
+
+```kotlin
+if (properties.isPropertyAvailable(propertyId, areaId)) { … }
+```
+
+A property can be supported by the build, present in the config, and still
+unavailable right now — trailer functions with no trailer attached, seat
+functions on a trim that lacks the motor. Check per area, and re-check; it is not
+a boot-time constant.
+
+Enumerate what this vehicle actually has:
+
+```kotlin title="Discovering the real property set"
+properties.propertyList.forEach { config ->
+    Log.d(TAG, "${VehiclePropertyIds.toString(config.propertyId)} " +
+               "areas=${config.areaIds.joinToString()} " +
+               "access=${config.access} change=${config.changeMode}")
+}
+```
+
+Hard-coding a property list from a spec document and shipping it to a trim that
+does not have those features is a classic multi-variant defect. Ask the platform.
+
+## What Car Service does in between
+
+`CarPropertyService` is not a pass-through. Between your app and the HAL it:
+
+1. **Checks permissions** on every call, mapping property → required permission.
+2. **Deduplicates subscriptions** — one HAL subscription fans out to many app
+   callbacks at the highest requested rate.
+3. **Caches** the last known value per property and area.
+4. **Filters by user**, so a background user's app does not receive events it
+   should not.
+5. **Rejects unknown properties** — anything not in `getAllPropConfigs()` does
+   not exist as far as apps are concerned.
+
+Read it at <Src path="packages/services/Car/service/src/com/android/car/CarPropertyService.java" label="CarPropertyService.java" />.
+
+## Common failures, and what they actually mean
+
+| Symptom | Usual cause |
+| --- | --- |
+| `SecurityException` on read | Missing permission, or missing `privapp-permissions` entry |
+| `IllegalArgumentException` | Property not in the HAL config for that area |
+| Value never updates | HAL is not publishing changes it did not originate |
+| Callback stops after a while | Car Service restarted; you did not re-register |
+| Works on emulator, not on target | Reference VHAL supports it; the real one does not declare it |
+
+## Next
+
+The fastest way to make all of this concrete is to drive the properties by hand
+and watch the stack respond.

@@ -1,0 +1,141 @@
+---
+title: "Telephony, hands-free calling and eCall"
+description: "Calls routed through the vehicle, and the emergency call the vehicle places by itself — a regulated function that must work when everything else has failed."
+order: 2
+difficulty: "Advanced"
+tags: ["Telephony", "eCall", "Safety", "Regulation"]
+sources:
+  - label: "Telephony in Android"
+    href: "https://source.android.com/docs/core/connect/telephony"
+  - label: "Telecom framework"
+    href: "https://source.android.com/docs/core/connect/telecom"
+  - label: "Car dialer source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Dialer/"
+---
+
+There are two kinds of calling in a vehicle and they have almost nothing in
+common. One is convenience. The other is a regulated safety function with
+availability requirements Android cannot meet on its own.
+
+## Hands-free calling
+
+The ordinary case: the driver's phone is connected over HFP, and the head unit is
+a speakerphone with a nicer UI. Android's Telecom framework models it as a
+`ConnectionService`, and the car dialer is a normal (privileged) app.
+
+```kotlin title="Placing a call through Telecom"
+val telecom = context.getSystemService(TelecomManager::class.java)
+telecom.placeCall(
+    Uri.fromParts("tel", number, null),
+    Bundle().apply {
+        putBoolean(TelecomManager.EXTRA_START_CALL_WITH_SPEAKERPHONE, true)
+    },
+)
+```
+
+```bash title="Call state"
+adb shell dumpsys telecom | grep -i -A10 'call state\|audio route'
+adb shell dumpsys telephony.registry | grep -i callstate
+```
+
+The automotive-specific parts are all about *context*:
+
+- **Audio routes to the call bus**, with its own volume group.
+- **Media pauses** through audio focus and must resume afterwards.
+- **The dialpad is blocked while driving** (`UX_RESTRICTIONS_NO_DIALPAD`);
+  calling happens by voice or from recent contacts.
+- **Contacts come from PBAP**, not from a local account, and may be incomplete.
+
+<Callout type="warning" title="Media resume after a call is the most-reported defect">
+The call ends, audio focus returns, and the music does not. Test it explicitly:
+play media, receive a call, end the call, assert playback resumed at the right
+position. It fails far more often than teams expect.
+</Callout>
+
+## eCall
+
+The other kind. eCall places an emergency call automatically after a severe
+crash, transmitting a minimum set of data — position, direction of travel, time,
+vehicle identification, number of occupants — to emergency services.
+
+It is mandatory on new vehicle types in the EU and equivalents exist elsewhere.
+It is not an app feature.
+
+### Why it is not Android's
+
+The requirements are brutal for a general-purpose OS:
+
+- It must work after a crash severe enough to deploy airbags.
+- It must work with the vehicle's main battery disconnected, on a backup supply.
+- It must work when the infotainment system is destroyed or unpowered.
+- It must place the call within seconds and hold a voice channel open.
+
+So eCall lives in a **dedicated module** — its own modem, its own antenna, its own
+backup battery, its own microcontroller. Android may show that a call is in
+progress. Android does not place it.
+
+```text title="Where the pieces live"
+Crash sensors / airbag ECU
+        │  (hardwired trigger)
+        ▼
+eCall module ──── own backup battery, own modem, own antenna
+        │
+        ├── voice channel to emergency services
+        └── minimum set of data over the same channel
+                │
+                ▼
+        (optional, best-effort)
+        Android head unit — displays status only
+```
+
+<Callout type="warning" title="Any design where eCall depends on Android is a finding">
+If a requirement says "the head unit places the emergency call", the requirement
+is wrong and should be escalated rather than implemented. Android cannot be
+certified for this, cannot survive the crash cases, and cannot guarantee the
+timing. Your job is to display state, not to be in the path.
+</Callout>
+
+### What Android does contribute
+
+- **Status display** — "Emergency call in progress", cancel countdown where
+  regulation permits a cancel window.
+- **Manual trigger UI** — the SOS button, which forwards to the eCall module
+  rather than doing anything itself.
+- **Test mode indication** during service.
+
+The UI must be legible and correct when everything else is degraded, which means
+it should not depend on network state, accounts, or anything that might be
+unavailable after an accident.
+
+## Data connectivity and the TCU
+
+Most vehicles have a Telematics Control Unit — a separate module with its own
+modem and SIM, providing data to the whole vehicle. Android is a *client* of it,
+usually over Ethernet or USB, not the owner of the modem.
+
+Consequences:
+
+- **You do not control the connection.** The TCU decides when the vehicle is
+  online, and its policy is set by the OEM's data budget.
+- **Bandwidth is metered and shared.** Map updates, OTA payloads, telemetry and
+  the driver's streaming all compete for the same allowance.
+- **Availability is intermittent by design.** Parked vehicles may be offline for
+  days to preserve battery.
+
+```kotlin title="Assume metered and intermittent"
+val cm = context.getSystemService(ConnectivityManager::class.java)
+val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+val unmetered = caps?.hasCapability(
+    NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == true
+
+// Bulk transfer belongs in Garage Mode on an unmetered link, not now.
+val job = JobInfo.Builder(JOB_ID, component)
+    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+    .setRequiresDeviceIdle(true)
+    .setPersisted(true)
+    .build()
+```
+
+## Next
+
+The rest of the connectivity picture.

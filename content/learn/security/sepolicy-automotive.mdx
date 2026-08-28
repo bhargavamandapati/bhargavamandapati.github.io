@@ -1,0 +1,167 @@
+---
+title: "SELinux for vehicle HALs"
+description: "Why a correct HAL still returns nothing, how to read an AVC denial, and the policy you must write for any process that touches the vehicle network."
+order: 1
+difficulty: "Advanced"
+tags: ["SELinux", "SEPolicy", "Security"]
+sources:
+  - label: "Security-Enhanced Linux in Android"
+    href: "https://source.android.com/docs/security/features/selinux"
+  - label: "Writing SELinux policy"
+    href: "https://source.android.com/docs/security/features/selinux/device-policy"
+  - label: "Validating SELinux"
+    href: "https://source.android.com/docs/security/features/selinux/validate"
+---
+
+SELinux is the reason your perfectly correct HAL returns nothing at all. It fails
+quietly, it fails consistently, and it is almost always the answer when behaviour
+is *wrong but stable*.
+
+## Everything has a label
+
+SELinux labels every process (a **domain**) and every object — file, socket,
+device node, service (a **type**). Policy is a list of what domains may do to
+which types. Anything not explicitly allowed is denied.
+
+```bash title="Looking at labels"
+# Process domains
+adb shell ps -Z | grep vehicle
+# u:r:hal_vehicle_default:s0  ...  android.hardware.automotive.vehicle@2.0-service
+
+# File and device labels
+adb shell ls -Z /dev/can0
+# u:object_r:vendor_can_device:s0  /dev/can0
+
+adb shell ls -Z /vendor/bin/hw/
+```
+
+Your vehicle HAL runs in `hal_vehicle_default`. Out of the box that domain can do
+almost nothing. Every capability it needs must be granted explicitly.
+
+## Reading a denial
+
+```text title="A typical AVC denial"
+avc: denied { read write } for pid=1247 comm="vehicle_hal"
+  name="can0" dev="tmpfs" ino=12043
+  scontext=u:r:hal_vehicle_default:s0
+  tcontext=u:object_r:device:s0
+  tclass=chr_file permissive=0
+```
+
+Read it as a sentence:
+
+- `denied { read write }` — the operations that were refused.
+- `scontext` — **who** was acting: your HAL's domain.
+- `tcontext` — **what** it acted on: type `device`.
+- `tclass` — the object class: a character device.
+- `permissive=0` — enforcing, so it was actually blocked.
+
+Note `tcontext=u:object_r:device:s0`. That is the *generic* device label — the
+node was never given a specific type. So there are two problems here: a missing
+`file_contexts` entry and a missing allow rule.
+
+## Writing the policy
+
+Policy lives under your device's `sepolicy` directory. Four files do most of the
+work.
+
+```text title="sepolicy/vendor/file_contexts"
+# Label the device nodes and binaries this HAL owns
+/dev/can[0-9]                                    u:object_r:vendor_can_device:s0
+/vendor/bin/hw/android\.hardware\.automotive\.vehicle@2\.0-service  u:object_r:hal_vehicle_default_exec:s0
+/vendor/etc/vehicle(/.*)?                        u:object_r:vendor_vehicle_config_file:s0
+```
+
+```text title="sepolicy/vendor/device.te"
+# Declare the new types
+type vendor_can_device, dev_type;
+type vendor_vehicle_config_file, file_type, vendor_file_type;
+type vendor_vehicle_data_file, file_type, data_file_type;
+```
+
+```text title="sepolicy/vendor/hal_vehicle_default.te"
+# Grant exactly what the HAL needs — and nothing more
+allow hal_vehicle_default vendor_can_device:chr_file rw_file_perms;
+allow hal_vehicle_default vendor_vehicle_config_file:file r_file_perms;
+allow hal_vehicle_default vendor_vehicle_config_file:dir r_dir_perms;
+
+allow hal_vehicle_default vendor_vehicle_data_file:dir rw_dir_perms;
+allow hal_vehicle_default vendor_vehicle_data_file:file create_file_perms;
+
+# Raw CAN sockets, if you use SocketCAN rather than a character device
+allow hal_vehicle_default self:socket { create bind read write };
+allowxperm hal_vehicle_default self:socket ioctl { SIOCGIFINDEX };
+```
+
+```text title="sepolicy/vendor/file.te — data directory labelling"
+type_transition hal_vehicle_default vendor_data_file:dir vendor_vehicle_data_file "vehicle";
+```
+
+## Debugging workflow
+
+```bash title="Find the denials"
+adb shell dmesg | grep -i 'avc.*denied'
+adb logcat -b all | grep -i avc
+
+# audit2allow drafts rules from real denials — a starting point, not an answer
+adb shell dmesg | audit2allow -p out/target/product/<device>/root/sepolicy
+```
+
+<Callout type="warning" title="Never paste audit2allow output straight into policy">
+`audit2allow` generates the broadest rule that would have permitted what
+happened, including rules that grant far more than intended. Use it to understand
+*what* was blocked, then write the narrowest rule that permits it. Reviewers
+should reject unexplained `audit2allow` blocks.
+</Callout>
+
+### Temporarily permissive, for diagnosis only
+
+```bash title="Diagnostic mode — userdebug builds only"
+# Log denials but do not enforce, for one domain
+adb shell su 0 setenforce 0        # whole system — very blunt
+adb shell getenforce
+```
+
+This tells you the *full* set of denials rather than only the first one, which
+otherwise masks the rest. Turn it straight back on. A domain shipped permissive
+is a shipped vulnerability, and CTS will fail the build.
+
+## Neverallow rules
+
+AOSP ships assertions that certain things must never be permitted. They are
+checked at **build** time, so a violating policy fails the build rather than
+shipping.
+
+```text title="A neverallow you will meet"
+# A vendor HAL must never access app data
+neverallow hal_vehicle_default app_data_file:file *;
+
+# It must never talk directly to the network
+neverallow hal_vehicle_default domain:{ tcp_socket udp_socket } *;
+```
+
+When your build fails with a neverallow violation, the correct response is
+essentially never to weaken the assertion. It is telling you the architecture is
+wrong — usually that the HAL is reaching across the Treble boundary for something
+it should be receiving through a proper interface.
+
+## Practical rules
+
+1. **Label your own nodes.** A device node with the generic `device` type is a
+   missing `file_contexts` entry, not something to work around.
+2. **Grant the minimum.** `rw_file_perms` on one type, not `*` on `dev_type`.
+3. **Check denials on every bring-up.** Make `dmesg | grep avc` part of the
+   routine, not a last resort.
+4. **Never ship permissive.** Diagnose permissive, ship enforcing.
+5. **Treat neverallow failures as design feedback**, not obstacles.
+
+## The symptom to remember
+
+A missing SEPolicy rule does not crash anything. Your HAL's read fails, your code
+falls back to a default, the framework reports the default, and the UI shows a
+plausible wrong value forever. Whenever something is **wrong but stable**, check
+denials before you check your logic.
+
+## Next
+
+The permission model that sits above this, in the framework.

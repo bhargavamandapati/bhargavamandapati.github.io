@@ -1,0 +1,150 @@
+---
+title: "Automotive notifications"
+description: "Ranking, heads-up rules, read-aloud and the distraction filter — why a notification that works on a phone can be invisible, silent or blocked in a car."
+order: 4
+difficulty: "Intermediate"
+tags: ["Notifications", "HMI", "UX Restrictions"]
+sources:
+  - label: "Automotive notifications"
+    href: "https://source.android.com/docs/automotive/hmi/notifications"
+  - label: "CarNotification source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Notification/"
+  - label: "Notification categories (developer.android.com)"
+    href: "https://developer.android.com/reference/android/app/Notification"
+---
+
+The notification you tested on a phone will behave differently in a car. It may
+not appear as a heads-up, its text may be truncated, it may be read aloud, or it
+may be withheld entirely until the vehicle stops.
+
+None of that is a bug. It is the distraction model doing its job.
+
+## Category decides almost everything
+
+On automotive, `Notification.CATEGORY_*` is not metadata — it is the input to
+ranking, heads-up eligibility and read-aloud behaviour.
+
+| Category | Typical automotive treatment |
+| --- | --- |
+| `CATEGORY_CALL` | Highest priority, always interrupts, full-screen intent allowed |
+| `CATEGORY_NAVIGATION` | Persistent, elevated, often pinned to a dedicated surface |
+| `CATEGORY_MESSAGE` | Heads-up when permitted, read-aloud, reply action |
+| `CATEGORY_ALARM` / `CATEGORY_EVENT` | Elevated, time-sensitive |
+| `CATEGORY_TRANSPORT` | Media controls, not an interruption |
+| everything else | Ranked low; likely list-only while driving |
+
+```kotlin title="A message notification that behaves in a car"
+val person = Person.Builder().setName(senderName).setKey(senderId).build()
+
+val notification = Notification.Builder(context, MESSAGES_CHANNEL)
+    .setSmallIcon(R.drawable.ic_message)
+    .setCategory(Notification.CATEGORY_MESSAGE)   // load-bearing
+    .setStyle(
+        Notification.MessagingStyle(person)
+            .addMessage(text, timestamp, person)
+    )
+    // Read-aloud and inline reply come from these, not from your layout
+    .addAction(replyAction)
+    .addAction(markAsReadAction)
+    .setShowWhen(true)
+    .build()
+```
+
+<Callout type="warning" title="Do not inflate your category to get visibility">
+Marking a promotion as `CATEGORY_CALL` to make it interrupt is the kind of thing
+that fails OEM acceptance, and rightly so. Category is a safety input; treating
+it as a growth lever is how a platform ends up blocking your app entirely.
+</Callout>
+
+## MessagingStyle earns you behaviour
+
+`MessagingStyle` is what enables read-aloud and voice reply. The platform parses
+the messages, speaks them, captures a spoken reply and delivers it to your
+`RemoteInput` action — without your app drawing anything.
+
+```kotlin title="A reply action the assistant can drive"
+val remoteInput = RemoteInput.Builder(KEY_REPLY)
+    .setLabel(context.getString(R.string.reply))
+    .build()
+
+val replyAction = Notification.Action.Builder(
+        Icon.createWithResource(context, R.drawable.ic_reply),
+        context.getString(R.string.reply),
+        replyPendingIntent,
+    )
+    .addRemoteInput(remoteInput)
+    .setSemanticAction(Notification.Action.SEMANTIC_ACTION_REPLY)
+    .setAllowGeneratedReplies(true)
+    .build()
+```
+
+`setSemanticAction` matters: it tells the platform *what the action means*, so a
+voice assistant can invoke it without understanding your UI. Mark your
+mark-as-read action `SEMANTIC_ACTION_MARK_AS_READ` for the same reason.
+
+## What UX restrictions do to notifications
+
+While driving, the platform applies the same restriction set covered in the
+distraction topic:
+
+- **`UX_RESTRICTIONS_NO_TEXT_MESSAGE`** — message *content* is withheld; you get
+  "New message from Alex", not the text.
+- **`UX_RESTRICTIONS_LIMIT_STRING_LENGTH`** — titles and bodies are truncated to
+  the configured maximum.
+- **`UX_RESTRICTIONS_LIMIT_CONTENT`** — the visible list is capped.
+- Heads-up notifications are suppressed for low-priority categories entirely.
+
+You do not implement any of that. You simply must not depend on the full text
+being visible, and you must not work around the truncation by cramming content
+into the title.
+
+## Channels still matter
+
+```kotlin title="Channels, with automotive intent"
+val messages = NotificationChannel(
+    MESSAGES_CHANNEL,
+    context.getString(R.string.channel_messages),
+    NotificationManager.IMPORTANCE_HIGH,     // eligible for heads-up
+)
+
+val updates = NotificationChannel(
+    UPDATES_CHANNEL,
+    context.getString(R.string.channel_updates),
+    NotificationManager.IMPORTANCE_LOW,      // list only, never interrupts
+)
+```
+
+Split channels by *interruption intent*, not by feature. A driver who mutes your
+"updates" channel should still receive calls. One channel for everything means
+the only available choice is all or nothing, and they will choose nothing.
+
+## Testing
+
+```bash title="Notification state and distraction interaction"
+adb shell dumpsys notification --noredact
+adb shell dumpsys car_service --services CarUxRestrictionsManagerService
+
+# Post a test notification
+adb shell cmd notification post -S messaging \
+  -c com.example/testchannel tag1 'Alex' 'See you at six'
+
+# Then simulate driving and re-check what is visible
+adb shell dumpsys car_service --set-property 0x11600207 60
+```
+
+The pair of checks that finds real bugs: post the notification while parked,
+confirm it looks right, then set speed above the threshold and confirm it
+degrades to something still *useful* rather than something empty.
+
+## Design rules that hold up
+
+- **One glance, one fact.** "Alex: running late" not a paragraph.
+- **Front-load the identity.** The sender is the part that survives truncation.
+- **Every notification needs a voice path.** If it cannot be dealt with by voice,
+  it cannot be dealt with while driving.
+- **Never require reading to act.** Actions must be understandable from the
+  action label alone.
+
+## Next
+
+The launcher, app categories, and what AAOS will simply refuse to run.

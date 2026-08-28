@@ -1,0 +1,185 @@
+---
+title: "Car UI Library and RRO theming"
+description: "How one AOSP codebase produces a Volvo, a Polestar and a GM head unit — component libraries, runtime resource overlays, and the discipline that keeps them maintainable."
+order: 3
+difficulty: "Intermediate"
+tags: ["car-ui-lib", "RRO", "Theming", "OEM"]
+sources:
+  - label: "Car UI Library"
+    href: "https://source.android.com/docs/automotive/hmi/car_ui/appendix_c"
+  - label: "Runtime Resource Overlays"
+    href: "https://source.android.com/docs/core/runtime/rros"
+  - label: "car-ui-lib source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/libs/car-ui-lib/"
+---
+
+Every OEM wants a head unit that looks like theirs and nobody else's. Every OEM
+also wants to take Android platform upgrades for the next fifteen years. Those
+two goals fight, and the Car UI Library plus RROs is how AOSP resolves it.
+
+## The problem being solved
+
+The naive approach is to fork: copy the system apps, restyle them, ship. It
+demos beautifully and then costs you every upgrade cycle forever, because each
+platform release must be merged into a diverged codebase by people who have
+forgotten why the changes were made.
+
+The alternative: build the UI from components whose appearance is driven entirely
+by **resources**, then replace the resources at runtime without touching code.
+
+## Car UI Library
+
+`car-ui-lib` provides the automotive component vocabulary — lists, toolbars,
+preferences, dialogs — already sized for reach and glance, already
+distraction-aware.
+
+```xml title="A car-ui list instead of a RecyclerView"
+<com.android.car.ui.recyclerview.CarUiRecyclerView
+    android:id="@+id/list"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"/>
+```
+
+```kotlin title="Toolbar through the library's controller"
+val toolbar = CarUi.requireToolbar(this)
+toolbar.setTitle(R.string.media_browse)
+toolbar.setState(ToolbarController.State.SUBPAGE)
+toolbar.setMenuItems(listOf(
+    MenuItem.builder(this)
+        .setIcon(R.drawable.ic_search)
+        .setOnClickListener { openSearch() }
+        .build()
+))
+```
+
+The point is not that these look better out of the box. It is that an OEM overlay
+can restyle every one of them at once, because they all resolve the same
+resource names.
+
+## Runtime Resource Overlays
+
+An RRO is an APK containing only resources, declaring that it overrides another
+package's.
+
+```xml title="AndroidManifest.xml"
+<manifest package="com.oem.rro.caruilib">
+    <application android:hasCode="false"/>
+    <overlay
+        android:targetPackage="com.android.car.ui.paintbooth"
+        android:targetName="car-ui-lib"
+        android:resourcesMap="@xml/overlays"
+        android:isStatic="true"
+        android:priority="10"/>
+</manifest>
+```
+
+```xml title="res/values/colors.xml"
+<resources>
+    <color name="car_ui_toolbar_background">#0B0F1A</color>
+    <color name="car_ui_text_color_primary">#E8EFFA</color>
+    <color name="car_ui_list_item_icon_color">#22D3EE</color>
+</resources>
+```
+
+```xml title="res/values/dimens.xml"
+<resources>
+    <dimen name="car_ui_toolbar_first_row_height">96dp</dimen>
+    <dimen name="car_ui_list_item_height">116dp</dimen>
+    <dimen name="car_ui_touch_target_size">76dp</dimen>
+</resources>
+```
+
+Overlays can replace colours, dimensions, drawables, strings and even layouts.
+The target application's code is untouched and unaware.
+
+### Static vs dynamic
+
+- **Static** (`isStatic="true"`) — applied at boot, cannot be turned off. Used for
+  the OEM's own brand identity. Must be in the system image.
+- **Dynamic** — enabled and disabled at runtime with `cmd overlay`. Used for
+  themes a user or the vehicle can switch: day/night, sport mode, trim packages.
+
+```bash title="Working with overlays"
+adb shell cmd overlay list
+adb shell cmd overlay enable com.oem.rro.night
+adb shell cmd overlay disable com.oem.rro.night
+adb shell cmd overlay dump com.oem.rro.night
+```
+
+<Callout type="tip" title="Dynamic overlays are the fastest theming loop">
+Push the RRO, `cmd overlay enable`, restart the target app, look. No platform
+rebuild, no reflash. Teams that discover this iterate on styling ten times faster
+than teams that keep rebuilding the image.
+</Callout>
+
+## Making a component themable
+
+If you write an OEM component, its appearance must come from resources or it
+cannot be overlaid. This is a code-review rule, not a preference.
+
+```xml title="Wrong — hard-coded, cannot be overlaid"
+<TextView
+    android:textColor="#FFFFFF"
+    android:textSize="18sp"
+    android:padding="12dp"/>
+```
+
+```xml title="Right — every visual value is a named resource"
+<TextView
+    android:textColor="@color/oem_text_primary"
+    android:textSize="@dimen/oem_text_size_body"
+    android:padding="@dimen/oem_spacing_medium"/>
+```
+
+The second version can be re-skinned for a new trim by shipping one small APK.
+The first requires a code change, a rebuild and a re-release.
+
+## Day/night is not optional
+
+Vehicles drive at night, and a bright UI at night is a genuine safety problem.
+Android's resource qualifiers handle it:
+
+```text title="Resource layout"
+res/values/colors.xml          ← day
+res/values-night/colors.xml    ← night
+```
+
+Mode is driven by the vehicle, typically from a VHAL property such as
+`NIGHT_MODE`, which the platform maps onto `UiModeManager`. Test both. A contrast
+choice that reads well at noon can be unusable at 2am.
+
+## Multiple screen geometries
+
+Head units are not one shape. Portrait 9:16 tablets, wide 21:9 letterboxes,
+curved displays, plus a cluster and a passenger screen on the same vehicle.
+
+```text title="Qualified resources carry the weight"
+res/layout/                    ← default
+res/layout-w1280dp/            ← wide landscape
+res/layout-h1600dp/            ← tall portrait
+res/values-w1280dp/dimens.xml  ← spacing at that width
+```
+
+Design in constraints and let the layout adapt. Fixed pixel positions tuned to
+one head unit will need redoing for the next programme, and there is always a
+next programme.
+
+## The discipline that keeps this working
+
+1. **No hard-coded visual values.** Colours, dimensions and drawables are named
+   resources, always.
+2. **Overlay before forking.** A fork must be justified in writing and re-merged
+   every release.
+3. **Keep OEM styling in the RRO**, not scattered through app code.
+4. **Test every theme in both day and night**, on every screen geometry the
+   programme ships.
+5. **Version the RRO with the platform.** Resource names are an interface; when
+   the target renames one, your overlay silently stops applying that value.
+
+That last one catches people. An overlay referencing a resource name that no
+longer exists does not error — it just does nothing, and the component quietly
+reverts to the AOSP default in the middle of your brand experience.
+
+## Next
+
+Audio is the other domain where automotive diverges sharply from phone Android.

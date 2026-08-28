@@ -1,0 +1,419 @@
+---
+title: "Define your own AIDL HAL"
+description: "When vehicle properties are the wrong shape — a versioned vendor interface with real RPC, its own VINTF entry and its own SELinux domain."
+order: 3
+difficulty: "Advanced"
+time: "2–3 hours"
+outcome: "A vendor.vega.hardware.comfort.IComfort HAL registered on the device, callable from a framework client, with a versioned interface and its own policy."
+prerequisites:
+  - label: "A vendor VHAL of your own"
+    href: "/tutorials/vehicle/custom-vhal/"
+  - label: "The Treble boundary"
+    href: "/learn/security/permissions-and-treble/"
+tags: ["AIDL", "HAL", "VINTF", "Vendor"]
+sources:
+  - label: "AIDL for HALs"
+    href: "https://source.android.com/docs/core/architecture/aidl/aidl-hals"
+  - label: "AIDL versioning and stability"
+    href: "https://source.android.com/docs/core/architecture/aidl/stable-aidl"
+  - label: "VINTF"
+    href: "https://source.android.com/docs/core/architecture/vintf"
+---
+
+The property model is state, not RPC. When you need a request with a correlated
+response, an error enum, or a payload larger than a value, stop bending
+properties and define an interface.
+
+<FileTree>
+vendor/oem/vega/hardware/interfaces/comfort/
+├── aidl/
+│   ├── Android.bp
+│   └── vendor/vega/hardware/comfort/
+│       ├── IComfort.aidl
+│       ├── IComfortCallback.aidl
+│       ├── MassageProgram.aidl
+│       └── ComfortError.aidl
+└── default/
+    ├── Android.bp
+    ├── Comfort.cpp / Comfort.h
+    ├── service.cpp
+    ├── vendor.vega.hardware.comfort.rc
+    └── vendor.vega.hardware.comfort.xml
+</FileTree>
+
+## Step 1 — Design the interface
+
+Keep it small. Every method is a versioned commitment for the vehicle's life.
+
+```java title="vendor/vega/hardware/comfort/IComfort.aidl"
+package vendor.vega.hardware.comfort;
+
+import vendor.vega.hardware.comfort.IComfortCallback;
+import vendor.vega.hardware.comfort.MassageProgram;
+
+@VintfStability
+interface IComfort {
+    /**
+     * Start a massage program on a seat.
+     * Returns the session id; throws ComfortError on rejection.
+     */
+    int startProgram(in int seatAreaId, in MassageProgram program);
+
+    void stopProgram(in int sessionId);
+
+    MassageProgram[] getSupportedPrograms(in int seatAreaId);
+
+    void registerCallback(in IComfortCallback callback);
+    void unregisterCallback(in IComfortCallback callback);
+}
+```
+
+```java title="vendor/vega/hardware/comfort/MassageProgram.aidl"
+package vendor.vega.hardware.comfort;
+
+@VintfStability
+parcelable MassageProgram {
+    int id;
+    String name;
+    int intensityMin;
+    int intensityMax;
+    int durationSeconds;
+}
+```
+
+```java title="vendor/vega/hardware/comfort/ComfortError.aidl"
+package vendor.vega.hardware.comfort;
+
+@VintfStability
+@Backing(type="int")
+enum ComfortError {
+    NONE = 0,
+    INVALID_SEAT = 1,
+    NOT_AVAILABLE = 2,
+    OCCUPANT_ABSENT = 3,
+    THERMAL_LIMIT = 4,
+}
+```
+
+```java title="vendor/vega/hardware/comfort/IComfortCallback.aidl"
+package vendor.vega.hardware.comfort;
+
+import vendor.vega.hardware.comfort.ComfortError;
+
+@VintfStability
+oneway interface IComfortCallback {
+    void onProgramFinished(in int sessionId);
+    void onProgramFailed(in int sessionId, in ComfortError error);
+}
+```
+
+<Gotcha title="@VintfStability is not decoration">
+It marks the interface as part of the vendor interface, subject to stability
+rules. Without it the interface cannot appear in a VINTF manifest and the build
+will not let a `vendor:` module serve it. With it, the build enforces that you
+never break compatibility — which is the point.
+</Gotcha>
+
+## Step 2 — Declare the interface module
+
+```json title="vendor/oem/vega/hardware/interfaces/comfort/aidl/Android.bp"
+aidl_interface {
+    name: "vendor.vega.hardware.comfort",
+    vendor_available: true,
+    srcs: ["vendor/vega/hardware/comfort/*.aidl"],
+    stability: "vintf",
+    owner: "vega",
+
+    backend: {
+        cpp: { enabled: false },   // NDK backend is the one to use
+        ndk: { enabled: true },
+        java: { enabled: true, sdk_version: "module_current" },
+    },
+
+    versions_with_info: [
+        // Populated by `m vendor.vega.hardware.comfort-update-api`
+    ],
+    frozen: false,
+}
+```
+
+```bash title="Freeze version 1 once the interface is stable"
+m vendor.vega.hardware.comfort-freeze-api
+```
+
+Freezing writes a snapshot under `aidl_api/` that the build compares against on
+every change. After that, an incompatible edit fails the build rather than
+shipping.
+
+## Step 3 — Implement it
+
+```cpp title="vendor/oem/vega/hardware/interfaces/comfort/default/Comfort.h"
+#pragma once
+
+#include <aidl/vendor/vega/hardware/comfort/BnComfort.h>
+
+#include <mutex>
+#include <vector>
+
+namespace aidl::vendor::vega::hardware::comfort {
+
+class Comfort : public BnComfort {
+  public:
+    ndk::ScopedAStatus startProgram(int32_t seatAreaId, const MassageProgram& program,
+                                    int32_t* sessionId) override;
+    ndk::ScopedAStatus stopProgram(int32_t sessionId) override;
+    ndk::ScopedAStatus getSupportedPrograms(int32_t seatAreaId,
+                                            std::vector<MassageProgram>* out) override;
+    ndk::ScopedAStatus registerCallback(
+            const std::shared_ptr<IComfortCallback>& callback) override;
+    ndk::ScopedAStatus unregisterCallback(
+            const std::shared_ptr<IComfortCallback>& callback) override;
+
+  private:
+    std::mutex mLock;
+    int32_t mNextSessionId = 1;
+    std::vector<std::shared_ptr<IComfortCallback>> mCallbacks;
+};
+
+}  // namespace aidl::vendor::vega::hardware::comfort
+```
+
+```cpp title="vendor/oem/vega/hardware/interfaces/comfort/default/Comfort.cpp"
+#define LOG_TAG "VegaComfortHal"
+
+#include "Comfort.h"
+
+#include <android-base/logging.h>
+
+namespace aidl::vendor::vega::hardware::comfort {
+
+ndk::ScopedAStatus Comfort::startProgram(int32_t seatAreaId, const MassageProgram& program,
+                                         int32_t* sessionId) {
+    // Validate everything from the client. It is untrusted, including when it
+    // is another team's system app.
+    if (seatAreaId != 0x0001 && seatAreaId != 0x0004) {
+        return ndk::ScopedAStatus::fromServiceSpecificError(
+                static_cast<int32_t>(ComfortError::INVALID_SEAT));
+    }
+    if (program.intensityMax > 5 || program.intensityMin < 0) {
+        return ndk::ScopedAStatus::fromServiceSpecificError(
+                static_cast<int32_t>(ComfortError::NOT_AVAILABLE));
+    }
+
+    std::lock_guard<std::mutex> lock(mLock);
+    *sessionId = mNextSessionId++;
+    LOG(INFO) << "started program " << program.id << " session " << *sessionId;
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Comfort::stopProgram(int32_t /*sessionId*/) {
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Comfort::getSupportedPrograms(int32_t /*seatAreaId*/,
+                                                 std::vector<MassageProgram>* out) {
+    out->push_back(MassageProgram{
+            .id = 1, .name = "Lumbar", .intensityMin = 0,
+            .intensityMax = 5, .durationSeconds = 600,
+    });
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Comfort::registerCallback(
+        const std::shared_ptr<IComfortCallback>& callback) {
+    if (callback == nullptr) {
+        return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
+    }
+    std::lock_guard<std::mutex> lock(mLock);
+    mCallbacks.push_back(callback);
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Comfort::unregisterCallback(
+        const std::shared_ptr<IComfortCallback>& callback) {
+    std::lock_guard<std::mutex> lock(mLock);
+    std::erase_if(mCallbacks, [&](const auto& c) {
+        return c->asBinder().get() == callback->asBinder().get();
+    });
+    return ndk::ScopedAStatus::ok();
+}
+
+}  // namespace aidl::vendor::vega::hardware::comfort
+```
+
+<Gotcha title="Compare binders, not shared_ptrs, when unregistering">
+A client that calls `registerCallback` and then `unregisterCallback` sends two
+different `shared_ptr` objects wrapping the same remote binder. Comparing the
+pointers never matches, the list grows forever, and you leak a reference to a
+dead process. Compare `asBinder().get()`.
+</Gotcha>
+
+## Step 4 — Service, init and VINTF
+
+```cpp title="default/service.cpp"
+#include <android-base/logging.h>
+#include <android/binder_manager.h>
+#include <android/binder_process.h>
+
+#include "Comfort.h"
+
+using aidl::vendor::vega::hardware::comfort::Comfort;
+
+int main() {
+    ABinderProcess_setThreadPoolMaxThreadCount(2);
+
+    auto comfort = ndk::SharedRefBase::make<Comfort>();
+    const std::string name = std::string(Comfort::descriptor) + "/default";
+
+    binder_status_t status = AServiceManager_addService(comfort->asBinder().get(), name.c_str());
+    CHECK_EQ(status, STATUS_OK) << "failed to register " << name;
+    LOG(INFO) << "registered " << name;
+
+    ABinderProcess_joinThreadPool();
+    return EXIT_FAILURE;
+}
+```
+
+```json title="default/Android.bp"
+cc_binary {
+    name: "vendor.vega.hardware.comfort-service",
+    vendor: true,
+    relative_install_path: "hw",
+
+    srcs: ["Comfort.cpp", "service.cpp"],
+    shared_libs: [
+        "libbase", "liblog", "libbinder_ndk",
+        "vendor.vega.hardware.comfort-V1-ndk",
+    ],
+    cflags: ["-Wall", "-Werror"],
+
+    init_rc: ["vendor.vega.hardware.comfort.rc"],
+    vintf_fragments: ["vendor.vega.hardware.comfort.xml"],
+}
+```
+
+```xml title="default/vendor.vega.hardware.comfort.xml"
+<manifest version="1.0" type="device">
+    <hal format="aidl">
+        <name>vendor.vega.hardware.comfort</name>
+        <version>1</version>
+        <fqname>IComfort/default</fqname>
+    </hal>
+</manifest>
+```
+
+```text title="default/vendor.vega.hardware.comfort.rc"
+service vendor.vega.comfort /vendor/bin/hw/vendor.vega.hardware.comfort-service
+    class hal
+    user system
+    group system
+```
+
+## Step 5 — Policy
+
+```text title="device/oem/vega/sepolicy/vendor/vendor_vega_comfort.te"
+type vendor_vega_comfort, domain;
+type vendor_vega_comfort_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(vendor_vega_comfort)
+
+# Declare the service so clients can find it
+type vendor_vega_comfort_service, service_manager_type;
+add_service(vendor_vega_comfort, vendor_vega_comfort_service)
+```
+
+```text title="device/oem/vega/sepolicy/vendor/service_contexts"
+vendor.vega.hardware.comfort.IComfort/default  u:object_r:vendor_vega_comfort_service:s0
+```
+
+```text title="device/oem/vega/sepolicy/vendor/file_contexts"
+/vendor/bin/hw/vendor\.vega\.hardware\.comfort-service  u:object_r:vendor_vega_comfort_exec:s0
+```
+
+<Gotcha title="A missing service_contexts entry is invisible">
+Without it, `AServiceManager_addService` is denied, the service silently does not
+appear in `lshal`, and clients get a null binder with no useful error. Check
+`dmesg | grep avc` — the denial names `service_manager` and `add`.
+</Gotcha>
+
+## Step 6 — Build and verify
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_PACKAGES += vendor.vega.hardware.comfort-service
+```
+
+```bash
+m vendor.vega.hardware.comfort-service && m -j
+emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 40
+```
+
+<Verify title="Verify the HAL is registered and callable">
+```bash
+# 1. Declared in VINTF
+adb shell lshal --init-vintf | grep -i vega.hardware.comfort
+
+# 2. Actually registered
+adb shell lshal | grep -i vega.hardware.comfort
+# expect: vendor.vega.hardware.comfort.IComfort/default
+
+# 3. Its own domain
+adb shell ps -Z | grep vega.comfort
+# expect: u:r:vendor_vega_comfort:s0
+
+# 4. The service manager knows it
+adb shell service list | grep -i comfort
+
+# 5. Enforcing, no denials
+adb shell getenforce && adb shell dmesg | grep -c 'avc.*denied.*comfort'
+```
+</Verify>
+
+## Step 7 — Call it from the framework
+
+```java title="A framework-side client"
+import vendor.vega.hardware.comfort.IComfort;
+import vendor.vega.hardware.comfort.MassageProgram;
+
+private IComfort connect() {
+    final String name = IComfort.DESCRIPTOR + "/default";
+    IBinder binder = ServiceManager.waitForDeclaredService(name);
+    if (binder == null) {
+        Slog.w(TAG, "comfort HAL not declared on this build");
+        return null;   // a trim without the hardware — degrade, do not crash
+    }
+    return IComfort.Stub.asInterface(binder);
+}
+```
+
+`waitForDeclaredService` returns null when the HAL is not declared in VINTF,
+which is exactly what happens on a trim that lacks the hardware. Handle it —
+this is the multi-variant case, not an error.
+
+## When to use a HAL instead of a property
+
+| Need | Use |
+| --- | --- |
+| Vehicle state, observed or commanded | VHAL property |
+| Request with a correlated response | Your own AIDL HAL |
+| Typed error enum on failure | Your own AIDL HAL |
+| A list or structured payload | Your own AIDL HAL |
+| Framework caching, subscription and permission machinery | VHAL property |
+
+Nothing requires all vehicle interaction to go through the VHAL. State belongs in
+properties because the framework is built for it. Everything else can be an
+interface you define, and it will be easier to evolve.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `lshal` empty | VINTF fragment missing or malformed |
+| `addService` fails | No `service_contexts` entry |
+| Client gets null binder | HAL not declared in VINTF for this product |
+| Build fails after an interface edit | You changed a frozen version — bump instead |
+| `@VintfStability` build error | A parcelable in the interface is not itself VintfStability |
+| Callback list grows forever | Comparing `shared_ptr` instead of `asBinder().get()` |
+
+## Next
+
+Into the framework: a service inside Car Service.

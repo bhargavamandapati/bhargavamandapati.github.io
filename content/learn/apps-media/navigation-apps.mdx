@@ -1,0 +1,174 @@
+---
+title: "Navigation apps and cluster guidance"
+description: "The navigation template, the map surface, and pushing turn-by-turn instructions to the instrument cluster so the driver never looks at the centre stack."
+order: 3
+difficulty: "Advanced"
+tags: ["Navigation", "Cluster", "Templates"]
+sources:
+  - label: "Build navigation apps for cars"
+    href: "https://developer.android.com/training/cars/navigation"
+  - label: "CarNavigationStatusManager reference"
+    href: "https://developer.android.com/reference/android/car/navigation/CarNavigationStatusManager"
+  - label: "Cluster support"
+    href: "https://source.android.com/docs/automotive/hmi/cluster"
+---
+
+Navigation is the one templated app category that gets a real drawing surface,
+and the only one expected to render onto a second screen it does not own.
+
+## The two surfaces
+
+A navigation app is responsible for **the map**. The host is responsible for
+everything around it — the turn card, the action strip, the travel estimate.
+
+```kotlin title="NavigationTemplate: you fill the middle, the host fills the edges"
+override fun onGetTemplate(): Template =
+    NavigationTemplate.Builder()
+        .setNavigationInfo(
+            RoutingInfo.Builder()
+                .setCurrentStep(currentStep, distanceToStep)
+                .setNextStep(nextStep)
+                .build()
+        )
+        .setDestinationTravelEstimate(
+            TravelEstimate.Builder(remainingDistance, arrivalTime)
+                .setRemainingTimeSeconds(remainingSeconds)
+                .build()
+        )
+        .setActionStrip(
+            ActionStrip.Builder()
+                .addAction(Action.Builder()
+                    .setIcon(muteIcon)
+                    .setOnClickListener(::toggleVoiceGuidance)
+                    .build())
+                .build()
+        )
+        .build()
+```
+
+Everything in `RoutingInfo` is rendered by the host in the OEM's styling — and,
+crucially, is the data the platform can forward to the cluster.
+
+## Respecting the visible area
+
+The host overlays panels on your map surface. Drawing as if you own the whole
+rectangle puts the route under a UI element.
+
+```kotlin title="Pad the camera, do not centre blindly"
+override fun onVisibleAreaChanged(visibleArea: Rect) {
+    mapRenderer.setCameraPadding(
+        left = visibleArea.left,
+        top = visibleArea.top,
+        right = surfaceWidth - visibleArea.right,
+        bottom = surfaceHeight - visibleArea.bottom,
+    )
+}
+
+override fun onStableAreaChanged(stableArea: Rect) {
+    // The area guaranteed never to be covered. Put anything that must always
+    // be readable — the vehicle puck, a compass — inside this.
+    mapRenderer.setStableArea(stableArea)
+}
+```
+
+<Callout type="warning" title="Stable area and visible area are different">
+Visible area can change as panels appear. Stable area is the intersection that is
+always visible. Anchor persistent UI to the stable area and the camera to the
+visible one; swapping them produces a map that jumps every time a panel opens.
+</Callout>
+
+## Getting guidance onto the cluster
+
+The driver's eyes belong on the road, and the cluster is closer to that line than
+the centre stack. AAOS provides a channel for turn-by-turn instructions:
+
+```kotlin title="Publishing navigation state"
+val navStatus = car.getCarManager(Car.CAR_NAVIGATION_SERVICE)
+        as CarNavigationStatusManager
+
+// Announce that navigation has started
+navStatus.sendNavigationStateChange(
+    Bundle().apply {
+        putInt(NAV_STATE_KEY, NAV_STATE_ACTIVE)
+        putBundle(CURRENT_MANEUVER, maneuverBundle)
+        putBundle(DISTANCE_TO_MANEUVER, distanceBundle)
+    }
+)
+```
+
+This needs `android.car.permission.CAR_NAVIGATION_MANAGER` — signature-level,
+because only one app at a time may own the cluster's navigation surface.
+
+<Callout type="note" title="What the cluster does with it is the OEM's choice">
+Some vehicles render a simplified turn card. Some render a full map on the
+cluster. Some ignore it entirely on base trims. You publish structured
+instructions; you do not control the presentation, and you should not assume any
+particular one exists.
+</Callout>
+
+## Maneuver types are an enumeration, not free text
+
+The cluster cannot render your arrow bitmap — it has its own icon set, often
+drawn by a different OS entirely. Instructions are expressed as enumerated
+maneuver types plus parameters.
+
+```kotlin title="Structured, not pictorial"
+val maneuver = Maneuver.Builder(Maneuver.TYPE_ROUNDABOUT_ENTER_AND_EXIT_CW)
+    .setRoundaboutExitNumber(3)
+    .setRoundaboutExitAngle(120)
+    .build()
+
+Step.Builder()
+    .setManeuver(maneuver)
+    .setCue(CarText.Builder("Take the 3rd exit onto High Street").build())
+    .addLane(Lane.Builder()
+        .addDirection(LaneDirection.create(LaneDirection.SHAPE_NORMAL_RIGHT, true))
+        .build())
+    .build()
+```
+
+If your routing engine produces a maneuver the enumeration cannot express, map it
+to the closest supported type and put the detail in the cue string. An unmapped
+maneuver renders as nothing at all.
+
+## Background behaviour
+
+Navigation continues when the driver switches to media. That means:
+
+- **Run as a foreground service** with an ongoing notification, so the platform
+  does not reclaim you.
+- **Keep publishing** navigation state and audio guidance while backgrounded.
+- **Use `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE`** for prompts, so they duck media
+  rather than pausing it, and route to the navigation bus.
+
+```kotlin title="Guidance audio that behaves"
+val guidanceAttrs = AudioAttributes.Builder()
+    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+    .build()
+
+// Transient, may duck — never take full focus for a 3-second prompt
+audioManager.requestAudioFocus(
+    AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+        .setAudioAttributes(guidanceAttrs)
+        .build()
+)
+```
+
+Taking `AUDIOFOCUS_GAIN` for a turn prompt stops the driver's music permanently.
+It is a common bug and an extremely annoying one.
+
+## Testing
+
+```bash title="Navigation and cluster state"
+adb shell dumpsys car_service --services CarNavigationStatusService
+adb shell dumpsys media_session | grep -i navigation
+adb shell dumpsys display | grep -i cluster
+```
+
+The emulator can present a cluster display, which is enough to verify that you
+are publishing well-formed maneuvers even without OEM hardware.
+
+## Next
+
+Voice — the only input method that is genuinely safe at speed.

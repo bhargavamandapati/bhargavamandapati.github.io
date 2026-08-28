@@ -1,0 +1,248 @@
+---
+title: "Write SELinux policy for your own service"
+description: "Give your daemon a domain, label its files, and grant exactly what it needs — then prove the denial is gone."
+order: 3
+difficulty: "Advanced"
+time: "1–2 hours"
+outcome: "The telemetry daemon running in its own SELinux domain vendor_vega_telemetryd, writing to a properly labelled data directory, with zero denials on a fully enforcing build."
+prerequisites:
+  - label: "A native daemon that is currently blocked"
+    href: "/tutorials/platform/custom-init-service/"
+  - label: "How SELinux works in AAOS"
+    href: "/learn/security/sepolicy-automotive/"
+tags: ["SELinux", "SEPolicy", "Security"]
+sources:
+  - label: "Writing SELinux policy"
+    href: "https://source.android.com/docs/security/features/selinux/device-policy"
+  - label: "Validating SELinux"
+    href: "https://source.android.com/docs/security/features/selinux/validate"
+  - label: "AOSP sepolicy"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/sepolicy/"
+---
+
+Your daemon runs and cannot do its job. This fixes that properly — a domain of
+its own, a labelled data directory, and the narrowest set of rules that works.
+
+<FileTree>
+device/oem/vega/sepolicy/vendor/
+├── file_contexts             # which label goes on which path
+├── vendor_vega.te            # type declarations
+├── vendor_vega_telemetryd.te # the domain and its rules
+└── property_contexts         # labels for your system properties
+</FileTree>
+
+## Step 1 — See exactly what is being denied
+
+Before writing a single rule, collect the full denial set. On an enforcing build
+you only see the *first* denial, because the operation stops there.
+
+```bash title="Collect every denial, not just the first"
+# userdebug only — this makes SELinux log without blocking
+adb shell setenforce 0
+adb shell getenforce                 # Permissive
+
+# Restart the daemon so it retries everything
+adb shell stop vendor.vega.telemetryd
+adb shell start vendor.vega.telemetryd
+sleep 15
+
+adb shell dmesg | grep 'avc.*denied' | grep -i telemetryd
+
+# Put it back immediately
+adb shell setenforce 1
+```
+
+<Gotcha title="Permissive is a diagnostic, never a destination">
+Running permissive shows the complete denial set instead of stopping at the
+first one. Turn it straight back on. A domain shipped permissive is a shipped
+vulnerability, and CTS will fail the build.
+</Gotcha>
+
+## Step 2 — Declare your types
+
+```text title="device/oem/vega/sepolicy/vendor/vendor_vega.te"
+# The domain the telemetry daemon runs in.
+type vendor_vega_telemetryd, domain;
+
+# The label on its executable. The _exec suffix is a convention that the
+# init_daemon_domain macro below relies on.
+type vendor_vega_telemetryd_exec, exec_type, vendor_file_type, file_type;
+
+# The data directory it writes to.
+type vendor_vega_data_file, file_type, data_file_type;
+```
+
+Every type must be declared before it is used. The attributes after the comma
+(`domain`, `file_type`, …) are what let AOSP's global rules and `neverallow`
+assertions reason about your types.
+
+## Step 3 — Label the files
+
+```text title="device/oem/vega/sepolicy/vendor/file_contexts"
+# The daemon binary
+/vendor/bin/vega-telemetryd    u:object_r:vendor_vega_telemetryd_exec:s0
+
+# Its data directory and everything under it
+/data/vendor/vega(/.*)?        u:object_r:vendor_vega_data_file:s0
+```
+
+```text title="device/oem/vega/sepolicy/vendor/property_contexts"
+# Properties your daemon sets must be labelled, or SetProperty is denied
+vendor.vega.            u:object_r:vendor_vega_prop:s0
+```
+
+```text title="Add the property type to vendor_vega.te"
+type vendor_vega_prop, property_type;
+```
+
+<Gotcha title="An unlabelled path gets the generic parent label">
+If `file_contexts` has no entry for a path, it inherits its parent's label —
+typically `vendor_data_file`. Your denial then names `tcontext=…vendor_data_file`
+rather than your own type, which is the tell that the labelling is missing, not
+the allow rule.
+</Gotcha>
+
+## Step 4 — Write the domain rules
+
+```text title="device/oem/vega/sepolicy/vendor/vendor_vega_telemetryd.te"
+# Standard init-started daemon: sets up the domain transition from init,
+# and permits the basics every daemon needs.
+init_daemon_domain(vendor_vega_telemetryd)
+
+# --- Data directory -------------------------------------------------------
+allow vendor_vega_telemetryd vendor_vega_data_file:dir  rw_dir_perms;
+allow vendor_vega_telemetryd vendor_vega_data_file:file create_file_perms;
+
+# --- Properties -----------------------------------------------------------
+set_prop(vendor_vega_telemetryd, vendor_vega_prop)
+
+# Read the product properties set in vega.mk
+get_prop(vendor_vega_telemetryd, vendor_default_prop)
+
+# --- Logging --------------------------------------------------------------
+# Writing to logd. Most builds grant this via a macro; be explicit if not.
+allow vendor_vega_telemetryd vendor_vega_telemetryd:unix_dgram_socket create_socket_perms;
+```
+
+Grant the narrowest thing that works. `rw_dir_perms` on one type, not `*` on
+`file_type`. A reviewer should be able to read each line and say what it permits.
+
+## Step 5 — Point your product at the policy
+
+You added this line when you created the target. Confirm it is there:
+
+```makefile title="device/oem/vega/BoardConfig.mk"
+BOARD_VENDOR_SEPOLICY_DIRS += device/oem/vega/sepolicy/vendor
+```
+
+```bash title="Rebuild the policy and the image"
+cd ~/aosp && source build/envsetup.sh
+lunch vega-trunk_staging-userdebug
+
+# Policy is part of the image; a targeted rebuild is enough while iterating
+m selinux_policy
+m -j
+```
+
+<Verify title="Verify the policy compiled and your types exist">
+```bash
+# Your types made it into the built policy
+adb shell su 0 sesearch --allow -s vendor_vega_telemetryd \
+  /sys/fs/selinux/policy 2>/dev/null | head
+
+# Or check the source policy on the build host
+grep -r "vendor_vega_telemetryd" $ANDROID_PRODUCT_OUT/vendor/etc/selinux/ | head
+```
+</Verify>
+
+## Step 6 — Flash, boot and prove the denial is gone
+
+```bash title="The moment of truth"
+emulator -wipe-data -no-snapshot &
+adb wait-for-device
+sleep 30
+```
+
+<Verify title="Verify: correct domain, correct labels, zero denials">
+```bash
+# 1. The daemon runs in YOUR domain, not a generic one
+adb shell ps -Z | grep telemetryd
+# expect: u:r:vendor_vega_telemetryd:s0 ... vega-telemetryd
+
+# 2. The binary carries your exec label
+adb shell ls -Z /vendor/bin/vega-telemetryd
+# expect: u:object_r:vendor_vega_telemetryd_exec:s0
+
+# 3. The data directory carries your file label
+adb shell ls -Zd /data/vendor/vega
+# expect: u:object_r:vendor_vega_data_file:s0
+
+# 4. It is actually writing now
+adb shell cat /data/vendor/vega/telemetry.log
+# expect: sample=0, sample=1, ...
+
+# 5. The property was set
+adb shell getprop vendor.vega.telemetryd.ready    # 1
+
+# 6. ENFORCING, with no denials
+adb shell getenforce                              # Enforcing
+adb shell dmesg | grep -c 'avc.*denied.*telemetryd'   # 0
+```
+
+All six. Item 6 is the one that matters: zero denials **while enforcing**.
+</Verify>
+
+## Step 7 — Guard against regressions
+
+A denial introduced later is invisible until something breaks. Make it loud:
+
+```bash title="A check worth running in CI"
+#!/usr/bin/env bash
+set -euo pipefail
+
+adb wait-for-device
+sleep 45   # let boot settle
+
+DENIALS=$(adb shell dmesg | grep -c 'avc.*denied' || true)
+if [ "$DENIALS" -ne 0 ]; then
+  echo "FAIL: $DENIALS SELinux denials on boot"
+  adb shell dmesg | grep 'avc.*denied'
+  exit 1
+fi
+echo "PASS: no denials"
+```
+
+## Using audit2allow safely
+
+```bash title="A starting point, not an answer"
+adb shell dmesg | grep 'avc.*denied' > denials.txt
+audit2allow -i denials.txt
+```
+
+<Gotcha title="Never paste audit2allow output straight into policy">
+It generates the broadest rule that would have allowed what happened, frequently
+granting far more than intended. Use it to understand *what* was blocked, then
+write the narrowest rule yourself. Unexplained `audit2allow` blocks should be
+rejected in review.
+</Gotcha>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Domain shows as `vendor_init` or similar | `init_daemon_domain` missing, or exec label not applied |
+| `tcontext` names a generic type | Missing `file_contexts` entry for that path |
+| Labels wrong after an update | File contexts apply at creation; `-wipe-data` or relabel |
+| Build fails with `neverallow` | Your rule violates an AOSP assertion — the architecture is wrong, not the assertion |
+| `SetProperty` denied | Property prefix not labelled in `property_contexts` |
+| Works permissive, fails enforcing | You have more denials than you found; repeat step 1 |
+
+## What you have now
+
+A daemon with its own SELinux domain, its own labelled storage, and the minimum
+rules to function — verified enforcing with zero denials. That is the standard
+every vendor process on a shipping vehicle has to meet.
+
+## Next
+
+Into the vehicle: a VHAL of your own.

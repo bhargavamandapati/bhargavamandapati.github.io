@@ -1,0 +1,272 @@
+---
+title: "Electric vehicles and charging"
+description: "The property set that only exists on an EV — battery level, charge state, port status, range — and why an estimate the driver does not trust is worse than no estimate at all."
+order: 10
+difficulty: "Intermediate"
+tags: ["EV", "Charging", "Properties"]
+sources:
+  - label: "VehiclePropertyIds — EV properties"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java"
+  - label: "Vehicle properties reference"
+    href: "https://source.android.com/docs/automotive/vhal/property-configuration"
+  - label: "Build apps for Android Automotive OS"
+    href: "https://developer.android.com/training/cars"
+---
+
+An electric vehicle exposes a set of properties a combustion car simply does not
+have. If you have only worked on petrol programmes, this is a whole vocabulary
+you have not met.
+
+It is also the area where getting the *presentation* wrong causes the most
+customer complaints, because the numbers involved are estimates that people treat
+as facts.
+
+## Why EV data is different
+
+<Scenario title="A complaint you will hear">
+A driver sets off with 300 km of indicated range for a 250 km trip. Halfway there
+the indicated range reads 90 km with 140 km still to go.
+
+Nothing is broken. It is winter, the heater has been running, and they have been
+doing 120 km/h. All three reduce efficiency dramatically.
+
+But the driver was shown a single confident number, so they experienced it as the
+car lying to them. The engineering was fine; the presentation created the problem.
+</Scenario>
+
+<Plain>
+Almost every EV number is an **estimate that depends on the future**. Remaining
+range depends on how you are about to drive, the weather, and whether you use the
+heater.
+
+A fuel gauge is a measurement. A range estimate is a prediction. Treating the
+second like the first is the root of most EV UX failures.
+</Plain>
+
+## The core properties
+
+| Property | What it holds |
+| --- | --- |
+| `EV_BATTERY_LEVEL` | Current energy in the battery (Wh) |
+| `INFO_EV_BATTERY_CAPACITY` | Nominal usable capacity (Wh) — static |
+| `RANGE_REMAINING` | Estimated distance still available |
+| `EV_CHARGE_STATE` | Not charging, charging, completed, error |
+| `EV_CHARGE_PORT_OPEN` | Is the flap open |
+| `EV_CHARGE_PORT_CONNECTED` | Is a cable plugged in |
+| `EV_BATTERY_INSTANTANEOUS_CHARGE_RATE` | Current power flow (positive in, negative out) |
+| `EV_CHARGE_TIME_REMAINING` | Estimated seconds to the target |
+| `EV_CHARGE_PERCENT_LIMIT` | The charge ceiling the driver set |
+| `EV_CHARGE_SWITCH` | Start or stop charging |
+| `EV_REGENERATIVE_BRAKING_STATE` | Current regen setting |
+| `INFO_EV_CONNECTOR_TYPE` | Which plug standards this car accepts — static |
+| `INFO_EV_PORT_LOCATION` | Where the port physically is — static |
+
+<Plain>
+Notice the three marked static. Connector type, port location and battery
+capacity never change for a given vehicle, so they are `STATIC` change mode and
+the framework may cache them forever.
+
+`INFO_EV_PORT_LOCATION` exists so navigation can tell the driver which side to
+pull up on at a charger. It is a small detail that people notice.
+</Plain>
+
+## State of charge is not a percentage property
+
+There is no single "percent full" property. You compute it:
+
+```kotlin title="Deriving percentage from energy"
+val nowWh = properties.getFloatProperty(
+    VehiclePropertyIds.EV_BATTERY_LEVEL, GLOBAL,
+)
+val capacityWh = properties.getFloatProperty(
+    VehiclePropertyIds.INFO_EV_BATTERY_CAPACITY, GLOBAL,
+)
+
+val percent = ((nowWh / capacityWh) * 100f).coerceIn(0f, 100f)
+```
+
+<Plain>
+Why energy rather than percentage? Because percentage alone cannot answer "will
+this reach the next charger". Energy can, once you know consumption.
+
+It also avoids a whole class of bug where two subsystems disagree about whether
+"100%" means the physical maximum or the usable maximum.
+</Plain>
+
+<Scenario title="The battery capacity trap">
+An engineer divides by `INFO_EV_BATTERY_CAPACITY` and gets 94% on a car that has
+just finished charging to full.
+
+The cause: the vehicle's battery management system reserves a buffer at both ends
+to protect cell life, and the capacity property reports the nominal figure rather
+than the usable one — or the other way round, depending on the programme.
+
+**Do not assume.** Check what the vehicle actually reports when the battery is
+empty and when it is full, and clamp accordingly. This differs between OEMs and
+sometimes between model years.
+</Scenario>
+
+## Charging state, and the pair of properties people confuse
+
+```kotlin title="Two different questions"
+val portOpen = properties.getBooleanProperty(
+    VehiclePropertyIds.EV_CHARGE_PORT_OPEN, GLOBAL,
+)
+val cableIn = properties.getBooleanProperty(
+    VehiclePropertyIds.EV_CHARGE_PORT_CONNECTED, GLOBAL,
+)
+```
+
+<Plain>
+`PORT_OPEN` is about the flap. `PORT_CONNECTED` is about the cable.
+
+The flap can be open with nothing plugged in — that is the state right after the
+driver presses the button, and it is exactly when you want to show "connect the
+cable".
+
+Using one where you meant the other gives you a UI that says "charging" because
+somebody opened the flap.
+</Plain>
+
+Charge rate carries sign, and the sign is meaningful:
+
+```kotlin title="Direction matters"
+val rateW = properties.getFloatProperty(
+    VehiclePropertyIds.EV_BATTERY_INSTANTANEOUS_CHARGE_RATE, GLOBAL,
+)
+
+when {
+    rateW > 0 -> showCharging(rateW)                  // energy going in
+    rateW < 0 -> showDischarging(-rateW)              // driving, or V2L
+    else      -> showIdle()
+}
+```
+
+A negative rate while stationary means the car is powering something — vehicle-to-load,
+running the cabin, or preconditioning.
+
+## Presenting estimates honestly
+
+This is where the engineering meets the complaint from the top of the page.
+
+<Plain>
+Three rules that hold up:
+
+**Show a range, not a point.** "240–290 km" is honest and sets expectations
+correctly. "265 km" is a promise you cannot keep.
+
+**Attribute the change.** When the estimate drops because the heater came on, say
+so. A driver who understands why does not feel deceived.
+
+**Never round upward.** If the estimate is 97 km, show 95. Being conservative
+costs nothing and being optimistic strands people.
+</Plain>
+
+```kotlin title="Degrade honestly when the estimate is unreliable"
+val range = properties.getProperty(
+    Float::class.java, VehiclePropertyIds.RANGE_REMAINING, GLOBAL,
+)
+
+when (range?.status) {
+    CarPropertyValue.STATUS_AVAILABLE   -> showRange(range.value)
+    CarPropertyValue.STATUS_UNAVAILABLE -> showCalculating()   // not a zero
+    else                                -> showPercentOnly()
+}
+```
+
+Showing `0 km` because the property was unavailable is the same silent-failure
+pattern from the VHAL topics, and here it makes a driver stop at a charger they
+did not need.
+
+## Charging is a long-running background activity
+
+A car charges for hours, usually unattended, with the head unit suspended.
+
+<Plain>
+This means charging state must be handled by something that survives sleep —
+which is user 0 territory, not a foreground app. The <T>headless system user</T>
+topic explains why.
+
+It also means notifications matter more than screens. The driver is in a
+building. "Charging complete" and "charging interrupted" need to reach their
+phone, not a display nobody is looking at.
+</Plain>
+
+<Scenario title="The interrupted charge nobody was told about">
+A vehicle is plugged in overnight. At 2am the charger faults and stops.
+
+The head unit knows — `EV_CHARGE_STATE` went to an error value. But the app
+tracking it was a foreground activity that was killed hours ago, and nothing was
+listening.
+
+The driver finds out at 7am, with 40% charge and a commute to make.
+
+Charging state belongs to a service that runs as user 0 and survives suspend,
+with a path to notify the driver off-vehicle.
+</Scenario>
+
+## Writing: limits and switches
+
+Two properties are writable, and both need care.
+
+```kotlin title="Setting a charge ceiling"
+properties.setFloatProperty(
+    VehiclePropertyIds.EV_CHARGE_PERCENT_LIMIT, GLOBAL, 80f,
+)
+```
+
+Many drivers cap at 80% to preserve battery life. The property may only accept
+specific values — check the config's supported values rather than assuming any
+percentage works.
+
+```kotlin title="Starting and stopping"
+properties.setBooleanProperty(
+    VehiclePropertyIds.EV_CHARGE_SWITCH, GLOBAL, true,
+)
+```
+
+Both need `android.car.permission.CONTROL_CAR_ENERGY` — signature-level, because
+they change vehicle behaviour.
+
+<Plain>
+And as always: **render from `onChangeEvent`, never optimistically.** A charge
+switch the vehicle rejects — because the cable is not connected, or the charger
+is not authorised — arrives on `onErrorEvent`, not as an exception.
+</Plain>
+
+## Checking what a vehicle actually has
+
+Combustion vehicles do not have these properties at all, and even among EVs the
+set differs.
+
+```kotlin title="Feature detection, not assumption"
+val isElectric = properties.propertyList.any {
+    it.propertyId == VehiclePropertyIds.EV_BATTERY_LEVEL
+}
+
+val canSetLimit = properties.propertyList.any {
+    it.propertyId == VehiclePropertyIds.EV_CHARGE_PERCENT_LIMIT
+}
+```
+
+```bash title="On a device"
+adb shell dumpsys car_service --list-properties | grep -i EV_
+```
+
+<Recap>
+- EV properties **only exist on an EV**, and not all EVs have all of them. Detect,
+  do not assume.
+- There is **no percentage property** — derive it from energy and capacity, and
+  clamp, because "full" may not be 100%.
+- `PORT_OPEN` is the flap; `PORT_CONNECTED` is the cable. They answer different
+  questions.
+- **Charge rate is signed.** Negative means energy leaving the battery.
+- Range is a **prediction, not a measurement.** Show a range, attribute changes,
+  and never round up.
+- Charging runs for hours with the head unit asleep — it belongs to a **user 0
+  service**, with an off-vehicle notification path.
+</Recap>
+
+## Next
+
+Where the vehicle thinks it is, and what happens in a tunnel.

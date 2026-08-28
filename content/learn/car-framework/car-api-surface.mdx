@@ -1,0 +1,159 @@
+---
+title: "The android.car API map"
+description: "Which manager owns what, which permission each needs, and how to work out whether the thing you want to build is even possible on AAOS."
+order: 3
+difficulty: "Intermediate"
+tags: ["Car API", "App development", "Permissions"]
+sources:
+  - label: "android.car package reference"
+    href: "https://developer.android.com/reference/android/car/package-summary"
+  - label: "car-lib source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/"
+  - label: "Car permissions"
+    href: "https://developer.android.com/reference/android/car/Car"
+---
+
+The most common question from an app team new to AAOS is "can I get X?" This page
+is the map that answers it.
+
+## Everything starts at `Car`
+
+```kotlin title="The entry point"
+val car = Car.createCar(context)
+
+val properties = car.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
+val audio      = car.getCarManager(Car.AUDIO_SERVICE) as CarAudioManager
+val restrict   = car.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE)
+        as CarUxRestrictionsManager
+```
+
+`Car` is a connection to Car Service, and the managers are handles into its
+subservices. Read the constants in <Src path="packages/services/Car/car-lib/src/android/car/Car.java" label="Car.java" /> —
+it is the authoritative list of what exists on your platform version.
+
+## The managers worth knowing
+
+| Manager | What it gives you | Typical permission |
+| --- | --- | --- |
+| `CarPropertyManager` | All vehicle properties | Per property |
+| `CarAudioManager` | Zones, volume groups, focus | `CAR_CONTROL_AUDIO_VOLUME` |
+| `CarUxRestrictionsManager` | Driver distraction state | none to read |
+| `CarPackageManager` | Is this activity distraction-optimised? | none to read |
+| `CarPowerManager` | Power state, shutdown callbacks | `CAR_POWER` |
+| `CarUserManager` | User switching and lifecycle | `MANAGE_USERS` |
+| `CarOccupantZoneManager` | Displays, seats, users | varies |
+| `CarWatchdogManager` | Health reporting | none to register |
+| `CarInfoManager` | Static vehicle info (make, model, year) | `CAR_INFO` |
+| `CarSensorManager` | Legacy sensor wrapper — prefer properties | varies |
+| `CarNavigationStatusManager` | Push turn-by-turn to the cluster | `CAR_NAVIGATION_MANAGER` |
+
+## Permissions, and the two-tier reality
+
+Car permissions split into two very different groups, and confusing them wastes
+weeks.
+
+**Normal/dangerous permissions** any app can request, subject to user consent:
+
+```xml title="Requestable by a normal app"
+<uses-permission android:name="android.car.permission.CAR_INFO"/>
+<uses-permission android:name="android.car.permission.CAR_ENERGY"/>
+<uses-permission android:name="android.car.permission.CAR_SPEED"/>
+<uses-permission android:name="android.car.permission.CAR_EXTERIOR_ENVIRONMENT"/>
+```
+
+**Signature/privileged permissions** that require the platform key or a
+`privapp-permissions` grant:
+
+```xml title="System apps only"
+<uses-permission android:name="android.car.permission.CONTROL_CAR_CLIMATE"/>
+<uses-permission android:name="android.car.permission.CONTROL_CAR_DOORS"/>
+<uses-permission android:name="android.car.permission.CONTROL_CAR_SEATS"/>
+<uses-permission android:name="android.car.permission.CAR_POWER"/>
+```
+
+<Callout type="warning" title="Anything that actuates the vehicle is signature-level">
+Reading speed is a normal permission. Moving a window is not. If your feature
+writes a property that physically moves something, your app must be part of the
+system image — which means the OEM ships it, and your release cadence becomes
+theirs. Find this out during scoping, not during integration.
+</Callout>
+
+## Deciding whether something is possible
+
+A reliable four-step check, in order:
+
+**1. Does a system property already exist for it?**
+Search <Src path="packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java" label="VehiclePropertyIds.java" />.
+If yes, you inherit the permission mapping and CTS coverage.
+
+**2. Does this vehicle actually implement it?**
+A property existing in AOSP says nothing about this trim.
+
+```bash
+adb shell dumpsys car_service --list-properties | grep -i window
+```
+
+**3. What permission does it need, and can you hold it?**
+If it is signature-level and you are not in the system image, the answer is no
+until the OEM includes you.
+
+**4. Is it restricted while driving?**
+Even with access, `CarUxRestrictionsManager` may block the interaction above a
+speed threshold.
+
+## Feature detection, not assumption
+
+Different vehicles, trims and platform versions expose different things. Ask:
+
+```kotlin title="Detect, do not assume"
+// Is this an automotive build at all?
+val isCar = context.packageManager
+    .hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)
+
+// Does this vehicle support the property, in this area?
+val supported = properties.propertyList.any {
+    it.propertyId == VehiclePropertyIds.WINDOW_POS
+}
+
+// Is it available right now? (trailer absent, module asleep, …)
+val available = properties.isPropertyAvailable(
+    VehiclePropertyIds.WINDOW_POS, VehicleAreaWindow.WINDOW_ROW_1_LEFT,
+)
+```
+
+Every one of those can differ between two cars rolling off the same line with
+different option packages.
+
+## The distraction rules apply to you
+
+```kotlin title="Responding to UX restrictions"
+val manager = car.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE)
+        as CarUxRestrictionsManager
+
+manager.registerListener { restrictions ->
+    val noVideo = restrictions.isRequiresDistractionOptimization &&
+        (restrictions.activeRestrictions and
+            CarUxRestrictions.UX_RESTRICTIONS_NO_VIDEO) != 0
+
+    if (noVideo) pauseVideoPlayback()
+}
+```
+
+The restriction set includes limits on video, keyboard entry, string length and
+the number of items in a list. They change with driving state, and the framework
+enforces the important ones whether you cooperate or not — cooperating just makes
+the experience less jarring.
+
+## Where to read next in the source
+
+- <Src path="packages/services/Car/car-lib/src/android/car/Car.java" label="Car.java" /> — every service constant and permission name.
+- <Src path="packages/services/Car/car-lib/src/android/car/hardware/property/CarPropertyManager.java" label="CarPropertyManager.java" /> — the most-used manager.
+- <Sym name="CarUxRestrictions" /> — the full restriction flag set.
+
+The Javadoc in `car-lib` is genuinely good and is the fastest way to answer
+"what does this actually do".
+
+## Next
+
+Multi-user is the part of the framework that most surprises engineers arriving
+from phone Android.

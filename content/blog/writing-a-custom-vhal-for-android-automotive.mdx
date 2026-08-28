@@ -1,0 +1,145 @@
+---
+title: "Writing a Custom VHAL for Android Automotive"
+description: "A practical walkthrough of adding a vendor-defined vehicle property to AAOS — from property ID and permissions to CarPropertyManager on the app side."
+date: "2026-08-12"
+tags: ["AAOS", "VHAL", "AOSP", "Automotive"]
+featured: true
+draft: false
+---
+
+The Vehicle HAL is the narrowest and most important interface in Android Automotive.
+Everything the driver sees — the gear indicator, cabin temperature, whether the charge
+port is open — arrives through it. Get the VHAL contract right and the layers above stay
+boring. Get it wrong and you will debug it for the rest of the programme.
+
+This is the path I follow when adding a vendor-specific property to an AAOS build.
+
+## Start with the property ID, not the code
+
+A vehicle property ID is not an arbitrary integer. It is a packed bitfield, and each
+field is load-bearing:
+
+| Field | Meaning |
+| --- | --- |
+| `VehiclePropertyGroup` | `SYSTEM` for AOSP-defined, `VENDOR` for yours |
+| `VehiclePropertyType` | `BOOLEAN`, `INT32`, `FLOAT`, `MIXED`, … |
+| `VehicleArea` | `GLOBAL`, `SEAT`, `DOOR`, `WINDOW`, `MIRROR`, `WHEEL` |
+| Unique ID | 16-bit identifier you allocate |
+
+For anything you define, the group **must** be `VENDOR` (`0x2000_0000`). Using
+`SYSTEM` for a custom property will collide with a future AOSP upgrade, and that is a
+painful thing to discover during a platform bump.
+
+```kotlin title="VendorProperties.kt"
+object VendorProperties {
+  // VENDOR | INT32 | SEAT | 0x0501
+  const val SEAT_MASSAGE_INTENSITY = 0x2000_0000 or
+      0x0040_0000 or   // INT32
+      0x0500_0000 or   // SEAT area
+      0x0501
+}
+```
+
+<Callout type="warning" title="Area IDs are not seat numbers">
+An area ID is a **bitmask** of `VehicleAreaSeat` values, not an index. A property
+supporting both front seats reports `ROW_1_LEFT or ROW_1_RIGHT` as two separate area
+configs — not one config with the value `2`.
+</Callout>
+
+## Declare the property config
+
+The config is what `CarPropertyManager` reads to decide whether your property is
+readable, writable, and what values it will accept. Be precise here; vague configs
+produce vague bugs.
+
+```cpp title="DefaultConfig.h"
+{
+  .config = {
+    .prop = toInt(VendorProperty::SEAT_MASSAGE_INTENSITY),
+    .access = VehiclePropertyAccess::READ_WRITE,
+    .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+    .areaConfigs = {
+      { .areaId = SEAT_1_LEFT,  .minInt32Value = 0, .maxInt32Value = 5 },
+      { .areaId = SEAT_1_RIGHT, .minInt32Value = 0, .maxInt32Value = 5 },
+    },
+  },
+  .initialValue = { .int32Values = {0} },
+}
+```
+
+Two choices deserve thought:
+
+- **`changeMode`** — `ON_CHANGE` for state that moves in discrete steps,
+  `CONTINUOUS` for sampled signals like speed. `CONTINUOUS` obliges you to honour
+  `minSampleRate` and `maxSampleRate`, and a subscriber will hold you to it.
+- **`access`** — `READ_WRITE` means the app layer can set it. If the ECU owns the
+  value and Android only observes, use `READ` and save yourself a class of race
+  conditions.
+
+## Permissions are a two-sided contract
+
+A vendor property needs a vendor permission, and SELinux has to agree. Skipping the
+second half is the single most common reason a property "works on the bench and not
+on the target".
+
+```xml title="frameworks/base/core/res/AndroidManifest.xml"
+<permission
+    android:name="com.oem.car.permission.CONTROL_SEAT_MASSAGE"
+    android:protectionLevel="signature|privileged" />
+```
+
+Then map the property to that permission in the Car service policy, and add the
+SEPolicy rules that let your HAL process talk to the vehicle bus:
+
+```text title="sepolicy/vendor/hal_vehicle_default.te"
+allow hal_vehicle_default vendor_can_device:chr_file rw_file_perms;
+allow hal_vehicle_default vendor_seat_hwservice:hwservice_manager find;
+```
+
+<Callout type="tip" title="Denials fail quietly">
+`adb shell dmesg | grep avc` during bring-up. A missing SEPolicy rule usually surfaces
+as a property that silently returns its initial value forever — not as a crash.
+</Callout>
+
+## Consume it from the app layer
+
+Once the config is in place, the app side is unremarkable, which is the goal:
+
+```kotlin title="SeatMassageController.kt"
+private val callback = object : CarPropertyManager.CarPropertyEventCallback {
+  override fun onChangeEvent(value: CarPropertyValue<*>) {
+    val intensity = value.value as Int
+    updateUi(value.areaId, intensity)
+  }
+
+  override fun onErrorEvent(propId: Int, areaId: Int) {
+    Log.w(TAG, "Property $propId failed for area $areaId")
+  }
+}
+
+fun start(manager: CarPropertyManager) {
+  manager.registerCallback(
+    callback,
+    VendorProperties.SEAT_MASSAGE_INTENSITY,
+    CarPropertyManager.SENSOR_RATE_ONCHANGE,
+  )
+}
+```
+
+Always implement `onErrorEvent`. A `set` that the ECU rejects arrives there, not as an
+exception — and a UI that optimistically renders the requested value will drift out of
+sync with the vehicle.
+
+## Validate before you integrate
+
+Before the property goes anywhere near an infotainment build, prove it in isolation:
+
+1. `adb shell dumpsys car_service --property <id>` to confirm the config is registered.
+2. Drive the property from a reference VHAL or simulator across its full range,
+   including out-of-range values, which must be rejected rather than clamped silently.
+3. Exercise every area ID independently — a config that works for `ROW_1_LEFT` and
+   silently no-ops for `ROW_1_RIGHT` is a very common copy-paste defect.
+
+The VHAL is a contract between two organisations that usually sit on different
+continents. Treating the config as the specification — rather than the code beneath it —
+is what keeps that contract honest.

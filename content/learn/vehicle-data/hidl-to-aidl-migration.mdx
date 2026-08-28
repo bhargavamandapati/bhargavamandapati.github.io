@@ -1,0 +1,179 @@
+---
+title: "Migrating the VHAL from HIDL to AIDL"
+description: "What actually changes when the Vehicle HAL moves interface technology — batched requests, a new callback model, and the compatibility strategy that keeps a shipped vehicle working."
+order: 7
+difficulty: "Advanced"
+tags: ["VHAL", "AIDL", "HIDL", "Migration"]
+sources:
+  - label: "AIDL for HALs"
+    href: "https://source.android.com/docs/core/architecture/aidl/aidl-hals"
+  - label: "VHAL interface reference"
+    href: "https://source.android.com/docs/automotive/vhal/vhal-interface"
+  - label: "AIDL VHAL definition"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/IVehicle.aidl"
+---
+
+The property model did not change. The plumbing did. If you inherit a HIDL VHAL,
+this is what the migration actually involves — and it is more than a mechanical
+rewrite.
+
+## Why it happened
+
+HIDL was Treble's first attempt at a stable vendor interface. AIDL already
+existed for framework IPC, was better understood, had better tooling, and
+supported versioning more naturally. Rather than maintain two mechanisms, AOSP
+converged on AIDL for HALs.
+
+For the VHAL specifically, the change also fixed a real performance problem.
+
+## The interface differences that matter
+
+### Batching
+
+HIDL was one property per call:
+
+```cpp title="HIDL — one round trip per property"
+Return<void> get(const VehiclePropValue& requestedPropValue, get_cb _hidl_cb);
+Return<StatusCode> set(const VehiclePropValue& propValue);
+```
+
+AIDL takes arrays and answers through a callback:
+
+```java title="AIDL — batched, asynchronous"
+interface IVehicle {
+    void getValues(in IVehicleCallback callback, in GetValueRequests requests);
+    void setValues(in IVehicleCallback callback, in SetValueRequests requests);
+    VehiclePropConfigs getAllPropConfigs();
+    void subscribe(in IVehicleCallback callback, in SubscribeOptions[] options,
+                   int maxSharedMemoryFileCount);
+    void unsubscribe(in IVehicleCallback callback, in int[] propIds);
+}
+```
+
+Reading forty properties at boot is one transaction instead of forty. On a head
+unit where Car Service queries a large property catalogue during startup, that is
+measurable boot time.
+
+### Requests carry an ID
+
+Because responses arrive asynchronously, every request has a `requestId` and the
+callback correlates results back:
+
+```cpp title="Correlating results"
+void MyVehicleHardware::getValues(
+        std::shared_ptr<const GetValuesCallback> callback,
+        const std::vector<GetValueRequest>& requests) {
+    std::vector<GetValueResult> results;
+    results.reserve(requests.size());
+
+    for (const auto& request : requests) {
+        GetValueResult result;
+        result.requestId = request.requestId;   // must echo it back
+        result.status = readProperty(request.prop, &result.prop);
+        results.push_back(std::move(result));
+    }
+    (*callback)(std::move(results));
+}
+```
+
+<Callout type="warning" title="Dropping a requestId hangs the framework">
+If your implementation fails to return a result for a request, Car Service waits
+for it and eventually times out. Every request in the batch must produce exactly
+one result — including the ones that failed. Return the error, do not skip it.
+</Callout>
+
+### Large payloads move through shared memory
+
+AIDL supports passing large value sets through shared memory files rather than
+the binder buffer. `subscribe()` takes `maxSharedMemoryFileCount` for exactly
+this. If you publish high-rate or bulk data, this is where the throughput comes
+from — and it is a genuinely new concern relative to HIDL.
+
+### Types moved namespace
+
+```cpp title="Include and namespace changes"
+// HIDL
+#include <android/hardware/automotive/vehicle/2.0/IVehicle.h>
+using namespace android::hardware::automotive::vehicle::V2_0;
+
+// AIDL
+#include <aidl/android/hardware/automotive/vehicle/IVehicle.h>
+using namespace aidl::android::hardware::automotive::vehicle;
+```
+
+Enum values are unchanged — `VehiclePropertyGroup::VENDOR` is still
+`0x20000000` — so property IDs and configs survive the move intact. That is the
+good news: **your property catalogue is portable.**
+
+## The compatibility strategy
+
+The critical realisation is that you rarely migrate a shipped vehicle. You
+migrate the next programme, while the shipped one stays on HIDL.
+
+AOSP ships a bridge for the transition period so a HIDL VHAL can serve an AIDL
+framework. It works, and it is the right answer for a build that must move
+platform version before the supplier can deliver an AIDL HAL. It is not a
+destination — you carry a translation layer and its latency indefinitely.
+
+```bash title="Which one is actually running?"
+adb shell lshal | grep -i vehicle
+# android.hardware.automotive.vehicle@2.0::IVehicle/default    -> HIDL
+# android.hardware.automotive.vehicle.IVehicle/default         -> AIDL
+```
+
+## Structuring the migration
+
+The mistake is rewriting the whole HAL at once. The version that works:
+
+**1. Separate the vehicle logic from the interface.** Before touching AIDL,
+refactor so your CAN handling, scaling and property storage sit behind a plain
+C++ interface with no HIDL types in its signature. This is the real work, and it
+is testable on its own.
+
+```cpp title="The seam that makes migration cheap"
+class VehicleHardware {              // no HIDL, no AIDL types
+public:
+    virtual StatusCode read(int32_t prop, int32_t areaId, Value* out) = 0;
+    virtual StatusCode write(int32_t prop, int32_t areaId, const Value& v) = 0;
+    virtual void setChangeCallback(ChangeCallback cb) = 0;
+};
+```
+
+**2. Write a thin AIDL adapter** over that interface. Batching, request IDs and
+callbacks live here and nowhere else.
+
+**3. Keep both adapters** during the transition, selected by build flag, so one
+codebase serves both programmes.
+
+**4. Migrate config generation last.** Property configs are data; if step 1 was
+done properly they need almost no change.
+
+<Callout type="tip" title="The refactor is the deliverable">
+Teams that go straight to AIDL end up with batching logic tangled through their
+CAN handling and no way to test either. Teams that extract the seam first find
+the AIDL adapter is a few hundred lines and the vehicle logic is unchanged.
+</Callout>
+
+## What to re-test, not assume
+
+The property model is identical, so the tests worth re-running are the ones about
+the *plumbing*:
+
+- **Batched reads** — forty properties in one call, including some that fail.
+- **Every request returns a result**, including `NOT_AVAILABLE` and errors.
+- **Subscription rates** still honour `minSampleRate` / `maxSampleRate`.
+- **Timestamps** are still `CLOCK_BOOTTIME` nanoseconds.
+- **Boot behaviour** — Car Service's initial `getAllPropConfigs` and the burst of
+  reads that follows.
+
+```bash title="Prove the interface, not just the values"
+atest VtsHalAutomotiveVehicle_TargetTest
+adb shell dumpsys car_service --list-properties | wc -l   # same count as before?
+```
+
+That property count check is crude and catches a surprising amount: if the number
+changed across the migration, a config was lost in translation.
+
+## Next
+
+Subscriptions are where most of the remaining VHAL performance work lives.

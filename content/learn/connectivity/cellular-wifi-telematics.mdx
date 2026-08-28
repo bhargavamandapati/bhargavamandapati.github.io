@@ -1,0 +1,152 @@
+---
+title: "Cellular, Wi-Fi and the connected vehicle"
+description: "A modem that must work for fifteen years across network generations, a data budget somebody pays for, and a vehicle that is offline more often than it is online."
+order: 3
+difficulty: "Intermediate"
+tags: ["Connectivity", "TCU", "Data"]
+sources:
+  - label: "Android connectivity"
+    href: "https://source.android.com/docs/core/connect"
+  - label: "Data saver and metered networks"
+    href: "https://developer.android.com/training/basics/network-ops/data-saver"
+  - label: "JobScheduler network constraints"
+    href: "https://developer.android.com/reference/android/app/job/JobInfo.Builder"
+---
+
+Connectivity in a vehicle is not a phone's connectivity with a different antenna.
+The economics, the lifetime and the availability model are all different, and
+each one changes how you should design.
+
+## Who owns the modem
+
+Three arrangements, and it matters which one you are on:
+
+| Arrangement | Modem | Implication |
+| --- | --- | --- |
+| **TCU-owned** (most common) | Separate telematics unit | Android is a client; you get an IP link, not a radio |
+| **Head-unit modem** | Inside the head unit | Android has telephony APIs and more control |
+| **Tethered only** | The driver's phone | Connectivity comes and goes with the person |
+
+On a TCU-owned vehicle, `TelephonyManager` may report almost nothing useful,
+because Android genuinely does not have a radio. Code that assumes it does will
+behave differently across trims of the same vehicle.
+
+```kotlin title="Ask about the link, not the radio"
+val cm = context.getSystemService(ConnectivityManager::class.java)
+
+cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+    override fun onCapabilitiesChanged(net: Network, caps: NetworkCapabilities) {
+        val metered = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        onLinkChanged(usable = validated, metered = metered)
+    }
+
+    override fun onLost(net: Network) = onLinkChanged(usable = false, metered = true)
+})
+```
+
+`NET_CAPABILITY_VALIDATED` is the one to check. A vehicle frequently has a link
+that is *up* but has no working internet path — a tunnel, a dead cell, a captive
+portal at a service centre.
+
+## The fifteen-year modem problem
+
+A vehicle sold today must connect for the next decade and a half. In that time,
+network generations are switched off. 2G and 3G shutdowns have already stranded
+connected features in vehicles still on the road.
+
+Practical consequences for software:
+
+- **Never assume a specific generation.** Design for "sometimes slow, sometimes
+  absent", not for a bandwidth figure.
+- **Version your protocols.** The server will be rewritten several times during
+  the vehicle's life; the client will not.
+- **Degrade to useful.** A feature that is merely worse offline is fine. A
+  feature that is broken offline will be broken for years, in vehicles you
+  cannot update easily.
+
+<Callout type="warning" title="Anything that requires connectivity will eventually not have it">
+The vehicle spends most of its life parked, often in a garage with no signal, and
+some of its life in places where the network it was designed for no longer
+exists. Offline is the normal case, not the error case.
+</Callout>
+
+## Somebody pays for the data
+
+The OEM usually funds a data allowance per vehicle. That allowance is finite, and
+it is shared between map updates, OTA payloads, telemetry, connected services and
+anything your feature does.
+
+This is why Garage Mode and job constraints are not optional politeness:
+
+```kotlin title="Bulk transfer belongs in Garage Mode on an unmetered link"
+val job = JobInfo.Builder(JOB_ID, ComponentName(context, SyncJob::class.java))
+    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+    .setRequiresDeviceIdle(true)      // Garage Mode reports idle
+    .setRequiresCharging(true)
+    .setPersisted(true)
+    .setBackoffCriteria(30_000, JobInfo.BACKOFF_POLICY_EXPONENTIAL)
+    .build()
+```
+
+And why sync design should be incremental:
+
+```kotlin title="Resumable, incremental, cheap to abandon"
+suspend fun sync(cursor: String?): SyncResult {
+    val page = api.fetch(since = cursor, limit = 200)
+    store.apply(page.items)
+    // Checkpoint every page: Garage Mode can end at any moment.
+    store.saveCursor(page.nextCursor)
+    return if (page.hasMore) SyncResult.MORE else SyncResult.DONE
+}
+```
+
+A sync that must complete in one uninterrupted run will be killed partway,
+restart from zero next time, and never finish — while consuming the allowance
+every attempt.
+
+## Wi-Fi in a vehicle
+
+Wi-Fi appears in three roles, easily confused:
+
+**Client.** The vehicle joins the owner's home network when parked on the
+driveway — the preferred path for large OTA payloads, because it is free.
+
+**Hotspot.** The vehicle shares its cellular connection with passengers. This
+consumes the data allowance and is usually a paid feature.
+
+**Projection.** Wireless Android Auto or CarPlay uses a direct Wi-Fi link to the
+phone, entirely separate from internet connectivity.
+
+```bash title="Which role is active"
+adb shell dumpsys wifi | grep -iE 'mNetworkInfo|Wi-Fi is|SoftAp'
+adb shell dumpsys connectivity | grep -A5 -i 'Active default network'
+```
+
+Designing OTA to prefer home Wi-Fi is one of the highest-value connectivity
+decisions on a programme: it moves the largest transfers off the metered link
+entirely.
+
+## Privacy
+
+A connected vehicle generates location, movement and usage data continuously. The
+rules from the telemetry topic apply with more force here, because the data
+leaves the vehicle:
+
+- Aggregate on device; upload summaries.
+- Never combine location with driving behaviour without a specific consent.
+- Make every upload switchable off per market, at runtime.
+- Retain nothing longer than the stated purpose requires.
+
+## A design checklist
+
+1. Does the feature work offline? For days?
+2. Does it degrade, or does it break?
+3. Is bulk transfer deferred to Garage Mode on an unmetered link?
+4. Is the sync incremental and resumable?
+5. Is the protocol versioned for a server that will outlive its design?
+6. Does it check `NET_CAPABILITY_VALIDATED`, not just "connected"?
+
+## Next
+
+Power and boot — the budgets that constrain everything above.

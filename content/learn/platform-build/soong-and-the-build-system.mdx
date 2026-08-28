@@ -1,0 +1,169 @@
+---
+title: "Soong, Android.bp and the AOSP build"
+description: "How AOSP actually builds — blueprint files, modules, visibility and the partition a module lands on. Enough to add a module and understand why yours does not build."
+order: 1
+difficulty: "Intermediate"
+tags: ["Soong", "Build", "AOSP"]
+sources:
+  - label: "Soong build system"
+    href: "https://source.android.com/docs/setup/build"
+  - label: "Android.bp file format"
+    href: "https://source.android.com/docs/setup/reference/androidbp"
+  - label: "Soong sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:build/soong/"
+---
+
+AOSP moved from Make to **Soong**, which reads declarative `Android.bp` files and
+generates Ninja build rules. You will meet it the first time you add a module,
+and again every time something does not link.
+
+## A blueprint file
+
+`Android.bp` is JSON-like and declarative. No conditionals, no loops, no shell —
+deliberately, so the build graph is analysable.
+
+```json title="Android.bp — an app and a library"
+android_app {
+    name: "OemComfortApp",
+    srcs: ["src/**/*.kt"],
+    resource_dirs: ["res"],
+    manifest: "AndroidManifest.xml",
+
+    static_libs: [
+        "androidx.appcompat_appcompat",
+        "car-ui-lib",
+        "oem-comfort-lib",
+    ],
+    libs: ["android.car"],          // provided by the platform, not bundled
+
+    platform_apis: true,            // needs @hide / system APIs
+    certificate: "platform",        // signed with the platform key
+    privileged: true,               // installs to priv-app
+    product_specific: true,         // lands on /product
+}
+
+java_library {
+    name: "oem-comfort-lib",
+    srcs: ["lib/**/*.java"],
+    sdk_version: "system_current",
+    visibility: ["//vendor/oem/comfort:__subpackages__"],
+}
+```
+
+The distinctions that matter most:
+
+| Property | Meaning |
+| --- | --- |
+| `static_libs` | Compiled into your APK |
+| `libs` | Available at compile time, provided at runtime |
+| `platform_apis` | You may use hidden and system APIs |
+| `certificate` | Which key signs it — `platform` grants signature permissions |
+| `privileged` | Installs to `priv-app`, needs a `privapp-permissions` entry |
+| `product_specific` / `vendor` / `system_ext` | Which partition it lands on |
+
+<Callout type="warning" title="Partition choice is an architecture decision">
+`vendor: true` puts your module behind the Treble boundary, where it cannot use
+framework APIs. `product_specific: true` keeps it on the OEM partition with full
+framework access. Choosing wrong produces link errors that look like missing
+dependencies and are actually a boundary violation.
+</Callout>
+
+## Native modules
+
+```json title="A vendor HAL service"
+cc_binary {
+    name: "android.hardware.automotive.vehicle@2.0-oem-service",
+    vendor: true,                    // /vendor partition
+    relative_install_path: "hw",
+    init_rc: ["vehicle-oem-service.rc"],
+    vintf_fragments: ["vehicle-oem-service.xml"],
+
+    srcs: ["src/*.cpp"],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libutils",
+        "android.hardware.automotive.vehicle-V2-ndk",
+    ],
+    static_libs: ["libvhalclient"],
+    cflags: ["-Wall", "-Werror"],
+}
+```
+
+`init_rc` and `vintf_fragments` are the two that get forgotten. Without the
+first, nothing starts your service. Without the second, the HAL is not declared
+in VINTF and `lshal` will not find it even though the binary is running.
+
+## Finding and building one module
+
+```bash title="Day-to-day commands"
+source build/envsetup.sh
+lunch aosp_car_x86_64-trunk_staging-userdebug
+
+# Build a single module — far faster than a full build
+m OemComfortApp
+
+# Where did it go?
+m OemComfortApp && ls $ANDROID_PRODUCT_OUT/product/priv-app/OemComfortApp/
+
+# Which module defines this?
+m nothing && grep -r "name: \"car-ui-lib\"" --include=Android.bp
+
+# Install just this module onto a running device
+adb root && adb remount
+adb sync product
+adb reboot
+```
+
+`m <module>` is the habit worth forming. Rebuilding the world to test a one-line
+change is the most common self-inflicted productivity loss on AOSP.
+
+## Visibility
+
+Soong enforces who may depend on what:
+
+```json title="Restricting a module's consumers"
+java_library {
+    name: "oem-internal-lib",
+    visibility: [
+        "//vendor/oem/comfort",
+        "//vendor/oem/climate:__subpackages__",
+    ],
+}
+```
+
+A dependency outside that list fails at build time. On a large platform this is
+what stops a slow accretion of cross-team coupling that nobody intended.
+
+## When the build fails
+
+```bash title="Diagnosing"
+# What does this module actually depend on?
+m OemComfortApp --build-mode --dep-file
+
+# Full log of the last build
+less out/verbose.log.gz
+
+# Someone else's stale output
+m clean && m OemComfortApp
+
+# Nuclear, and rarely necessary
+rm -rf out/
+```
+
+The failures that recur:
+
+| Error | Usual cause |
+| --- | --- |
+| `module not found` | Typo, or a visibility restriction |
+| `cannot find symbol` for a framework class | Missing `platform_apis` or wrong `sdk_version` |
+| Link error in a vendor module | Trying to use a system-only library across Treble |
+| `duplicate module name` | Two `Android.bp` files defining the same name |
+| Works locally, fails in CI | Stale `out/` locally hiding a missing dependency |
+
+That last one is worth internalising: a build that only works incrementally is
+broken. Verify from clean before claiming it builds.
+
+## Next
+
+Assembling those modules into a product for a specific board.

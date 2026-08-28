@@ -1,0 +1,162 @@
+---
+title: "Getting an AAOS build running"
+description: "Syncing AOSP, choosing an automotive lunch target, building the emulator image, and the hardware you actually need — plus honest numbers on disk, RAM and time."
+order: 4
+difficulty: "Beginner"
+tags: ["AOSP", "Build", "Emulator"]
+sources:
+  - label: "Downloading the AOSP source"
+    href: "https://source.android.com/docs/setup/download"
+  - label: "Building Android for automotive"
+    href: "https://source.android.com/docs/automotive/start/pixelxl"
+  - label: "Android Automotive emulator"
+    href: "https://source.android.com/docs/automotive/start/avd/android_virtual_device"
+  - label: "device/generic/car on cs.android.com"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:device/generic/car/"
+---
+
+You cannot learn this platform by reading about it. You need a build you can
+break. This page gets you there, with realistic expectations about cost.
+
+## What it actually costs
+
+Be honest with your hardware before you start:
+
+| Resource | Realistic minimum | Comfortable |
+| --- | --- | --- |
+| Disk | 400 GB free | 1 TB NVMe |
+| RAM | 32 GB | 64 GB |
+| CPU | 8 cores | 16+ cores |
+| First clean build | 2–4 hours | 40–70 minutes |
+| `repo sync` | 1–3 hours | depends entirely on your link |
+
+An incremental build after a one-file change is usually 2–10 minutes. A full
+rebuild after a `repo sync` across a release boundary is back to hours.
+
+<Callout type="warning" title="Do not build on a spinning disk or a network mount">
+AOSP builds are I/O-bound with millions of small files. An HDD or NFS home
+directory turns a 45-minute build into an overnight one. Use local SSD.
+</Callout>
+
+## Getting the source
+
+```bash title="Install repo and sync AOSP" showLineNumbers
+# repo is a thin wrapper over git that manages AOSP's ~1000 repositories
+mkdir -p ~/bin && export PATH=~/bin:$PATH
+curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+chmod a+x ~/bin/repo
+
+mkdir -p ~/aosp && cd ~/aosp
+
+# Pin a release branch rather than main — main moves under you daily
+repo init -u https://android.googlesource.com/platform/manifest -b android-14.0.0_r30
+
+# -c fetches only the current branch; -j tuned to your link, not your CPU
+repo sync -c -j8 --no-tags --no-clone-bundle
+```
+
+The `-b` branch matters. Track a release tag while learning; `main` is a moving
+target and half your build failures will be someone else's mid-refactor commit.
+
+## Choosing an automotive target
+
+AOSP's build targets are selected with `lunch`. The automotive ones live under
+<Src path="device/generic/car" label="device/generic/car" />.
+
+```bash title="Configure and build the automotive emulator"
+cd ~/aosp
+source build/envsetup.sh
+
+# List everything available
+lunch
+
+# x86_64 automotive emulator image — the one to start with
+lunch sdk_car_x86_64-trunk_staging-userdebug
+
+# Build. -j defaults to your core count; being explicit avoids OOM on big machines
+m -j16
+```
+
+Target names follow `<product>-<release>-<variant>`:
+
+- **product** — `sdk_car_x86_64` (emulator), `aosp_car_arm64`, or an OEM product.
+- **release** — the platform release configuration, e.g. `trunk_staging`.
+- **variant** — `user` (locked down), `userdebug` (**use this**), `eng`
+  (fastest build, most debug hooks, least like production).
+
+<Callout type="tip" title="Always use userdebug while learning">
+`userdebug` gives you root over adb, keeps SELinux enforcing, and behaves close
+enough to production that your fixes are real. `eng` disables things you will
+later need to have gotten right; `user` blocks the debugging you need.
+</Callout>
+
+## Running the emulator
+
+```bash title="Launch the built image"
+# emulator picks up the image from $ANDROID_PRODUCT_OUT after a successful build
+emulator -verbose -show-kernel
+
+# Useful flags while developing
+emulator -writable-system   # lets you remount / and push framework changes
+emulator -no-snapshot       # always cold boot, avoids stale state confusing you
+```
+
+If you only want to *use* AAOS rather than build it, Android Studio's SDK Manager
+ships prebuilt **Automotive** system images — far quicker, and enough for app
+development. You need a source build only when you intend to modify the platform.
+
+## Verifying you have a real automotive build
+
+Three checks that take ten seconds and save an afternoon:
+
+```bash title="Sanity checks over adb"
+# 1. The automotive feature flag must be present
+adb shell pm list features | grep automotive
+# expect: feature:android.hardware.type.automotive
+
+# 2. Car Service must be running
+adb shell dumpsys car_service --help
+
+# 3. The Vehicle HAL must be up
+adb shell lshal | grep -i vehicle
+```
+
+If check 1 fails, you built a phone image. If check 2 fails, Car Service crashed
+during boot — go read `logcat -b system | grep -i carservice`. If check 3 fails,
+the VHAL did not start and every property read you attempt will fail in a
+confusing way.
+
+## The reference VHAL
+
+AOSP ships a fake VHAL so the emulator has vehicle data without a vehicle. It is
+your best learning tool, because you can move a property and watch the whole
+stack react:
+
+```bash title="Driving a property by hand"
+# List everything the HAL exposes
+adb shell dumpsys car_service --list-properties
+
+# Read one property
+adb shell dumpsys car_service --get-property 0x11600203
+
+# Inject a value (reference VHAL only)
+adb shell dumpsys car_service --set-property 0x11600203 50
+```
+
+The reference implementation lives under
+<Src path="hardware/interfaces/automotive/vehicle/aidl/impl" label="automotive/vehicle/aidl/impl" />.
+Read it. It is the clearest example of a correct VHAL you will find, and every
+custom VHAL you write will be judged against its behaviour.
+
+## Hardware, when you outgrow the emulator
+
+The emulator cannot teach you timing, boot, thermals, or real bus behaviour.
+When you need hardware, the practical options are an OEM/supplier development
+head unit (what you will actually have on a programme), or a general-purpose
+automotive-capable SoC board with a CAN interface. Either way the missing piece
+is the same: a vendor VHAL bridging Android to the real network.
+
+## Next
+
+With a build running, start on the Vehicle HAL — the interface everything else in
+this curriculum depends on.

@@ -1,0 +1,160 @@
+---
+title: "MIXED, vector and special properties"
+description: "The properties that do not fit one number — configArray conventions, vector types, backported properties, and when to stop bending the model and add a service instead."
+order: 9
+difficulty: "Advanced"
+tags: ["VHAL", "Properties", "Design"]
+sources:
+  - label: "Special vehicle properties"
+    href: "https://source.android.com/docs/automotive/vhal/special-properties"
+  - label: "VehiclePropertyType AIDL"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/VehiclePropertyType.aidl"
+  - label: "VehiclePropConfig AIDL"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/VehiclePropConfig.aidl"
+---
+
+Most properties are a number in an area. Then somebody needs to express a set of
+seat positions, or a diagnostic frame, or a command with a result — and the
+simple model starts to strain.
+
+## Vector types
+
+The easy case. `INT32_VEC`, `INT64_VEC` and `FLOAT_VEC` carry several values of
+one type in a single property.
+
+```cpp title="A vector property"
+{
+    .prop = toInt(VendorProperty::TYRE_PRESSURES),   // FLOAT_VEC | GLOBAL
+    .access = VehiclePropertyAccess::READ,
+    .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+    .configArray = {4},   // convention: element count
+}
+// value.floatValues = { fl, fr, rl, rr }
+```
+
+Vectors are appropriate when the elements are **the same kind of thing** and
+always change together. Four tyre pressures qualify. "Speed and gear and door
+state" does not — that is three properties wearing a trench coat.
+
+<Callout type="warning" title="Element order is a convention, not a contract">
+Nothing in the type system says index 0 is front-left. Document it in
+`configArray` or `configString`, and write it in the property registry. Every
+consumer must agree out of band, and they will not, unless you make them.
+</Callout>
+
+## MIXED
+
+`MIXED` lets one property carry several typed arrays at once — some ints, a
+float, a string. It is the escape hatch, and `configArray` describes the layout.
+
+```cpp title="A MIXED property and its layout descriptor"
+{
+    .prop = toInt(VendorProperty::CHARGE_SESSION),
+    .access = VehiclePropertyAccess::READ,
+    .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+    // configArray convention for MIXED:
+    //  [0] does the value include a String?
+    //  [1] number of Boolean values
+    //  [2] number of Integer values
+    //  [3] number of Integer arrays
+    //  [4] number of Long values      ... and so on
+    .configArray = {1, 1, 2, 0, 1, 0, 1, 0, 0},
+}
+```
+
+```kotlin title="Reading it on the app side"
+val value = properties.getProperty(Array<Any>::class.java, CHARGE_SESSION, 0)
+val raw = value?.value as? Array<*> ?: return
+
+val stationId  = raw[0] as String
+val isActive   = raw[1] as Boolean
+val kwhDelivered = raw[2] as Int
+val secondsElapsed = raw[3] as Int
+val startedAtMs  = raw[4] as Long
+```
+
+That app code is fragile by construction. Index four is a `Long` because a
+comment in a header said so.
+
+<Callout type="warning" title="Prefer several typed properties over one MIXED">
+`MIXED` moves the schema out of the type system and into prose. Three separate
+`INT32`/`STRING` properties are more verbose and vastly easier to evolve, test
+and debug. Reach for `MIXED` only when the values are genuinely atomic — they
+must be read as one consistent snapshot or not at all.
+</Callout>
+
+## `configArray` in general
+
+`configArray` is an untyped `int[]` whose meaning is per-property. AOSP uses it
+for real things — supported enum values, element counts, MIXED layout — and every
+use is a convention documented elsewhere.
+
+For vendor properties, pick a convention, write it in one place, and generate
+both the HAL config and the client parser from it. Hand-maintaining both ends of
+an untyped array across two organisations is how field defects happen.
+
+## Backported properties
+
+The `BACKPORTED` group (`0x30000000`) exists for a specific situation: a system
+property defined in a newer platform release, needed on an older one.
+
+You cannot use the `SYSTEM` ID — it does not exist in your build's enum, and CTS
+would object. You do not want a `VENDOR` ID either, because when you eventually
+upgrade you would have to migrate every consumer.
+
+`BACKPORTED` says "this is the system property with this ID, implemented early".
+It keeps the ID stable so the upgrade is a group-bit change rather than a
+redesign.
+
+```kotlin title="The same property, three lifetimes"
+// On the older platform, before the system property exists
+const val EV_CHARGE_STATE_BACKPORTED = 0x3000_0000.toInt() or AREA_GLOBAL or TYPE_INT32 or 0x0A11
+
+// After upgrading to a platform that defines it
+// VehiclePropertyIds.EV_CHARGE_STATE   (SYSTEM group)
+```
+
+## Static properties
+
+`changeMode = STATIC` means the value never changes after boot: VIN, seat count,
+fuel capacity, supported feature bitmasks. The framework may cache it forever.
+
+```cpp title="A STATIC property"
+{
+    .prop = toInt(VehicleProperty::INFO_VIN),   // STRING | GLOBAL
+    .access = VehiclePropertyAccess::READ,
+    .changeMode = VehiclePropertyChangeMode::STATIC,
+}
+```
+
+Declaring something `STATIC` that actually changes is a nasty defect: the value
+is read once at boot and the stale copy is served for the rest of the ignition
+cycle. If it can change — even rarely, even only after a service action — it is
+`ON_CHANGE`.
+
+## When to stop using properties
+
+The property model is state. It is not RPC, not streaming, and not bulk transfer.
+Signs you have outgrown it:
+
+- You need a **request/response with correlation** — a command that returns a
+  result for *that* request. A "command" property plus a "result" property loses
+  the correlation as soon as two callers overlap.
+- You are moving **kilobytes** per event. Properties are for values, not payloads.
+- Your `configArray` has grown a nested layout description.
+- You are encoding a **protocol** into `byteValues`.
+
+At that point the right answer is usually a **separate vendor AIDL service**
+alongside the VHAL, with its own interface, its own permission and its own
+versioning — not a more elaborate property.
+
+<Callout type="tip" title="Two interfaces is a legitimate design">
+Nothing requires all vehicle interaction to go through the VHAL. Vehicle *state*
+belongs in properties, because the framework's caching, subscription and
+permission machinery is built for it. Everything else can be a service you define,
+and it will be easier to evolve.
+</Callout>
+
+## Next
+
+Into the framework, where these properties become APIs.

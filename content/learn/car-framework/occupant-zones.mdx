@@ -1,0 +1,155 @@
+---
+title: "Occupant zones and multi-display"
+description: "Seats, displays and users as a graph — how a cockpit with three screens and two logged-in people is modelled, and what breaks when you assume there is one of each."
+order: 5
+difficulty: "Advanced"
+tags: ["Occupant zones", "Multi-display", "Framework"]
+sources:
+  - label: "Multi-display support"
+    href: "https://source.android.com/docs/automotive/multi_display"
+  - label: "CarOccupantZoneManager reference"
+    href: "https://developer.android.com/reference/android/car/CarOccupantZoneManager"
+  - label: "CarOccupantZoneService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/CarOccupantZoneService.java"
+---
+
+A phone has one screen and one user. A modern cockpit has a centre display, a
+cluster, a passenger screen and two rear entertainment screens — with different
+people using them simultaneously.
+
+`CarOccupantZoneService` is how the platform stops pretending otherwise.
+
+## The model
+
+An **occupant zone** is a seat position that can have a user and one or more
+displays.
+
+```text title="A three-screen cockpit"
+Zone: DRIVER          seat ROW_1_LEFT
+   ├─ DISPLAY_TYPE_MAIN         centre stack
+   ├─ DISPLAY_TYPE_INSTRUMENT_CLUSTER
+   └─ user 10
+
+Zone: FRONT_PASSENGER seat ROW_1_RIGHT
+   ├─ DISPLAY_TYPE_MAIN         passenger screen
+   └─ user 11
+
+Zone: REAR_PASSENGER_LEFT  seat ROW_2_LEFT
+   ├─ DISPLAY_TYPE_MAIN         rear entertainment
+   └─ user 12
+```
+
+Three zones, five displays, three simultaneous users. Every assumption phone
+Android makes about "the current user" and "the display" is now ambiguous.
+
+## Querying the graph
+
+```kotlin title="Walking zones, users and displays"
+val zones = car.getCarManager(Car.CAR_OCCUPANT_ZONE_SERVICE)
+        as CarOccupantZoneManager
+
+zones.allOccupantZones.forEach { zone ->
+    val user = zones.getUserForOccupant(zone)          // may be INVALID_USER_ID
+    val main = zones.getDisplayForOccupant(
+        zone, CarOccupantZoneManager.DISPLAY_TYPE_MAIN,
+    )
+    val cluster = zones.getDisplayForOccupant(
+        zone, CarOccupantZoneManager.DISPLAY_TYPE_INSTRUMENT_CLUSTER,
+    )
+
+    Log.d(TAG, "zone=${zone.zoneType} seat=${zone.seat} user=$user " +
+               "main=${main?.displayId} cluster=${cluster?.displayId}")
+}
+```
+
+The reverse lookups matter just as much:
+
+```kotlin title="Which zone am I running in?"
+val myZone = zones.getOccupantZoneForUser(UserHandle.of(myUserId))
+val isDriver = myZone?.zoneType == CarOccupantZoneManager.OCCUPANT_TYPE_DRIVER
+```
+
+<Callout type="warning" title="&quot;Am I the driver?&quot; is a real question now">
+Driver distraction restrictions apply to the driver's displays. A passenger
+watching video on their own screen at 100 km/h is legal in many markets; the
+same content on the centre stack is not. Code that applies restrictions globally
+either blocks the passenger unnecessarily or — much worse — fails to block the
+driver.
+</Callout>
+
+## Launching onto the right display
+
+```kotlin title="Targeting a display explicitly"
+val options = ActivityOptions.makeBasic().apply {
+    launchDisplayId = passengerDisplay.displayId
+}
+context.startActivity(intent, options.toBundle())
+```
+
+This needs the right permissions and, for a display belonging to another user,
+`INTERACT_ACROSS_USERS`. It is a system-app operation, not something an ordinary
+media app does.
+
+## Configuring zones on a product
+
+Zones are declared in platform configuration, mapping seats to display ports:
+
+```xml title="config.xml (product overlay)"
+<string-array name="config_occupant_zones">
+  <item>occupantZoneId=0,occupantType=DRIVER,seatRow=1,seatSide=driver</item>
+  <item>occupantZoneId=1,occupantType=FRONT_PASSENGER,seatRow=1,seatSide=oppositeDriver</item>
+  <item>occupantZoneId=2,occupantType=REAR_PASSENGER,seatRow=2,seatSide=left</item>
+</string-array>
+
+<string-array name="config_display_uniqueId_to_occupantZone">
+  <item>displayPort:0,occupantZoneId=0</item>
+  <item>displayPort:1,occupantZoneId=0</item>   <!-- cluster, same zone -->
+  <item>displayPort:2,occupantZoneId=1</item>
+</string-array>
+```
+
+```bash title="Verifying it on a device"
+adb shell dumpsys car_service --services CarOccupantZoneService
+adb shell dumpsys display | grep -E 'mDisplayId|uniqueId'
+```
+
+When a screen stays black on a new board, this pairing is the usual culprit: the
+display port in the config does not match what the kernel enumerated.
+
+## What breaks in ordinary code
+
+**Assuming one display.** `WindowManager.getDefaultDisplay()` gives you *a*
+display, not necessarily yours. Use the display from your own `Context`.
+
+**Assuming one user.** `ActivityManager.getCurrentUser()` returns the driver's
+user. On a multi-zone vehicle a passenger app must ask which zone it is in.
+
+**Global UX restrictions.** Restrictions are per-display. Query them for your
+display rather than assuming the driver's set applies.
+
+**Density and geometry.** A cluster is not a tablet. Displays in one vehicle can
+differ wildly in size, density and aspect ratio, and resources must be qualified
+accordingly.
+
+```kotlin title="Read the display you are actually on"
+val display = context.display                    // API 30+
+val metrics = context.resources.displayMetrics
+Log.d(TAG, "display=${display?.displayId} ${metrics.widthPixels}x${metrics.heightPixels} @${metrics.densityDpi}")
+```
+
+## Testing it
+
+```bash title="Exercising multi-display without hardware"
+# Add a simulated secondary display to the emulator
+adb shell settings put global overlay_display_devices "1280x720/213"
+
+adb shell dumpsys display | grep -c 'Display Device'
+adb shell am start --display 2 -n com.example/.PassengerActivity
+```
+
+Simulated overlay displays are crude but they catch the whole class of "assumed
+display 0" bugs before hardware exists.
+
+## Next
+
+Watchdog — the service that decides your process is misbehaving and ends it.

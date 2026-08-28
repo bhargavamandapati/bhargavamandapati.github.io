@@ -1,0 +1,150 @@
+---
+title: "The instrument cluster"
+description: "Two architectures, one screen behind the wheel — cluster as an Android display, or cluster as a separate safety-rated system Android talks to. What changes for you either way."
+order: 2
+difficulty: "Advanced"
+tags: ["Cluster", "Safety", "Displays"]
+sources:
+  - label: "Instrument cluster support"
+    href: "https://source.android.com/docs/automotive/hmi/cluster"
+  - label: "ClusterHomeManager reference"
+    href: "https://developer.android.com/reference/android/car/cluster/ClusterHomeManager"
+  - label: "Car cluster sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/cluster/"
+---
+
+The cluster is the screen the driver looks at most and trusts most. It shows
+speed, telltales and warnings that are legally required to be correct and
+available. That requirement drives the architecture.
+
+<DiagramFrame
+  title="Two ways to drive a cluster"
+  caption="Option A is simpler and common on lower trims. Option B is what you get when the cluster must be certified to a safety integrity level Android cannot reach."
+>
+  <ClusterArchitecture />
+</DiagramFrame>
+
+## Option A — the cluster is an Android display
+
+The head unit's SoC drives both screens. The cluster is a second display in the
+same Android instance, and `ClusterHomeService` manages what is shown on it.
+
+```kotlin title="A cluster activity"
+val clusterHome = car.getCarManager(Car.CLUSTER_HOME_SERVICE)
+        as ClusterHomeManager
+
+clusterHome.registerClusterStateListener(executor) { state ->
+    // Bounds change when the OEM's frame (gauges, telltales) resizes the
+    // area available to apps. Never assume the whole display is yours.
+    layoutFor(state.bounds, state.insets)
+}
+
+// Ask the platform to show a specific activity on the cluster
+clusterHome.startFixedActivityModeAsUser(intent, options, userId)
+```
+
+Simple, cheap, and entirely dependent on Android staying up. Suitable when the
+cluster's *critical* content — telltales, warning lamps — is drawn by something
+else, typically a hardware overlay or a small MCU compositing on top.
+
+<Callout type="warning" title="Telltales are almost never Android's job">
+Seatbelt, airbag, brake and engine warning lamps have legal availability
+requirements that a general-purpose OS cannot meet. On practically every
+production vehicle they are drawn by a separate path — a hardware layer, an MCU,
+or another guest — that keeps working if Android crashes. If a design has Android
+rendering a legally required telltale, that is a finding, not a feature.
+</Callout>
+
+## Option B — the cluster is a separate system
+
+The cluster runs its own OS — an RTOS, or a certified guest under a hypervisor —
+and Android sends it content over a link. This is what you get when the cluster
+must be certified.
+
+The link is usually a serialised protocol over TCP/IP or shared memory: protobuf
+frames describing what to render, not pixels.
+
+```kotlin title="Publishing cluster content over a link"
+// Android prepares a description; the cluster renders it in its own style
+val card = InfotainmentCard.newBuilder()
+    .setZone(Zone.ZONE_3)                    // the infotainment area of the cluster
+    .setType(CardType.NAVIGATION)
+    .setPrimaryText(currentStep.cue)
+    .setSecondaryText(distanceToStep.format())
+    .setManeuverIcon(maneuver.toClusterIcon())
+    .build()
+
+clusterLink.send(card.toByteArray())
+```
+
+Why send a description rather than a bitmap:
+
+- **The cluster owns its own look.** It has a design language certified with the
+  vehicle; it will not render your fonts.
+- **Bandwidth.** A 60 fps pixel stream between two systems is expensive and
+  usually unnecessary.
+- **Failure behaviour.** If Android stops sending, the cluster shows its own
+  fallback. A pixel stream would just freeze.
+
+## Zones
+
+Clusters are commonly divided into zones with different owners and different
+criticality. A typical split:
+
+| Zone | Content | Owner |
+| --- | --- | --- |
+| 1 | Speedometer, tachometer | Cluster OS — safety-rated |
+| 2 | Telltales and warnings | Cluster OS — legally required |
+| 3 | Infotainment cards — media, phone, navigation | **Android** |
+| 4 | ADAS visualisation | ADAS domain |
+
+Android almost always owns exactly one zone: the infotainment one. Everything
+else belongs to a system that can be certified.
+
+Understanding which zone you are writing for tells you immediately what your
+failure budget is. Zone 3 going blank is a degraded experience. Zone 2 going
+blank is a recall.
+
+## What Android actually sends
+
+Structured content, versioned, for a small set of card types:
+
+```protobuf title="A pragmatic cluster card schema"
+message InfotainmentCard {
+  uint32 version   = 1;      // versioned from day one — the far end updates separately
+  Zone zone        = 2;
+  CardType type    = 3;      // MEDIA | PHONE | NAVIGATION | ASSISTANT
+  string primary   = 4;
+  string secondary = 5;
+  ManeuverIcon icon = 6;
+  uint32 progress  = 7;
+}
+```
+
+<Callout type="tip" title="Version the protocol before you ship one vehicle">
+The cluster OS and Android update on different schedules, from different
+suppliers, potentially years apart. An unversioned protocol means neither end can
+ever change. Put a version field in the first message you define, and write down
+what an unknown version must do.
+</Callout>
+
+## Debugging across the boundary
+
+```bash title="The Android side"
+adb shell dumpsys car_service --services ClusterHomeService
+adb shell dumpsys display | grep -i -A5 cluster
+adb logcat -b all | grep -iE 'cluster|ClusterHome'
+```
+
+The Android side is the easy half. The hard half is proving whether a wrong value
+on the cluster was wrong when Android sent it. That needs a **correlated trace**
+across both systems, with one clock — otherwise every defect becomes two teams
+each demonstrating it is not their layer.
+
+Log what you sent, with a timestamp and a sequence number, and insist the cluster
+team logs what they received. That single agreement resolves most cross-boundary
+arguments in minutes rather than weeks.
+
+## Next
+
+The rest of the cockpit's screens.

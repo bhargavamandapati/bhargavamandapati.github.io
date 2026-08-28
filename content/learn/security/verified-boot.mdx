@@ -1,0 +1,152 @@
+---
+title: "Verified boot and image integrity"
+description: "How a vehicle refuses to run software that is not its own — the chain of trust from the bootloader to /system, and what happens when a link is broken."
+order: 3
+difficulty: "Advanced"
+tags: ["Verified Boot", "dm-verity", "Security"]
+sources:
+  - label: "Verified Boot"
+    href: "https://source.android.com/docs/security/features/verifiedboot"
+  - label: "dm-verity"
+    href: "https://source.android.com/docs/security/features/verifiedboot/dm-verity"
+  - label: "AVB (Android Verified Boot)"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:external/avb/"
+---
+
+A vehicle should not run software the OEM did not sign. Verified boot is how that
+is enforced, and it is a chain: each stage verifies the next before handing over
+control.
+
+## The chain
+
+```text title="Each link verifies the next"
+Hardware root of trust  (fused key, immutable)
+        │ verifies
+        ▼
+Bootloader
+        │ verifies (AVB — signature over vbmeta)
+        ▼
+boot / init_boot   (kernel, ramdisk)
+        │ verifies (dm-verity hash tree)
+        ▼
+system / vendor / product   (read-only partitions)
+        │
+        ▼
+Android
+```
+
+The root of trust is a key burned into the SoC. Everything above derives its
+trust from it, and a break at any point stops the boot or drops the device into a
+degraded state.
+
+## AVB and vbmeta
+
+Android Verified Boot packages the hashes and signatures for every partition into
+`vbmeta`, which the bootloader verifies against the fused key.
+
+```bash title="Inspecting verified boot state"
+adb shell getprop ro.boot.verifiedbootstate    # green | yellow | orange | red
+adb shell getprop ro.boot.veritymode
+adb shell getprop ro.boot.flash.locked
+```
+
+| State | Meaning |
+| --- | --- |
+| **green** | Fully verified with the OEM key — a production vehicle |
+| **yellow** | Verified with a user-supplied key |
+| **orange** | Bootloader unlocked, no verification — dev units only |
+| **red** | Verification failed — the device should not boot normally |
+
+<Callout type="warning" title="A production vehicle is green, always">
+An orange or yellow state on a vehicle heading to a customer is a finding. It
+means the bootloader is unlocked or an unofficial key is in use, and any
+subsequent security claim is void.
+</Callout>
+
+## dm-verity
+
+The read-only partitions are protected by a hash tree. Every block is hashed;
+hashes are hashed together up to a single root hash, which is signed.
+
+The elegant property is that verification is **lazy**: a block is checked when it
+is read, not all at boot. A 4 GB `/system` costs nothing at startup and is still
+fully protected.
+
+```bash title="Verity state"
+adb shell getprop ro.boot.veritymode      # enforcing | eio | logging
+adb shell dmesg | grep -i verity
+```
+
+When a block fails verification the kernel's response depends on the mode —
+enforcing typically triggers a restart or a controlled failure rather than
+serving corrupted data.
+
+## What this means day to day
+
+**You cannot modify a verified partition on a locked device.** `adb remount`
+fails, and it should. On `userdebug` builds with an unlocked bootloader:
+
+```bash title="Development only — never on a production image"
+adb root
+adb disable-verity      # requires a reboot; breaks the verified state
+adb reboot
+adb remount
+adb push myfile /system/etc/
+```
+
+Every one of those commands is a development convenience that must not be
+possible on a shipped vehicle.
+
+**Overlays and RROs are the supported way to change resources.** They live in a
+writable, signed location rather than requiring you to modify `/system` — which
+is another reason the theming architecture exists.
+
+**Every change requires a re-signed image.** There is no patching a file on a
+production head unit. This is why OTA is the only update mechanism, and why A/B
+partitions exist.
+
+## Rollback protection
+
+Verified boot also prevents downgrade. An attacker who obtains a legitimately
+signed but vulnerable old image should not be able to flash it.
+
+This is enforced with a monotonic version counter in tamper-resistant storage:
+the bootloader refuses images with a rollback index below what it has recorded.
+
+```bash title="Rollback state"
+adb shell getprop ro.boot.vbmeta.avb_version
+adb shell getprop ro.boot.vbmeta.device_state
+```
+
+Practical consequence for platform teams: **once a rollback index is bumped in a
+released image, you cannot go back.** A bad release cannot be fixed by reflashing
+the previous one; it needs a new build with a higher index. Bump the index
+deliberately, not automatically on every build.
+
+## Keys in an automotive context
+
+The signing keys are the OEM's, held in an HSM, with a chain of custody and an
+audit trail. Consequences for you:
+
+- **Your app, if it ships in the image, is signed by them.** You cannot sign a
+  system app yourself.
+- **Development keys must never reach production.** AOSP's public test keys are
+  known to everybody; an image signed with them is unprotected.
+- **Key rotation is a programme-level event**, not a task. Plan it, do not
+  improvise it.
+
+## Debugging a boot that stops
+
+```bash title="Working out where the chain broke"
+adb shell getprop | grep -iE 'verifiedboot|verity|vbmeta'
+adb shell dmesg | grep -iE 'verity|avb|dm-'
+fastboot getvar all      # bootloader state, when Android will not come up
+```
+
+If verification is failing after a legitimate change, the usual causes are: a
+partition flashed without regenerating `vbmeta`, a mismatched key, or a
+rollback index that went backwards.
+
+## Next
+
+The keys themselves — what signs what, and who holds them.

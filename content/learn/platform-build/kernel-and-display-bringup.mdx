@@ -1,0 +1,229 @@
+---
+title: "Kernel, device tree and display bring-up"
+description: "Below Android entirely — how the kernel learns what hardware exists, why a new board shows a black screen, and the layer where automotive projects lose the most schedule."
+order: 5
+difficulty: "Advanced"
+tags: ["Kernel", "Device tree", "Bring-up"]
+sources:
+  - label: "Android kernel overview"
+    href: "https://source.android.com/docs/core/architecture/kernel"
+  - label: "Device tree usage (kernel docs)"
+    href: "https://docs.kernel.org/devicetree/usage-model.html"
+  - label: "Display and graphics HAL"
+    href: "https://source.android.com/docs/core/graphics"
+---
+
+Everything else in this curriculum assumes Android is running. This topic is
+about the stage before that — where a board is new, nothing works, and the
+question is why.
+
+<Plain>
+Most engineers on an automotive programme never touch this layer. But almost
+everyone eventually spends a week on a defect that turns out to live here, and
+the symptoms are unhelpful: a black screen, a missing display, a CAN interface
+that does not exist.
+
+Knowing enough to recognise those is worth the read even if you never write a
+line of kernel code.
+</Plain>
+
+## The kernel does not know what hardware exists
+
+On a PC, hardware announces itself — PCI devices are discoverable. On an embedded
+board, most hardware cannot. A display controller wired to particular pins has no
+way to say so.
+
+So the board is **described** rather than discovered, in a <T>device tree</T>.
+
+```text title="A device tree fragment, conceptually"
+&i2c1 {
+    status = "okay";
+    clock-frequency = <400000>;
+
+    touchscreen@4a {
+        compatible = "vendor,touch-controller";
+        reg = <0x4a>;
+        interrupt-parent = <&gpio2>;
+        interrupts = <11 IRQ_TYPE_EDGE_FALLING>;
+        reset-gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
+    };
+};
+```
+
+<Plain>
+Read that as a set of statements about the board:
+
+*There is an I2C bus. On it, at address 0x4a, is a touch controller. Its
+interrupt line goes to GPIO 2 pin 11. Its reset line is GPIO 2 pin 12, active
+low.*
+
+`compatible` is the key: it tells the kernel which driver to load. If no driver
+declares that string, the device is described and then ignored — silently.
+</Plain>
+
+<Analogy title="Like a wiring diagram handed to an electrician">
+The electrician knows how to wire sockets in general. The diagram tells them what
+this particular building has and where it is connected.
+
+The kernel is the electrician; the device tree is the diagram. Neither one works
+without the other, and a diagram describing a socket that was never installed
+produces exactly the confusion you would expect.
+</Analogy>
+
+## Why a new board shows a black screen
+
+This is the classic bring-up failure, and it has a short list of causes.
+
+```bash title="Working down the list"
+# 1. Did the display driver load at all?
+adb shell dmesg | grep -iE 'drm|panel|display|dsi'
+
+# 2. Does the kernel think a display exists?
+adb shell ls /sys/class/drm/
+adb shell cat /sys/class/drm/*/status      # connected / disconnected
+
+# 3. Does Android see it?
+adb shell dumpsys display | grep -E 'mDisplayId|uniqueId|real'
+
+# 4. Is anything being composed onto it?
+adb shell dumpsys SurfaceFlinger | grep -A10 'Display '
+```
+
+<Plain>
+Where it stops tells you the layer:
+
+- **Nothing in `dmesg`** → the driver did not load. Usually a `compatible` string
+  mismatch or a disabled node in the device tree.
+- **Driver loaded, `status` disconnected** → the panel is not responding.
+  Power sequencing, reset timing, or a physical connection.
+- **Kernel sees it, `dumpsys display` does not** → the graphics HAL is not
+  exposing it.
+- **Android sees it, nothing drawn** → composition or occupant zone mapping —
+  the multi-display topic covers that.
+</Plain>
+
+<Scenario title="The display that was described but never powered">
+A second display is added for a passenger screen. The device tree entry is added.
+The driver loads. `dmesg` looks healthy.
+
+The screen stays black.
+
+The panel needs its power rails brought up in a specific order with specific
+delays before it will accept data. The device tree described the panel but not its
+power sequence, so the driver initialised a panel that was not awake.
+
+Nothing errored, because from the driver's point of view it did everything
+correctly. **Panel power sequencing is the single most common cause of a black
+second display**, and it is invisible from Android entirely.
+</Scenario>
+
+## CAN interfaces
+
+Same pattern, different subsystem. The vehicle network controller has to be
+described and its driver loaded before anything above can see it.
+
+```bash title="Is there a CAN interface at all?"
+adb shell ip link show                  # look for can0
+adb shell ip -details link show can0    # bitrate, state
+adb shell dmesg | grep -i can
+
+# Bring it up and watch traffic
+adb shell ip link set can0 up type can bitrate 500000
+adb shell candump can0
+```
+
+<Plain>
+This is where the signal-path topic's "hop 3" actually lives. If `can0` does not
+exist, no amount of VHAL debugging will help — the interface the vendor service
+expects to open is not there.
+
+The bitrate matters too: a mismatched bitrate produces an interface that exists,
+comes up, and receives nothing but errors.
+</Plain>
+
+## The Android kernel is not the mainline kernel
+
+<Plain>
+Android ships a **Generic Kernel Image** with a stable interface for vendor
+modules, so the kernel and the vendor's drivers can be updated somewhat
+independently. It is the same <T>Treble</T> idea applied one layer lower.
+
+The practical consequence for a programme: **your board's drivers are vendor
+modules built against a specific kernel**, and changing the kernel version is a
+scheduled activity involving the silicon vendor — not something a platform team
+does on its own.
+
+This is also why kernel version is often frozen very early, and why "just take
+the newer kernel" is rarely available as an answer.
+</Plain>
+
+## What to check on a new board
+
+A rough order that finds most problems:
+
+```bash title="Bring-up smoke test"
+adb shell dmesg | grep -iE 'error|fail|timeout' | head -40
+
+adb shell ls /sys/class/drm/            # displays
+adb shell ip link show                  # network and CAN interfaces
+adb shell ls /dev/ | grep -iE 'can|video|i2c|spi'
+adb shell cat /proc/interrupts | head -30
+adb shell dumpsys display
+adb shell lshal                         # which HALs came up
+```
+
+<Plain>
+`/proc/interrupts` is underrated. If a device's interrupt count is stuck at zero,
+the hardware is not signalling — which is a wiring, device tree or power problem,
+not a software one. That distinction saves a lot of time, because it tells you
+which team owns the problem.
+</Plain>
+
+## Where schedule actually goes
+
+<Scenario title="Why bring-up estimates are always wrong">
+A programme allows four weeks for board bring-up. It takes eleven.
+
+The time did not go into writing code. It went into:
+
+- A panel that needed an undocumented power-on delay
+- A touch controller whose interrupt was wired to a different GPIO than the
+  schematic said
+- A CAN transceiver on the wrong bus
+- Three separate driver versions from the silicon vendor
+- A memory map conflict that only appeared under load
+
+None of these are Android problems. All of them block every Android engineer on
+the programme, because nothing above can be tested until the board boots
+reliably.
+
+**Bring-up is the most commonly underestimated phase in automotive software**, and
+it is upstream of everything else.
+</Scenario>
+
+<Plain>
+The practical mitigation is not better estimates — it is **decoupling**. Get the
+emulator and a reference board into the team's hands early so framework and app
+work can proceed while hardware bring-up continues in parallel.
+
+Teams that wait for the target board lose the whole schedule to it.
+</Plain>
+
+<Recap>
+- Embedded hardware cannot announce itself, so it is **described in a device
+  tree** — and a device the kernel has no driver for is ignored silently.
+- **Black second display** is almost always panel power sequencing, and it is
+  invisible from Android.
+- Work down: **`dmesg` → `/sys/class/drm` → `dumpsys display` → SurfaceFlinger**.
+  Where it stops names the layer.
+- **`ip link show` before debugging the VHAL.** If `can0` does not exist, nothing
+  above can work.
+- **`/proc/interrupts` stuck at zero** means the hardware is not signalling — a
+  wiring problem, not a software one.
+- **Bring-up is the most underestimated phase.** Decouple the rest of the team
+  from it with emulators and reference boards.
+</Recap>
+
+## Next
+
+Testing and debugging, once the board is stable enough to run on.

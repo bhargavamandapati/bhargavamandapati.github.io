@@ -1,0 +1,324 @@
+---
+title: "Anatomy of a vehicle property ID"
+description: "That hex number is not a serial number — it is four facts packed into 32 bits. Learn to read one by eye and a large part of VHAL debugging becomes arithmetic instead of guesswork."
+order: 2
+difficulty: "Intermediate"
+tags: ["VHAL", "Properties"]
+sources:
+  - label: "VehicleProperty AIDL enum"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/VehicleProperty.aidl"
+  - label: "VehiclePropertyIds (app-facing catalogue)"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java"
+  - label: "Vehicle properties (source.android.com)"
+    href: "https://source.android.com/docs/automotive/vhal/property-configuration"
+---
+
+You will spend a lot of time looking at lines like this:
+
+```text
+0x25400501    intensity=3
+```
+
+To most people that hex number is meaningless — just an identifier to copy and
+paste. It is not. It contains four separate facts, and once you can read them,
+a category of debugging stops requiring documentation.
+
+## Why encode anything in the number at all
+
+A reasonable question: why not just number properties 1, 2, 3?
+
+Because the number has to be understood by two sides that cannot ask each other
+questions. The car maker's <T>VHAL</T> and Google's Android are built by
+different companies, years apart, and shipped to a vehicle that will not be
+updated together.
+
+Packing the essential facts into the ID means both sides can agree on what a
+property *is* without consulting a shared document that might be out of date.
+
+<Analogy title="Like a UK postcode">
+`SW1A 1AA` is not a random label. The `SW` tells you it is south-west London,
+before you look anything up. The structure carries meaning.
+
+A property ID does the same: `0x2540…` tells you it is a vendor-defined,
+per-seat, 32-bit integer, before you look anything up.
+</Analogy>
+
+## The four fields
+
+<DiagramFrame
+  title="A property ID is a packed bitfield"
+  caption="32 bits, four fields. The masks come straight from the AIDL enums in AOSP — this is not a convention, it is enforced by the platform."
+>
+  <PropertyIdBits />
+</DiagramFrame>
+
+<Plain>
+Reading left to right, the four fields answer four questions:
+
+1. **Group** — who invented this property? Google, or a car maker?
+2. **Area** — does it apply to the whole car, or to a specific seat/door/window?
+3. **Type** — what kind of value is it? A number, a decimal, some text?
+4. **Unique ID** — which particular property is it?
+</Plain>
+
+Now each one in turn.
+
+### Field 1 — Group (4 bits)
+
+```java title="VehiclePropertyGroup.aidl"
+SYSTEM     = 0x10000000,   // Google defined it; every AAOS vehicle agrees
+VENDOR     = 0x20000000,   // a car maker invented it
+BACKPORTED = 0x30000000,   // a newer SYSTEM property, implemented early
+MASK       = 0xf0000000,
+```
+
+<Plain>
+`SYSTEM` means Google defined it, so it means the same thing on every AAOS
+vehicle in the world. `PERF_VEHICLE_SPEED` is speed in metres per second, always.
+
+`VENDOR` means a car maker invented it for their own feature. Nobody outside that
+programme knows what it means.
+</Plain>
+
+<Scenario title="Why using SYSTEM for your own property goes wrong">
+A team needs a property for seat massage. They look at the SYSTEM list, see that
+`0x1140_0A01` is unused, and take it. It works perfectly for two years.
+
+Then the vehicle takes an Android upgrade, and that release defines `0x1140_0A01`
+as something else entirely — a new standard property Google added.
+
+Now the platform believes the property is one thing and the VHAL believes it is
+another. The failure appears during a platform bump, months from the decision,
+usually on someone else's schedule.
+
+**Custom properties are `VENDOR`. There is no situation where this is worth
+arguing about.**
+</Scenario>
+
+### Field 2 — Area (4 bits)
+
+```java title="VehicleArea.aidl"
+GLOBAL = 0x01000000,   // one value for the whole vehicle
+WINDOW = 0x03000000,
+MIRROR = 0x04000000,
+SEAT   = 0x05000000,
+DOOR   = 0x06000000,
+WHEEL  = 0x07000000,
+MASK   = 0x0f000000,
+```
+
+This says what *kind* of thing the property applies to. Speed is `GLOBAL` — a car
+has one speed. Seat heating is `SEAT` — there is one value per seat.
+
+<Plain>
+**Do not confuse this with the area ID.**
+
+The *area type* is in the property ID and says "this is a per-seat property".
+
+The *area ID* is a separate number attached to each config and each value, and
+says "this particular one is the driver's seat".
+
+Type says what kind. ID says which one.
+</Plain>
+
+### Field 3 — Type (8 bits)
+
+```java title="VehiclePropertyType.aidl"
+STRING    = 0x00100000,
+BOOLEAN   = 0x00200000,
+INT32     = 0x00400000,
+INT32_VEC = 0x00410000,
+INT64     = 0x00500000,
+INT64_VEC = 0x00510000,
+FLOAT     = 0x00600000,
+FLOAT_VEC = 0x00610000,
+BYTES     = 0x00700000,
+MIXED     = 0x00e00000,
+MASK      = 0x00ff0000,
+```
+
+This is what tells you which array in the value struct to read. Get it wrong and
+you read zero, silently.
+
+### Field 4 — Unique ID (16 bits)
+
+Sixteen bits — 65,536 possibilities — that you allocate yourself for vendor
+properties.
+
+<Plain>
+Keep a registry file for your programme. Two teams independently choosing
+`0x0501` for different features is a genuinely miserable afternoon: everything
+works in isolation and breaks when both land in the same build.
+</Plain>
+
+## Decoding one by hand
+
+Take `0x25400501`. Here is the whole process, step by step.
+
+```text title="Decoding 0x25400501"
+Start:            0x25400501
+
+Group:  0x25400501 & 0xf0000000  =  0x20000000  →  VENDOR
+Area:   0x25400501 & 0x0f000000  =  0x05000000  →  SEAT
+Type:   0x25400501 & 0x00ff0000  =  0x00400000  →  INT32
+Id:     0x25400501 & 0x0000ffff  =  0x00000501  →  vendor id 0x0501
+```
+
+<Plain>
+So `0x25400501` is: **a car maker's own property, one per seat, holding a whole
+number.**
+
+You now know how to read it, roughly what it does, and that it will not appear in
+any Google documentation — all without looking anything up.
+</Plain>
+
+### The shortcut for reading by eye
+
+You do not have to do the arithmetic. Look at the hex digits in position:
+
+```text
+0x 2 5 4 0 0 5 0 1
+   │ │ └─┴─ type
+   │ └───── area
+   └─────── group
+           └─┴─┴─ unique id (last four digits)
+```
+
+- **First digit** — `1` is SYSTEM, `2` is VENDOR, `3` is BACKPORTED.
+- **Second digit** — `1` GLOBAL, `5` SEAT, `6` DOOR, `3` WINDOW, `7` WHEEL.
+- **Third and fourth** — the type. `40` is INT32, `60` is FLOAT, `20` is BOOLEAN.
+- **Last four** — the unique id.
+
+<Scenario title="Reading a dumpsys line at a glance">
+You run `dumpsys car_service --list-properties` and see an unfamiliar entry:
+
+```text
+0x11600203
+```
+
+First digit `1` → SYSTEM, so it is a standard Android property and will be
+documented.
+Second digit `1` → GLOBAL, so there is one value for the whole car.
+Third and fourth `60` → FLOAT, so it is a decimal number.
+
+Before searching for anything, you already know: it is a standard, whole-vehicle,
+decimal value. That narrows the search enormously, and takes about three seconds.
+</Scenario>
+
+## Composing one in code
+
+When you define a property, write the fields out. Do not paste a magic constant.
+
+```kotlin title="VendorProperties.kt" showLineNumbers
+object VendorProperties {
+
+    // The bit fields, straight from the AIDL enums.
+    private const val GROUP_VENDOR = 0x2000_0000.toInt()
+    private const val AREA_GLOBAL  = 0x0100_0000
+    private const val AREA_SEAT    = 0x0500_0000
+    private const val TYPE_INT32   = 0x0040_0000
+
+    /** Seat massage intensity, 0-5, one value per seat. */
+    const val SEAT_MASSAGE_INTENSITY =
+        GROUP_VENDOR or AREA_SEAT or TYPE_INT32 or 0x0501   // 0x25400501
+
+    /** Cabin scent level, 0-3, one value for the whole car. */
+    const val CABIN_SCENT_LEVEL =
+        GROUP_VENDOR or AREA_GLOBAL or TYPE_INT32 or 0x0502  // 0x21400502
+}
+```
+
+<Plain>
+Written this way, a reviewer can check your work in five seconds: is it VENDOR?
+Is the area right? Does the type match what the value actually is?
+
+Written as `const val SEAT_MASSAGE_INTENSITY = 0x25400501`, they would have to
+decode it by hand — and they will not.
+</Plain>
+
+## Area IDs, one more time
+
+This is worth repeating in a second place, because it is the most common source
+of real defects.
+
+<DiagramFrame
+  title="Area IDs are individual bits"
+  caption="Each seat is one bit. They are not positions in a list, and they can be combined."
+>
+  <AreaIdBitmask />
+</DiagramFrame>
+
+```java title="VehicleAreaSeat.aidl (excerpt)"
+ROW_1_LEFT   = 0x0001,
+ROW_1_CENTER = 0x0002,
+ROW_1_RIGHT  = 0x0004,
+ROW_2_LEFT   = 0x0010,
+ROW_2_CENTER = 0x0020,
+ROW_2_RIGHT  = 0x0040,
+```
+
+<Plain>
+Notice the gap. `ROW_1_RIGHT` is `0x0004`, and the next row starts at `0x0010`.
+The values are not consecutive because they are bits, and each row gets its own
+group of four.
+
+If you ever find yourself writing `areaId + 1` to get "the next seat", stop. That
+is the arithmetic of a list, and these are not a list.
+</Plain>
+
+## GLOBAL properties still have an area
+
+A `GLOBAL` property has exactly one area, and its area ID is `0`.
+
+It still needs an area config entry if you want to declare valid minimum and
+maximum values. Omitting the config means "no declared range", and the platform
+will not range-check writes for you.
+
+## Before defining anything, check it does not exist
+
+There are several hundred SYSTEM properties already. Reusing one gives you, for
+free:
+
+- the framework's existing permission mapping
+- established unit conventions other apps already expect
+- <T>CTS</T> and <T>VTS</T> test coverage
+- documentation you did not have to write
+
+```bash title="Two places to search"
+# The HAL-side enum — the authoritative list of IDs
+grep -i "SEAT_" hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/VehicleProperty.aidl
+
+# The app-facing catalogue with Javadoc explaining each one
+grep -i "SEAT_" packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java
+```
+
+<Scenario title="A property that already existed">
+A team spends three weeks building a vendor property for seat position, complete
+with permission, SEPolicy and an app-side library.
+
+In review, someone points out `SEAT_FORE_AFT_POS` has existed as a SYSTEM
+property since Android 10, with a documented unit, a defined permission and CTS
+coverage.
+
+The three weeks were spent rebuilding something that shipped with the platform.
+Ten minutes of grep would have found it.
+</Scenario>
+
+<Recap>
+- A property ID is **four facts packed into 32 bits**: group, area type, value
+  type, unique id.
+- Read it by hex digit position: first digit is group, second is area, third and
+  fourth are type, last four are the id.
+- **Custom properties are always `VENDOR`.** Using `SYSTEM` collides on a future
+  Android upgrade.
+- **Area type** (in the ID) is not **area ID** (attached to values). Type says
+  what kind; ID says which one.
+- Area IDs are **bits**. Never do arithmetic on them.
+- **Search the existing catalogue first.** Several hundred properties already
+  exist, with permissions and tests attached.
+</Recap>
+
+## Next
+
+Building one end to end — config, permission, security policy, and the app that
+finally reads it.

@@ -1,0 +1,166 @@
+---
+title: "CarWatchdog and process health"
+description: "The service that pings your process, counts your disk writes, and kills you when either goes wrong — plus how to stay on the right side of it."
+order: 6
+difficulty: "Intermediate"
+tags: ["CarWatchdog", "Health", "Framework"]
+sources:
+  - label: "Car watchdog"
+    href: "https://source.android.com/docs/automotive/car_watchdog"
+  - label: "CarWatchdogManager reference"
+    href: "https://developer.android.com/reference/android/car/watchdog/CarWatchdogManager"
+  - label: "CarWatchdogService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/watchdog/"
+---
+
+A phone that hangs gets rebooted by its owner. A head unit that hangs is a safety
+and warranty problem, so the platform polices it. CarWatchdog is that policing,
+and it has two jobs: liveness and resource discipline.
+
+## Health checks
+
+CarWatchdog pings registered clients. A client that does not answer within its
+timeout is considered hung, and the service terminates it.
+
+```kotlin title="Registering as a watchdog client" showLineNumbers
+class CriticalService : Service() {
+
+    private lateinit var watchdog: CarWatchdogManager
+
+    private val callback = object : CarWatchdogManager.CarWatchdogClientCallback() {
+        override fun onCheckHealthStatus(sessionId: Int, timeout: Int): Boolean {
+            // Return true ONLY if you are genuinely healthy right now.
+            // Returning true from a hung process defeats the entire mechanism.
+            return workerThread.isResponsive()
+        }
+
+        override fun onPrepareProcessTermination() {
+            // Last chance. Flush anything that must survive. Be quick.
+            persistCriticalState()
+        }
+    }
+
+    override fun onCreate() {
+        watchdog = car.getCarManager(Car.CAR_WATCHDOG_SERVICE) as CarWatchdogManager
+        watchdog.registerClient(
+            mainExecutor, callback, CarWatchdogManager.TIMEOUT_MODERATE,
+        )
+    }
+}
+```
+
+Three timeout tiers, chosen by how quickly your failure matters:
+
+| Timeout | Order of magnitude | For |
+| --- | --- | --- |
+| `TIMEOUT_CRITICAL` | ~3 s | Safety-adjacent services |
+| `TIMEOUT_MODERATE` | ~5 s | Most system services |
+| `TIMEOUT_NORMAL` | ~10 s | Background work |
+
+<Callout type="warning" title="Never answer the health check from the main thread only">
+The classic mistake is `onCheckHealthStatus` returning `true` unconditionally
+because it is called on a healthy binder thread while your actual worker thread is
+deadlocked. Check the thing that can hang, not the thing doing the checking.
+</Callout>
+
+## Resource overuse
+
+The second job is I/O. Flash storage in a vehicle has a finite write budget and
+must survive fifteen years. An app writing continuously will exhaust it long
+before that, so CarWatchdog enforces per-app write quotas.
+
+```xml title="Declaring an I/O budget (system app resource overuse config)"
+<resourceOveruseConfiguration version="1.0">
+  <componentType>THIRD_PARTY</componentType>
+  <ioOveruseConfiguration>
+    <componentLevelThresholds>
+      <thresholds>
+        <name>THIRD_PARTY</name>
+        <backgroundModeBytes>1048576</backgroundModeBytes>     <!-- 1 MiB/day -->
+        <foregroundModeBytes>10485760</foregroundModeBytes>    <!-- 10 MiB/day -->
+        <garageModeBytes>52428800</garageModeBytes>            <!-- 50 MiB -->
+      </thresholds>
+    </componentLevelThresholds>
+  </ioOveruseConfiguration>
+</resourceOveruseConfiguration>
+```
+
+Note `garageModeBytes` is far larger. That is the design intent: **bulk writing
+belongs in Garage Mode**, when the vehicle is parked, not while someone is
+driving.
+
+```kotlin title="Knowing before you are killed"
+watchdog.addResourceOveruseListener(
+    mainExecutor,
+    CarWatchdogManager.FLAG_RESOURCE_OVERUSE_IO,
+) { stats ->
+    val io = stats.ioOveruseStats ?: return@addResourceOveruseListener
+    if (io.remainingWriteBytes < LOW_WATERMARK) {
+        // Back off: batch writes, drop caching, defer to Garage Mode.
+        enterFrugalMode()
+    }
+}
+```
+
+```bash title="Checking your own consumption"
+adb shell dumpsys car_service --services CarWatchdogService
+adb shell dumpsys car_watchdog
+```
+
+Run this after a soak test. Teams are routinely surprised — a logging library
+writing a few kilobytes per second is 300 MB a day.
+
+## Writing less
+
+The patterns that keep you inside budget:
+
+**Batch.** Accumulate in memory and write once, rather than per event. One write
+of 100 records instead of 100 writes.
+
+**Do not log to disk in production.** Verbose logging is the most common cause of
+overuse. Log to logcat, which is a ring buffer in memory, not to files.
+
+**Use Garage Mode.** Any bulk sync, cache warm or database compaction belongs in
+a `JobScheduler` job with idle constraints.
+
+**Avoid write amplification.** Rewriting a whole file to change one field, or a
+database without batched transactions, multiplies real flash writes far beyond
+what your code appears to do.
+
+```kotlin title="Batching, concretely"
+// Bad: a write per event
+fun onSignal(v: Reading) = dao.insert(v)
+
+// Good: one transaction per window
+private val pending = ArrayDeque<Reading>()
+fun onSignal(v: Reading) {
+    pending += v
+    if (pending.size >= 200) flush()
+}
+private fun flush() = db.runInTransaction {
+    dao.insertAll(pending.toList()); pending.clear()
+}
+```
+
+## What termination looks like
+
+An app killed for overuse is not just stopped — it may be prevented from
+restarting until the next daily window, and repeated offenders can be disabled
+entirely. From the driver's perspective the app simply stopped working, with no
+explanation.
+
+```bash title="Was I killed, and why?"
+adb logcat -b all | grep -iE 'CarWatchdog|resource overuse|killed'
+adb shell dumpsys car_service --services CarWatchdogService | grep -A20 -i overuse
+```
+
+<Callout type="tip" title="Test against the budget, not against your laptop">
+Run a realistic session with `dumpsys car_watchdog` before and after and compare
+written bytes. A feature that looks free on a development machine with fast NVMe
+can be the top consumer on the target.
+</Callout>
+
+## Next
+
+Telemetry and diagnostics — the platform's own answers to "what is this vehicle
+doing".

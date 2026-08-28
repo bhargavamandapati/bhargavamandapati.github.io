@@ -1,0 +1,230 @@
+---
+title: "Define and enforce an OEM permission"
+description: "A signature-level permission of your own — declared in the framework, allowlisted for a privileged app, enforced at every entry point, and verified on device."
+order: 3
+difficulty: "Intermediate"
+time: "1–2 hours"
+outcome: "com.oem.vega.permission.CONTROL_SEAT_MASSAGE declared, granted to one privileged app, refused to everything else, and proven with a failing call from an unprivileged app."
+prerequisites:
+  - label: "A service to protect"
+    href: "/tutorials/framework/custom-car-subservice/"
+  - label: "The car permission model"
+    href: "/learn/security/permissions-and-treble/"
+tags: ["Permissions", "Security", "Framework"]
+sources:
+  - label: "Privileged permission allowlisting"
+    href: "https://source.android.com/docs/core/permissions/perms-allowlist"
+  - label: "Defining permissions"
+    href: "https://developer.android.com/guide/topics/permissions/defining"
+  - label: "Android permissions overview"
+    href: "https://source.android.com/docs/core/permissions"
+---
+
+A Binder service is reachable by any process that can find it. The permission is
+the only thing standing between your vehicle control and every app on the device.
+
+## Step 1 — Choose the protection level
+
+| Level | Who can hold it | Use for |
+| --- | --- | --- |
+| `normal` | Any app, no prompt | Harmless reads |
+| `dangerous` | Any app, user prompts | Personal data |
+| `signature` | Apps signed with the same key | Platform-internal |
+| `signature\|privileged` | Platform-signed **or** allowlisted priv-app | **Vehicle control** |
+
+Anything that actuates the vehicle is `signature|privileged`. There is no
+version of this argument that ends differently.
+
+<Gotcha title="This decides your release cadence, not just your access">
+A `signature|privileged` permission means the app holding it ships inside the
+OEM's system image. Your releases become their releases — months, tied to vehicle
+programme gates. Find this out in week one, not during integration.
+</Gotcha>
+
+## Step 2 — Declare it in the framework
+
+Permissions used by system components are declared in the framework's manifest,
+overlaid from your product:
+
+```xml title="device/oem/vega/overlay/frameworks/base/core/res/AndroidManifest.xml"
+<!-- Group so Settings can present them together -->
+<permission-group
+    android:name="com.oem.vega.permission-group.COMFORT"
+    android:label="@string/perm_group_comfort_label"
+    android:description="@string/perm_group_comfort_desc" />
+
+<permission
+    android:name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"
+    android:permissionGroup="com.oem.vega.permission-group.COMFORT"
+    android:protectionLevel="signature|privileged"
+    android:label="@string/perm_seat_massage_label"
+    android:description="@string/perm_seat_massage_desc" />
+
+<!-- Read and write are different risks. Grant them separately. -->
+<permission
+    android:name="com.oem.vega.permission.READ_SEAT_STATE"
+    android:permissionGroup="com.oem.vega.permission-group.COMFORT"
+    android:protectionLevel="signature|privileged"
+    android:label="@string/perm_seat_read_label"
+    android:description="@string/perm_seat_read_desc" />
+```
+
+```xml title="device/oem/vega/overlay/frameworks/base/core/res/res/values/strings.xml"
+<resources>
+    <string name="perm_group_comfort_label">Seat comfort</string>
+    <string name="perm_group_comfort_desc">Control heated, ventilated and massaging seats.</string>
+
+    <string name="perm_seat_massage_label">control seat massage</string>
+    <string name="perm_seat_massage_desc">Start and stop seat massage programs and set their
+        intensity. Malicious apps could operate seat motors unexpectedly.</string>
+
+    <string name="perm_seat_read_label">read seat state</string>
+    <string name="perm_seat_read_desc">Read the current seat position and comfort settings.</string>
+</resources>
+```
+
+<Gotcha title="Write the description properly">
+Somebody in a security review will read it, and "internal use" is not an answer.
+Describe what the permission allows and what a malicious holder could do — that
+second half is what reviewers are actually assessing.
+</Gotcha>
+
+## Step 3 — Allowlist it for your app
+
+A privileged app cannot simply request a signature permission. It must be listed.
+
+```xml title="device/oem/vega/privapp-permissions-vega.xml"
+<permissions>
+  <privapp-permissions package="com.oem.vega.comfort">
+    <permission name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"/>
+    <permission name="com.oem.vega.permission.READ_SEAT_STATE"/>
+  </privapp-permissions>
+</permissions>
+```
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_COPY_FILES += \
+    device/oem/vega/privapp-permissions-vega.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-vega.xml
+```
+
+<Gotcha title="A missing allowlist entry stops the boot">
+On `userdebug` builds, a privileged app requesting an unlisted signature
+permission prevents the platform from booting. This is deliberate: a silent
+security gap becomes an obvious failure. When your image stops booting right
+after you added a permission, this file is why.
+</Gotcha>
+
+## Step 4 — Request it in the app
+
+```xml title="The consuming app's AndroidManifest.xml"
+<uses-permission android:name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"/>
+<uses-permission android:name="com.oem.vega.permission.READ_SEAT_STATE"/>
+```
+
+```json title="…and the app must actually be privileged"
+android_app {
+    name: "VegaComfort",
+    // ...
+    certificate: "platform",
+    privileged: true,          // installs to priv-app
+    product_specific: true,    // lands on /product
+}
+```
+
+## Step 5 — Enforce it at every entry point
+
+Declaring a permission does nothing on its own. The service must check it.
+
+```java title="Every Binder method, no exceptions"
+@Override
+public void setMassageIntensity(int seatAreaId, int level) {
+    // Throws SecurityException if the caller does not hold it.
+    mContext.enforceCallingOrSelfPermission(
+            "com.oem.vega.permission.CONTROL_SEAT_MASSAGE", "setMassageIntensity");
+    // ... validate arguments, then act
+}
+
+@Override
+public int getMassageIntensity(int seatAreaId) {
+    // Read uses the READ permission, not the CONTROL one.
+    mContext.enforceCallingOrSelfPermission(
+            "com.oem.vega.permission.READ_SEAT_STATE", "getMassageIntensity");
+    // ...
+}
+```
+
+<Gotcha title="enforceCallingOrSelfPermission, not checkPermission">
+`checkPermission` returns a value you might forget to act on.
+`enforceCallingOrSelfPermission` throws. Use the one that fails closed — and put
+it on the first line, before any argument parsing, so a malformed request from an
+unauthorised caller is rejected on identity rather than on shape.
+</Gotcha>
+
+## Step 6 — Build and verify
+
+```bash
+m -j && emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 45
+```
+
+<Verify title="Verify the permission exists and is correctly scoped">
+```bash
+# 1. The permission is known to the platform
+adb shell pm list permissions -f | grep -A3 CONTROL_SEAT_MASSAGE
+
+# 2. Its protection level is right
+adb shell dumpsys package permission com.oem.vega.permission.CONTROL_SEAT_MASSAGE
+# expect: protectionLevel=signature|privileged
+
+# 3. Your app HAS it
+adb shell dumpsys package com.oem.vega.comfort | grep -A5 'granted permissions'
+
+# 4. Your app is actually privileged
+adb shell pm path com.oem.vega.comfort
+# expect a path under /product/priv-app/ or /system/priv-app/
+```
+</Verify>
+
+<Verify title="Verify it is actually refused to everyone else">
+This is the test that matters, and the one people skip.
+
+```bash
+# Build a trivial unprivileged app that requests the permission and calls
+# the service, install it normally, and run it:
+adb install -r --user current unprivileged-test.apk
+adb shell am start -n com.example.permtest/.MainActivity
+
+adb logcat -b all | grep -i SecurityException
+# expect: SecurityException: ... requires com.oem.vega.permission.CONTROL_SEAT_MASSAGE
+```
+
+A permission that is declared but not enforced looks identical to a working one
+until somebody goes looking. Prove the negative case.
+</Verify>
+
+## Step 7 — Check what else holds it
+
+```bash title="Audit the holders"
+# Every package granted this permission
+adb shell dumpsys package | grep -B15 'CONTROL_SEAT_MASSAGE: granted=true' | grep 'Package \['
+
+# Everything your app was granted — look for things it does not need
+adb shell dumpsys package com.oem.vega.comfort | grep -A30 'requested permissions'
+```
+
+An app holding permissions it does not use is a finding in any security review,
+and this command is how penetration testers find it before you do.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Image will not boot | Missing `privapp-permissions` entry |
+| `Unknown permission` | Framework overlay manifest not applied |
+| `protectionLevel=signature` only | Missing `\|privileged` |
+| App has it but should not | Wrong package name in the allowlist |
+| Everyone can call the service | `enforceCallingOrSelfPermission` not called |
+| Works platform-signed, fails as priv-app | Allowlist file did not land in the image |
+
+## Next
+
+The privileged app that holds this permission.

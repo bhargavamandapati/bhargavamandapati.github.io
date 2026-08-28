@@ -1,0 +1,267 @@
+---
+title: "Theme the platform with an RRO"
+description: "Restyle CarSystemUI and the Car UI Library from a separate APK — no forking, no rebuild, and a thirty-second iteration loop."
+order: 2
+difficulty: "Intermediate"
+time: "1–2 hours"
+outcome: "A static RRO that rebrands the system bars and Car UI Library, plus a dynamic RRO you can toggle at runtime with cmd overlay."
+prerequisites:
+  - label: "Your own lunch target"
+    href: "/tutorials/platform/custom-lunch-target/"
+  - label: "How RRO theming works"
+    href: "/learn/hmi/car-ui-library/"
+tags: ["RRO", "Theming", "Overlay", "OEM"]
+sources:
+  - label: "Runtime Resource Overlays"
+    href: "https://source.android.com/docs/core/runtime/rros"
+  - label: "Customize CarSystemUI"
+    href: "https://source.android.com/docs/automotive/hmi/car_ui"
+  - label: "car-ui-lib source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/libs/car-ui-lib/"
+---
+
+Every OEM wants their own look. Forking the system apps to get it costs a
+re-merge at every platform upgrade, for fifteen years. An RRO replaces resources
+at runtime instead — the target's code never changes and never knows.
+
+<FileTree>
+vendor/oem/vega/overlays/
+├── VegaSystemUIRRO/          # static — always on, brand identity
+│   ├── Android.bp
+│   ├── AndroidManifest.xml
+│   ├── res/values/colors.xml
+│   └── res/values/dimens.xml
+└── VegaNightRRO/             # dynamic — toggled at runtime
+    ├── Android.bp
+    ├── AndroidManifest.xml
+    └── res/values/colors.xml
+</FileTree>
+
+## Step 1 — Find the resource names to override
+
+You can only override resources the target actually declares. Find their real
+names first:
+
+```bash title="What can I override?"
+cd ~/aosp
+
+# CarSystemUI colours and dimensions
+grep -rn "system_bar_background_color" packages/apps/Car/SystemUI/res/values/
+ls packages/apps/Car/SystemUI/res/values/
+
+# Car UI Library
+grep -rn "car_ui_toolbar_background" packages/apps/Car/libs/car-ui-lib/car-ui-lib/res/values/
+```
+
+<Gotcha title="An overlay of a name that does not exist does nothing">
+It does not error. The overlay compiles, installs, enables — and the value is
+silently ignored. When "my RRO is not applying", the first thing to check is that
+the resource name still exists in the target on your platform version. Names do
+get renamed between releases.
+</Gotcha>
+
+## Step 2 — Build the static brand overlay
+
+```xml title="VegaSystemUIRRO/AndroidManifest.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.oem.vega.overlay.systemui">
+
+    <!-- Resource-only APK -->
+    <application android:hasCode="false"/>
+
+    <overlay
+        android:targetPackage="com.android.systemui"
+        android:targetName="CarSystemUI"
+        android:isStatic="true"
+        android:priority="10"/>
+</manifest>
+```
+
+```xml title="VegaSystemUIRRO/res/values/colors.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Names must match the target's exactly -->
+    <color name="system_bar_background_color">#0B0F1A</color>
+    <color name="car_nav_icon_fill_color">#22D3EE</color>
+    <color name="car_nav_icon_fill_color_selected">#67E8F9</color>
+</resources>
+```
+
+```xml title="VegaSystemUIRRO/res/values/dimens.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="car_top_system_bar_height">64dp</dimen>
+    <dimen name="car_bottom_system_bar_height">96dp</dimen>
+</resources>
+```
+
+```json title="VegaSystemUIRRO/Android.bp"
+runtime_resource_overlay {
+    name: "VegaSystemUIRRO",
+    resource_dirs: ["res"],
+    manifest: "AndroidManifest.xml",
+
+    // Static overlays must be on a partition mounted before the target starts.
+    product_specific: true,
+
+    // Sign with the platform key so it may overlay a platform-signed target.
+    certificate: "platform",
+}
+```
+
+<Gotcha title="Static overlays need matching signatures">
+A static RRO targeting a platform-signed app must itself be platform-signed, or
+it is refused at boot with a message in `logcat` that names neither file
+clearly. `certificate: "platform"` is not optional here.
+</Gotcha>
+
+## Step 3 — Build the dynamic day/night overlay
+
+```xml title="VegaNightRRO/AndroidManifest.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.oem.vega.overlay.night">
+
+    <application android:hasCode="false"/>
+
+    <!-- isStatic omitted: this one is enabled and disabled at runtime -->
+    <overlay
+        android:targetPackage="com.android.systemui"
+        android:targetName="CarSystemUI"
+        android:priority="20"/>
+</manifest>
+```
+
+```xml title="VegaNightRRO/res/values/colors.xml"
+<resources>
+    <color name="system_bar_background_color">#000000</color>
+    <color name="car_nav_icon_fill_color">#7DD3FC</color>
+</resources>
+```
+
+Higher `priority` wins, so the night overlay overrides the brand overlay when
+both are enabled.
+
+## Step 4 — Add both to the product
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_PACKAGES += \
+    VegaSystemUIRRO \
+    VegaNightRRO
+```
+
+```bash
+m VegaSystemUIRRO VegaNightRRO && m -j
+emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 45
+```
+
+<Verify title="Verify both overlays are installed and the static one is on">
+```bash
+# 1. Both are known to the overlay manager
+adb shell cmd overlay list | grep -i vega
+# expect: [x] com.oem.vega.overlay.systemui      <- enabled (static)
+#         [ ] com.oem.vega.overlay.night          <- present, disabled
+
+# 2. The static one is actually applied to the target
+adb shell cmd overlay dump com.oem.vega.overlay.systemui | head -30
+
+# 3. Visually: the system bars carry your colour
+adb shell screencap -p /sdcard/bars.png && adb pull /sdcard/bars.png
+```
+
+`[x]` means enabled. If your static overlay shows `[ ]`, it was rejected — check
+`logcat` for a signature or target-name mismatch.
+</Verify>
+
+## Step 5 — The thirty-second iteration loop
+
+This is the payoff, and the reason to prefer overlays over build-time changes.
+
+```bash title="Change a colour and see it, without a rebuild"
+# 1. Edit res/values/colors.xml
+# 2. Build just the overlay
+m VegaNightRRO
+
+# 3. Push it
+adb root && adb remount
+adb push $ANDROID_PRODUCT_OUT/product/overlay/VegaNightRRO/VegaNightRRO.apk \
+  /product/overlay/VegaNightRRO.apk
+
+# 4. Toggle it
+adb shell cmd overlay enable com.oem.vega.overlay.night
+adb shell pkill -f com.android.systemui     # restart the target, no reboot
+
+# 5. Look
+adb shell screencap -p /sdcard/night.png && adb pull /sdcard/night.png
+```
+
+```bash title="Toggling at runtime"
+adb shell cmd overlay enable  com.oem.vega.overlay.night
+adb shell cmd overlay disable com.oem.vega.overlay.night
+adb shell cmd overlay list | grep vega
+```
+
+<Verify title="Verify the dynamic overlay toggles">
+```bash
+adb shell cmd overlay enable com.oem.vega.overlay.night
+adb shell cmd overlay list | grep night      # expect [x]
+
+adb shell cmd overlay disable com.oem.vega.overlay.night
+adb shell cmd overlay list | grep night      # expect [ ]
+```
+</Verify>
+
+## Step 6 — Overlay the Car UI Library too
+
+The system bars are only part of the look. Most of what the driver sees comes
+from `car-ui-lib`, and it is overlaid the same way:
+
+```xml title="A car-ui-lib overlay manifest"
+<overlay
+    android:targetPackage="com.android.car.ui.paintbooth"
+    android:targetName="car-ui-lib"
+    android:resourcesMap="@xml/overlays"
+    android:isStatic="true"
+    android:priority="10"/>
+```
+
+```xml title="res/values/dimens.xml"
+<resources>
+    <dimen name="car_ui_toolbar_first_row_height">96dp</dimen>
+    <dimen name="car_ui_list_item_height">116dp</dimen>
+    <dimen name="car_ui_touch_target_size">76dp</dimen>
+</resources>
+```
+
+Because every `car-ui-lib` component resolves the same resource names, one
+overlay restyles lists, toolbars, preferences and dialogs across every app that
+uses the library.
+
+## What can and cannot be overlaid
+
+| Overlayable | Not overlayable |
+| --- | --- |
+| Colours, dimensions, strings | Code and logic |
+| Drawables, styles, themes | Class names |
+| Layouts (whole-file replacement) | New views without a layout replacement |
+| Booleans, integers, arrays | Anything not declared as a resource |
+
+If a value is hard-coded in the target's Java or XML rather than being a named
+resource, no overlay can reach it. That is the real limit, and the reason OEM
+components should never hard-code visual values.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Overlay not in `cmd overlay list` | Not in `PRODUCT_PACKAGES`, or wrong partition |
+| Listed but `[ ]` and will not enable | Signature or `targetName` mismatch |
+| Enabled but nothing changes | Resource name does not exist in the target |
+| Works on emulator, not on target | Different platform version renamed the resource |
+| Static overlay ignored | Not on a partition mounted before the target |
+| Changes need a reboot | Restart the target app instead: `pkill -f <target>` |
+
+## Next
+
+When an overlay is not enough — modifying CarSystemUI itself.

@@ -1,0 +1,160 @@
+---
+title: "CI for an AOSP programme"
+description: "Full builds take hours and there are dozens of engineers. Caching, incremental strategy, artefact management and what to actually gate on."
+order: 3
+difficulty: "Advanced"
+tags: ["CI", "Build", "Infrastructure"]
+sources:
+  - label: "Building Android"
+    href: "https://source.android.com/docs/setup/build/building"
+  - label: "Soong build system"
+    href: "https://source.android.com/docs/setup/build"
+  - label: "Continuous integration best practices"
+    href: "https://source.android.com/docs/setup/create/coding-tasks"
+---
+
+An AOSP build is hours of CPU and hundreds of gigabytes. Multiply by a team and a
+variant matrix and build infrastructure stops being a detail — it becomes the
+main determinant of how fast the programme moves.
+
+## The economics
+
+| Build type | Typical time |
+| --- | --- |
+| Clean full build | 1–4 hours |
+| Incremental, one module changed | 2–10 minutes |
+| `m <module>` only | 30 s – 3 minutes |
+| `repo sync` across a release boundary | 30 minutes – 3 hours |
+
+The gap between the first two rows is the entire optimisation opportunity. A CI
+system that does clean builds for everything is wasting most of its capacity.
+
+## What to cache
+
+**ccache** for native compilation:
+
+```bash title="ccache setup"
+export USE_CCACHE=1
+export CCACHE_EXEC=/usr/bin/ccache
+export CCACHE_DIR=/mnt/fast/ccache
+ccache -M 200G
+ccache -o compression=true
+ccache -s          # hit rate — below 70% means something is invalidating it
+```
+
+**A warm `out/` directory** per configuration. Preserving it between runs turns a
+three-hour build into ten minutes. The discipline is that each lunch target gets
+its own, never shared, because switching targets in one `out/` invalidates
+everything.
+
+**A local mirror of the AOSP git repositories.** `repo sync` over the internet
+for every worker is the single largest avoidable cost on most setups.
+
+```bash title="Local mirror"
+repo init -u https://android.googlesource.com/mirror/manifest --mirror
+repo sync -j16
+
+# Workers then sync from the mirror
+repo init -u /mnt/mirror/platform/manifest.git -b android-14.0.0_r30 --reference=/mnt/mirror
+```
+
+<Callout type="warning" title="Do not build on network storage">
+AOSP builds touch millions of small files. NFS or a network home directory turns
+a 45-minute build into an overnight one, and the symptom is a build farm that
+looks busy and produces nothing. Local NVMe, always.
+</Callout>
+
+## What to gate on
+
+Not everything can run per commit. A workable tiering:
+
+**Per commit — minutes, blocking**
+
+```bash
+# Static checks and the modules the change touches
+m OemComfortApp OemLauncher
+atest CarServiceUnitTest
+./tools/checkstyle.sh
+```
+
+**Per merge — tens of minutes, blocking**
+
+```bash
+m -j                                   # full build of the primary target
+atest CtsCarTestCases
+atest VtsHalAutomotiveVehicle_TargetTest
+```
+
+**Nightly — hours, non-blocking but watched**
+
+```bash
+# Every variant in the matrix
+for target in vega_base vega_premium vega_cn; do
+  lunch ${target}-trunk_staging-userdebug && m -j dist
+done
+
+# On real hardware
+run_boot_time_measurement
+run_soak_test --hours 8
+atest --all-abi CtsCarTestCases
+```
+
+The principle: **block on fast things, monitor slow things.** A per-commit gate
+that takes ninety minutes is one engineers will learn to work around.
+
+## Building the variant matrix
+
+```bash title="Only rebuild what a change can affect"
+CHANGED=$(git diff --name-only origin/main...HEAD)
+
+case "$CHANGED" in
+  *device/oem/vega_cn/*)  TARGETS="vega_cn" ;;
+  *device/oem/*)          TARGETS="vega_base vega_premium vega_cn" ;;
+  *packages/services/Car/*) TARGETS="vega_base" ;;   # representative target
+  *)                      TARGETS="vega_base" ;;
+esac
+```
+
+A full matrix per commit is affordable for nobody. A representative target per
+commit plus the full matrix nightly catches almost everything, much sooner.
+
+## Artefacts worth keeping
+
+```bash title="Publishing a build"
+m dist
+
+# out/dist now contains:
+#   *-target_files.zip   -> needed to generate an OTA to this build
+#   *-img.zip            -> flashable images
+#   installed-files.txt  -> what is in the image, useful for size diffs
+#   *-symbols.zip        -> symbolising crashes from the field
+```
+
+**Keep `target_files.zip` for every release build.** An incremental OTA is
+generated from the pair (old target_files, new target_files). Without the old
+one, you can only produce a full OTA — which is far larger and much slower to
+deliver over a metered vehicle connection.
+
+**Keep symbols.** A native crash from a vehicle six months from now is
+unreadable without the symbols for that exact build.
+
+## Metrics that keep a programme honest
+
+Track these per build and publish the trend:
+
+- **Build duration** and ccache hit rate — infrastructure health.
+- **Image size** per partition — it only ever grows, and partitions are fixed.
+- **Boot time** on real hardware — the number in the requirements document.
+- **CTS/VTS pass rate** — so compliance failures surface in days, not at the gate.
+- **Test flakiness** — a flaky suite is one engineers learn to ignore.
+
+<Callout type="tip" title="Image size is a hard wall, not a warning">
+Partition sizes are fixed in `BoardConfig.mk` and cannot change after the board
+is manufactured. A programme that discovers `/system` is 200 MB over at C-sample
+has a genuine crisis. Track the size per build from day one and alert on the
+trend, not on the failure.
+</Callout>
+
+## Next
+
+Getting the result of all this onto a vehicle already in the field.

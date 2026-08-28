@@ -1,0 +1,185 @@
+---
+title: "Digital key and phone-as-key"
+description: "Unlocking a car with a phone — how the standard works, why Android is deliberately outside the trust path, and the failure case that must always work."
+order: 4
+difficulty: "Advanced"
+tags: ["Digital key", "Security", "UWB"]
+sources:
+  - label: "Car Connectivity Consortium — Digital Key"
+    href: "https://carconnectivity.org/digital-key/"
+  - label: "Android Keystore and StrongBox"
+    href: "https://source.android.com/docs/security/features/keystore"
+  - label: "Android identity and credential APIs"
+    href: "https://developer.android.com/privacy-and-security/keystore"
+---
+
+Walking up to a car with a phone in your pocket and having the door unlock is a
+genuinely good feature. It is also a security problem with unusually severe
+consequences, and the architecture is shaped almost entirely by that.
+
+## The problem being solved
+
+A physical key fob works by proximity: it is either near the car or it is not.
+Replacing it with a phone means proving two things:
+
+1. **This phone holds a genuine key** for this vehicle.
+2. **The phone is physically near the car**, not being relayed from a distance.
+
+<Scenario title="The relay attack, and why proximity is hard">
+Two people with radio equipment. One stands near the house where the key is; the
+other stands by the car.
+
+They relay the radio conversation between key and car over a longer link. The car
+believes the key is next to it. The doors open.
+
+This worked against a great many keyless entry systems, and it is why simply
+answering "is the key responding?" is not sufficient. The system has to establish
+**distance**, not just presence.
+</Scenario>
+
+## How proximity is actually established
+
+| Technology | Role | Distance accuracy |
+| --- | --- | --- |
+| **NFC** | Tap-to-unlock fallback | A few centimetres — by physics |
+| **BLE** | Wake and discover | Signal strength only — easily spoofed |
+| **UWB** | Precise ranging | Centimetres, by measuring time of flight |
+
+<Plain>
+Ultra-wideband is the piece that solves the relay problem. It measures how long a
+radio pulse takes to travel, and the speed of light is not something an attacker
+can relay around. If the timing says four metres, the device is four metres away.
+
+Bluetooth is still used — it is cheap and always on, so it handles discovery and
+wake-up. But the security decision rests on UWB where it is available, and on NFC
+tap where it is not.
+</Plain>
+
+## Where Android sits: outside
+
+<Plain>
+On both ends, the actual key material lives in **dedicated secure hardware**, not
+in the operating system.
+
+On the phone, that is a secure element — the same class of hardware that holds
+payment credentials.
+
+In the vehicle, it is a security module connected to the body controller. Android
+is not in the trust path. It cannot read the key, cannot authorise an unlock, and
+cannot be compromised into doing so.
+</Plain>
+
+<Analogy title="Like a hotel key card and the door lock">
+The lock on a hotel room door does not consult the hotel's booking website. It
+verifies the card itself, locally, and opens.
+
+If the website is down, or hacked, the door still works correctly. Android in a
+digital key system is the website: useful for managing things, and deliberately
+not the thing that decides.
+</Analogy>
+
+## What Android does do
+
+Android owns the **management** experience, which is substantial:
+
+- Showing which keys exist and which devices hold them
+- Starting the pairing flow for a new device
+- **Sharing** a key with a family member, with an expiry
+- **Revoking** a key when a phone is lost or a car is sold
+- Showing recent access history
+
+```kotlin title="Management, not authorisation"
+// A vendor interface to the security module. Note what is absent:
+// there is no unlock() here, because Android does not unlock anything.
+interface IDigitalKeyManager {
+    List<KeyRecord> listKeys()
+    PairingSession beginPairing(DeviceType type)
+    void revokeKey(String keyId)
+    void shareKey(String keyId, ShareConstraints constraints)
+}
+```
+
+<Plain>
+Notice the missing method. If you are reviewing a digital key design and Android
+has an `unlock()`, that is the finding.
+</Plain>
+
+## Sharing is where the interesting requirements are
+
+Sharing a key sounds simple and is not:
+
+**Time-bounded.** A key lent to a valet should expire in two hours.
+
+**Capability-bounded.** A key that can unlock and drive is different from one that
+can only unlock the boot for a delivery.
+
+**Revocable while offline.** This is the hard one. If the vehicle has no network
+connection for two weeks and a shared key is revoked, the revocation must still
+take effect. That usually means keys carry an expiry the vehicle can evaluate
+locally, rather than relying on the vehicle asking a server.
+
+<Scenario title="The revocation that did not arrive">
+A user shares a key, then revokes it from their phone app. The backend records
+it.
+
+The vehicle is parked in an underground garage with no signal for eleven days.
+The revoked key still opens it, because the vehicle never learned.
+
+The fix is architectural rather than a bug fix: **shared keys carry a short
+validity period** and are silently renewed while the connection exists. A key that
+cannot be renewed simply expires. Revocation becomes "stop renewing" rather than
+"deliver a message", and it works offline by construction.
+</Scenario>
+
+## The failure case that must always work
+
+<Plain>
+Phones run out of battery. Phones get dropped. Phones get left inside the car.
+
+**There must always be a way in that does not involve the phone.** A physical key,
+a card, a keypad — but something. A digital key system whose failure mode is a
+locked-out customer at an airport at midnight is not a shippable system.
+
+This is worth stating explicitly because it is easy to lose sight of during a
+feature-focused design review, and it is the requirement customers judge the
+whole feature on.
+</Plain>
+
+## Privacy
+
+Key usage is a movement log. Every unlock is a record of someone arriving
+somewhere at a time.
+
+The rules from the telemetry and location topics apply directly:
+
+- Retain access history for a **bounded** period, and say what it is.
+- **Do not** correlate key usage with location unless there is a specific consent
+  for a specific purpose.
+- On a **shared vehicle**, be careful whose history is visible to whom. A family
+  member's arrival times are their data, not the owner's.
+
+## What to check in a design
+
+- Does Android have any path to authorise an unlock? **It should not.**
+- Is the key in **secure hardware** on both ends?
+- Does proximity rely on **ranging**, or only on signal strength?
+- Do shared keys **expire locally**, without needing a network?
+- Is there a **non-phone fallback**?
+- Is access history **bounded and scoped** to the right user?
+
+<Recap>
+- Digital key must prove **possession and proximity**. Proximity is the hard part
+  because of relay attacks.
+- **UWB solves it by measuring time of flight**; BLE handles discovery; NFC is the
+  tap fallback.
+- Key material lives in **secure hardware on both ends**. Android is deliberately
+  outside the trust path and has no `unlock()`.
+- Android owns **management**: pairing, sharing, revoking, history.
+- **Revocation must work offline** — achieved with short-lived, renewable keys
+  rather than delivered messages.
+- **There must always be a non-phone way in.**
+</Recap>
+
+## Next
+
+The other way a phone reaches into the car.

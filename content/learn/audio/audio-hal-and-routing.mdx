@@ -1,0 +1,150 @@
+---
+title: "The audio HAL and routing configuration"
+description: "Below CarAudioService: how buses are declared to Android, how the policy engine picks a device, and why an address mismatch produces silence with no error anywhere."
+order: 3
+difficulty: "Advanced"
+tags: ["Audio HAL", "Routing", "Configuration"]
+sources:
+  - label: "Audio configuration for automotive"
+    href: "https://source.android.com/docs/automotive/audio/audio-configuration"
+  - label: "Audio policy configuration"
+    href: "https://source.android.com/docs/core/audio/implement-policy"
+  - label: "Car audio sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/audio/"
+---
+
+`car_audio_configuration.xml` describes zones in terms of *device addresses*.
+Those addresses have to exist. What creates them is the audio HAL and
+`audio_policy_configuration.xml`, one layer below — and the two files are edited
+by different people, which is exactly why they drift.
+
+## The two configuration files
+
+```text title="Who declares what"
+audio_policy_configuration.xml      ← the audio HAL's devices exist here
+        │  declares output devices with addresses:
+        │      bus0_media_out, bus1_navigation_out, …
+        ▼
+car_audio_configuration.xml         ← CarAudioService groups them into zones
+           references those SAME addresses by string
+```
+
+If the strings do not match exactly, routing silently fails. No exception, no
+log at default verbosity — just an app that plays and produces no sound.
+
+## Declaring output devices
+
+```xml title="audio_policy_configuration.xml (excerpt)"
+<module name="primary" halVersion="3.0">
+  <mixPorts>
+    <mixPort name="mixport_bus0_media" role="source" flags="AUDIO_OUTPUT_FLAG_PRIMARY">
+      <profile name="" format="AUDIO_FORMAT_PCM_16_BIT"
+               samplingRates="48000" channelMasks="AUDIO_CHANNEL_OUT_STEREO"/>
+    </mixPort>
+    <mixPort name="mixport_bus1_navigation" role="source">
+      <profile name="" format="AUDIO_FORMAT_PCM_16_BIT"
+               samplingRates="48000" channelMasks="AUDIO_CHANNEL_OUT_STEREO"/>
+    </mixPort>
+  </mixPorts>
+
+  <devicePorts>
+    <!-- The address string here is the contract with car_audio_configuration -->
+    <devicePort tagName="bus0_media_out" type="AUDIO_DEVICE_OUT_BUS" role="sink"
+                address="bus0_media_out">
+      <profile name="" format="AUDIO_FORMAT_PCM_16_BIT"
+               samplingRates="48000" channelMasks="AUDIO_CHANNEL_OUT_STEREO"/>
+    </devicePort>
+    <devicePort tagName="bus1_navigation_out" type="AUDIO_DEVICE_OUT_BUS" role="sink"
+                address="bus1_navigation_out">
+      <profile name="" format="AUDIO_FORMAT_PCM_16_BIT"
+               samplingRates="48000" channelMasks="AUDIO_CHANNEL_OUT_STEREO"/>
+    </devicePort>
+  </devicePorts>
+
+  <routes>
+    <route type="mix" sink="bus0_media_out" sources="mixport_bus0_media"/>
+    <route type="mix" sink="bus1_navigation_out" sources="mixport_bus1_navigation"/>
+  </routes>
+</module>
+```
+
+`AUDIO_DEVICE_OUT_BUS` is the automotive device type. Each one becomes an
+addressable output that `car_audio_configuration.xml` can assign to a zone.
+
+<Callout type="warning" title="The address is a string, matched exactly">
+`bus0_media_out` and `bus0_media` are different devices as far as the platform is
+concerned. This single class of typo accounts for a remarkable share of "no audio
+on the new board" bring-up time. Diff the two files' address lists mechanically
+rather than by eye.
+</Callout>
+
+## Verifying the wiring
+
+```bash title="Does Android see the devices?"
+adb shell dumpsys audio_policy | grep -A5 -i 'bus'
+adb shell dumpsys media.audio_policy | grep -i address
+adb shell dumpsys audio | grep -i -A10 'device'
+
+# What CarAudioService made of them
+adb shell dumpsys car_service --services CarAudioService
+```
+
+A three-step check that isolates the layer:
+
+1. Does `audio_policy` list the bus address? → the HAL declared it.
+2. Does `CarAudioService` show it in a zone? → the car config found it.
+3. Does playback reach it? → routing works.
+
+Whichever step fails first tells you which file to fix.
+
+## Where the mixing actually happens
+
+Two models, and knowing which you are on changes how you debug.
+
+**Software mixing.** Android's audio flinger mixes streams and writes to one
+device. Simple; all ducking is software; latency is Android's.
+
+**Hardware mixing.** Each bus goes to the amplifier as a separate channel and the
+amplifier mixes. Requires more buses and more amplifier channels, but gives lower
+latency, ducking that does not depend on app behaviour, and independence from
+Android's scheduling.
+
+Production vehicles overwhelmingly use hardware mixing for the
+navigation-over-media case, because the amplifier attenuating the media bus is
+more reliable than every app implementing ducking correctly.
+
+## Latency
+
+Automotive audio latency comes from more places than on a phone: Android's
+buffers, the HAL, the transport to the amplifier (often A2B or automotive
+Ethernet), and the amplifier's own DSP.
+
+```bash title="Measuring the Android portion"
+adb shell dumpsys media.audio_flinger | grep -iE 'latency|buffer|frameCount'
+```
+
+That only measures Android's share. End-to-end latency — a chime triggered to a
+chime heard — needs physical measurement, and it is the number that matters for
+anything that must be synchronised with a visual cue.
+
+## Common bring-up failures
+
+| Symptom | Cause |
+| --- | --- |
+| No audio anywhere | Bus addresses mismatched between the two config files |
+| One app silent, others fine | Its context is not routed in that zone |
+| Audio on the wrong speaker | Route or amplifier channel mapping wrong |
+| Ducking does not work | Hardware ducking expected but amplifier not configured |
+| Crackles under load | Buffer sizes too small for the SoC's scheduling |
+| Works on emulator, silent on target | Emulator uses a generic HAL with different addresses |
+
+<Callout type="tip" title="Generate both files from one source">
+The two config files describe the same topology in two syntaxes. On any programme
+with more than a handful of buses, generate both from a single definition and
+diff the generated output in CI. It eliminates the whole address-mismatch class
+of defect permanently.
+</Callout>
+
+## Next
+
+Bluetooth — where audio, telephony and contacts all arrive at once.

@@ -1,0 +1,170 @@
+---
+title: "CarSystemUI and the screen frame"
+description: "The system bars, HVAC panel and notification surface an OEM inherits and must make its own — what CarSystemUI owns, and where your app's pixels actually begin."
+order: 1
+difficulty: "Intermediate"
+tags: ["System UI", "HMI", "OEM"]
+sources:
+  - label: "Customize CarSystemUI"
+    href: "https://source.android.com/docs/automotive/hmi/car_ui"
+  - label: "CarSystemUI source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/SystemUI/"
+  - label: "Automotive notifications"
+    href: "https://source.android.com/docs/automotive/hmi/notifications"
+---
+
+On a phone, SystemUI draws a status bar and a nav bar and mostly stays out of the
+way. On a head unit it owns the permanent furniture of the vehicle: climate
+controls, the user switcher, media transport, and the surfaces that must be
+reachable in one touch while driving.
+
+<DiagramFrame
+  title="What CarSystemUI owns"
+  caption="The bars are persistent and OEM-themable. Your activity only ever gets the region between them."
+>
+  <SystemUiLayout />
+</DiagramFrame>
+
+## What it is
+
+`CarSystemUI` lives at <Src path="packages/apps/Car/SystemUI" label="packages/apps/Car/SystemUI" />
+and extends the phone SystemUI rather than replacing it. It inherits notification
+plumbing and window management, then substitutes automotive behaviour for the
+parts that differ.
+
+The pieces you will actually work on:
+
+| Component | Responsibility |
+| --- | --- |
+| `CarSystemBar` | Top and bottom bars, their buttons and state |
+| `CarNotificationView` | The notification surface, distraction-aware |
+| HVAC panel | Climate controls, reachable from any screen |
+| User switcher | Profile selection, tied to `CarUserService` |
+| Keyguard | Lock behaviour, which differs a lot from phones |
+
+## The bars are not decoration
+
+A driver must reach climate, home and media in one touch, without hunting. That
+is why the bars are permanent and why the platform gives OEMs so much control
+over them — the physical safety argument is doing the work.
+
+System bar contents are configured, not hard-coded:
+
+```xml title="A system bar button (config resource)"
+<com.android.systemui.car.systembar.CarSystemBarButton
+    android:id="@+id/home"
+    style="@style/SystemBarButton"
+    systemui:categories="android.intent.category.HOME"
+    systemui:highlightWhenSelected="true"
+    systemui:intent="intent:#Intent;action=android.intent.action.MAIN;
+        category=android.intent.category.HOME;launchFlags=0x14000000;end"/>
+```
+
+Which bars exist at all is a config flag:
+
+```xml title="Enabling bars per product"
+<bool name="config_enableTopSystemBar">true</bool>
+<bool name="config_enableBottomSystemBar">true</bool>
+<bool name="config_enableLeftSystemBar">false</bool>
+<bool name="config_enableRightSystemBar">false</bool>
+```
+
+Left and right bars exist because some head units are portrait, and a bottom bar
+on a tall screen wastes the wrong dimension.
+
+## Themable, not forkable
+
+Every OEM wants their own look. The platform's answer is **Runtime Resource
+Overlays** — a separate APK that replaces resources at runtime without touching
+CarSystemUI's code.
+
+```xml title="AndroidManifest.xml of an RRO"
+<manifest package="com.oem.systemui.rro">
+    <overlay
+        android:targetPackage="com.android.systemui"
+        android:targetName="CarSystemUI"
+        android:isStatic="true"
+        android:priority="1"/>
+</manifest>
+```
+
+```xml title="res/values/colors.xml — overriding the target's resources"
+<resources>
+    <color name="system_bar_background_color">#0B0F1A</color>
+    <color name="car_nav_icon_fill_color">#22D3EE</color>
+</resources>
+```
+
+<Callout type="warning" title="Forking CarSystemUI is a decade-long tax">
+It is always tempting, and it always costs more than expected. A fork must be
+re-merged at every platform upgrade, for the life of the vehicle — ten to fifteen
+years. Overlay first. Fork only when the platform genuinely cannot express what
+you need, and document why.
+</Callout>
+
+## Notifications are different here
+
+Automotive notifications are ranked, filtered and heavily restricted while
+driving. Heads-up notifications are limited by category, and long text is
+truncated by UX restrictions rather than by your layout.
+
+```kotlin title="A notification that behaves on a head unit"
+val notification = Notification.Builder(context, CHANNEL_ID)
+    .setSmallIcon(R.drawable.ic_message)
+    .setContentTitle(sender)
+    .setContentText(preview)
+    // CATEGORY_MESSAGE gets automotive-specific handling: read-aloud,
+    // reply actions, and correct behaviour under distraction rules.
+    .setCategory(Notification.CATEGORY_MESSAGE)
+    .addAction(replyAction)
+    .setStyle(Notification.MessagingStyle(person).addMessage(message))
+    .build()
+```
+
+Set the category honestly. Categories drive whether the platform will read a
+notification aloud, whether it can interrupt, and whether it appears at all above
+a speed threshold. Mislabelling a marketing message as `CATEGORY_CALL` to get
+visibility is the kind of thing that fails OEM review.
+
+## Where your app begins
+
+Between the bars. That is it.
+
+Consequences worth planning for:
+
+- **Your usable height is smaller than the display.** Two bars on a 1280×720 head
+  unit can take 150 px or more.
+- **The bars are always on top.** You cannot draw over them, and full-screen
+  immersive mode is generally disallowed for safety.
+- **Insets still apply.** Use `WindowInsets`; do not hard-code bar heights, which
+  differ per product and per OEM overlay.
+
+```kotlin title="Respect the insets, always"
+ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+    val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+    view.updatePadding(top = bars.top, bottom = bars.bottom)
+    insets
+}
+```
+
+## Debugging it
+
+```bash title="Useful commands"
+# Restart CarSystemUI after an overlay change, without a reboot
+adb shell pkill -f com.android.systemui
+
+# Which overlays are applied to SystemUI?
+adb shell cmd overlay list | grep -i systemui
+
+# Enable one at runtime while iterating
+adb shell cmd overlay enable com.oem.systemui.rro
+
+adb logcat -b all | grep -i carsystembar
+```
+
+`cmd overlay enable/disable` is the fastest theming loop there is — no rebuild, no
+reflash, just restart SystemUI and look.
+
+## Next
+
+The rules that decide what your UI is allowed to do while the vehicle moves.

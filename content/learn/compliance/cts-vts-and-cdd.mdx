@@ -1,0 +1,131 @@
+---
+title: "CTS, VTS and the CDD"
+description: "What 'Android compatible' actually means, which suite tests which layer, and how compliance failures block a launch — usually late, and usually predictably."
+order: 1
+difficulty: "Intermediate"
+tags: ["CTS", "VTS", "CDD", "Compliance"]
+sources:
+  - label: "Compatibility Definition Document"
+    href: "https://source.android.com/docs/compatibility/cdd"
+  - label: "Compatibility Test Suite"
+    href: "https://source.android.com/docs/compatibility/cts"
+  - label: "Vendor Test Suite"
+    href: "https://source.android.com/docs/compatibility/vts"
+---
+
+"Compatible" is not a marketing word. It is a defined set of requirements with
+machine-checkable tests, and failing them blocks a device from shipping with
+Google services and from claiming Android compatibility at all.
+
+<DiagramFrame
+  title="How the suites relate"
+  caption="The CDD states the requirements in prose. CTS and VTS test different halves of them. The OEM adds a suite of their own on top, and that is usually the one that finds the most defects."
+>
+  <ComplianceSuites />
+</DiagramFrame>
+
+## The CDD
+
+The Compatibility Definition Document is the written specification: what a device
+must, should and may do to be Android. It has automotive-specific sections
+covering displays, driver distraction, vehicle APIs and audio.
+
+It is prose, and it is worth reading rather than only running the tests. Many
+requirements are stated there and only partially covered by automation — which
+means an OEM reviewer will check them by hand.
+
+## CTS — the framework behaves as documented
+
+```bash title="Running CTS"
+cts-tradefed
+> run cts --module CtsCarTestCases
+> run cts --module CtsCarHostTestCases
+
+# Retry only what failed
+> run retry --retry <session_id>
+```
+
+CTS runs against the framework as an app would see it. Automotive-specific
+modules verify Car API behaviour, permission enforcement and the automotive
+feature flag.
+
+Common automotive CTS failures and what they usually mean:
+
+| Failure area | Usual cause |
+| --- | --- |
+| Car API returns unexpected values | HAL config does not match what the API promises |
+| Permission not enforced | A framework modification removed a check |
+| Feature flag inconsistency | `android.hardware.type.automotive` missing or partial |
+| Display/config mismatch | Density or size outside the CDD's permitted range |
+
+<Callout type="warning" title="Framework modifications are the usual culprit">
+OEMs modify the framework. CTS tests documented framework behaviour. A
+modification that changes behaviour an app can observe will fail CTS, and the
+correct fix is almost always to revert the modification and achieve the goal
+another way — not to argue the test is wrong.
+</Callout>
+
+## VTS — HALs honour their interfaces
+
+```bash title="Running VTS"
+vts-tradefed
+> run vts --module VtsHalAutomotiveVehicle_TargetTest
+> run vts --module VtsHalAutomotiveEvs_TargetTest
+> run vts --module VtsHalAutomotiveAudioControl_TargetTest
+```
+
+VTS tests the vendor side against the interface contract. For the VHAL it checks
+that configs are well-formed, area IDs are consistent, declared ranges are
+honoured, access modes behave, and required properties exist.
+
+Run VTS **during** HAL development, not at the end. It catches the structural
+mistakes — mismatched area configs, impossible access modes, missing required
+properties — that are cheap to fix in isolation and expensive once a UI is
+sitting on top.
+
+## The suites nobody mentions until late
+
+**CTS Verifier** — manual tests requiring human interaction or specific hardware.
+Someone has to sit with the device and follow instructions. Budget the time.
+
+**GTS** — Google's suite for GAS devices, verifying the Google services
+integration. Only relevant if the vehicle licenses GAS, and the results are
+between the OEM and Google.
+
+**STS** — security patch verification. Confirms the claimed security patch level
+is real, which matters for a vehicle receiving updates for a decade.
+
+**The OEM's own acceptance suite.** Frequently the largest of all, entirely
+specific to the programme, and the one that finds the most defects. It is not
+Google's and it is not optional.
+
+## Why failures arrive late
+
+The pattern is consistent: compliance runs are scheduled near the end, take days
+to execute, and produce failures that require framework or HAL changes — which
+then require revalidation.
+
+The teams that avoid the crunch do three things:
+
+1. **Run the relevant modules continuously**, not at the gate.
+   `atest CtsCarTestCases` on every platform change is cheap.
+2. **Treat a CDD requirement as a design input**, not a test to pass later.
+3. **Keep a compliance owner** who reads the CDD delta on every platform upgrade.
+   Requirements change between releases and nobody is notified.
+
+```bash title="A per-change smoke set"
+atest CtsCarTestCases
+atest VtsHalAutomotiveVehicle_TargetTest
+atest CarServiceUnitTest
+```
+
+<Callout type="tip" title="Compliance failures are almost never surprising in hindsight">
+Ask any team after a failed run and they will tell you which modification caused
+it. The information existed the whole time; only the feedback was late. Moving
+the suite earlier is a scheduling change, not an engineering one, and it is the
+highest-leverage thing available.
+</Callout>
+
+## Next
+
+The safety standard that shapes what Android is allowed to be responsible for.

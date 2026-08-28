@@ -1,0 +1,184 @@
+---
+title: "The automotive debugging toolkit"
+description: "The commands that actually tell you what the platform is doing — a triage order that resolves most AAOS defects before you open an IDE."
+order: 1
+difficulty: "Intermediate"
+tags: ["Debugging", "adb", "dumpsys"]
+sources:
+  - label: "Debugging with adb"
+    href: "https://developer.android.com/tools/adb"
+  - label: "Vehicle HAL debugging"
+    href: "https://source.android.com/docs/automotive/vhal/vhal-debug"
+  - label: "Perfetto tracing"
+    href: "https://perfetto.dev/docs/"
+---
+
+Automotive bugs are cheap to fix and expensive to *locate*, because the stack is
+deep and every layer can plausibly be blamed. A fixed triage order is worth more
+than any single clever tool.
+
+## The triage order
+
+Work down. Do not skip.
+
+```text
+1. Is the HAL running?              lshal | grep vehicle
+2. Does the property exist?         dumpsys car_service --list-properties
+3. Is SELinux blocking?             dmesg | grep avc
+4. Does the HAL return a value?     dumpsys car_service --get-property <id>
+5. Does the app hold permission?    dumpsys package <pkg> | grep -A20 permission
+6. Only now: your code.
+```
+
+Most engineers start at 6 and lose an afternoon. Steps 1–5 take ninety seconds
+and resolve the majority of "the property does not work" reports.
+
+## Car Service dumps
+
+```bash title="Targeted, not the firehose"
+adb shell dumpsys car_service --help            # options change per release
+adb shell dumpsys car_service --list
+
+adb shell dumpsys car_service --services CarPropertyService
+adb shell dumpsys car_service --services CarAudioService
+adb shell dumpsys car_service --services CarPowerManagementService
+adb shell dumpsys car_service --services CarUxRestrictionsManagerService
+adb shell dumpsys car_service --services CarUserService
+```
+
+```bash title="Properties"
+adb shell dumpsys car_service --list-properties
+adb shell dumpsys car_service --property 0x25400501
+adb shell dumpsys car_service --get-property 0x25400501
+adb shell dumpsys car_service --get-property 0x25400501 -a 1
+adb shell dumpsys car_service --set-property 0x25400501 3
+```
+
+## Logcat that is actually readable
+
+```bash title="Filtering to signal"
+# Automotive-relevant tags across all buffers
+adb logcat -b all -v threadtime \
+  CarService:V CarPropertyService:V VehicleHal:V CarAudioService:V *:S
+
+# Crashes only
+adb logcat -b crash
+
+# Kernel and SELinux
+adb logcat -b kernel | grep -i avc
+adb shell dmesg -w | grep -iE 'avc|vehicle|can0'
+
+# Clear before reproducing so the buffer holds only the incident
+adb logcat -c && reproduce && adb logcat -d > incident.log
+```
+
+<Callout type="tip" title="Increase the buffer before a long reproduction">
+The default ring buffer overflows quickly on a chatty head unit.
+`adb logcat -G 64M` before a soak test, or the interesting part will have scrolled
+away by the time the defect appears.
+</Callout>
+
+## Process and service state
+
+```bash title="Who is running, and as what"
+adb shell ps -Z | grep -iE 'vehicle|car'   # SELinux domains
+adb shell lshal                            # registered HALs
+adb shell lshal --init-vintf               # what VINTF declares
+adb shell service list | grep -i car       # binder services
+adb shell dumpsys activity service com.android.car
+```
+
+## Users and displays
+
+```bash title="Multi-user state"
+adb shell am get-current-user
+adb shell pm list users
+adb shell am switch-user 11
+
+adb shell dumpsys car_service --services CarOccupantZoneService
+adb shell dumpsys display | grep -A5 'Display Devices'
+```
+
+Remember that `adb install` targets the current user by default. Installing while
+user 10 is foreground and then testing on user 11 produces a very confusing
+"my app is not there".
+
+## Tracing performance
+
+```bash title="Perfetto for jank and boot"
+adb shell perfetto -o /data/misc/perfetto-traces/trace \
+  -t 20s sched freq idle am wm gfx view binder_driver
+
+adb pull /data/misc/perfetto-traces/trace
+# open at ui.perfetto.dev
+```
+
+`binder_driver` is the one to remember on automotive. Almost every Car API call
+is a binder transaction, and a saturated binder thread pool in Car Service
+produces UI jank that looks like a rendering problem and is not.
+
+```bash title="Boot timing"
+adb shell bootstat --print
+adb logcat -b events | grep boot_progress
+adb shell dumpsys SurfaceFlinger --timestats
+```
+
+## Overlays and theming
+
+```bash title="RRO iteration loop"
+adb shell cmd overlay list
+adb shell cmd overlay enable com.oem.rro.night
+adb shell cmd overlay disable com.oem.rro.night
+adb shell cmd overlay dump com.oem.rro.night
+
+adb shell pkill -f com.android.systemui   # restart SystemUI, no reboot
+```
+
+## A reproduction script
+
+Anything you debug twice should be a script. This is the shape that pays off:
+
+```bash title="capture.sh"
+#!/usr/bin/env bash
+set -euo pipefail
+OUT="incident-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$OUT"
+
+adb shell dumpsys car_service                    > "$OUT/car_service.txt"
+adb shell dumpsys car_service --list-properties  > "$OUT/properties.txt"
+adb shell lshal                                  > "$OUT/lshal.txt"
+adb shell ps -Z                                  > "$OUT/processes.txt"
+adb shell dmesg                                  > "$OUT/dmesg.txt"
+adb logcat -d -b all                             > "$OUT/logcat.txt"
+adb shell cmd overlay list                       > "$OUT/overlays.txt"
+adb shell am get-current-user                    > "$OUT/current_user.txt"
+
+tar czf "$OUT.tar.gz" "$OUT" && rm -rf "$OUT"
+echo "captured $OUT.tar.gz"
+```
+
+Hand this to QA. A defect report with a full state capture attached is worth ten
+that say "the temperature was wrong sometimes".
+
+## Symptom → cause
+
+| Symptom | Check first |
+| --- | --- |
+| Property always returns the default | SEPolicy denial; HAL not publishing |
+| `SecurityException` on a Car API call | Permission; `privapp-permissions` entry |
+| Value never updates | HAL only publishes self-initiated changes |
+| Callbacks stop after a while | Car Service restarted; re-register managers |
+| Audio from the wrong speaker | Bus addresses in config vs audio HAL |
+| UI blocked unexpectedly | UX restrictions; check driving state |
+| Head unit will not sleep | Wakelocks; `CarPowerManagementService` dump |
+| Black screen at boot | VHAL did not register; Car Service is waiting |
+| Works on emulator, not on target | Reference VHAL declares it; the real one does not |
+| Setting does not persist | User-scoping — user 0 vs foreground user |
+
+## The habit worth building
+
+When something is **wrong but stable** — a value that is consistently incorrect
+rather than intermittently — it is almost always a missing permission or a
+missing SEPolicy rule, because both fail silently into a default. Intermittent
+faults are timing, threading or a flaky bus. Sorting a defect into one of those
+two buckets in the first minute halves the time to find it.

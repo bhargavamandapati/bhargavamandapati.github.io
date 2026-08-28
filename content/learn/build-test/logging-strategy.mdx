@@ -1,0 +1,225 @@
+---
+title: "Logging strategy on a vehicle"
+description: "What to log, at what level, and where it goes — balancing a defect you may only ever see once against flash memory that has to last fifteen years."
+order: 4
+difficulty: "Intermediate"
+tags: ["Logging", "Debugging", "Privacy"]
+sources:
+  - label: "Understanding logging"
+    href: "https://source.android.com/docs/core/tests/debug/understanding-logging"
+  - label: "logd and log buffers"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/logging/logd/"
+  - label: "Android privacy best practices"
+    href: "https://developer.android.com/privacy-and-security/about"
+---
+
+Logging on a vehicle sits between two hard constraints. A defect may occur once,
+in a customer's car, in a country you will never visit — so you want detail. And
+flash memory has a write budget that must last fifteen years — so you cannot have
+much of it.
+
+## Where logs actually go
+
+<Plain>
+The most important thing to understand first: **`logcat` does not write to
+disk.**
+
+`logd` keeps a ring buffer **in memory**. Old entries are overwritten by new ones.
+Nothing touches flash, so nothing wears it out.
+
+This means logging to logcat is essentially free in flash terms, and logging to
+your own files is not. That single fact should shape your entire strategy.
+</Plain>
+
+```bash title="The buffers"
+adb logcat -b main      # app logs
+adb logcat -b system    # framework
+adb logcat -b crash     # crashes only
+adb logcat -b events    # structured system events
+adb logcat -b kernel    # dmesg
+adb logcat -b all
+
+adb logcat -g           # how big is each buffer?
+adb logcat -G 64M       # make them bigger before a long reproduction
+```
+
+<Analogy title="Like a dashcam loop">
+A dashcam records continuously and overwrites the oldest footage. It is not
+archiving your life — it is making sure that whatever just happened is still
+available.
+
+`logd` works the same way, and should be used the same way: rich enough that the
+last few minutes are useful, not an attempt to keep everything.
+</Analogy>
+
+## Levels, and what they should actually mean
+
+| Level | Use for | In production |
+| --- | --- | --- |
+| `VERBOSE` | Tracing individual values | Compiled out |
+| `DEBUG` | Development detail | Off |
+| `INFO` | State changes worth knowing | **On** |
+| `WARN` | Something unexpected, recovered | **On** |
+| `ERROR` | Something failed | **On** |
+| `ASSERT`/`wtf` | Should be impossible | **On** |
+
+<Plain>
+The discipline that matters: **`INFO` and above must be things you would want to
+read in a field incident report.**
+
+If a log line at `INFO` fires ten times a second, it is not information — it is
+noise that will push the actual incident out of the ring buffer before anyone can
+capture it.
+</Plain>
+
+<Scenario title="The log that erased the evidence">
+A vehicle has an intermittent audio fault. A test driver reproduces it and pulls
+logs immediately.
+
+The relevant moment is gone. A media component was logging every buffer at
+`INFO`, filling the 256 KB buffer in about eight seconds.
+
+The fault was captured. It was then overwritten before anyone could stop and read
+it.
+
+**Over-logging destroys evidence.** It feels like being thorough and it is the
+opposite.
+</Scenario>
+
+## What to log
+
+**State transitions.** "Charging started", "user switched to 11", "VHAL connected".
+These are the skeleton of any incident reconstruction.
+
+**Decisions and their reason.** Not "request rejected" but "request rejected:
+level 9 exceeds max 5". The reason is the whole value.
+
+**Boundary crossings.** What you sent to another process or another ECU, and what
+came back — with a sequence number. This is what settles cross-team disputes.
+
+**Failures, with context.** The error, the inputs, and what you did about it.
+
+## What not to log
+
+<Plain>
+**Anything personal.** Location, contact names, message content, account
+identifiers, VIN. Logs get collected, uploaded and stored — a log line is a data
+export.
+
+**High-frequency values.** A property changing at 10 Hz does not need a line per
+change.
+
+**Anything you would not want read aloud in a review.** Logs outlive their
+authors and are read by people you have never met.
+</Plain>
+
+```kotlin title="Redacting rather than removing"
+// Bad
+Log.i(TAG, "navigating to ${destination.address}")
+
+// Better — useful for debugging, not a location record
+Log.i(TAG, "navigating: ${destination.hashCode()} (${route.distanceKm} km)")
+```
+
+## Making verbose logging free
+
+```kotlin title="Compiled out in production"
+private const val DEBUG = false   // set from BuildConfig
+
+fun onPropertyChanged(id: Int, value: Any) {
+    // Constant condition — the compiler removes the whole block.
+    if (DEBUG) Log.v(TAG, "property $id -> $value")
+}
+```
+
+```kotlin title="Or runtime-gated for field diagnostics"
+if (Log.isLoggable(TAG, Log.VERBOSE)) {
+    Log.v(TAG, "expensive ${buildDiagnosticString()}")
+}
+```
+
+```bash title="Turning it on for one tag, on a real vehicle"
+adb shell setprop log.tag.VegaComfort VERBOSE
+```
+
+<Plain>
+The `isLoggable` guard matters for a reason beyond the log line itself: it
+prevents the **string building** from happening. Concatenating a diagnostic string
+ten times a second costs allocation and garbage collection even if the line is
+never written.
+</Plain>
+
+## Native logging
+
+```cpp title="From C++"
+#define LOG_TAG "VegaVHAL"
+#include <android-base/logging.h>
+
+LOG(INFO) << "connected, " << config_count << " properties";
+LOG(WARNING) << "property " << prop_id << " unavailable";
+PLOG(ERROR) << "cannot open " << path;   // appends the errno description
+```
+
+`PLOG` is worth knowing — it adds the system error automatically, which turns
+"cannot open /dev/can0" into "cannot open /dev/can0: Permission denied" and often
+identifies the problem on its own.
+
+## Structured events, for things that are counted
+
+For events you will want to aggregate across a fleet, a log line is the wrong
+shape. The event log is structured and machine-readable.
+
+<Plain>
+The distinction: **logcat is for reading; the event log is for counting.**
+
+"VHAL reconnected" as a log line helps one engineer debugging one vehicle.
+The same thing as a structured event lets you ask "how often does this happen
+across the fleet, and did last month's release make it worse?"
+</Plain>
+
+## Persistent logging, carefully
+
+Sometimes you genuinely need logs to survive a reboot — an intermittent fault
+that reboots the head unit.
+
+```bash title="Available, and to be used sparingly"
+adb shell setprop persist.logd.logpersistd logcatd     # on
+adb shell setprop persist.logd.logpersistd ""          # off
+adb shell ls -la /data/misc/logd/
+```
+
+<Plain>
+This writes to flash. It counts against the app's I/O budget, <T>CarWatchdog</T>
+is watching, and it wears the storage.
+
+Enable it for a specific investigation on a specific vehicle. **Do not ship it
+on.** A fleet with persistent logging enabled by default is a fleet quietly
+consuming its own storage lifetime.
+</Plain>
+
+## A strategy that holds up
+
+- **Default to logcat.** It is a memory ring buffer and costs no flash.
+- **`INFO` and above are the incident report.** Keep them meaningful.
+- **Compile out verbose logging**, or guard it with `isLoggable`.
+- **Never log personal data.** Redact or hash.
+- **Log decisions with reasons**, and boundary crossings with sequence numbers.
+- **Structured events for anything you will count** across a fleet.
+- **Persistent logging is a targeted tool**, not a default.
+- **Raise the buffer size before a long reproduction**, not after.
+
+<Recap>
+- `logcat` is an **in-memory ring buffer** — free in flash terms. Your own log
+  files are not.
+- **Over-logging destroys evidence** by overwriting the incident you were trying
+  to capture.
+- Log **state transitions, decisions with reasons, and boundary crossings**.
+- **Never log personal data.** A log line is a data export.
+- Compile out or guard verbose logging so the **string building** does not happen
+  either.
+- **Persistent logging writes to flash** — a targeted tool, never a default.
+</Recap>
+
+## Next
+
+Compliance, and the suites that decide whether any of this can ship.

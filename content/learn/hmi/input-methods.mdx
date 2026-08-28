@@ -1,0 +1,176 @@
+---
+title: "Rotary controllers, steering-wheel buttons and touchpads"
+description: "Not every head unit has a touchscreen you can reach. How AAOS models non-touch input, and how to build a UI that works with a rotary knob without redesigning it twice."
+order: 6
+difficulty: "Intermediate"
+tags: ["Input", "Rotary", "Accessibility"]
+sources:
+  - label: "Rotary controller support"
+    href: "https://source.android.com/docs/automotive/hmi/rotary_controller"
+  - label: "car-ui-lib rotary support"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/libs/car-ui-lib/"
+  - label: "Handling keyboard and D-pad navigation"
+    href: "https://developer.android.com/training/keyboard-input/navigation"
+---
+
+Plenty of vehicles put the display where the driver cannot comfortably reach it,
+and drive the UI with a rotary knob on the console or buttons on the steering
+wheel. If your layout only works by touch, it does not work on those vehicles.
+
+## The input devices
+
+| Device | How it arrives | Notes |
+| --- | --- | --- |
+| **Touchscreen** | Normal touch events | Not always present, not always reachable |
+| **Rotary controller** | Rotation + nudge + click, as D-pad-like events | BMW iDrive, Mazda Commander style |
+| **Steering wheel controls (SWC)** | Key events, often via VHAL | Volume, skip, voice, phone |
+| **Touchpad** | Absolute or relative pointer | Sometimes with handwriting |
+| **Voice** | Assistant intents | The answer to text entry |
+
+The rotary controller is the one that most changes how you build a screen.
+
+## How rotary works
+
+The platform turns physical input into focus movement:
+
+- **Rotate** — move focus between elements *within* a focus area.
+- **Nudge** (push the knob up/down/left/right) — move focus *between* focus
+  areas.
+- **Click** — activate the focused element.
+- **Back** — up the navigation stack.
+
+That two-level model is the key idea. Rotation is fine-grained movement inside a
+group; nudging jumps between groups. A screen with no groups means the user
+rotates through forty elements to reach the one they want.
+
+## Focus areas
+
+`car-ui-lib` provides `FocusArea` and `FocusParkingView` to express the grouping.
+
+```xml title="A rotary-friendly screen"
+<LinearLayout ...>
+
+    <!-- Group 1: the toolbar -->
+    <com.android.car.ui.FocusArea
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <LinearLayout android:orientation="horizontal" ...>
+            <Button android:id="@+id/back" .../>
+            <Button android:id="@+id/search" .../>
+        </LinearLayout>
+    </com.android.car.ui.FocusArea>
+
+    <!-- Group 2: the content list -->
+    <com.android.car.ui.FocusArea
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <com.android.car.ui.recyclerview.CarUiRecyclerView
+            android:id="@+id/list" .../>
+    </com.android.car.ui.FocusArea>
+
+    <!-- Required once per window: parks focus when nothing is focused -->
+    <com.android.car.ui.FocusParkingView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</LinearLayout>
+```
+
+<Callout type="warning" title="Forgetting FocusParkingView produces bizarre focus bugs">
+Without it, focus has nowhere to rest when a screen loads or a list empties, and
+it lands somewhere arbitrary — frequently an invisible view. If rotary "jumps to
+nothing", this is the first thing to check.
+</Callout>
+
+## Making views focusable and visible
+
+Rotary depends entirely on Android's focus system, which most touch-only apps
+never exercise.
+
+```xml title="Every interactive element must be focusable and show it"
+<Button
+    android:id="@+id/play"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    android:background="@drawable/rotary_button_background"/>
+```
+
+```xml title="res/drawable/rotary_button_background.xml"
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Focus highlight must be obvious at a glance, from a driving position -->
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/car_ui_rotary_focus_fill"/>
+            <stroke android:width="3dp" android:color="@color/car_ui_rotary_focus_stroke"/>
+            <corners android:radius="8dp"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent"/>
+        </shape>
+    </item>
+</selector>
+```
+
+A subtle focus ring that reads fine on a monitor is invisible on a display two
+feet away in daylight. Make it unmistakable.
+
+## Steering wheel controls
+
+SWC buttons usually arrive as standard key events, often routed through the VHAL
+and injected by the platform.
+
+```kotlin title="Handling media keys from the wheel"
+override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean = when (keyCode) {
+    KeyEvent.KEYCODE_MEDIA_NEXT     -> { skipNext(); true }
+    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> { skipPrevious(); true }
+    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { togglePlayback(); true }
+    else -> super.onKeyDown(keyCode, event)
+}
+```
+
+For media apps the better answer is not to handle keys at all — implement
+`MediaSession` properly and the platform routes wheel controls to your transport
+callbacks for free, including when your app is not in the foreground.
+
+```bash title="Seeing what the wheel actually sends"
+adb shell getevent -lt          # raw input events, live
+adb shell dumpsys input | grep -A5 -i 'Device.*steering\|swc'
+```
+
+## Testing without hardware
+
+```bash title="Driving rotary from adb"
+# Rotary rotation maps onto D-pad navigation
+adb shell input keyevent KEYCODE_DPAD_DOWN
+adb shell input keyevent KEYCODE_DPAD_UP
+adb shell input keyevent KEYCODE_DPAD_CENTER   # click
+
+# Nudging between focus areas
+adb shell input keyevent KEYCODE_DPAD_LEFT
+adb shell input keyevent KEYCODE_DPAD_RIGHT
+
+# Which view currently has focus?
+adb shell dumpsys window | grep -i mCurrentFocus
+adb shell dumpsys activity top | grep -i focus
+```
+
+<Callout type="tip" title="Navigate your whole app with the D-pad once">
+Unplug the mouse, run through every screen using only the four commands above,
+and note anywhere focus disappears, skips a control, or is not visible. That
+single pass finds nearly every rotary defect, and it also fixes your keyboard
+accessibility for free.
+</Callout>
+
+## The design rule
+
+Build the screen as a small number of clearly grouped regions, each containing a
+short list of large, obviously focusable controls. That is a good touch design
+and the only workable rotary design — which is the point. Screens that are
+painful with a knob are usually painful at speed with a finger too.
+
+## Next
+
+Into apps proper, starting with media — the most common AAOS app there is.

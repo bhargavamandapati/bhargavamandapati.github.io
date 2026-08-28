@@ -1,0 +1,283 @@
+---
+title: "Build a privileged system app"
+description: "An APK built into the image, signed with the platform key, holding a signature permission and using hidden APIs — and how to iterate on it without reflashing."
+order: 1
+difficulty: "Intermediate"
+time: "2–3 hours"
+outcome: "A VegaComfort app installed to /product/priv-app, platform-signed, holding your OEM permission and calling your Car subservice."
+prerequisites:
+  - label: "An OEM permission to hold"
+    href: "/tutorials/framework/custom-permission/"
+  - label: "A Car subservice to call"
+    href: "/tutorials/framework/custom-car-subservice/"
+tags: ["System app", "Soong", "Signing", "Privileged"]
+sources:
+  - label: "Privileged permission allowlisting"
+    href: "https://source.android.com/docs/core/permissions/perms-allowlist"
+  - label: "Android.bp reference"
+    href: "https://source.android.com/docs/setup/reference/androidbp"
+  - label: "Signing builds"
+    href: "https://source.android.com/docs/core/ota/sign_builds"
+---
+
+Ordinary apps cannot touch the vehicle. A privileged, platform-signed app can —
+at the cost of shipping inside the image and inheriting the OEM's release
+cadence.
+
+<FileTree>
+vendor/oem/vega/apps/VegaComfort/
+├── Android.bp
+├── AndroidManifest.xml
+├── src/com/oem/vega/comfort/
+│   ├── MainActivity.kt
+│   └── SeatMassageController.kt
+└── res/
+    ├── layout/activity_main.xml
+    └── values/strings.xml
+</FileTree>
+
+## Step 1 — The Soong module
+
+This is where the "privileged" part actually happens.
+
+```json title="vendor/oem/vega/apps/VegaComfort/Android.bp"
+android_app {
+    name: "VegaComfort",
+
+    srcs: ["src/**/*.kt"],
+    resource_dirs: ["res"],
+    manifest: "AndroidManifest.xml",
+
+    // Hidden and @SystemApi surfaces — needed for android.car internals
+    platform_apis: true,
+
+    // Signed with the platform key. This is what makes signature
+    // permissions grantable.
+    certificate: "platform",
+
+    // Installs to priv-app rather than app. Requires a privapp-permissions
+    // entry for every signature permission it requests.
+    privileged: true,
+
+    // Lands on /product, the OEM partition.
+    product_specific: true,
+
+    static_libs: [
+        "androidx.appcompat_appcompat",
+        "car-ui-lib",
+        "kotlin-stdlib",
+    ],
+
+    // Provided by the platform at runtime, not bundled into the APK.
+    libs: [
+        "android.car",
+    ],
+
+    optimize: {
+        enabled: false,   // keep stack traces readable during bring-up
+    },
+}
+```
+
+| Property | What it buys you | What it costs |
+| --- | --- | --- |
+| `platform_apis: true` | Hidden and `@SystemApi` access | Cannot build outside AOSP |
+| `certificate: "platform"` | Signature permissions | The OEM signs it, not you |
+| `privileged: true` | priv-app placement | Needs an allowlist entry |
+| `product_specific: true` | `/product` partition | Ships in the image |
+
+<Gotcha title="platform_apis and sdk_version are mutually exclusive">
+Setting both fails the build with a message that does not obviously say so. An
+app using `android.car` internals needs `platform_apis: true` and no
+`sdk_version` line at all.
+</Gotcha>
+
+## Step 2 — The manifest
+
+```xml title="AndroidManifest.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.oem.vega.comfort"
+    android:sharedUserId="android.uid.system">
+
+    <!-- Automotive build only -->
+    <uses-feature android:name="android.hardware.type.automotive" android:required="true"/>
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+
+    <!-- Your OEM permissions, allowlisted in privapp-permissions-vega.xml -->
+    <uses-permission android:name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"/>
+    <uses-permission android:name="com.oem.vega.permission.READ_SEAT_STATE"/>
+
+    <application
+        android:label="@string/app_name"
+        android:theme="@style/Theme.CarUi">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <!-- Marks this activity safe to show while driving. This is a
+                 safety claim OEM acceptance will test — do not set it to work
+                 around the block. -->
+            <meta-data android:name="distractionOptimized" android:value="true"/>
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+```
+
+<Gotcha title="sharedUserId is a one-way door">
+`android.uid.system` makes the app run as the system user, which some platform
+APIs require. It also means the app can never be updated independently of the
+platform, cannot be uninstalled, and cannot change its shared user id later
+without a data wipe. Add it only when a specific API demands it.
+</Gotcha>
+
+## Step 3 — Call the platform
+
+```kotlin title="src/com/oem/vega/comfort/SeatMassageController.kt" showLineNumbers
+package com.oem.vega.comfort
+
+import android.car.Car
+import android.car.VehicleAreaSeat
+import android.car.comfort.CarComfortManager
+import android.content.Context
+import android.util.Log
+
+class SeatMassageController(context: Context) {
+
+    private var comfort: CarComfortManager? = null
+
+    // Use the lifecycle-listener form. Car Service restarts on real hardware,
+    // and every manager you hold becomes permanently invalid when it does.
+    private val car: Car = Car.createCar(
+        context,
+        /* handler = */ null,
+        Car.CAR_WAIT_TIMEOUT_DO_NOT_WAIT,
+    ) { car, ready ->
+        comfort = if (ready) {
+            car.getCarManager(Car.CAR_COMFORT_SERVICE) as? CarComfortManager
+        } else {
+            null   // service died; wait for the next ready callback
+        }
+        onAvailabilityChanged(comfort != null)
+    }
+
+    fun setIntensity(level: Int) {
+        val manager = comfort ?: run {
+            Log.w(TAG, "comfort service unavailable")
+            return
+        }
+        runCatching {
+            manager.setMassageIntensity(VehicleAreaSeat.SEAT_ROW_1_LEFT, level)
+        }.onFailure { Log.w(TAG, "set failed", it) }
+    }
+
+    fun release() = car.disconnect()
+
+    private companion object { const val TAG = "VegaComfort" }
+}
+```
+
+## Step 4 — Add it to the product
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_PACKAGES += VegaComfort
+```
+
+```bash
+m VegaComfort          # fast — build just this module
+m -j                   # then the image
+```
+
+<Verify title="Verify it built into the right place, signed correctly">
+```bash
+# 1. Built to priv-app on /product
+ls -la $ANDROID_PRODUCT_OUT/product/priv-app/VegaComfort/
+
+# 2. Signed with the platform key (not the test key, on a release build)
+apksigner verify --print-certs \
+  $ANDROID_PRODUCT_OUT/product/priv-app/VegaComfort/VegaComfort.apk
+```
+</Verify>
+
+## Step 5 — Flash and verify on device
+
+```bash
+emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 45
+```
+
+<Verify title="Verify it is privileged and holds the permission">
+```bash
+# 1. Installed, and in priv-app
+adb shell pm path com.oem.vega.comfort
+# expect: /product/priv-app/VegaComfort/VegaComfort.apk
+
+# 2. Recognised as privileged
+adb shell dumpsys package com.oem.vega.comfort | grep -i 'flags=.*PRIVILEGED'
+
+# 3. Holds your signature permission
+adb shell dumpsys package com.oem.vega.comfort | grep -A10 'granted permissions'
+
+# 4. Appears in the launcher
+adb shell cmd package query-activities \
+  -a android.intent.action.MAIN -c android.intent.category.LAUNCHER | grep -i vega
+
+# 5. Actually runs and reaches Car Service
+adb shell am start -n com.oem.vega.comfort/.MainActivity
+adb logcat -b all | grep -i VegaComfort
+```
+</Verify>
+
+## Step 6 — Iterate without reflashing
+
+Reflashing for every code change is unusable. On a `userdebug` build:
+
+```bash title="Push and restart, ~30 seconds"
+m VegaComfort
+
+adb root && adb remount
+
+adb push $ANDROID_PRODUCT_OUT/product/priv-app/VegaComfort/VegaComfort.apk \
+  /product/priv-app/VegaComfort/VegaComfort.apk
+
+# Package manager must re-scan; a soft restart is enough
+adb shell stop && adb shell start
+adb wait-for-device && sleep 20
+```
+
+<Gotcha title="adb install will not work for a privileged app">
+`adb install` places the APK in `/data/app`, where it is not privileged and its
+signature permissions are refused. The symptom is a `SecurityException` that
+looks like a permission bug and is actually an installation-location one. Push to
+the priv-app path instead.
+</Gotcha>
+
+If `adb remount` fails, verified boot is on:
+
+```bash
+adb root && adb disable-verity && adb reboot
+adb wait-for-device && adb root && adb remount
+```
+
+That is a development-only operation. It breaks the verified boot state, which
+is exactly what it should not be possible to do on a production vehicle.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Image will not boot | Missing `privapp-permissions` entry |
+| `SecurityException` on a Car API | App installed to `/data/app`, not priv-app |
+| Not in the launcher | Missing `LAUNCHER` category, or installed for another user |
+| Cannot resolve `android.car` | Missing `libs: ["android.car"]` |
+| Cannot use a hidden API | Missing `platform_apis: true` |
+| Blocked while driving | No `distractionOptimized` metadata |
+| Build error about `sdk_version` | `platform_apis` and `sdk_version` both set |
+
+## Next
+
+Making the platform look like yours, without forking it.

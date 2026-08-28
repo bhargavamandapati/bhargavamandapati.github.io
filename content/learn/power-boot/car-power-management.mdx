@@ -1,0 +1,185 @@
+---
+title: "Power states and Garage Mode"
+description: "A head unit is never really off. The CPMS state machine, what Garage Mode is for, and why boot time is the metric an OEM will hold you to."
+order: 1
+difficulty: "Advanced"
+tags: ["Power", "CPMS", "Boot"]
+sources:
+  - label: "Power management for automotive"
+    href: "https://source.android.com/docs/automotive/power"
+  - label: "Garage Mode"
+    href: "https://source.android.com/docs/automotive/garage_mode"
+  - label: "CarPowerManagementService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/power/CarPowerManagementService.java"
+---
+
+Phone power management optimises for a battery you recharge daily. Vehicle power
+management optimises for a battery that must still start an engine after the car
+has sat in an airport car park for three weeks.
+
+That changes everything.
+
+<DiagramFrame
+  title="The Car Power Management Service state machine"
+  caption="Garage Mode runs inside SHUTDOWN_PREPARE — the window where the vehicle is off but the platform is still allowed to work."
+>
+  <PowerStates />
+</DiagramFrame>
+
+## The states
+
+| State | What is happening |
+| --- | --- |
+| `WAIT_FOR_VHAL` | Booting; waiting for the HAL to report the vehicle's intent |
+| `ON` | Normal operation |
+| `SHUTDOWN_PREPARE` | Vehicle is off; background work window (Garage Mode) |
+| `SUSPEND_TO_RAM` | S2R — RAM stays powered, resume in ~1 second |
+| `SUSPEND_TO_DISK` | S2D — state written to storage, deeper saving, slower resume |
+| `SHUTDOWN` | Full power off |
+
+The VHAL drives transitions through `AP_POWER_STATE_REQ`, and Android reports its
+progress back through `AP_POWER_STATE_REPORT`. The vehicle is in charge; Android
+is a subsystem that gets told what to do.
+
+## Why suspend rather than shutdown
+
+Drivers expect a car to be responsive the moment they open the door. A full
+Android boot takes tens of seconds; nobody accepts that.
+
+So the head unit almost never fully shuts down. It suspends. S2R resumes in about
+a second — fast enough that the display is up before the driver's seatbelt is on.
+S2D is deeper and slower, used when the vehicle expects a long park.
+
+The trade-off is quiescent current. Every milliamp drawn while parked comes out
+of the starting battery, and OEMs set hard budgets — a vehicle that cannot start
+after two weeks parked is a warranty problem, and software is usually blamed
+first.
+
+<Callout type="warning" title="Wakelocks in a parked vehicle are a defect">
+A background service holding a partial wakelock keeps the SoC out of suspend. On
+a phone it costs battery life. On a vehicle it can leave a customer stranded.
+Audit wakelocks specifically for the suspended case.
+</Callout>
+
+## Garage Mode
+
+`SHUTDOWN_PREPARE` is not just teardown. It is a deliberate window in which the
+vehicle is off but the platform may do work the driver should never wait for:
+
+- Applying OTA updates
+- Uploading diagnostics and telematics
+- Syncing media and map data
+- Running maintenance and compaction
+
+Garage Mode runs jobs scheduled through `JobScheduler` with the right
+constraints:
+
+```kotlin title="A job that runs in Garage Mode"
+val job = JobInfo.Builder(JOB_ID, ComponentName(context, SyncJobService::class.java))
+    // Garage Mode reports itself as idle + charging, so these constraints
+    // keep the work out of the driving session.
+    .setRequiresDeviceIdle(true)
+    .setRequiresCharging(true)
+    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+    .setPersisted(true)
+    .build()
+
+jobScheduler.schedule(job)
+```
+
+```kotlin title="Finish promptly when told to"
+class SyncJobService : JobService() {
+
+    override fun onStartJob(params: JobParameters): Boolean {
+        scope.launch {
+            runCatching { sync() }
+            jobFinished(params, /* wantsReschedule = */ false)
+        }
+        return true   // work continues asynchronously
+    }
+
+    override fun onStopJob(params: JobParameters): Boolean {
+        // Garage Mode is ending. Stop now and ask to be rescheduled —
+        // the platform will not wait for you.
+        cancelWork()
+        return true
+    }
+}
+```
+
+<Callout type="tip" title="Garage Mode has a budget, and it is not generous">
+The window is bounded — the vehicle wants to sleep. Design work to be
+**resumable in chunks**: sync 50 items, checkpoint, return. A job that needs
+twenty uninterrupted minutes will be killed at minute three, forever, and never
+make progress.
+</Callout>
+
+```bash title="Driving Garage Mode by hand"
+adb shell dumpsys car_service --services CarPowerManagementService
+adb shell cmd car_service garage-mode on
+adb shell cmd car_service garage-mode off
+adb shell cmd car_service garage-mode query
+```
+
+## Reacting to power transitions
+
+```kotlin title="CarPowerManager listener"
+val power = car.getCarManager(Car.POWER_SERVICE) as CarPowerManager
+
+power.setListenerWithCompletion(executor) { state, future ->
+    when (state) {
+        CarPowerManager.STATE_SHUTDOWN_PREPARE -> {
+            // You have a deadline. Persist, then complete the future.
+            persistCriticalState()
+            future.complete()
+        }
+        CarPowerManager.STATE_SUSPEND_ENTER -> releaseHardware()
+        CarPowerManager.STATE_SUSPEND_EXIT   -> reacquireHardware()
+        CarPowerManager.STATE_ON             -> resumeNormalOperation()
+    }
+}
+```
+
+The `WithCompletion` variant gives you a bounded window to finish. Complete the
+future promptly — the platform proceeds on timeout regardless, and everything you
+had not written is lost.
+
+## Boot time is a contract
+
+OEMs commit to numbers, usually along these lines:
+
+| Milestone | Typical target |
+| --- | --- |
+| Rear-view camera image | under 2 seconds from ignition |
+| Cluster telltales | under 2 seconds |
+| Basic infotainment interactive | 10–20 seconds cold |
+| Resume from S2R | about 1 second |
+
+The rear-view camera figure is often a legal requirement, not a preference, and
+it is why the camera path frequently bypasses the Android framework entirely —
+an early-boot service or a separate MCU drives the display before Android is
+anywhere near ready.
+
+```bash title="Measuring boot"
+adb shell dumpsys SurfaceFlinger --timestats
+adb logcat -b events | grep boot_progress
+adb shell bootstat --print
+```
+
+Where the time usually goes, in rough order of how often it is the culprit:
+
+1. Too many services started at boot rather than lazily.
+2. Blocking work in a Car Service subservice's `init()`.
+3. Slow VHAL initialisation — Car Service waits for it.
+4. Filesystem checks and mount time.
+5. Package scanning for a large system image.
+
+<Callout type="warning" title="Never block Car Service startup">
+Any blocking call in a subservice's `init()` — a slow HAL, a file read, a network
+wait — delays the entire platform coming up. This is the single most common
+self-inflicted boot-time regression on automotive programmes.
+</Callout>
+
+## Next
+
+Security: the SELinux and permission model that keeps all of this contained.

@@ -1,0 +1,164 @@
+---
+title: "The Car App Library and templated apps"
+description: "Navigation, point-of-interest and IoT apps are built from templates, not layouts. What the constraint buys you, what it costs, and how the template host actually works."
+order: 2
+difficulty: "Intermediate"
+tags: ["Car App Library", "Templates", "Apps"]
+sources:
+  - label: "Android for Cars App Library"
+    href: "https://developer.android.com/training/cars/apps"
+  - label: "Car App Library reference"
+    href: "https://developer.android.com/reference/androidx/car/app/package-summary"
+  - label: "App quality guidelines for cars"
+    href: "https://developer.android.com/docs/quality-guidelines/car-app-quality"
+---
+
+For several app categories, AAOS does not let you draw at all. You describe a
+screen using one of a fixed set of **templates**, and a host application renders
+it. Your app never touches a pixel.
+
+That sounds restrictive. It is, and it is the reason those apps are allowed to
+run while driving.
+
+## Why templates exist
+
+A template guarantees things a free-form layout cannot:
+
+- **Bounded complexity.** A list template has a maximum item count, enforced.
+- **Bounded text.** Strings are truncated to the platform's limits automatically.
+- **Consistent interaction.** Every app's list behaves identically, so the driver
+  learns once.
+- **Free theming.** The OEM styles the host; your app inherits it.
+- **Free input support.** Rotary, touch and voice all work without you handling
+  any of them.
+
+The trade-off is that you cannot express anything the templates do not.
+
+## The shape of a templated app
+
+```kotlin title="CarAppService and a Session"
+class PlacesCarAppService : CarAppService() {
+
+    override fun createHostValidator(): HostValidator =
+        HostValidator.Builder(applicationContext)
+            .addAllowedHosts(R.array.hosts_allowlist_sample)
+            .build()
+
+    override fun onCreateSession(): Session = object : Session() {
+        override fun onCreateScreen(intent: Intent): Screen = PlaceListScreen(carContext)
+    }
+}
+```
+
+```kotlin title="A screen is a function from state to a template" showLineNumbers
+class PlaceListScreen(carContext: CarContext) : Screen(carContext) {
+
+    override fun onGetTemplate(): Template {
+        val builder = ItemList.Builder()
+
+        places.take(carContext.getCarService(ConstraintManager::class.java)
+            .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST))
+            .forEach { place ->
+                builder.addItem(
+                    Row.Builder()
+                        .setTitle(place.name)
+                        .addText(place.distance)
+                        .setOnClickListener { onPlaceSelected(place) }
+                        .setBrowsable(false)
+                        .build()
+                )
+            }
+
+        return ListTemplate.Builder()
+            .setSingleList(builder.build())
+            .setTitle(carContext.getString(R.string.nearby))
+            .setHeaderAction(Action.BACK)
+            .build()
+    }
+}
+```
+
+Note `ConstraintManager.getContentLimit`. **Ask the host for the limit** rather
+than hard-coding a number — it differs by OEM, market and driving state.
+
+<Callout type="warning" title="Template throttling is real">
+The host limits how often a screen may be re-rendered while driving, and how many
+screens deep the back stack may go. An app that calls `invalidate()` on every
+location update will be throttled, and the driver will see a stale screen. Update
+on meaningful change, not on every event.
+</Callout>
+
+## The template set
+
+| Template | For |
+| --- | --- |
+| `ListTemplate` | Rows of items — the workhorse |
+| `GridTemplate` | Icon grids |
+| `PaneTemplate` | Detail view with a few actions |
+| `MessageTemplate` | A message and up to two actions |
+| `NavigationTemplate` | Turn-by-turn, with a map surface underneath |
+| `MapWithContentTemplate` | Map plus a list or pane |
+| `SearchTemplate` | Search input with results |
+| `SignInTemplate` / `LongMessageTemplate` | Parked-only flows |
+
+That last row is worth noting: some templates are **only** permitted while
+parked. Sign-in and long text are inherently distracting, and the platform
+enforces it rather than trusting you.
+
+## Navigation apps get a drawing surface
+
+The one exception. A navigation app receives a `SurfaceContainer` and renders its
+own map into it, while the host draws the chrome, the turn card and the action
+strip around it.
+
+```kotlin title="Rendering a map into the host's surface"
+private val surfaceCallback = object : SurfaceCallback {
+    override fun onSurfaceAvailable(container: SurfaceContainer) {
+        mapRenderer.attach(container.surface, container.width, container.height)
+    }
+
+    override fun onVisibleAreaChanged(visibleArea: Rect) {
+        // The host may overlay panels. Keep the route inside the visible area,
+        // not centred on the whole surface.
+        mapRenderer.setPadding(visibleArea)
+    }
+
+    override fun onSurfaceDestroyed(container: SurfaceContainer) {
+        mapRenderer.detach()
+    }
+}
+```
+
+`onVisibleAreaChanged` is the one people miss. The host draws panels over parts
+of your surface; ignoring the visible area puts the route under a UI element.
+
+## Templated vs full activity
+
+| | Templated app | Full activity |
+| --- | --- | --- |
+| Who draws | Host | You |
+| Works while driving | Yes, by construction | Only if `distractionOptimized` |
+| Theming | Inherited free | You implement it |
+| Rotary support | Free | You implement it |
+| Available to third parties | Yes | Usually system apps only |
+| Design freedom | Low | High |
+
+For a third-party navigation or POI app, templated is not a choice — it is the
+route to being allowed on the platform at all.
+
+## Testing
+
+The **Desktop Head Unit** (DHU) and the AAOS emulator both host templated apps,
+so you can develop without a vehicle.
+
+```bash title="Template host state"
+adb shell dumpsys activity service CarAppService
+adb logcat -b all | grep -iE 'CarApp|TemplateHost|throttl'
+```
+
+Watch for throttling warnings in that log filter. They are the clearest signal
+that your screen is invalidating too often.
+
+## Next
+
+Navigation specifically — including pushing guidance to the instrument cluster.

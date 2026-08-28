@@ -1,0 +1,211 @@
+---
+title: "In-cabin cameras and driver monitoring"
+description: "A camera pointed at the driver, becoming a regulatory requirement in several markets — how it is architected, why the images never reach Android, and the privacy rules that are not optional."
+order: 5
+difficulty: "Advanced"
+tags: ["DMS", "Camera", "Privacy", "Safety"]
+sources:
+  - label: "Camera HAL"
+    href: "https://source.android.com/docs/core/camera"
+  - label: "Exterior View System"
+    href: "https://source.android.com/docs/automotive/camera-hal"
+  - label: "Android privacy best practices"
+    href: "https://developer.android.com/privacy-and-security/about"
+---
+
+Increasingly, vehicles watch the driver. An infrared camera estimates where their
+eyes are pointed and whether they are closing. In several markets some form of
+this is becoming mandatory.
+
+It is also the most privacy-sensitive component in the entire vehicle, and the
+architecture reflects that far more than most people expect.
+
+## What a driver monitoring system does
+
+<T>DMS</T> answers two questions continuously:
+
+**Is the driver looking at the road?** Gaze direction, estimated from head pose
+and eye position.
+
+**Is the driver awake?** Eye closure duration, blink rate, head nodding.
+
+From those it derives a state — attentive, distracted, drowsy — and the vehicle
+responds: a chime, a seatbelt pulse, or on some systems a reduction in
+driver-assistance capability.
+
+<Plain>
+Notice what the output is: **a state, not a picture.** That distinction is the
+entire architecture.
+</Plain>
+
+## The architecture: images do not leave the module
+
+<Scenario title="A design review that goes badly">
+A team proposes streaming the driver camera into Android so an app can display a
+"you look tired" screen with a live preview.
+
+The review rejects it, for reasons that all stack up:
+
+- The camera sees the driver's face continuously — biometric data under most
+  privacy law.
+- Android is a general-purpose OS running third-party apps. Any of them becoming
+  a route to that feed is a serious breach.
+- The safety function must work if Android crashes.
+- The latency budget for a drowsiness warning is tighter than a framework round
+  trip.
+
+The design that passes: the camera connects to a **dedicated processor** that runs
+the vision model locally. Only the derived state — an enum and a confidence —
+crosses to Android. Images never leave the module.
+</Scenario>
+
+<Analogy title="Like a smoke detector, not a security camera">
+A smoke detector watches continuously and tells you one thing: there is smoke.
+It does not record, and it does not send footage anywhere.
+
+A driver monitoring system is built the same way, and for the same reason —
+continuous observation is only acceptable when it produces a signal rather than a
+recording.
+</Analogy>
+
+## What Android actually receives
+
+Typically a small vendor interface carrying a state, not a camera stream.
+
+```java title="The shape of a DMS interface"
+@VintfStability
+interface IDriverMonitoring {
+    DriverState getState();
+    void registerCallback(in IDriverStateCallback callback);
+}
+
+@VintfStability
+parcelable DriverState {
+    AttentionState attention;   // ATTENTIVE | DISTRACTED | DROWSY | UNKNOWN
+    int confidencePercent;
+    long timestampNanos;        // CLOCK_BOOTTIME, as everywhere else
+}
+```
+
+<Plain>
+That is the whole interface. No frames, no bounding boxes, no identity.
+
+If you find yourself designing a DMS interface that carries an image buffer, stop
+and ask what the consumer actually needs. It is almost always the state.
+</Plain>
+
+Some programmes expose driver attention as a vehicle property instead, which
+gives you the existing permission and subscription machinery for free.
+
+## When there *is* a real camera feed
+
+Some in-cabin cameras are genuine cameras — for video calling, for a cabin
+monitor to check on rear-seat passengers, for occupant detection.
+
+Those go through the ordinary Android camera stack, and the ordinary rules apply
+with more force:
+
+```xml title="Camera access is signature-level in a vehicle"
+<uses-permission android:name="android.permission.CAMERA"/>
+```
+
+<Plain>
+Three additional requirements automotive imposes:
+
+**A hardware indicator.** Many programmes require a physical LED wired to the
+camera's power, not a software indicator Android controls. Software can be
+compromised; a wire cannot.
+
+**A physical shutter.** Increasingly expected on cabin cameras, and it is the
+only assurance a customer genuinely trusts.
+
+**No recording without explicit, contemporaneous consent.** Not consent buried in
+a terms screen at delivery.
+</Plain>
+
+## Occupant detection is a different thing
+
+Do not confuse driver monitoring with occupant detection. They answer different
+questions and often use different hardware.
+
+Occupant detection — is someone in the seat, are they a child, is a seatbelt
+fastened — usually comes from seat pressure sensors and belt buckle switches, and
+surfaces as vehicle properties rather than anything camera-based.
+
+```bash title="Seat occupancy, if the vehicle supports it"
+adb shell dumpsys car_service --list-properties | grep -i OCCUPANT
+```
+
+<Plain>
+This matters because occupant detection feeds airbag decisions, which is a
+safety-rated function. It is not something Android participates in, and a design
+that has Android in that path is a finding.
+</Plain>
+
+## Privacy rules that are not negotiable
+
+The general telemetry rules apply, plus several specific to this:
+
+**Process on the edge.** Vision runs on the module. Only the derived state moves.
+
+**Never store frames.** No buffer, no cache, no "last frame for debugging". A
+debug build that writes frames to disk will eventually ship.
+
+**Never associate with identity.** The system reports that *the driver* is
+drowsy, not that *this person* is. Correlating with a user profile turns a safety
+feature into surveillance.
+
+**Bound retention on the state too.** Even the derived state is behavioural data.
+An unbounded log of when someone was drowsy is a subject-access problem and,
+potentially, evidence in a dispute.
+
+**Make the indicator honest.** If the camera is active, the driver must be able to
+tell without inspecting a settings screen.
+
+<Scenario title="The debug build that shipped">
+During bring-up someone adds a flag that dumps camera frames to
+`/data/vendor/dms/` so the vision team can debug false positives.
+
+It is guarded by a property that defaults to off. It works fine.
+
+Eighteen months later a penetration test finds the flag still present in a
+production image, settable by anything that can write system properties.
+
+**The safest debug facility for this data is one that does not exist in the
+production build at all** — compiled out, not flag-guarded.
+</Scenario>
+
+## Testing without a face
+
+```bash title="Driving the state by hand"
+adb shell dumpsys car_service --list-properties | grep -i -E 'DRIVER|ATTENTION'
+
+# If exposed as a property, inject state to test the UI response
+adb shell dumpsys car_service --set-property <id> 2   # e.g. DROWSY
+```
+
+<Plain>
+Build the injection path early. Testing a drowsiness warning by making an
+engineer actually become drowsy is neither reliable nor kind, and the interesting
+cases — rapid state flapping, low confidence, sensor failure — cannot be produced
+on demand any other way.
+</Plain>
+
+<Recap>
+- A driver monitoring system produces **a state, not a picture**, and the images
+  never reach Android.
+- The processing happens on a **dedicated module** for privacy, safety
+  availability and latency reasons — all three.
+- **Occupant detection is separate**, sensor-based, and feeds safety-rated
+  functions Android is not part of.
+- Real cabin cameras need a **hardware indicator** and, increasingly, a physical
+  shutter.
+- **Never store frames.** A flag-guarded debug dump will eventually ship — compile
+  it out instead.
+- Build a **state injection path** early; the interesting cases cannot be produced
+  on demand.
+</Recap>
+
+## Next
+
+The other system Android observes but does not control.

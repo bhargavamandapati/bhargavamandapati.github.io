@@ -1,0 +1,126 @@
+---
+title: "VSS as the Contract Layer Between AUTOSAR and Android Automotive"
+description: "Why the Vehicle Signal Specification is the piece that makes software-defined vehicles tractable — and what it takes to map ARXML signals onto Android vehicle properties."
+date: "2026-07-24"
+tags: ["SDV", "VSS", "AUTOSAR", "AAOS"]
+featured: true
+draft: false
+---
+
+A software-defined vehicle programme usually starts with an uncomfortable observation:
+the signal catalogue already exists, and it is written in a language Android has never
+heard of. Thousands of AUTOSAR signals live in ARXML, the head unit speaks Android
+vehicle properties, and somewhere in between a team is hand-maintaining a mapping
+spreadsheet.
+
+The **Vehicle Signal Specification** is what replaces that spreadsheet with a contract.
+
+## What VSS actually gives you
+
+VSS is a tree. Every signal has a dotted path, a datatype, a unit, and — critically — a
+definition that is not vendor-specific:
+
+```yaml title="Vehicle/Powertrain/Battery.vspec"
+StateOfCharge:
+  Current:
+    datatype: float
+    type: sensor
+    unit: percent
+    min: 0
+    max: 100
+    description: Physical state of charge of the high-voltage battery.
+```
+
+That looks modest. Its value is that three organisations — the ECU supplier, the
+platform team, and the HMI team — can now argue about one artefact instead of three
+private ones.
+
+## The two conversions that matter
+
+In practice, bridging the stacks means writing two converters and keeping them honest.
+
+### ARXML → VSS
+
+The source of truth for the vehicle network is AUTOSAR. Extracting it means walking
+the ARXML package tree, resolving `SYSTEM-SIGNAL` definitions and their
+`COMPU-METHOD` scaling, and emitting VSS nodes:
+
+```python title="arxml_to_vss.py"
+def to_vss_node(signal: SystemSignal) -> dict:
+    scaling = resolve_compu_method(signal)
+    return {
+        "datatype": DATATYPE_MAP[signal.base_type],
+        "type": "sensor" if signal.read_only else "actuator",
+        "unit": scaling.unit,
+        "min": scaling.apply(signal.raw_min),
+        "max": scaling.apply(signal.raw_max),
+        "description": signal.desc or signal.short_name,
+    }
+```
+
+<Callout type="warning" title="Scaling is where the bugs live">
+`COMPU-METHOD` factor/offset pairs are applied on the raw bus value. Convert once, at
+the boundary, and record the unit in the VSS node. A signal that is scaled twice —
+or not at all — produces a plausible-looking number that is wrong by a constant, which
+is the hardest kind of defect to notice in a UI.
+</Callout>
+
+### VSS → VHAL
+
+The Android side needs a vehicle property ID, an area, and a change mode. Most of that
+is derivable, but not all of it:
+
+| VSS concept | Android equivalent | Derivable? |
+| --- | --- | --- |
+| `datatype: float` | `VehiclePropertyType.FLOAT` | Yes |
+| `type: sensor` | `VehiclePropertyAccess.READ` | Yes |
+| `type: actuator` | `READ_WRITE` | Yes |
+| Branch under `Row1.Left` | `VehicleAreaSeat.ROW_1_LEFT` | Usually |
+| Sampling behaviour | `ON_CHANGE` vs `CONTINUOUS` | **No** |
+
+That last row is the honest limit of automation. VSS describes what a signal *is*, not
+how often it should be sampled. Sampling is a product decision — cabin temperature at
+1 Hz is fine, wheel speed at 1 Hz is useless — so the generator should take it from an
+explicit overlay rather than guess.
+
+## Keep the generated layer generated
+
+The strongest discipline on this kind of work is refusing to hand-edit generated
+output. Once someone patches a generated VHAL config to fix one signal, the generator
+is no longer the source of truth and the mapping starts rotting immediately.
+
+Instead:
+
+1. Generate VSS from ARXML.
+2. Apply a small, reviewed **overlay** file for anything the source cannot express —
+   sample rates, area mappings that do not follow the naming convention, deliberate
+   omissions.
+3. Generate VHAL configs from the merged tree.
+4. Regenerate in CI and fail the build if the committed output differs.
+
+Step 4 is what keeps the whole thing alive across a multi-year programme.
+
+## Validate against a broker, not a vehicle
+
+Waiting for hardware to test signal plumbing is how schedules die. A data broker —
+the Eclipse Kuksa databroker is the common choice — lets you publish VSS values over
+gRPC and watch them arrive as Android properties:
+
+```bash
+# publish a value into the broker
+kuksa-client set Vehicle.Powertrain.Battery.StateOfCharge.Current 42.5
+
+# confirm the property surfaced on the Android side
+adb shell dumpsys car_service --property 0x21400C10
+```
+
+If those two agree, the mapping is correct and the remaining risk is in the transport,
+not the contract. That is a much smaller problem to have.
+
+## The part that is not technical
+
+VSS pays off because it gives three teams a shared vocabulary, and it fails when only
+one team adopts it. If the ECU supplier keeps shipping ARXML and the HMI team keeps
+maintaining a private mapping, you have added a format rather than removed one. The
+migration is worth doing only when the generated artefacts become the thing everyone
+reviews.

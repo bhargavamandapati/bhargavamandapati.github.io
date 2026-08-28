@@ -1,0 +1,161 @@
+---
+title: "AUTOSAR, SOME/IP and virtualised head units"
+description: "The service-oriented transports replacing signal-oriented CAN, and how AAOS runs as one guest among several on a modern vehicle computer."
+order: 2
+difficulty: "Advanced"
+tags: ["AUTOSAR", "SOME/IP", "Hypervisor", "SDV"]
+sources:
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "COVESA — automotive connectivity"
+    href: "https://covesa.global/"
+  - label: "Android Virtualization Framework"
+    href: "https://source.android.com/docs/core/virtualization"
+---
+
+CAN is a broadcast of signals. SOME/IP is a set of services you call and
+subscribe to. That shift — signal-oriented to service-oriented — is most of what
+"software-defined vehicle" means in practice, and it changes how the Android side
+is built.
+
+## Classic vs Adaptive AUTOSAR
+
+| | Classic Platform | Adaptive Platform |
+| --- | --- | --- |
+| Target | Microcontrollers | Microprocessors |
+| Scheduling | Static, fixed at build | Dynamic, POSIX-based |
+| Communication | Signals over CAN/LIN/FlexRay | Services over SOME/IP, DDS |
+| Update model | Reflash the ECU | Deploy an application |
+| Typical use | Body control, powertrain | ADAS, connectivity, infotainment gateway |
+
+Android talks to both, but usually indirectly: a gateway ECU or the vendor
+network service on the same SoC translates, and the Vehicle HAL is what Android
+sees regardless.
+
+## SOME/IP in one page
+
+Scalable service-Oriented MiddlewarE over IP. Four mechanisms:
+
+- **Service discovery** — services announce themselves; clients find them at
+  runtime rather than being wired together at build time.
+- **Method calls** — request/response RPC.
+- **Events** — server-pushed notifications.
+- **Fields** — a value with a getter, setter and change notification.
+
+Interfaces are described in **Franca IDL** and code is generated from it, the same
+way you would generate from a `.proto`.
+
+```text title="A Franca interface definition"
+package com.oem.vehicle
+
+interface SeatComfort {
+    version { major 1 minor 0 }
+
+    attribute UInt8 massageIntensity        // field: get, set, notify
+    attribute Boolean heatingEnabled
+
+    method setMassageProgram {
+        in  { UInt8 seatId  UInt8 program }
+        out { Boolean accepted }
+        error { INVALID_SEAT NOT_AVAILABLE }
+    }
+
+    broadcast seatOccupancyChanged {
+        out { UInt8 seatId  Boolean occupied }
+    }
+}
+```
+
+Mapping that onto the VHAL model:
+
+| SOME/IP concept | VHAL equivalent |
+| --- | --- |
+| Field (get) | `getValues` on a property |
+| Field (set) | `setValues` |
+| Field (notify) | property change event to subscribers |
+| Broadcast event | property change event |
+| Method with return | **No clean equivalent** |
+
+<Callout type="warning" title="Methods do not map to properties">
+A SOME/IP method with a return value and an error enum has no VHAL counterpart —
+properties are state, not RPC. Teams usually fake it with a "command" property
+plus a "result" property, which works but loses the request/response correlation.
+If you need real RPC, consider a separate vendor AIDL service alongside the VHAL
+rather than contorting the property model.
+</Callout>
+
+## Virtualised head units
+
+Modern vehicle computers consolidate what used to be several ECUs onto one SoC,
+with a hypervisor partitioning it.
+
+```text title="A typical consolidated cockpit"
+┌──────────────────────────────────────────────────────┐
+│                     Hypervisor                       │
+├──────────────┬──────────────┬────────────────────────┤
+│  Guest: RTOS │  Guest: AAOS │  Guest: cluster/safety │
+│              │              │                        │
+│  vehicle net │ infotainment │  telltales, ADAS view  │
+│  safety fns  │ apps, media  │  ASIL-rated            │
+│  early boot  │              │                        │
+└──────────────┴──────────────┴────────────────────────┘
+        │              │                  │
+        └──── shared memory / virtio ──────┘
+```
+
+Why this shape:
+
+- **Freedom from interference.** A safety-rated cluster cannot be affected by an
+  infotainment crash. The hypervisor is what lets them share silicon anyway.
+- **Boot ordering.** The RTOS guest is up in milliseconds and can drive the
+  rear-view camera and telltales long before Android is ready.
+- **Mixed criticality.** ASIL-rated functions live in a guest certified for it;
+  Android does not have to be.
+
+### What changes for the Android side
+
+Your VHAL no longer talks to a CAN controller. It talks to the RTOS guest through
+a virtio channel or shared memory ring.
+
+Practical consequences:
+
+- **Latency has a new hop.** Budget for the inter-guest transport, and measure it
+  rather than assuming.
+- **The other guest boots first.** Android must handle vehicle state that changed
+  before it existed — you will receive an initial burst at startup.
+- **Resource contention is real.** CPU and memory are partitioned; a hypervisor
+  misconfiguration shows up as mysterious Android jank that profiling inside
+  Android cannot explain.
+- **Debugging spans guests.** A signal wrong on screen may be wrong in the RTOS
+  guest, and no amount of `adb` will show you that.
+
+<Callout type="tip" title="Get a cross-guest trace early">
+On a virtualised programme, the single highest-value tooling investment is a
+correlated timeline across guests — one clock, all hops. Without it, every
+latency argument becomes two teams each proving it is not their layer.
+</Callout>
+
+## Android Virtualization Framework
+
+AOSP also has its own virtualization support (AVF), used for isolated workloads
+in protected VMs. It solves a different problem from a cockpit hypervisor — it is
+Android isolating a workload from itself, not a safety domain isolating itself
+from Android — but the two increasingly appear on the same device, and it is
+worth knowing which one someone means.
+
+## What actually matters in practice
+
+For most engineers on an SDV programme, the day-to-day reality is narrower than
+the architecture diagrams suggest:
+
+1. Signals arrive through **some** transport you do not control.
+2. Something converts them into VHAL properties.
+3. Everything above that is ordinary AAOS work.
+
+The value of understanding the layer below is knowing **where to look** when a
+value is wrong — and being able to say, with evidence, whether the defect is in
+Android or arrived that way.
+
+## Next
+
+The debugging toolkit that makes all of the above tractable.

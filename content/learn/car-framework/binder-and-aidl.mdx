@@ -1,0 +1,386 @@
+---
+title: "How Binder and AIDL actually work"
+description: "Every car API call crosses a process boundary. What that costs, what a Parcel is, why thread pools run out, and why a slow Vehicle HAL shows up as jank in an unrelated app."
+order: 1
+difficulty: "Advanced"
+tags: ["Binder", "AIDL", "IPC", "Performance"]
+sources:
+  - label: "AIDL language reference"
+    href: "https://source.android.com/docs/core/architecture/aidl/aidl-language"
+  - label: "Stable AIDL and versioning"
+    href: "https://source.android.com/docs/core/architecture/aidl/stable-aidl"
+  - label: "AIDL for HALs"
+    href: "https://source.android.com/docs/core/architecture/aidl/aidl-hals"
+  - label: "Binder driver in the kernel"
+    href: "https://cs.android.com/android/kernel/superproject/+/common-android-mainline:common/drivers/android/binder.c"
+---
+
+You write this:
+
+```kotlin
+val speed = properties.getFloatProperty(PERF_VEHICLE_SPEED, 0)
+```
+
+It looks like a method call. It is not. That line crosses a process boundary,
+goes through the Linux kernel, wakes a thread in another process, and blocks your
+thread until an answer comes back.
+
+Understanding what actually happens explains a surprising number of automotive
+bugs — including ones that look like rendering problems and are not.
+
+## Why processes are separate at all
+
+Android isolates things. Your app is one process. <T>Car Service</T> is another.
+The <T>Vehicle HAL</T> is a third. None of them can read each other's memory.
+
+<Plain>
+This is deliberate. If your app could reach directly into Car Service's memory,
+a bug in your app could corrupt the vehicle state for every other app — and a
+malicious app could simply help itself to whatever it wanted.
+
+The isolation is the security model. The cost is that every interaction between
+them needs a mechanism.
+</Plain>
+
+That mechanism is <T>Binder</T>.
+
+<Analogy title="Like sending a form between departments">
+Two departments in different buildings cannot just walk into each other's filing
+cabinets. So there is a form, a courier, and a desk that receives forms.
+
+You fill in the form (marshalling). The courier carries it (the kernel). Someone
+at the other desk picks it up, acts on it, and sends a reply back the same way.
+
+You wait at your desk the whole time.
+</Analogy>
+
+## What AIDL actually generates
+
+<T>AIDL</T> is a small language for describing what one process will let another
+ask it. You write an interface; the build generates the plumbing.
+
+```java title="What you write"
+interface ICarComfort {
+    int getMassageIntensity(int seatAreaId);
+    void setMassageIntensity(int seatAreaId, int level);
+}
+```
+
+From that, the build produces two classes you never write by hand:
+
+**A Proxy**, used on the calling side. It takes your arguments, packs them into a
+buffer, and sends them.
+
+**A Stub**, used on the receiving side. It unpacks the buffer, works out which
+method was meant, and calls your real implementation.
+
+```java title="What the generated Proxy does, roughly"
+public int getMassageIntensity(int seatAreaId) throws RemoteException {
+    Parcel data = Parcel.obtain();
+    Parcel reply = Parcel.obtain();
+    try {
+        data.writeInterfaceToken(DESCRIPTOR);   // "you are talking to ICarComfort"
+        data.writeInt(seatAreaId);              // pack the argument
+
+        // This is where the process boundary is crossed. It BLOCKS.
+        mRemote.transact(TRANSACTION_getMassageIntensity, data, reply, 0);
+
+        reply.readException();
+        return reply.readInt();                 // unpack the result
+    } finally {
+        reply.recycle();
+        data.recycle();
+    }
+}
+```
+
+```java title="What the generated Stub does, roughly"
+public boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
+    switch (code) {
+        case TRANSACTION_getMassageIntensity: {
+            data.enforceInterface(DESCRIPTOR);
+            int seatAreaId = data.readInt();       // unpack
+            int result = this.getMassageIntensity(seatAreaId);   // YOUR method
+            reply.writeNoException();
+            reply.writeInt(result);                // pack the answer
+            return true;
+        }
+    }
+}
+```
+
+<Plain>
+Two things are worth noticing.
+
+**Methods are identified by a number**, not a name — `TRANSACTION_getMassageIntensity`
+is just an integer assigned by declaration order. That is why inserting a method
+in the middle of an AIDL file breaks every app compiled against the old version:
+the numbers all shift.
+
+**Arguments are written and read in a fixed order.** Nothing checks the types
+match at runtime beyond the interface token. Both sides must agree exactly.
+</Plain>
+
+## A Parcel is a byte buffer, not an object
+
+A `Parcel` is a flat sequence of bytes with a cursor. `writeInt` appends four
+bytes; `readInt` consumes four bytes.
+
+<Plain>
+It is not serialisation in the general sense. There is no schema in the buffer, no
+field names, no type tags. It is closer to writing raw values to a file and
+reading them back in the same order.
+
+This makes it very fast. It also makes it completely unforgiving: read in the
+wrong order and you get garbage, not an error.
+</Plain>
+
+## Crossing the boundary
+
+<DiagramFrame
+  title="One AIDL call, end to end"
+  caption="Your thread blocks from the moment transact() is called until the reply comes back. The kernel copies the data once, directly into a buffer the target process has already mapped."
+>
+  <BinderTransaction />
+</DiagramFrame>
+
+Step by step:
+
+1. The Proxy packs arguments into a `Parcel`.
+2. It calls `transact()`, which issues an `ioctl` on `/dev/binder`.
+3. **The kernel copies the data once** into a memory region the target process
+   mapped at startup. One copy, not two — this is the main reason Binder is fast.
+4. The kernel wakes a thread in the target's **binder thread pool**.
+5. That thread runs `onTransact`, which calls the real method.
+6. The reply is packed and travels back the same way.
+7. Your thread, which has been blocked this whole time, wakes up with the answer.
+
+<Plain>
+Step 7 is the one to internalise: **a normal AIDL call is synchronous.** Your
+thread does nothing until the other process answers.
+
+If you make that call on your UI thread and the other process is busy, your app
+stops drawing.
+</Plain>
+
+## The two limits that cause real bugs
+
+### The thread pool is finite
+
+Every process that serves Binder calls has a **pool of threads** to handle them.
+It is not unlimited — commonly around 15, and configurable per process.
+
+When every thread is busy, new incoming calls **queue**.
+
+<Scenario title="A slow HAL becomes someone else's jank">
+The <T>VHAL</T> on a new board takes 200 ms to answer a read, because it queries
+the vehicle network synchronously instead of serving from a cache.
+
+Car Service handles that read on one of its binder threads. That thread is stuck
+for 200 ms.
+
+A media app, a settings screen and the launcher all call Car Service for
+unrelated things. Enough concurrent slow reads and Car Service's pool is
+exhausted. Now *every* caller waits.
+
+The media app's developer profiles their own process, sees the UI thread blocked
+in binder, and cannot explain why — because the cause is two processes away.
+
+**This is why `binder_driver` is the trace category to enable on automotive.**
+Profiling one process cannot see it.
+</Scenario>
+
+```bash title="Seeing pool pressure"
+adb shell dumpsys activity service com.android.car | grep -i binder
+adb shell perfetto -o /data/misc/perfetto-traces/t -t 15s sched binder_driver am
+```
+
+### The transaction buffer is about 1 MB — per process
+
+Each process has one shared buffer for **all** in-flight transactions. Roughly
+1 MB, shared with everything else happening at that moment.
+
+<Plain>
+This is why `TransactionTooLargeException` exists, and why it often appears
+intermittently under load rather than consistently. Your 400 KB payload is fine
+when nothing else is happening and fails when three other calls are in flight.
+
+The practical rule: **do not pass large data through Binder.** Pass a reference —
+a file descriptor, a shared memory handle — and let the other side read it.
+</Plain>
+
+## `oneway`: the escape from blocking
+
+Marking a method or an interface `oneway` makes it fire-and-forget.
+
+```java title="A callback interface that must not block the caller"
+oneway interface ICarComfortListener {
+    void onIntensityChanged(int seatAreaId, int level);
+}
+```
+
+The call is queued and returns immediately. There is no return value and no way
+to know it arrived.
+
+<Plain>
+**Callbacks should almost always be `oneway`.**
+
+If they are not, a service notifying ten listeners blocks on each one in turn.
+One slow or hung listener stalls the service — and the service is usually far
+more important than the listener.
+</Plain>
+
+<Scenario title="The deadlock this prevents">
+Car Service holds a lock, then calls a listener in your app. Your listener
+handler calls back into Car Service to read a value. Car Service needs the lock
+it is already holding.
+
+Both sides wait forever.
+
+`oneway` breaks it, because the notification does not block. So does the rule
+from the framework topics: **never invoke a callback while holding your lock.**
+Together they eliminate the whole class.
+</Scenario>
+
+## Identity: who is calling?
+
+Binder carries the caller's identity into the receiving process.
+
+```java title="Inside a service"
+int uid = Binder.getCallingUid();
+int pid = Binder.getCallingPid();
+
+// This is what permission enforcement is built on
+mContext.enforceCallingOrSelfPermission(PERMISSION, "setMassageIntensity");
+```
+
+<Plain>
+This is the foundation of the entire permission model. Car Service does not have
+to trust what an app *says* about itself — the kernel tells it who is calling.
+
+It is also why `enforceCallingOrSelfPermission` must be the first line of a
+Binder method. Do anything before it and you have done work on behalf of an
+unauthorised caller.
+</Plain>
+
+There is a trap:
+
+```java title="clearCallingIdentity — necessary and dangerous"
+long token = Binder.clearCallingIdentity();
+try {
+    // Now running as the SERVICE's identity, not the caller's.
+    // Needed to reach something the caller cannot — but you have just
+    // dropped the caller's permission context entirely.
+    doPrivilegedThing();
+} finally {
+    Binder.restoreCallingIdentity(token);   // ALWAYS in a finally
+}
+```
+
+Forgetting the `restore` leaves the thread running with elevated identity for
+whatever it handles next. It is a genuine security bug and it is easy to write.
+
+## Death: knowing when the other side is gone
+
+Processes die. If you hold a reference to a dead one, calls throw.
+
+```kotlin title="Being told rather than finding out"
+binder.linkToDeath({
+    // Car Service died. Every manager you cached is now useless.
+    reconnect()
+}, 0)
+```
+
+<Plain>
+This is exactly why the app-facing advice is always "use the lifecycle-listener
+form of `Car.createCar`". That listener is built on death notification.
+
+On a desk, Car Service never dies. On a vehicle, over a long drive, it does.
+</Plain>
+
+## The three binder domains
+
+Android runs more than one binder driver, to keep <T>Treble</T> boundaries honest.
+
+| Device node | Used for |
+| --- | --- |
+| `/dev/binder` | Framework ↔ apps — the ordinary case |
+| `/dev/hwbinder` | HIDL interfaces, the older HAL mechanism |
+| `/dev/vndbinder` | Vendor process ↔ vendor process |
+
+<Plain>
+The separation exists so that vendor code and framework code cannot casually
+reach each other. It is the same Treble principle expressed in the IPC layer: not
+just "you should not", but "you cannot, the driver is a different device node".
+</Plain>
+
+## AIDL at the two levels you will meet
+
+The same technology appears twice in the automotive stack, and it is worth seeing
+that it is the same thing.
+
+### At the app level
+
+```kotlin title="Your app to Car Service"
+val properties = car.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
+val speed = properties.getFloatProperty(PERF_VEHICLE_SPEED, 0)
+```
+
+`CarPropertyManager` is a friendly wrapper. Underneath it is an AIDL proxy for
+`ICarProperty`, sending a binder transaction to Car Service.
+
+### At the HAL level
+
+```java title="Car Service to the Vehicle HAL"
+interface IVehicle {
+    void getValues(in IVehicleCallback callback, in GetValueRequests requests);
+    void setValues(in IVehicleCallback callback, in SetValueRequests requests);
+    VehiclePropConfigs getAllPropConfigs();
+}
+```
+
+Same mechanism, different interface, and one notable difference: the VHAL's
+methods take **arrays** and answer through a **callback** rather than returning
+a value.
+
+<Plain>
+Why the difference? Because reading forty properties at startup as forty separate
+blocking transactions is forty round trips through the kernel, forty thread
+wake-ups, and forty chances to queue behind something slow.
+
+Batched into one call, it is one transaction. On a head unit where Car Service
+queries a large property catalogue during boot, that is measurable boot time.
+
+This is also why every request carries a `requestId` — the answers come back
+asynchronously and have to be matched up.
+</Plain>
+
+## Practical rules
+
+- **Never make a blocking Binder call on the UI thread.** It is a call into
+  another process, and you cannot bound how long it takes.
+- **Make callbacks `oneway`.**
+- **Never hold a lock across a Binder call**, in either direction.
+- **Do not pass large payloads.** Pass a descriptor.
+- **Check permission on the first line** of every Binder method.
+- **Always `restoreCallingIdentity` in a `finally`.**
+- **Enable `binder_driver` in traces.** Automotive problems frequently live in a
+  process you are not profiling.
+
+<Recap>
+- Every car API call is a **process boundary crossing**, not a method call.
+- **AIDL generates a Proxy and a Stub.** Methods are identified by number, so
+  never insert a method into the middle of a shipped interface.
+- A **Parcel** is a flat byte buffer read in exact order — fast and unforgiving.
+- **Thread pools are finite** and **the transaction buffer is ~1 MB per process**.
+  Exhausting either makes unrelated callers stall, which looks like UI jank.
+- **`oneway` for callbacks** avoids blocking the service on a slow listener.
+- The kernel supplies the **caller's identity**, which is what the whole
+  permission model rests on.
+- The VHAL uses the same AIDL machinery, but **batched** — because forty round
+  trips at boot is real time.
+</Recap>
+
+## Next
+
+Car Service itself — the process on the other end of most of these calls.

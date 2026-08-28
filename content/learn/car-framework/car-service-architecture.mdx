@@ -1,0 +1,175 @@
+---
+title: "Inside Car Service"
+description: "The system service that owns vehicle state, audio, power and users — how it starts, how its subservices fit together, and how to read its dumpsys output like a professional."
+order: 2
+difficulty: "Advanced"
+tags: ["Car Service", "Framework", "AOSP"]
+sources:
+  - label: "Car Service overview"
+    href: "https://source.android.com/docs/automotive/start/architecture"
+  - label: "packages/services/Car"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/"
+  - label: "ICarImpl — service registry"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/ICarImpl.java"
+---
+
+Car Service is where Android stops being a phone OS. It is a single process
+(`com.android.car`) holding a dozen subservices, and almost every automotive
+behaviour you will ever debug lives inside it.
+
+## How it starts
+
+Car Service is not an ordinary app. It is a persistent system app started early
+in boot, and it hosts subservices the way `system_server` hosts framework
+services.
+
+The registry is <Src path="packages/services/Car/service/src/com/android/car/ICarImpl.java" label="ICarImpl.java" />.
+It constructs each subservice in dependency order, calls `init()` on each, and
+exposes them to apps through `Car.getCarManager()`.
+
+```text title="Roughly what happens at boot"
+init
+ └─ system_server
+     └─ com.android.car (CarService)
+         ├─ connect to Vehicle HAL   ← blocks until the HAL answers
+         ├─ getAllPropConfigs()      ← the property contract, cached
+         ├─ construct subservices
+         ├─ init() each in order
+         └─ register with ServiceManager as "car_service"
+```
+
+<Callout type="warning" title="A missing VHAL stalls the whole platform">
+Car Service waits for the Vehicle HAL during startup. If your HAL fails to
+register, Car Service does not come up — and because so much depends on it, the
+symptom is a head unit that boots to a black screen rather than an obvious error.
+Check `lshal | grep vehicle` before anything else.
+</Callout>
+
+## The subservices
+
+Each owns one domain and holds its own lock. Knowing which one is responsible is
+most of the work in triaging an automotive bug.
+
+| Subservice | Owns | You meet it as |
+| --- | --- | --- |
+| `CarPropertyService` | Vehicle properties, subscriptions | `CarPropertyManager` |
+| `CarAudioService` | Zones, contexts, focus, routing | `CarAudioManager` |
+| `CarPowerManagementService` | Power state machine, Garage Mode | `CarPowerManager` |
+| `CarUserService` | User lifecycle and switching | `CarUserManager` |
+| `CarUxRestrictionsManagerService` | Driver distraction state | `CarUxRestrictionsManager` |
+| `CarOccupantZoneService` | Displays, seats, users | `CarOccupantZoneManager` |
+| `CarWatchdogService` | Process health, I/O overuse | `CarWatchdogManager` |
+| `CarPackageManagerService` | Distraction-optimised app allowlist | `CarPackageManager` |
+| `CarProjectionService` | Phone projection | `CarProjectionManager` |
+| `CarDrivingStateService` | Derived driving state | `CarDrivingStateManager` |
+
+Browse them under <Src path="packages/services/Car/service/src/com/android/car" label="service/src/com/android/car" full />.
+
+## Reading dumpsys properly
+
+`dumpsys car_service` with no arguments produces thousands of lines. Nobody reads
+that. Target it.
+
+```bash title="Targeted service dumps"
+# Just one subservice
+adb shell dumpsys car_service --services CarPropertyService
+adb shell dumpsys car_service --services CarAudioService
+adb shell dumpsys car_service --services CarPowerManagementService
+
+# What subservices exist on this build
+adb shell dumpsys car_service --list
+
+# What flags this build supports — check first, they change per release
+adb shell dumpsys car_service --help
+```
+
+Three dumps answer most questions:
+
+**`CarPropertyService`** — the config list the HAL declared and current
+subscriptions. If a property is missing here, it does not exist for apps.
+
+**`CarPowerManagementService`** — current power state and pending policy. When a
+head unit will not sleep, or wakes constantly, start here.
+
+**`CarUxRestrictionsManagerService`** — the active restrictions and the driving
+state that produced them. When the UI blocks unexpectedly, this is why.
+
+## The dependency order matters
+
+Subservices are constructed in a deliberate order because they depend on one
+another. `CarUxRestrictionsManagerService` needs driving state, which needs
+vehicle properties, which need the HAL connection. `CarAudioService` needs
+occupant zones to map audio zones onto displays and seats.
+
+This is why a fault in a low-level service produces symptoms high up. A VHAL that
+never publishes `PERF_VEHICLE_SPEED` shows up not as "speed is missing" but as
+"driver distraction never engages" — because driving state derives from speed, and
+UX restrictions derive from driving state.
+
+<Callout type="tip" title="Trace symptoms downward, not sideways">
+When an automotive behaviour is wrong, ask what it derives from and check *that*.
+The failure is almost always one or two layers below where you noticed it.
+</Callout>
+
+## Adding your own subservice
+
+OEMs regularly add one — a vendor telematics service, a seat comfort manager, an
+OEM-specific feature service. The shape AOSP expects:
+
+1. Implement `CarServiceBase` (`init()`, `release()`, `dump()`).
+2. Register it in `ICarImpl` alongside the built-in services.
+3. Expose an AIDL interface and a manager class in `car-lib`.
+4. Define and enforce a permission for every entry point.
+5. Implement `dump()` properly — your future self debugging at 2am will need it.
+
+```java title="The minimum shape of a subservice"
+public final class VendorComfortService implements CarServiceBase {
+
+    private final Context mContext;
+    private final Object mLock = new Object();
+
+    @Override
+    public void init() {
+        // Subscribe to the properties you need. Do NOT block here —
+        // you are on the Car Service startup path.
+    }
+
+    @Override
+    public void release() {
+        // Unsubscribe. Called on shutdown and on service restart.
+    }
+
+    @Override
+    @ExcludeFromCodeCoverageGeneratedReport(reason = DUMP_INFO)
+    public void dump(PrintWriter writer) {
+        synchronized (mLock) {
+            writer.println("*VendorComfortService*");
+            writer.printf("  massageLevel=%d\n", mMassageLevel);
+        }
+    }
+}
+```
+
+<Callout type="warning" title="Never block in init()">
+Every subservice's `init()` runs on the Car Service startup path. A blocking call
+there — waiting on a network, a slow HAL, a file — delays the whole platform
+coming up, and on a head unit that is measured against a boot-time budget someone
+committed to.
+</Callout>
+
+## When Car Service dies
+
+It restarts. Everything holding a manager gets an invalid object, and apps that
+cached one without a lifecycle listener break permanently until they are killed.
+
+```bash title="Watching for restarts"
+adb logcat -b all | grep -iE 'car_service|CarService.*(crash|restart|died)'
+```
+
+This is why the app-side guidance is always "use the lifecycle-listener form of
+`Car.createCar` and re-fetch your managers". On a desk it never happens. On a
+vehicle over a long drive it does.
+
+## Next
+
+The API surface those subservices expose is worth a map of its own.

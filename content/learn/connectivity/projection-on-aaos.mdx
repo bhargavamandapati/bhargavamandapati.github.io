@@ -1,0 +1,187 @@
+---
+title: "Projection on an AAOS vehicle"
+description: "The confusing case: a car running Android Automotive that also hosts Android Auto or CarPlay. Two Androids, one screen, and the handover rules between them."
+order: 5
+difficulty: "Intermediate"
+tags: ["Projection", "Android Auto", "CarPlay"]
+sources:
+  - label: "CarProjectionManager reference"
+    href: "https://developer.android.com/reference/android/car/CarProjectionManager"
+  - label: "Android for Cars overview"
+    href: "https://developer.android.com/training/cars/overview"
+  - label: "Car projection sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/CarProjectionService.java"
+---
+
+The foundations topic separated Android Auto from Android Automotive OS. Now the
+case that muddles them again: an AAOS vehicle that **also** supports Android Auto.
+
+Both at once. On the same screen.
+
+## Why this exists at all
+
+<Plain>
+If the car already runs Android, why would anyone want to project a phone onto
+it?
+
+Because the two hold different things. Your phone has your accounts, your
+messages, your recently played, your podcast progress and the apps you actually
+subscribe to. The car has none of that unless you have signed in to each app on
+the car — which people frequently have not.
+
+<T>Projection</T> is the "I just want my phone's stuff" path, and it is also the
+answer for a driver whose phone is an iPhone in a car running Android.
+</Plain>
+
+<Analogy title="Like a smart TV with an HDMI input">
+The TV runs its own apps. It also has an HDMI port for a laptop.
+
+Both work. They are different things. Nobody finds this confusing about
+televisions, and it is exactly the same arrangement here — the car has its own
+Android *and* an input for someone else's.
+</Analogy>
+
+## What it looks like architecturally
+
+The projected session is, from AAOS's point of view, **just another app**.
+
+```text title="The layering"
+AAOS (the vehicle's own Android)
+ ├── native media app
+ ├── native navigation
+ ├── settings
+ └── projection app       ← hosts the phone session
+      └── the phone's UI, streamed in as pixels
+```
+
+<Plain>
+The projection app receives a video stream from the phone and displays it,
+forwarding touches back. Everything outside that app's window — the system bars,
+the climate panel — is still the car's own Android.
+
+This is why a projected session cannot read vehicle data. It is a picture from
+another device, inside a window. The phone is no closer to the CAN bus than it
+was in the foundations topic.
+</Plain>
+
+## The handover rules
+
+Two Androids competing for one screen and one set of speakers needs arbitration,
+and getting it wrong is very visible to the driver.
+
+**Audio focus is the mechanism.** The projection app requests focus like any
+other app. When the phone plays music, the projection app holds media focus and
+the car's own media app pauses.
+
+**Vehicle functions always win.** A reversing camera, a collision warning, a
+climate control interaction interrupts projection immediately. The car's own
+safety and vehicle-control surfaces are never subordinate to a projected session.
+
+**Navigation is the awkward one.**
+
+<Scenario title="Two navigation systems, one cluster">
+The driver starts navigation on their phone through projection. The car's own
+navigation is idle.
+
+Which one should send turn-by-turn instructions to the instrument cluster?
+
+Most programmes give the cluster to whichever navigation source is *active*, with
+the projected one able to claim it. But the cluster is often driven by a separate
+safety-rated system expecting a specific message format, so the projection app
+has to translate the phone's guidance into that format.
+
+Whether that works is a per-programme integration detail. It is the single most
+common projection complaint: "my phone navigation does not show in the
+instrument cluster."
+</Scenario>
+
+## The wireless path
+
+Wireless projection uses a direct Wi-Fi link between phone and head unit,
+established over Bluetooth.
+
+```text title="How a wireless session starts"
+1. Phone and head unit are paired over Bluetooth
+2. Head unit uses BLE/Bluetooth to hand the phone Wi-Fi credentials
+3. Phone joins a direct Wi-Fi link with the head unit
+4. Video and audio stream over that link
+```
+
+<Plain>
+Worth knowing: **this Wi-Fi link is separate from the vehicle's internet
+connection.** A car can be projecting wirelessly while completely offline, and it
+can be online with no projection running. They use different radios or different
+channels, and confusing them makes connectivity bugs very hard to reason about.
+
+It also means projection consumes Wi-Fi radio capacity, which on a single-radio
+head unit can compete with a passenger hotspot.
+</Plain>
+
+## What Android exposes
+
+```kotlin title="CarProjectionManager, for a projection host app"
+val projection = car.getCarManager(Car.PROJECTION_SERVICE) as CarProjectionManager
+
+projection.registerProjectionRunner(serviceIntent)
+
+// Ask the platform to start the Wi-Fi access point for a wireless session
+projection.startProjectionAccessPoint(callback)
+```
+
+This needs `android.car.permission.CAR_PROJECTION` — signature-level, because a
+projection host takes over the screen and audio. It is a system app, not
+something a third party ships.
+
+```bash title="Inspecting projection state"
+adb shell dumpsys car_service --services CarProjectionService
+adb shell dumpsys media_session | grep -i projection
+adb shell dumpsys wifi | grep -i -A5 'SoftAp\|p2p'
+```
+
+## What this means if you build apps
+
+<Plain>
+Mostly: **you will be running in one world or the other, and you should know
+which.**
+
+If your app is installed on the vehicle, you are a native AAOS app with vehicle
+data access, subject to the platform's distraction rules.
+
+If your app is on the phone and appears through projection, you are an Android
+Auto app — no vehicle data, a different SDK, a different review process, and a
+completely different release cadence.
+
+The same product may need both, and they are two builds against two SDKs, not one
+build with a flag. Scoping a feature without knowing which one it targets is how
+teams discover late that half of it is impossible.
+</Plain>
+
+## Common problems
+
+| Symptom | Usual cause |
+| --- | --- |
+| Projection will not start | Bluetooth pairing incomplete; Wi-Fi handover failed |
+| Audio comes out of the wrong place | Projection app's audio context misconfigured |
+| Car media does not resume after | Projection did not abandon audio focus |
+| Phone navigation absent from cluster | Cluster message translation not implemented |
+| Wireless session drops | Wi-Fi radio contention with hotspot or scanning |
+| Works with one phone, not another | Phone-side implementation differences — build a phone matrix |
+
+<Recap>
+- An AAOS vehicle can **also host projection**. They are different things
+  coexisting, not versions of each other.
+- A projected session is **just another app** to AAOS, and **cannot read vehicle
+  data**.
+- **Audio focus arbitrates** between the two; vehicle functions always take
+  priority.
+- **Navigation to the cluster** is the hardest integration point and the most
+  common complaint.
+- The **wireless projection link is separate** from the vehicle's internet
+  connection.
+- Building for AAOS and building for projection are **two different products** —
+  decide which during scoping.
+</Recap>
+
+## Next
+
+Performance — starting with where all this data is stored.

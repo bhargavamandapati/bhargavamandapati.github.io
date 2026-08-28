@@ -1,0 +1,168 @@
+---
+title: "App startup and perceived responsiveness"
+description: "The driver does not measure milliseconds — they notice hesitation. What to optimise, what to fake honestly, and the budgets that make a head unit feel solid."
+order: 3
+difficulty: "Intermediate"
+tags: ["Startup", "Responsiveness", "UX"]
+sources:
+  - label: "App startup time"
+    href: "https://developer.android.com/topic/performance/vitals/launch-time"
+  - label: "Baseline profiles"
+    href: "https://developer.android.com/topic/performance/baselineprofiles/overview"
+  - label: "Slow rendering"
+    href: "https://developer.android.com/topic/performance/vitals/render"
+---
+
+A head unit feels cheap or expensive based on almost nothing but latency. Not
+throughput, not frame rate — the delay between a touch and a visible response.
+
+## The budgets that matter
+
+| Interaction | Budget | What happens beyond it |
+| --- | --- | --- |
+| Touch → visual feedback | **100 ms** | Feels unresponsive; people press again |
+| Tab or screen switch | **300 ms** | Feels sluggish |
+| App launch (warm) | **500 ms** | Noticeably slow |
+| App launch (cold) | **1–2 s** | Acceptable if something is shown immediately |
+| Any action with no feedback | **never** | Perceived as broken regardless of speed |
+
+The last row is the important one. An operation that takes 800 ms with immediate
+feedback feels faster than one taking 400 ms with none.
+
+## Measuring startup
+
+```bash title="Cold, warm and hot"
+# Cold: process does not exist
+adb shell am force-stop com.example
+adb shell am start -W -n com.example/.MainActivity
+
+# Warm: process alive, activity recreated
+adb shell am start -W -n com.example/.MainActivity
+
+# Reported metrics
+# TotalTime      — what to track
+# WaitTime       — includes system overhead
+```
+
+```bash title="Where the time goes inside startup"
+adb shell am start -n com.example/.MainActivity \
+  --start-profiler /data/local/tmp/startup.trace --sampling 1000
+adb pull /data/local/tmp/startup.trace
+```
+
+## The usual costs, in order
+
+**1. Application.onCreate() doing too much.** Every library initialised eagerly
+is on the critical path of every cold start. Most do not need to be.
+
+```kotlin title="Initialise lazily, not at process start"
+class App : Application() {
+    // Bad: everything, every launch
+    // override fun onCreate() { analytics.init(); maps.init(); crash.init() }
+
+    // Better: only what must exist before the first frame
+    override fun onCreate() {
+        super.onCreate()
+        crashReporter.init()          // must catch startup crashes
+    }
+}
+
+// Everything else, on first use
+val analytics by lazy { Analytics.create(this) }
+```
+
+**2. Layout inflation.** Deep hierarchies inflated repeatedly. A list item
+inflated forty times at 3 ms each is 120 ms of your budget.
+
+**3. Synchronous I/O.** Reading preferences, opening a database, or touching the
+network before the first frame.
+
+**4. Binder calls to Car Service.** Connecting to `Car` and querying properties
+is IPC. Do it off the critical path and render with placeholder state.
+
+```kotlin title="Draw first, connect second"
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.main)     // something on screen immediately
+
+    lifecycleScope.launch {
+        val car = connectToCar()      // may take tens of ms, or longer
+        bindVehicleState(car)         // fill in when ready
+    }
+}
+```
+
+## Baseline profiles
+
+A baseline profile tells ART which code paths to compile ahead of time instead of
+interpreting on first run. On the modest CPUs typical of head units, this is one
+of the largest single wins available for startup and first-scroll smoothness —
+often tens of percent, for configuration rather than code changes.
+
+```kotlin title="Generating one"
+@Test
+fun generateProfile() = baselineProfileRule.collect(packageName = "com.example") {
+    startActivityAndWait()
+    device.findObject(By.res(packageName, "browse_list")).fling(Direction.DOWN)
+    device.waitForIdle()
+}
+```
+
+Capture the journeys a driver actually performs in the first ten seconds, not
+every path through the app.
+
+## Perceived responsiveness
+
+Real speed has a floor. Perceived speed does not.
+
+**Acknowledge every touch within 100 ms.** A ripple, a state change, anything. It
+is the difference between "slow" and "broken".
+
+**Show structure before content.** Render the list frame and placeholders
+immediately; fill rows as data arrives. A skeleton beats a spinner, which beats
+nothing.
+
+**Never block on a network call for first paint.** Show cached data, then update.
+In a vehicle the network may simply not be there.
+
+**Keep transitions short.** 150–250 ms. Long animations look considered on a
+phone and feel like lag on a head unit — and they are also a distraction problem.
+
+<Callout type="warning" title="Do not fake progress you do not have">
+A determinate progress bar that jumps to 90% and waits is worse than an
+indeterminate one. Drivers learn quickly that the number is a lie, and then they
+distrust every other indicator in the vehicle.
+</Callout>
+
+## Jank while scrolling
+
+```bash title="Frame timing for a specific package"
+adb shell dumpsys gfxinfo com.example framestats
+adb shell dumpsys gfxinfo com.example reset   # then interact, then read again
+```
+
+The usual causes on a list: allocation during binding, decoding images on the
+main thread, and layouts that measure twice because of nested weights.
+
+```kotlin title="Bind, do not build"
+override fun onBindViewHolder(holder: VH, position: Int) {
+    val item = items[position]
+    holder.title.text = item.title            // no allocation
+    holder.subtitle.text = item.subtitle
+    imageLoader.load(item.artUri)             // async, cancels on recycle
+        .into(holder.art)
+}
+```
+
+## What to hold on to
+
+- **Measure cold, warm and hot separately.** They have different causes.
+- **Feedback within 100 ms is non-negotiable**, whatever the real latency is.
+- **Move everything off the first-frame path** that is not needed to draw.
+- **Use baseline profiles.** It is the cheapest large win available.
+- **Test on the target.** Head unit CPUs are far slower than a development
+  machine, and every budget above is measured there.
+
+## Next
+
+Security — verified boot, and the keys that make an image trustworthy.

@@ -1,0 +1,232 @@
+---
+title: "Native crashes, tombstones and ANRs"
+description: "When a process dies or freezes, Android leaves behind a detailed record. Reading it turns 'the head unit rebooted' into a specific line of code."
+order: 3
+difficulty: "Advanced"
+tags: ["Debugging", "Crashes", "ANR"]
+sources:
+  - label: "Understanding tombstones and native crashes"
+    href: "https://source.android.com/docs/core/tests/debug/native-crash"
+  - label: "Diagnosing ANRs"
+    href: "https://developer.android.com/topic/performance/vitals/anr"
+  - label: "debuggerd"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/core/debuggerd/"
+---
+
+Two different failures, two different investigations. A **crash** is a process
+dying suddenly. An **ANR** is a process still alive but not responding. They look
+similar from the driver's seat and have almost nothing in common underneath.
+
+## Native crashes and tombstones
+
+When C or C++ code dereferences a null pointer or overruns a buffer, the kernel
+delivers a fatal signal. Android catches it and writes a <T>tombstone</T> — a
+detailed record of the process's final state.
+
+```bash title="Finding them"
+adb shell ls -la /data/tombstones/
+adb pull /data/tombstones/tombstone_00
+
+# The crash summary also goes to the crash log buffer
+adb logcat -b crash
+```
+
+<Analogy title="Like a flight recorder">
+The aircraft is gone, but it left behind enough detail to reconstruct the last
+moments: what was happening, in which component, and what the state was.
+
+A tombstone is exactly that for a process.
+</Analogy>
+
+### Reading one
+
+```text title="The parts that matter"
+*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+Build fingerprint: 'OEM/vega/vega:14/...'
+pid: 1247, tid: 1310, name: vehicle_net  >>> vendor.vega.vehicle <<<
+signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0000000000000008
+    x0  0000000000000000  x1  0000007b8c0a4120  ...
+backtrace:
+      #00 pc 0000000000012a4c  /vendor/bin/hw/vendor.vega.vehicle (ParseFrame+92)
+      #01 pc 0000000000013b18  /vendor/bin/hw/vendor.vega.vehicle (OnCanFrame+204)
+      #02 pc 00000000000a1cd4  /apex/.../libc.so (__pthread_start+264)
+```
+
+<Plain>
+Four things to read, in this order:
+
+**The signal.** `SIGSEGV` is a bad memory access — the overwhelmingly common one.
+`SIGABRT` means the program deliberately aborted, usually a failed assertion.
+
+**The fault address.** `0x8` is the giveaway: a null pointer plus a small offset.
+Something did `ptr->field` where `ptr` was null.
+
+**The thread name.** `vehicle_net`, not the main thread. That immediately tells
+you which part of the program to look at.
+
+**The backtrace.** Read top down — frame `#00` is where it died, `#01` is who
+called it.
+</Plain>
+
+### Making it readable
+
+Without symbols, a backtrace is addresses. With them, it is function names and
+line numbers.
+
+```bash title="Symbolising"
+# Symbols come from the build that produced the crashing image
+export ANDROID_PRODUCT_OUT=~/aosp/out/target/product/vega
+development/scripts/stack < tombstone_00
+
+# Or directly
+llvm-addr2line -Cfe $ANDROID_PRODUCT_OUT/symbols/vendor/bin/hw/vendor.vega.vehicle 0x12a4c
+```
+
+<Scenario title="Why keeping symbols is not optional">
+A vehicle in the field crashes. Diagnostics upload the tombstone.
+
+The build that produced that image was made eleven months ago on a build machine
+that has since been reimaged. The symbols are gone.
+
+The tombstone is now a list of hex addresses that cannot be turned into anything.
+The crash is real, reproducible in the field, and undiagnosable.
+
+**Archive `symbols.zip` for every release build.** It is small compared with what
+it buys you, and the moment you need it is always long after you could still
+regenerate it.
+</Scenario>
+
+## ANRs
+
+An <T>ANR</T> is different: the process is alive and healthy, but not answering.
+
+Android declares one when an app does not handle input within about 5 seconds, a
+broadcast is not processed in time, or a service does not start quickly enough.
+
+```bash title="Finding an ANR report"
+adb shell ls -la /data/anr/
+adb pull /data/anr/anr_2026-08-29-14-22-01-000
+
+adb logcat -b all | grep -i -A5 'ANR in'
+```
+
+### Reading one
+
+An ANR trace dumps **every thread in every relevant process**. The main thread of
+the offending app is what you want first.
+
+```text title="A main thread that is blocked"
+"main" prio=5 tid=1 Native
+  | state=S  ...
+  at android.os.BinderProxy.transactNative(Native method)
+  at android.os.BinderProxy.transact(BinderProxy.java:584)
+  at android.car.hardware.property.ICarProperty$Stub$Proxy.getProperty(...)
+  at android.car.hardware.property.CarPropertyManager.getProperty(...)
+  at com.example.SpeedGauge.onDraw(SpeedGauge.java:88)
+```
+
+<Plain>
+That backtrace tells the whole story: `onDraw` is calling `getProperty`, which is
+a <T>Binder</T> call into another process, on the **main thread**.
+
+Something in Car Service is slow. The app's UI thread is waiting for it. Android
+declares the app not responding — and blames the app, which from the driver's
+perspective is exactly right.
+
+The fix is not in Car Service. It is that a vehicle read should never be on the
+draw path.
+</Plain>
+
+### The automotive twist
+
+<Scenario title="The ANR that was somebody else's fault">
+Three unrelated apps ANR within a minute of each other on a test vehicle.
+
+Each trace shows the same thing: main thread blocked in a Binder transaction to
+Car Service.
+
+The cause is a Vehicle HAL taking 300 ms per read on this build. Car Service's
+binder thread pool is exhausted, so everything calling it queues.
+
+Three teams each start debugging their own app. All three are innocent. The
+problem is two processes away, and it is only visible if someone looks at the ANR
+traces **together** and notices they all end in the same place.
+
+This is why the binder topic matters: **an ANR trace ending in `transactNative`
+is telling you to look at the other process.**
+</Scenario>
+
+## Why crashes matter more here than on a phone
+
+<Plain>
+A phone app crashing is an annoyance; the user reopens it.
+
+On a vehicle:
+
+- A **vendor HAL** crashing can take out vehicle data for every app.
+- **Car Service** crashing invalidates every manager every app is holding.
+- **system_server** crashing restarts the entire user interface mid-journey.
+- A driver **cannot pull over** to deal with a frozen screen, and should not try.
+
+And unlike a phone, the crash may happen in a vehicle you will never physically
+see, months after the build shipped. Whatever the device recorded at the time is
+all you will ever have.
+</Plain>
+
+## Capturing enough to diagnose later
+
+```bash title="A capture script worth having"
+#!/usr/bin/env bash
+set -euo pipefail
+OUT="incident-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$OUT"
+
+adb pull /data/tombstones          "$OUT/tombstones"  2>/dev/null || true
+adb pull /data/anr                 "$OUT/anr"         2>/dev/null || true
+adb logcat -d -b all             > "$OUT/logcat.txt"
+adb shell dmesg                  > "$OUT/dmesg.txt"
+adb shell dumpsys car_service    > "$OUT/car_service.txt"
+adb shell ps -A                  > "$OUT/processes.txt"
+adb shell getprop                > "$OUT/props.txt"
+
+tar czf "$OUT.tar.gz" "$OUT" && rm -rf "$OUT"
+echo "captured $OUT.tar.gz"
+```
+
+<Plain>
+`getprop` is in there for a reason: it records the exact build fingerprint, which
+is what tells you **which symbols** to use months later.
+
+A tombstone without a fingerprint is a tombstone you may not be able to
+symbolise.
+</Plain>
+
+## Preventing the common cases
+
+| Failure | Prevention |
+| --- | --- |
+| `SIGSEGV` at a small address | Null checks; smart pointers rather than raw |
+| Crash in a HAL callback | Never call out while holding a lock |
+| ANR blocked in binder | No vehicle reads on the main thread, ever |
+| ANR in a broadcast receiver | `goAsync()` and finish quickly |
+| ANR starting a service | Nothing slow in `onCreate` or `init()` |
+| Repeated restarts at boot | An init service whose `main()` returned |
+
+<Recap>
+- A **crash** is a process dying; an **ANR** is a process alive but not answering.
+  Different investigations entirely.
+- A tombstone's **signal, fault address, thread name and top frames** tell you
+  most of what you need.
+- **Archive symbols for every release build.** A field crash without them is
+  undiagnosable.
+- An ANR trace ending in **`transactNative`** means the problem is in another
+  process.
+- On a vehicle a crash is far more serious — the driver cannot pull over, and you
+  may never see the device.
+- **Capture the build fingerprint** with every incident, or you will not know
+  which symbols to use.
+</Recap>
+
+## Next
+
+Deciding what to log in the first place.

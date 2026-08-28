@@ -1,0 +1,275 @@
+---
+title: "Create your own lunch target"
+description: "Your own product flavour that builds, boots in the emulator, and gives every later tutorial somewhere to put its files."
+order: 1
+difficulty: "Intermediate"
+time: "1–2 hours (plus one full build)"
+outcome: "A vega product you can lunch and build, booting in the AAOS emulator, with its own overlay and SEPolicy directories ready for everything that follows."
+prerequisites:
+  - label: "A synced AOSP tree that builds"
+    href: "/learn/foundations/getting-the-source/"
+  - label: "Roughly 400 GB free disk and a few hours for the first build"
+tags: ["Product config", "Build", "Soong"]
+sources:
+  - label: "Adding a new device (source.android.com)"
+    href: "https://source.android.com/docs/setup/create/new-device"
+  - label: "Android build configuration"
+    href: "https://source.android.com/docs/setup/build/building"
+  - label: "device/generic/car on cs.android.com"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:device/generic/car/"
+---
+
+Everything else in these tutorials needs somewhere to live. A vendor VHAL, a
+system app, an SEPolicy rule — all of them are added to *a product*, and using
+`aosp_car_x86_64` for that means your changes are mixed into AOSP's tree where
+they will be lost on the next sync.
+
+So the first thing to build is your own product.
+
+<FileTree>
+device/oem/vega/
+├── AndroidProducts.mk        # declares the product to the build system
+├── vega.mk                   # PRODUCT config — what goes in the image
+├── BoardConfig.mk            # BOARD config — hardware and partitions
+├── overlay/                  # build-time resource overrides
+│   └── frameworks/base/core/res/res/values/config.xml
+└── sepolicy/                 # your SELinux policy (next tutorial)
+    └── vendor/
+</FileTree>
+
+## Step 1 — Find a base product to inherit
+
+Do not write a product from scratch. Inherit one that already boots, then change
+what you need. First find the one behind the emulator target you already use:
+
+```bash title="Locate the AOSP automotive products"
+cd ~/aosp
+
+# Every product makefile the build system knows about
+find device -name AndroidProducts.mk | xargs grep -l -i car
+
+# Which file defines the target you have been building?
+grep -rn "sdk_car_x86_64" device/generic/car/ | head
+```
+
+You are looking for the `.mk` that sets `PRODUCT_NAME := sdk_car_x86_64` (or
+whichever automotive target builds on your tree). Note its path — you will
+inherit it in step 3.
+
+<Gotcha title="Paths move between releases">
+The automotive emulator products have lived at more than one path across AOSP
+releases. Finding it with `grep` rather than copying a path out of a tutorial is
+the difference between this working on your tree and not. Whatever the command
+above returns is correct for *your* checkout.
+</Gotcha>
+
+## Step 2 — Declare the product
+
+```bash title="Create the device directory"
+mkdir -p device/oem/vega/overlay/frameworks/base/core/res/res/values
+mkdir -p device/oem/vega/sepolicy/vendor
+```
+
+`AndroidProducts.mk` is how the build system discovers your product and how it
+appears in the `lunch` menu:
+
+```makefile title="device/oem/vega/AndroidProducts.mk"
+PRODUCT_MAKEFILES := \
+    $(LOCAL_DIR)/vega.mk
+
+COMMON_LUNCH_CHOICES := \
+    vega-trunk_staging-userdebug \
+    vega-trunk_staging-eng
+```
+
+<Gotcha title="Lunch target naming changed">
+Newer AOSP uses `product-release-variant` (`vega-trunk_staging-userdebug`).
+Older releases use `product-variant` (`vega-userdebug`). Check what your existing
+targets look like in the `lunch` menu and match that shape, or your target will
+not appear.
+</Gotcha>
+
+## Step 3 — Write the product makefile
+
+```makefile title="device/oem/vega/vega.mk"
+#
+# Vega head unit — OEM product built on the AOSP automotive emulator.
+#
+
+# Inherit the base that already boots. Replace this path with whatever
+# step 1 found on your tree.
+$(call inherit-product, device/generic/car/emulator/aosp_car_emulator.mk)
+
+PRODUCT_NAME := vega
+PRODUCT_DEVICE := vega
+PRODUCT_BRAND := OEM
+PRODUCT_MODEL := Vega Head Unit
+PRODUCT_MANUFACTURER := OEM
+
+# Build-time resource overrides. Everything under overlay/ mirrors the
+# target's own path, and replaces its resources at build time.
+DEVICE_PACKAGE_OVERLAYS += device/oem/vega/overlay
+
+# Runtime properties your own code can read.
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.oem.vehicle.variant=premium \
+    ro.oem.vehicle.programme=vega
+
+# Modules to include in the image. Empty for now — later tutorials add here.
+PRODUCT_PACKAGES +=
+```
+
+<Gotcha title="PRODUCT_DEVICE must match a directory with a BoardConfig.mk">
+`PRODUCT_DEVICE := vega` makes the build look for `BoardConfig.mk` in a
+directory named `vega` on the device path. That is the next step. Setting it
+without creating that file produces a confusing "can't find BoardConfig" error
+that names a path you never wrote.
+</Gotcha>
+
+## Step 4 — Write the board config
+
+The product says *what software*. The board says *what hardware*. Since you are
+targeting the emulator, inherit its board config rather than describing hardware
+from scratch:
+
+```makefile title="device/oem/vega/BoardConfig.mk"
+#
+# Vega board configuration.
+# Inherits the AOSP automotive emulator board, then overrides what differs.
+#
+
+# Replace with the BoardConfig.mk that sits next to the product you inherited.
+include device/generic/car/emulator/BoardConfig.mk
+
+# Your own SELinux policy directory. Empty now; used in the next tutorial.
+BOARD_VENDOR_SEPOLICY_DIRS += device/oem/vega/sepolicy/vendor
+```
+
+```bash title="Find the board config to include"
+# It sits beside the product makefile you inherited in step 3
+ls device/generic/car/emulator/
+```
+
+## Step 5 — Add a resource overlay
+
+An overlay proves your product config is actually taking effect. The directory
+structure under `overlay/` must mirror the target's own source path exactly.
+
+```xml title="device/oem/vega/overlay/frameworks/base/core/res/res/values/config.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Proves the overlay is being applied. Visible in Settings > About. -->
+    <string name="config_customVendorName" translatable="false">Vega</string>
+
+    <!-- Automotive system bars -->
+    <bool name="config_enableTopSystemBar">true</bool>
+    <bool name="config_enableBottomSystemBar">true</bool>
+</resources>
+```
+
+<Gotcha title="A misplaced overlay file fails silently">
+If the path under `overlay/` does not exactly mirror the target's path, the file
+is ignored — no error, no warning, and the default value is used. This is the
+single most common "my config change did nothing" cause. Count the directory
+segments against the real path in AOSP before you build.
+</Gotcha>
+
+## Step 6 — Build it
+
+```bash title="Build the new product"
+cd ~/aosp
+source build/envsetup.sh
+
+# Your target should now appear
+lunch | grep vega
+
+lunch vega-trunk_staging-userdebug
+m -j
+```
+
+The first build is a full build — hours. Later builds against the same `out/`
+are minutes.
+
+<Verify title="Verify the target exists and builds">
+```bash
+# 1. The product is discoverable
+lunch | grep vega
+# expect: vega-trunk_staging-userdebug
+
+# 2. The build resolved your product, not the base
+get_build_var PRODUCT_NAME       # vega
+get_build_var PRODUCT_DEVICE     # vega
+get_build_var TARGET_DEVICE      # vega
+
+# 3. Images were produced
+ls -la $ANDROID_PRODUCT_OUT/*.img
+```
+</Verify>
+
+## Step 7 — Boot it
+
+```bash title="Run the emulator on your image"
+emulator -verbose -show-kernel -no-snapshot
+```
+
+<Verify title="Verify the product config reached the device">
+```bash
+# Your product identity
+adb shell getprop ro.product.device        # vega
+adb shell getprop ro.product.model         # Vega Head Unit
+
+# Your custom properties
+adb shell getprop ro.oem.vehicle.variant   # premium
+adb shell getprop ro.oem.vehicle.programme # vega
+
+# Still a real automotive build
+adb shell pm list features | grep automotive
+# expect: feature:android.hardware.type.automotive
+
+# Car Service is up
+adb shell dumpsys car_service --help
+```
+
+All six must pass. If `ro.oem.vehicle.variant` is empty, your product makefile
+was not the one used — check `get_build_var PRODUCT_NAME` again.
+</Verify>
+
+## Step 8 — Keep it out of AOSP's tree
+
+Your product lives in `device/oem/vega`, which is inside the AOSP checkout but is
+not an AOSP repository. Track it separately so `repo sync` never touches it:
+
+```bash title="Your own git repo, inside the tree"
+cd device/oem/vega
+git init
+cat > .gitignore <<'IGNORE'
+*.swp
+.DS_Store
+IGNORE
+git add -A && git commit -m "Vega product: initial lunch target"
+```
+
+On a real programme this becomes an entry in a local manifest so `repo` manages
+it alongside AOSP. For learning, a plain git repo is enough.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `vega` not in the `lunch` menu | `AndroidProducts.mk` missing, or the target name shape does not match your release |
+| `Can't find BoardConfig.mk` | `PRODUCT_DEVICE` does not match a directory containing one |
+| `PRODUCT_NAME` still the base product | You inherited but then did not override `PRODUCT_NAME` |
+| Overlay value not applied | Path under `overlay/` does not mirror the target path exactly |
+| Build fails after a `repo sync` | The base product you inherit moved — re-run step 1 |
+| Boots to a phone-like UI | You inherited a non-automotive base product |
+
+## What you have now
+
+A product of your own that builds, boots, and has three empty extension points
+ready: `PRODUCT_PACKAGES` for modules, `overlay/` for resources, and
+`sepolicy/vendor/` for policy. Every following tutorial adds to one of them.
+
+## Next
+
+SELinux — because the moment you add a process of your own, policy is what stops
+it working.

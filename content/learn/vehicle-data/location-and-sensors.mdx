@@ -1,0 +1,220 @@
+---
+title: "Location, GNSS and vehicle sensors"
+description: "Why positioning in a car is both better and harder than on a phone — satellite fixes, dead reckoning through tunnels, wheel ticks, and the sensors Android does not own."
+order: 11
+difficulty: "Intermediate"
+tags: ["GNSS", "Location", "Sensors"]
+sources:
+  - label: "GNSS HAL"
+    href: "https://source.android.com/docs/core/connect/gnss"
+  - label: "Android location overview"
+    href: "https://developer.android.com/develop/sensors-and-location/location"
+  - label: "VehiclePropertyIds — odometer and wheel ticks"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java"
+---
+
+A phone knows where it is by listening to satellites. A car does too — but it
+also knows how far its wheels have turned, which way the steering is pointed, and
+how it is accelerating.
+
+That extra information makes vehicle positioning better than a phone's in some
+situations and completely different to reason about in others.
+
+## Two sources, not one
+
+<T>GNSS</T> gives an absolute position from satellites. It is accurate, it does
+not drift, and it stops working the moment you enter a tunnel or a multi-storey
+car park.
+
+<T>Dead reckoning</T> estimates position from motion — how far the wheels turned,
+which direction, how the vehicle accelerated. It works anywhere, and its error
+grows the longer it runs without correction.
+
+<Analogy title="Like navigating a dark house">
+Satellites are like being able to see the room: you know exactly where you are,
+until the lights go out.
+
+Dead reckoning is counting your steps and remembering your turns. You can keep
+going in the dark, but you get less certain every step.
+
+A car uses both: satellites when it can see them, step-counting when it cannot,
+and it corrects the step count the moment the lights come back on.
+</Analogy>
+
+<Scenario title="The tunnel test">
+Drive into a long tunnel with a phone and with a car navigation system.
+
+The phone's blue dot freezes at the entrance, then jumps to the exit when signal
+returns. Anyone who has missed a junction in a tunnel knows the feeling.
+
+The car keeps moving, because it is counting wheel rotations and reading the
+gyroscope. It arrives at the exit already knowing roughly where it is, and the
+satellite fix simply confirms it.
+
+That difference is why vehicle navigation feels more reliable, and it is entirely
+due to sensors Android does not own.
+</Scenario>
+
+## What feeds dead reckoning
+
+The vehicle properties that matter here:
+
+| Property | Contribution |
+| --- | --- |
+| `PERF_ODOMETER` | Total distance travelled |
+| `WHEEL_TICK` | Per-wheel rotation counts — the precise distance source |
+| `PERF_VEHICLE_SPEED` | Current speed |
+| `PERF_STEERING_ANGLE` | Which way the front wheels point |
+| `GEAR_SELECTION` | Forwards or reverse — the sign of the movement |
+
+<Plain>
+<T>Wheel tick</T> is the interesting one. Integrating speed accumulates error
+quickly; counting actual wheel rotations does not. It is how a vehicle can know
+it has moved 43.7 metres since the last satellite fix.
+
+`GEAR_SELECTION` matters more than it looks. Without it, reversing into a parking
+space looks identical to driving forward, and the estimated position walks off in
+the wrong direction.
+</Plain>
+
+## Where the fusion actually happens
+
+Here is the part that surprises people: **it is usually not in Android.**
+
+<Plain>
+The combining of satellite and motion data typically happens in the GNSS module
+itself, or in a dedicated positioning unit, which is fed wheel ticks and gyro
+data directly by the vehicle.
+
+Android receives the *result* through the standard GNSS <T>HAL</T> — the same
+interface a phone uses. From the framework's point of view it is just an
+unusually good location provider.
+</Plain>
+
+```kotlin title="Reading location is ordinary Android"
+val locationManager = context.getSystemService(LocationManager::class.java)
+
+locationManager.requestLocationUpdates(
+    LocationManager.GPS_PROVIDER,
+    /* minTimeMs = */ 1000L,
+    /* minDistanceM = */ 0f,
+    locationListener,
+)
+```
+
+<Plain>
+Nothing automotive-specific in that code. Which is the point — if the platform is
+integrated properly, an app gets vehicle-grade positioning without doing anything
+different.
+
+Where it matters to you is when it *is not* integrated properly, and you need to
+know whether the fault is in the GNSS module, the wheel tick plumbing, or the
+framework.
+</Plain>
+
+## Checking positioning health
+
+```bash title="What the platform is receiving"
+# Satellite state, fix quality, which constellations
+adb shell dumpsys location | grep -A20 -i gnss
+
+# Are the motion inputs arriving?
+adb shell dumpsys car_service --get-property 0x11400306   # WHEEL_TICK
+adb shell dumpsys car_service --get-property 0x11600204   # PERF_ODOMETER
+
+# The GNSS HAL itself
+adb shell lshal | grep -i gnss
+```
+
+<Scenario title="Position drifts, and the cause is two layers down">
+Navigation reports the vehicle drifting off the road after every tunnel.
+
+`dumpsys location` shows healthy satellite fixes. So the satellites are fine.
+
+`--get-property` on `WHEEL_TICK` returns the same value every time it is polled.
+The wheel tick property is not being updated by the VHAL, so the positioning
+module has no motion data and dead reckoning is doing nothing.
+
+The bug is in the vendor vehicle service, three layers below the navigation app
+that reported it. Without knowing that motion feeds positioning, this would look
+like a maps problem.
+</Scenario>
+
+## Ordinary Android sensors
+
+A head unit also has the sensors a phone has — accelerometer, gyroscope, ambient
+light — reached through `SensorManager` exactly as on a phone.
+
+```kotlin title="Ambient light, for automatic display dimming"
+val sensorManager = context.getSystemService(SensorManager::class.java)
+val light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+
+sensorManager.registerListener(listener, light, SensorManager.SENSOR_DELAY_NORMAL)
+```
+
+<Plain>
+Two automotive differences worth knowing.
+
+**They may not exist.** A head unit is not obliged to have an accelerometer, and
+plenty do not. Always check `getDefaultSensor` for null.
+
+**Vehicle motion is better measured from vehicle properties.** The car's own
+speed and yaw sensors are more accurate than a consumer accelerometer bolted to
+the dashboard. If you want to know how the vehicle is moving, ask the vehicle,
+not the sensor stack.
+</Plain>
+
+## Privacy: location is the most sensitive data here
+
+<Plain>
+A vehicle's position over time is a movement history — where someone lives,
+works, worships, and who they visit. In most jurisdictions this is personal data
+with strong protections.
+
+The rules from the telemetry topic apply with more force:
+
+- Never combine location with driving behaviour without a **specific, informed
+  consent** for that exact purpose.
+- Aggregate on the vehicle. Upload summaries, not tracks.
+- Bound local retention. A ring buffer that overwrites is a feature, not a
+  limitation.
+- Remember the vehicle is **shared**. A guest user's journeys should not be
+  visible to the owner, and vice versa.
+</Plain>
+
+## Night mode comes from here too
+
+Automatic day/night switching is driven by a vehicle property rather than the
+light sensor on many programmes:
+
+```bash
+adb shell dumpsys car_service --get-property 0x11200407   # NIGHT_MODE
+adb shell dumpsys uimode
+```
+
+<Plain>
+Using the vehicle's own night signal rather than an ambient light reading matters
+because the vehicle knows things the sensor does not — that the headlights are
+on, that it is in a tunnel rather than at dusk. A UI that flickers between day
+and night themes under streetlights is usually one that is reading the wrong
+source.
+</Plain>
+
+<Recap>
+- A car positions itself with **two sources**: satellites for absolute position,
+  motion for continuity when satellites are unavailable.
+- **Wheel ticks** are the precise distance source; `GEAR_SELECTION` supplies the
+  direction. Without them dead reckoning does nothing.
+- The **fusion usually happens outside Android**, in the GNSS module. Android sees
+  the result through the ordinary location API.
+- When position is wrong, check **satellites, then motion inputs, then the app**
+  — in that order.
+- Head unit sensors **may not exist**, and vehicle properties are the better
+  source for vehicle motion anyway.
+- **Location is the most sensitive data on the vehicle.** Aggregate, bound
+  retention, and respect the shared-vehicle case.
+</Recap>
+
+## Next
+
+The framework module — starting with how Binder actually carries all of this.

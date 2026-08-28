@@ -1,0 +1,241 @@
+---
+title: "Adding your own Car subservice"
+description: "The full shape of an OEM system service — AIDL, manager class, registration, permissions, dump() and the threading rules that keep Car Service alive."
+order: 8
+difficulty: "Advanced"
+tags: ["Car Service", "AIDL", "Platform"]
+sources:
+  - label: "packages/services/Car — service sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/"
+  - label: "ICarImpl — the subservice registry"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/ICarImpl.java"
+  - label: "AIDL language reference"
+    href: "https://source.android.com/docs/core/architecture/aidl/aidl-language"
+---
+
+Every OEM programme eventually needs a service the platform does not provide —
+comfort features, a vendor telematics client, a proprietary feature manager.
+Here is the whole shape, including the parts that are easy to skip and expensive
+to skip.
+
+## The five pieces
+
+1. An **AIDL interface** the app side calls.
+2. A **service implementation** inside Car Service.
+3. **Registration** in `ICarImpl`.
+4. A **manager class** in `car-lib`, so apps get an API rather than a Binder stub.
+5. **Permissions**, declared and enforced.
+
+## 1. The AIDL interface
+
+```java title="ICarComfort.aidl"
+package com.oem.car.comfort;
+
+import com.oem.car.comfort.IComfortListener;
+
+/** @hide */
+interface ICarComfort {
+    int getMassageIntensity(int seatAreaId);
+    void setMassageIntensity(int seatAreaId, int level);
+
+    void registerListener(in IComfortListener listener);
+    void unregisterListener(in IComfortListener listener);
+}
+```
+
+<Callout type="warning" title="This is a versioned interface the moment it ships">
+Once a vehicle is built with it, you cannot reorder methods, change signatures or
+remove anything — an app compiled against the old interface will be running on
+that vehicle for a decade. Add new methods at the end, never in the middle.
+</Callout>
+
+## 2. The service
+
+```java title="CarComfortService.java" showLineNumbers
+public final class CarComfortService extends ICarComfort.Stub
+        implements CarServiceBase {
+
+    private static final String TAG = CarLog.tagFor(CarComfortService.class);
+
+    private final Context mContext;
+    private final CarPropertyService mPropertyService;
+
+    private final Object mLock = new Object();
+
+    @GuardedBy("mLock")
+    private final SparseIntArray mIntensityByArea = new SparseIntArray();
+
+    @GuardedBy("mLock")
+    private final RemoteCallbackList<IComfortListener> mListeners =
+            new RemoteCallbackList<>();
+
+    public CarComfortService(Context context, CarPropertyService propertyService) {
+        mContext = context;
+        mPropertyService = propertyService;
+    }
+
+    // ---- CarServiceBase ---------------------------------------------------
+
+    @Override
+    public void init() {
+        // Runs on the Car Service startup path. Register, then return.
+        // Anything slow goes on your own handler, never here.
+        mPropertyService.registerListener(
+                VendorProperties.SEAT_MASSAGE_INTENSITY,
+                CarPropertyManager.SENSOR_RATE_ONCHANGE,
+                mPropertyListener);
+    }
+
+    @Override
+    public void release() {
+        mPropertyService.unregisterListener(
+                VendorProperties.SEAT_MASSAGE_INTENSITY, mPropertyListener);
+        synchronized (mLock) {
+            mListeners.kill();
+            mIntensityByArea.clear();
+        }
+    }
+
+    // ---- ICarComfort ------------------------------------------------------
+
+    @Override
+    public int getMassageIntensity(int seatAreaId) {
+        CarServiceUtils.assertPermission(mContext, PERMISSION_CONTROL_SEAT_MASSAGE);
+        synchronized (mLock) {
+            return mIntensityByArea.get(seatAreaId, 0);
+        }
+    }
+
+    @Override
+    public void setMassageIntensity(int seatAreaId, int level) {
+        CarServiceUtils.assertPermission(mContext, PERMISSION_CONTROL_SEAT_MASSAGE);
+        if (level < 0 || level > MAX_LEVEL) {
+            throw new IllegalArgumentException("level out of range: " + level);
+        }
+        mPropertyService.setProperty(/* ... */);
+    }
+
+    // ---- Diagnostics ------------------------------------------------------
+
+    @Override
+    public void dump(IndentingPrintWriter writer) {
+        writer.println("*CarComfortService*");
+        synchronized (mLock) {
+            writer.increaseIndent();
+            for (int i = 0; i < mIntensityByArea.size(); i++) {
+                writer.printf("area=0x%x intensity=%d\n",
+                        mIntensityByArea.keyAt(i), mIntensityByArea.valueAt(i));
+            }
+            writer.printf("listeners=%d\n", mListeners.getRegisteredCallbackCount());
+            writer.decreaseIndent();
+        }
+    }
+}
+```
+
+Four things in there are not optional:
+
+**Permission check on every entry point.** A Binder method is reachable by any
+process that can find the service. `assertPermission` first, always.
+
+**Argument validation.** Callers are untrusted, including OEM apps written by a
+different team next year.
+
+**`RemoteCallbackList`, not a plain list.** It handles clients dying, which they
+will, and unregisters them for you.
+
+**A real `dump()`.** This is the only window into your service on a vehicle in
+the field. Print state, not "OK".
+
+## 3. Registration
+
+```java title="ICarImpl.java — construct in dependency order"
+mCarPropertyService = constructWithTrace(t, CarPropertyService.class, /* ... */);
+// Comfort depends on property service, so it comes after.
+mCarComfortService = constructWithTrace(
+        t, CarComfortService.class,
+        () -> new CarComfortService(serviceContext, mCarPropertyService),
+        allServices);
+```
+
+Order matters. A subservice constructed before its dependency gets a null
+reference and fails in a way that surfaces as an unrelated boot problem.
+
+## 4. The manager
+
+Apps should never see your Binder stub. Wrap it:
+
+```java title="CarComfortManager.java (car-lib)"
+public final class CarComfortManager extends CarManagerBase {
+
+    private final ICarComfort mService;
+
+    public CarComfortManager(Car car, IBinder service) {
+        super(car);
+        mService = ICarComfort.Stub.asInterface(service);
+    }
+
+    @RequiresPermission(PERMISSION_CONTROL_SEAT_MASSAGE)
+    public int getMassageIntensity(int seatAreaId) {
+        try {
+            return mService.getMassageIntensity(seatAreaId);
+        } catch (RemoteException e) {
+            // Car Service died. Return a sane default rather than crashing
+            // the app; the lifecycle listener will hand back a fresh manager.
+            return handleRemoteExceptionFromCarService(e, 0);
+        }
+    }
+
+    @Override
+    protected void onCarDisconnected() {
+        // Drop cached state — this manager instance is now dead.
+    }
+}
+```
+
+`handleRemoteExceptionFromCarService` is the platform's convention for exactly
+this. Apps holding a manager across a Car Service restart should degrade, not
+crash.
+
+## 5. Permissions
+
+```xml title="Declare it"
+<permission
+    android:name="com.oem.car.permission.CONTROL_SEAT_MASSAGE"
+    android:protectionLevel="signature|privileged"/>
+```
+
+Anything that actuates the vehicle is signature-level. Reading a comfort setting
+might reasonably be a separate, lower-privilege permission — split read from
+write rather than granting one permission that does both.
+
+## Threading rules
+
+- **`init()` must not block.** It runs on the Car Service startup path, and every
+  millisecond there is boot time.
+- **Binder methods run on binder threads.** Guard shared state and keep the
+  critical section short.
+- **Never call out while holding your lock.** Invoking a listener under `mLock`
+  is a deadlock waiting for a client that calls back into you.
+- **Do slow work on your own handler**, not on the caller's thread.
+
+```java title="Notify outside the lock"
+void publish(int areaId, int level) {
+    synchronized (mLock) {
+        mIntensityByArea.put(areaId, level);
+    }
+    // RemoteCallbackList's own synchronisation is enough here, and we are
+    // no longer holding mLock while calling into another process.
+    int n = mListeners.beginBroadcast();
+    for (int i = 0; i < n; i++) {
+        try { mListeners.getBroadcastItem(i).onIntensityChanged(areaId, level); }
+        catch (RemoteException ignored) { }
+    }
+    mListeners.finishBroadcast();
+}
+```
+
+## Next
+
+Into the HMI module — notifications, the launcher, and the input devices
+that are nothing like a touchscreen.

@@ -1,0 +1,174 @@
+---
+title: "Creating a device target"
+description: "Product config, device config and board config — how a lunch target becomes an image, and where to put the hundreds of settings that make a head unit an OEM's rather than AOSP's."
+order: 2
+difficulty: "Advanced"
+tags: ["Product config", "Device", "AOSP"]
+sources:
+  - label: "Adding a new device"
+    href: "https://source.android.com/docs/setup/create/new-device"
+  - label: "Android build configuration"
+    href: "https://source.android.com/docs/setup/build/building"
+  - label: "device/generic/car"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:device/generic/car/"
+---
+
+`lunch aosp_car_x86_64-trunk_staging-userdebug` resolves to a stack of makefiles
+that decide which modules exist, which partitions they land on, and hundreds of
+runtime settings. Knowing the layers tells you where to put a change.
+
+## The three layers
+
+```text title="device/oem/vega/"
+AndroidProducts.mk       # declares which products this directory offers
+vega.mk                  # PRODUCT config — what goes in the image
+BoardConfig.mk           # BOARD config — partitions, architecture, kernel
+device.mk                # shared device pieces, included by products
+overlay/                 # resource overlays applied at build time
+sepolicy/                # device-specific SELinux policy
+```
+
+**Product** answers "what software is in this image". **Board** answers "what
+hardware is this". Keeping the two straight is most of the skill.
+
+## The product makefile
+
+```makefile title="device/oem/vega/vega.mk"
+# Start from the AOSP automotive base
+$(call inherit-product, packages/services/Car/car_product/build/car.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_base.mk)
+
+PRODUCT_NAME := vega
+PRODUCT_DEVICE := vega
+PRODUCT_BRAND := OEM
+PRODUCT_MODEL := Vega Head Unit
+PRODUCT_MANUFACTURER := OEM
+
+# Modules to build into the image
+PRODUCT_PACKAGES += \
+    OemComfortApp \
+    OemLauncher \
+    android.hardware.automotive.vehicle@2.0-oem-service
+
+# Static RROs, applied at boot
+PRODUCT_PACKAGES += \
+    OemSystemUIRRO \
+    OemCarUiLibRRO
+
+# Files copied verbatim into the image
+PRODUCT_COPY_FILES += \
+    device/oem/vega/car_audio_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/car_audio_configuration.xml \
+    device/oem/vega/privapp-permissions-oem.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-oem.xml \
+    frameworks/native/data/etc/android.hardware.type.automotive.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.type.automotive.xml
+
+# Runtime properties
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.oem.vehicle.variant=premium \
+    ro.lmk.use_psi=true
+
+# Resource overlays applied at build time (not RROs — compiled in)
+DEVICE_PACKAGE_OVERLAYS += device/oem/vega/overlay
+```
+
+<Callout type="warning" title="The automotive feature file is not optional">
+`android.hardware.type.automotive.xml` is what makes
+`PackageManager.FEATURE_AUTOMOTIVE` true. Forget it and you have built a tablet:
+Car Service may start, but apps filtering on the automotive feature will not
+install and the launcher will behave like a phone's.
+</Callout>
+
+## The board makefile
+
+```makefile title="device/oem/vega/BoardConfig.mk"
+TARGET_ARCH := arm64
+TARGET_ARCH_VARIANT := armv8-a
+TARGET_CPU_ABI := arm64-v8a
+
+# Partition layout and sizes
+BOARD_SUPER_PARTITION_SIZE := 9663676416
+BOARD_SUPER_PARTITION_GROUPS := oem_dynamic_partitions
+BOARD_OEM_DYNAMIC_PARTITIONS_PARTITION_LIST := system vendor product
+
+# A/B seamless updates
+AB_OTA_UPDATER := true
+AB_OTA_PARTITIONS += boot system vendor product
+
+# Verified boot
+BOARD_AVB_ENABLE := true
+BOARD_AVB_ALGORITHM := SHA256_RSA4096
+
+# SELinux policy directories
+BOARD_VENDOR_SEPOLICY_DIRS += device/oem/vega/sepolicy/vendor
+SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += device/oem/vega/sepolicy/private
+```
+
+## Where a setting belongs
+
+This is the question that comes up daily. A rough decision order:
+
+| Change | Put it in |
+| --- | --- |
+| Add or remove an app from the image | `PRODUCT_PACKAGES` |
+| Change a framework resource value | `DEVICE_PACKAGE_OVERLAYS` (build-time) |
+| Change a resource that must be switchable at runtime | An RRO in `PRODUCT_PACKAGES` |
+| A runtime flag read by code | `PRODUCT_PROPERTY_OVERRIDES` |
+| A config file the platform reads | `PRODUCT_COPY_FILES` |
+| Partition sizes, architecture, kernel | `BoardConfig.mk` |
+| SELinux rules | `BOARD_VENDOR_SEPOLICY_DIRS` |
+
+<Callout type="tip" title="Prefer RROs over build-time overlays where you can">
+A `DEVICE_PACKAGE_OVERLAYS` change requires a full rebuild and reflash to test. An
+RRO can be pushed and enabled with `cmd overlay enable` in seconds. For anything
+you will iterate on — colours, dimensions, strings — the RRO is worth the small
+extra setup.
+</Callout>
+
+## Overlays for framework configuration
+
+Much automotive behaviour is framework config values, overridden per product:
+
+```xml title="overlay/frameworks/base/core/res/res/values/config.xml"
+<resources>
+    <bool name="config_enableTopSystemBar">true</bool>
+    <bool name="config_enableBottomSystemBar">true</bool>
+
+    <string-array name="config_occupant_zones">
+        <item>occupantZoneId=0,occupantType=DRIVER,seatRow=1,seatSide=driver</item>
+        <item>occupantZoneId=1,occupantType=FRONT_PASSENGER,seatRow=1,seatSide=oppositeDriver</item>
+    </string-array>
+
+    <string-array name="config_display_uniqueId_to_occupantZone">
+        <item>displayPort:0,occupantZoneId=0</item>
+        <item>displayPort:2,occupantZoneId=1</item>
+    </string-array>
+</resources>
+```
+
+The overlay path must mirror the target's path exactly. A file in the wrong
+directory is silently ignored — no error, no warning, and the default value
+persists. This is one of the more frustrating classes of "my config change did
+nothing".
+
+## Verifying a target
+
+```bash title="Did the image come out as intended?"
+lunch vega-trunk_staging-userdebug
+m -j
+
+# What actually shipped
+ls $ANDROID_PRODUCT_OUT/product/priv-app/
+ls $ANDROID_PRODUCT_OUT/vendor/etc/
+
+# On device
+adb shell getprop ro.product.device
+adb shell getprop ro.oem.vehicle.variant
+adb shell pm list features | grep automotive
+adb shell cmd overlay list
+```
+
+The four `adb` checks take ten seconds and confirm the product config actually
+took effect — which is not the same as the build succeeding.
+
+## Next
+
+Making this build repeatedly, quickly, for a team.

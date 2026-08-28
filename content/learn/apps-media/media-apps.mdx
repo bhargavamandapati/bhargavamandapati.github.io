@@ -1,0 +1,205 @@
+---
+title: "Building a media app for AAOS"
+description: "You do not draw the UI — you serve a browse tree and a session, and the car renders it. The contract, the constraints, and the mistakes that make an app unusable while driving."
+order: 1
+difficulty: "Intermediate"
+tags: ["Media", "MediaBrowserService", "MediaSession"]
+sources:
+  - label: "Build media apps for cars"
+    href: "https://developer.android.com/training/cars/media"
+  - label: "MediaBrowserService reference"
+    href: "https://developer.android.com/reference/androidx/media/MediaBrowserServiceCompat"
+  - label: "Car media app source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Media/"
+---
+
+Media is the most common third-party app category on AAOS, and the one with the
+most surprising constraint: **you do not build a user interface.** You expose
+content and playback state; the car draws it.
+
+<DiagramFrame
+  title="Your service, the car's UI"
+  caption="The OEM's media app renders your browse tree and drives your session. Distraction rules, theming and hardware buttons are handled for you — and taken out of your control."
+>
+  <MediaBrowseTree />
+</DiagramFrame>
+
+## The two halves
+
+**`MediaBrowserService`** exposes your content as a tree the car can render as
+lists and grids.
+
+**`MediaSession`** exposes playback state and transport controls the car can
+drive — from the screen, the steering wheel, or the voice assistant.
+
+Get both right and your app works on every AAOS vehicle, with the OEM's theming
+and distraction handling, without you writing a single automotive-specific
+screen.
+
+## The browse tree
+
+```kotlin title="MusicService.kt" showLineNumbers
+class MusicService : MediaBrowserServiceCompat() {
+
+    override fun onGetRoot(
+        clientPackageName: String,
+        clientUid: Int,
+        rootHints: Bundle?,
+    ): BrowserRoot? {
+        // Verify the caller. The car's media app is a known, signed package —
+        // do not serve your library to anything that asks.
+        if (!packageValidator.isKnownCaller(clientPackageName, clientUid)) return null
+
+        val extras = Bundle().apply {
+            // Tell the car how to lay out each level: grid for art, list for text.
+            putInt(
+                CONTENT_STYLE_BROWSABLE_HINT,
+                CONTENT_STYLE_GRID_ITEM_HINT_VALUE,
+            )
+            putInt(
+                CONTENT_STYLE_PLAYABLE_HINT,
+                CONTENT_STYLE_LIST_ITEM_HINT_VALUE,
+            )
+        }
+        return BrowserRoot(ROOT_ID, extras)
+    }
+
+    override fun onLoadChildren(
+        parentId: String,
+        result: Result<List<MediaBrowserCompat.MediaItem>>,
+    ) {
+        // Always detach and load asynchronously. Blocking here stalls the
+        // car's UI thread, not yours.
+        result.detach()
+        scope.launch {
+            result.sendResult(loadChildren(parentId))
+        }
+    }
+}
+```
+
+Two rules that matter more than anything else here.
+
+**Validate the caller.** `onGetRoot` returning a non-null root grants access to
+your entire library. Check the package name *and* its signature.
+
+**Never block `onLoadChildren`.** `result.detach()` then load off-thread. A
+synchronous network call here freezes the car's media UI.
+
+## Keeping the tree shallow and short
+
+Driver distraction rules cap how many items are shown and how deep a driver
+should have to navigate. A tree designed for a phone — genres, then artists, then
+albums, then tracks — is unusable at 70 km/h.
+
+```kotlin title="Design for the restricted case"
+// Bad: four levels before you reach a playable item
+Root > Genres > Artists > Albums > Tracks
+
+// Good: two levels, with the useful stuff first
+Root > [Recently played, Downloaded, Playlists, Browse]
+     > tracks
+```
+
+<Callout type="tip" title="Put the top-level shortcuts first">
+The most valuable node in a car browse tree is "continue what I was doing".
+Recently played, downloads and a small set of playlists cover the overwhelming
+majority of in-car media use. Deep catalogue browsing is a parked activity.
+</Callout>
+
+## The media session
+
+```kotlin title="Session, state and transport controls"
+private val session = MediaSessionCompat(this, "MusicService").apply {
+    setCallback(object : MediaSessionCompat.Callback() {
+        override fun onPlay() = player.play()
+        override fun onPause() = player.pause()
+        override fun onSkipToNext() = player.next()
+        override fun onSkipToPrevious() = player.previous()
+        override fun onPlayFromMediaId(mediaId: String, extras: Bundle?) =
+            player.playItem(mediaId)
+
+        // Voice search arrives here. Handle an empty query as "play something".
+        override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+            val item = if (query.isNullOrBlank()) resumeOrShuffle() else search(query)
+            player.playItem(item)
+        }
+    })
+    isActive = true
+}
+
+private fun publishState(state: Int, position: Long) {
+    session.setPlaybackState(
+        PlaybackStateCompat.Builder()
+            .setState(state, position, 1.0f)
+            .setActions(
+                PlaybackStateCompat.ACTION_PLAY or
+                PlaybackStateCompat.ACTION_PAUSE or
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+            )
+            .build()
+    )
+}
+```
+
+`setActions` is what enables buttons in the car's UI and on the steering wheel.
+An action you do not declare is a control the driver does not get.
+
+## Errors the driver can act on
+
+When playback fails — no network, sign-in expired, region-locked — say so through
+the session, not a dialog. Dialogs are blocked while driving.
+
+```kotlin title="An actionable error state"
+session.setPlaybackState(
+    PlaybackStateCompat.Builder()
+        .setState(PlaybackStateCompat.STATE_ERROR, 0, 0f)
+        .setErrorMessage(
+            PlaybackStateCompat.ERROR_CODE_AUTHENTICATION_EXPIRED,
+            getString(R.string.sign_in_on_your_phone),
+        )
+        .build()
+)
+```
+
+The error message is rendered by the car's UI, respects string-length limits, and
+can be read aloud. A `Toast` can do none of that.
+
+## Audio focus and attributes
+
+Everything in the audio module applies. In particular, declare your usage
+honestly so the car routes and ducks you correctly:
+
+```kotlin
+val attrs = AudioAttributes.Builder()
+    .setUsage(AudioAttributes.USAGE_MEDIA)
+    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+    .build()
+```
+
+And handle `AUDIOFOCUS_LOSS_TRANSIENT` by pausing and **resuming afterwards**.
+Music that never comes back after a navigation prompt or a phone call is the
+single most-reported media defect in this domain.
+
+## Testing
+
+```bash title="Inspect what the car sees"
+adb shell dumpsys media_session
+adb shell dumpsys activity service MediaBrowserService
+
+# Drive the session without touching the screen
+adb shell media dispatch play
+adb shell media dispatch pause
+adb shell media dispatch next
+```
+
+The **Media Controller Test** app in AOSP
+(<Src path="packages/apps/Car/tests" label="packages/apps/Car/tests" />) connects
+to your browse service and exercises the tree and session directly — the fastest
+way to find a malformed tree before the OEM's UI does.
+
+## Next
+
+Navigation apps, and pushing turn-by-turn guidance to the cluster.

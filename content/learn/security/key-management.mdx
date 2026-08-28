@@ -1,0 +1,158 @@
+---
+title: "Signing keys and key management"
+description: "Which key signs what, why the AOSP test keys must never leave a lab, and how app signing works when the OEM owns the platform key."
+order: 4
+difficulty: "Advanced"
+tags: ["Signing", "Keys", "Security"]
+sources:
+  - label: "Signing builds for release"
+    href: "https://source.android.com/docs/core/ota/sign_builds"
+  - label: "APK signature scheme"
+    href: "https://source.android.com/docs/security/features/apksigning"
+  - label: "Keystore and hardware-backed keys"
+    href: "https://source.android.com/docs/security/features/keystore"
+---
+
+Every trust decision on a vehicle traces back to a key. Knowing which key signs
+what — and which ones you will never hold — saves a lot of confused conversations
+about why your app cannot do something.
+
+## The platform keys
+
+AOSP defines a small set of signing keys, each with a distinct role:
+
+| Key | Signs | Grants |
+| --- | --- | --- |
+| `releasekey` | The OTA package and most system APKs | Default system app identity |
+| `platform` | Core system apps | `signature` permissions, `sharedUserId=android.uid.system` |
+| `shared` | Contacts, telephony-adjacent apps | Shared user id for that group |
+| `media` | Media/download provider | Its own shared identity |
+| `networkstack` | Network stack modules | Modular network components |
+
+`platform` is the significant one. An app signed with it can hold
+`signature`-level permissions and, if it declares the shared user id, runs as the
+system user.
+
+<Callout type="warning" title="AOSP's test keys are public">
+The keys in `build/target/product/security/` are checked into AOSP. Everyone has
+them. An image signed with them has no integrity guarantee at all, and any
+`signature` permission it grants is grantable by anyone. They exist for
+development and must never reach a vehicle.
+</Callout>
+
+```bash title="Which key signed this build?"
+adb shell getprop ro.build.tags          # release-keys | test-keys | dev-keys
+adb shell dumpsys package com.example | grep -A3 -i signatures
+```
+
+`ro.build.tags` showing `test-keys` on anything customer-facing is a finding.
+
+## Signing a release build
+
+```bash title="Re-signing an AOSP build with real keys"
+# Generate a key (once, in a controlled environment — normally an HSM)
+development/tools/make_key oem-release \
+  '/C=GB/ST=/L=/O=OEM/OU=Automotive/CN=OEM Release/emailAddress='
+
+# Re-sign every APK and the OTA payload
+sign_target_files_apks \
+  --default_key_mappings ~/keys/oem \
+  out/dist/target_files.zip signed_target_files.zip
+
+ota_from_target_files -k ~/keys/oem/releasekey \
+  signed_target_files.zip ota-update.zip
+```
+
+In practice the private keys live in an HSM and this runs on a hardened build
+host with an audit trail. Nobody on the team has the key material on a laptop.
+
+## What this means for your app
+
+If your app ships inside the system image, **the OEM signs it**, not you. Two
+consequences that surprise people:
+
+**You cannot also ship it on Play under the same package name.** Play requires a
+consistent signing identity; a platform-signed variant has a different one. If you
+need both routes, plan two variants and two package names from the start.
+
+**You cannot test signature permissions on a normal build.** Development
+requires either an OEM-provided dev image whose platform key you have, or a
+`userdebug` build you signed yourself.
+
+```bash title="Checking what a signature grants"
+adb shell pm list permissions -d -g | grep -A2 car
+adb shell dumpsys package com.example | grep -B2 -A5 'requested permissions'
+```
+
+## App signing schemes
+
+| Scheme | Introduced | Notes |
+| --- | --- | --- |
+| v1 (JAR) | Original | Per-file; slow to verify; largely superseded |
+| v2 | Android 7 | Whole-APK signature; fast |
+| v3 | Android 9 | Adds key rotation with a proof-of-rotation chain |
+| v4 | Android 11 | Incremental install support |
+
+For automotive, **v3's key rotation** is the one worth understanding: a vehicle
+in the field for a decade may outlive the key that signed its apps. Rotation
+lets a new key be trusted because it is cryptographically linked to the old one,
+without reinstalling everything.
+
+```bash title="Signing with rotation support"
+apksigner sign \
+  --ks release.jks --ks-key-alias current \
+  --lineage lineage.bin \
+  --v2-signing-enabled true --v3-signing-enabled true \
+  app.apk
+
+apksigner verify --print-certs --verbose app.apk
+```
+
+## Keys inside the vehicle
+
+Beyond image signing, a vehicle holds keys for its own operations: TLS client
+certificates for backend services, keys for secure diagnostic sessions, digital
+key material for phone-as-key features.
+
+These belong in hardware-backed storage — Keystore backed by a secure element or
+TEE — not in a file, not in shared preferences, not in the APK.
+
+```kotlin title="Hardware-backed, non-exportable"
+val spec = KeyGenParameterSpec.Builder(
+        "vehicle_client_key",
+        KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY,
+    )
+    .setDigests(KeyProperties.DIGEST_SHA256)
+    .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+    .setIsStrongBoxBacked(true)      // dedicated secure element, if present
+    .build()
+
+KeyPairGenerator.getInstance(
+    KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore",
+).run { initialize(spec); generateKeyPair() }
+```
+
+The property that matters is that the private key **cannot be extracted**, even
+by a process running as root. It can be used, not copied.
+
+```bash title="What the hardware actually supports"
+adb shell dumpsys android.hardware.security.keymint.IKeyMintDevice/default
+adb shell getprop | grep -i keystore
+```
+
+## Operational practice
+
+- **Separate keys per environment.** Dev, integration and production keys are
+  never the same key.
+- **Rotate on a schedule**, not only after an incident. Practising rotation is
+  how you find out your rotation process is broken.
+- **Keep an inventory.** Which key signs which artefact, who can authorise its
+  use, and when it expires. On a fifteen-year product this document is load
+  bearing.
+- **Plan for expiry.** Certificates in vehicles do expire, and a fleet that
+  cannot reach its backend because nobody diaried a renewal is a real and
+  recurring incident class.
+
+## Next
+
+Compliance — the suites and standards that decide whether any of this can ship.

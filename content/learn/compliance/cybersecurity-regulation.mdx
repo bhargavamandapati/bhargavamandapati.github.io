@@ -1,0 +1,139 @@
+---
+title: "Automotive cybersecurity: UN R155 and ISO 21434"
+description: "Unlike functional safety, this one lands squarely on Android. Type approval now requires a cybersecurity management system, and that has concrete consequences for how you build and update."
+order: 3
+difficulty: "Advanced"
+tags: ["Cybersecurity", "UN R155", "ISO 21434", "Regulation"]
+sources:
+  - label: "UN Regulation No. 155 — cyber security"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-155-cyber-security-and-cyber-security"
+  - label: "ISO/SAE 21434 — road vehicles cybersecurity engineering"
+    href: "https://www.iso.org/standard/70918.html"
+  - label: "Android security overview"
+    href: "https://source.android.com/docs/security"
+---
+
+Functional safety mostly routes around Android. Cybersecurity does not. A
+connected head unit running a general-purpose OS with third-party apps is
+precisely the attack surface these regulations exist for.
+
+## What changed
+
+**UN R155** makes a certified Cybersecurity Management System a condition of type
+approval in the markets that adopt it — which includes the EU, UK, Japan, Korea
+and others. Without it, the vehicle cannot be sold there.
+
+**ISO/SAE 21434** is the engineering standard that describes how to satisfy it:
+threat analysis, risk assessment, security requirements, verification, and
+monitoring across the whole vehicle lifecycle.
+
+Together they mean cybersecurity is no longer a best-effort activity. It is a
+documented, audited process with legal consequences, and it extends for the
+vehicle's entire service life.
+
+## What it means concretely
+
+### A threat analysis exists, and your feature is in it
+
+TARA — Threat Analysis and Risk Assessment — enumerates assets, threats, attack
+paths and risk levels for the vehicle. Anything you add that touches
+connectivity, the vehicle network, user data or the update path becomes an entry
+in it.
+
+Practically: **new interfaces require a security review before design freeze**,
+not after implementation. A feature that opens a network port discovered during
+integration is a schedule problem, not just a code review comment.
+
+### Vulnerability monitoring is continuous and mandatory
+
+The OEM must monitor for vulnerabilities and respond for the vehicle's service
+life. For an Android-based head unit that means tracking:
+
+- Android Security Bulletins, monthly
+- CVEs in the kernel, in every OSS library, in your dependencies
+- Vulnerabilities in vendor HALs and supplier-provided components
+
+```bash title="What patch level does this vehicle claim?"
+adb shell getprop ro.build.version.security_patch
+adb shell getprop ro.vendor.build.security_patch
+```
+
+<Callout type="warning" title="Every dependency is a fifteen-year commitment">
+A library you add today must be monitored, patched and re-validated for as long
+as the vehicle is on the road. An abandoned dependency becomes an unpatchable
+CVE with a regulatory obligation attached. "Small and boring" is a security
+requirement here, not just an aesthetic preference.
+</Callout>
+
+### The update path is itself a regulated asset
+
+UN R156 covers software update management. The OTA mechanism must be secure,
+authenticated, rollback-protected and auditable — which is exactly what verified
+boot, signed OTA packages and rollback indices provide.
+
+It also means you must **actually be able to update**. A vehicle that cannot
+receive a security fix is a compliance problem, so update capability is designed
+in from the start rather than added later.
+
+## What good practice looks like in the code
+
+Nothing exotic — but done consistently, and documented.
+
+**Validate every input crossing a trust boundary.** Vehicle network data, phone
+data over Bluetooth, backend responses, and anything from another app.
+
+```kotlin title="Treat the far side as hostile"
+fun onClusterFrame(bytes: ByteArray) {
+    if (bytes.size > MAX_FRAME) return failClosed("oversized frame")
+    val frame = runCatching { ClusterFrame.parseFrom(bytes) }
+        .getOrElse { return failClosed("malformed frame") }
+    if (frame.version > SUPPORTED_VERSION) return failClosed("unknown version")
+    handle(frame)
+}
+```
+
+**Fail closed.** On a security-relevant decision, the default must be denial.
+Ambiguous input is rejected, not guessed at.
+
+**Least privilege everywhere.** The permission and SEPolicy discipline from the
+security module is a regulatory requirement here, not only good hygiene.
+
+**No secrets in the APK.** Anything shipped can be extracted. Keys belong in
+hardware-backed storage.
+
+**Log security-relevant events** — authentication failures, permission denials,
+update attempts — in a way that survives and can be audited.
+
+## Penetration testing is part of the schedule
+
+Vehicles get tested by third parties, and the interesting findings cluster in
+predictable places:
+
+- Debug interfaces left enabled — ADB over network, an open diagnostic port
+- Unauthenticated inter-process or inter-ECU messages
+- Weak or absent validation on the vehicle network boundary
+- Overly permissive SEPolicy or an app holding permissions it does not need
+- Secrets in an APK or in a world-readable file
+
+```bash title="Pre-test hygiene checks"
+adb shell getprop | grep -iE 'adb|debuggable|secure'
+# ro.debuggable must be 0, ro.secure must be 1 on a production image
+
+adb shell netstat -tlnp        # what is listening, and why?
+adb shell dumpsys package com.example | grep -A20 'requested permissions'
+```
+
+## The mindset shift
+
+Consumer software treats security as a quality attribute. Automotive treats it as
+a **regulatory obligation with an audit trail**. The practical difference is that
+you must be able to *show* what you did — the threat analysis, the requirements
+traced to it, the tests that verify them, the monitoring that continues after
+launch.
+
+Writing that down as you go is far cheaper than reconstructing it for an
+assessor eighteen months later.
+
+## Next
+
+Homologation — the rest of what regulators require before a vehicle can be sold.

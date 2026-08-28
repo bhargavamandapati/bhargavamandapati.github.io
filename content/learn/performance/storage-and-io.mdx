@@ -1,0 +1,220 @@
+---
+title: "Storage, partitions and flash wear"
+description: "Where everything lives on a head unit, and why the flash memory has a write budget that must last fifteen years — the constraint that explains CarWatchdog and Garage Mode."
+order: 4
+difficulty: "Intermediate"
+tags: ["Storage", "Partitions", "I/O"]
+sources:
+  - label: "Partitions and images"
+    href: "https://source.android.com/docs/core/architecture/partitions"
+  - label: "File-based encryption"
+    href: "https://source.android.com/docs/security/features/encryption/file-based"
+  - label: "Car watchdog and I/O overuse"
+    href: "https://source.android.com/docs/automotive/car_watchdog"
+---
+
+Flash memory wears out. Each cell can be written a finite number of times, and a
+vehicle has to keep working for fifteen years without anyone replacing it.
+
+That single physical fact explains several parts of the platform that otherwise
+look like arbitrary bureaucracy.
+
+## The map: what lives where
+
+| Partition | Contents | Writable at runtime |
+| --- | --- | --- |
+| `/boot` | Kernel and ramdisk | No |
+| `/system` | Android framework | No |
+| `/vendor` | HALs and hardware code | No |
+| `/product` | OEM apps and configuration | No |
+| `/odm` | Board-specific overrides | No |
+| `/data` | Everything that changes | **Yes** |
+| `/metadata` | Encryption keys and flags | Yes, rarely |
+
+<Plain>
+Notice how much is read-only. That is deliberate — those partitions are verified
+at boot, cannot be tampered with, and never wear out because nothing writes to
+them.
+
+**Essentially all runtime writing goes to `/data`.** Which means all flash wear
+concentrates there, and everything competing for the write budget is competing
+with everything else.
+</Plain>
+
+<Analogy title="Like a notepad glued into a reference book">
+The book's printed pages cannot be changed — that is `/system` and `/vendor`.
+There is one notepad bound in at the back for everything you want to write down,
+and it has a fixed number of pages that must last the life of the book.
+
+Everyone writing in it shares the same pages.
+</Analogy>
+
+## Why fifteen years is genuinely hard
+
+<Scenario title="An arithmetic that surprises people">
+A logging library writes 5 KB per second. That seems trivially small.
+
+5 KB/s is 432 MB per day.
+That is roughly 158 GB per year.
+Over fifteen years, about **2.4 TB** written to a partition that might be 32 GB.
+
+Flash endurance is measured in how many times the whole device can be rewritten.
+2.4 TB on a 32 GB partition is roughly 75 full rewrites — and that is one library,
+before anything else on the system writes a byte.
+
+Nothing about "5 KB per second" sounds alarming. The lifetime multiplier is what
+makes it a problem.
+</Scenario>
+
+<Plain>
+This is why <T>CarWatchdog</T> enforces per-app write quotas, and why it kills
+apps that exceed them. It is not being unreasonable — it is protecting a
+component that cannot be replaced.
+</Plain>
+
+## Write amplification: it is worse than it looks
+
+The bytes your code writes are not the bytes the flash writes.
+
+**Flash erases in blocks, not bytes.** Changing one byte in a page may require
+reading, erasing and rewriting a much larger block.
+
+**Filesystems add journalling.** A write may be recorded twice — once to the
+journal, once to the file.
+
+**Databases add their own.** An unbatched SQLite transaction writes to a
+write-ahead log and then to the database.
+
+<Scenario title="Three layers of multiplication">
+An app updates one integer in a settings row, once a second. Forty bytes.
+
+SQLite writes it to the WAL, then eventually checkpoints it to the database.
+The filesystem journals both. The flash controller, unable to modify a page in
+place, rewrites a whole erase block.
+
+Forty bytes of intent becomes several kilobytes of actual flash writing.
+
+Batching those updates into one write per minute reduces the real cost by far
+more than sixtyfold, because the fixed per-write overhead dominates.
+</Scenario>
+
+## Measuring what you actually write
+
+```bash title="Per-process I/O"
+adb shell cat /proc/<pid>/io
+# read_bytes / write_bytes are what reached storage
+# cancelled_write_bytes matters too — pages dirtied then discarded
+
+# The platform's own accounting
+adb shell dumpsys car_service --services CarWatchdogService
+adb shell dumpsys diskstats
+adb shell df -h
+```
+
+<Plain>
+The routine worth adopting: capture `write_bytes` before and after a realistic
+session, and divide by the duration.
+
+Teams are consistently surprised. The top consumer is almost never the feature
+anyone suspected — it is usually logging, an analytics library, or a cache that
+nobody set a bound on.
+</Plain>
+
+## Writing less
+
+**Batch.** Accumulate in memory, write once. One transaction of 200 records
+instead of 200 transactions.
+
+```kotlin title="Batching, concretely"
+private val pending = ArrayDeque<Reading>()
+
+fun record(r: Reading) {
+    pending += r
+    if (pending.size >= 200) flush()
+}
+
+private fun flush() = db.runInTransaction {
+    dao.insertAll(pending.toList())
+    pending.clear()
+}
+```
+
+**Do not log to files in production.** `logcat` is an in-memory ring buffer and
+costs no flash. Writing your own log files is the most common cause of I/O
+overuse, and it is almost never necessary.
+
+**Defer bulk work to <T>Garage Mode</T>.** The quota there is far larger,
+deliberately — that is where syncing, compaction and cache warming belong.
+
+**Bound every cache.** An unbounded on-disk cache is a slow leak that eventually
+triggers the watchdog.
+
+**Prefer append to rewrite.** Rewriting a whole file to change one field
+multiplies writes by the file size.
+
+## Encryption
+
+`/data` is encrypted, and Android uses **file-based encryption** — different
+files can be locked with different keys.
+
+<Plain>
+This matters for one automotive-specific reason: **some things must be readable
+before any user has unlocked.**
+
+Android provides *device-encrypted* storage for exactly this. Vehicle settings,
+audio configuration and anything user 0 needs at boot go there. Personal data
+goes in *credential-encrypted* storage and is unavailable until a user unlocks.
+</Plain>
+
+```kotlin title="Storage that works before unlock"
+// Available as soon as the device boots — no user needed
+val deviceContext = context.createDeviceProtectedStorageContext()
+val vehiclePrefs = deviceContext.getSharedPreferences("vehicle", MODE_PRIVATE)
+
+// Only after the user unlocks
+val userPrefs = context.getSharedPreferences("user", MODE_PRIVATE)
+```
+
+Putting something in the wrong one produces a service that works in testing and
+fails on a cold boot before anyone signs in — a classic automotive bug, because
+on a phone someone always unlocks quickly.
+
+## Running out of space
+
+A head unit fills up: map data, media caches, logs, app data. And unlike a phone,
+**nobody is going to delete photos to make room.**
+
+```bash title="Where the space went"
+adb shell df -h /data
+adb shell du -sh /data/* 2>/dev/null | sort -rh | head -20
+adb shell dumpsys diskstats
+```
+
+<Plain>
+Design for it rather than hoping. Every cache needs a ceiling, every log needs
+rotation, and the platform's storage-low signals should actually be handled:
+
+```kotlin
+context.registerReceiver(receiver, IntentFilter(Intent.ACTION_DEVICE_STORAGE_LOW))
+```
+
+A vehicle that degrades gracefully when storage is tight is one that keeps
+working. One that assumes space is available becomes a service visit.
+</Plain>
+
+<Recap>
+- Almost everything read-only lives on verified partitions; **all runtime writing
+  goes to `/data`**, and all wear concentrates there.
+- **Write amplification** means the bytes your code writes are several times
+  smaller than the bytes flash writes.
+- A trivial-sounding 5 KB/s becomes **terabytes over a vehicle's life**. This is
+  why write quotas exist.
+- **Batch, never log to files in production, defer bulk work to Garage Mode, and
+  bound every cache.**
+- Use **device-protected storage** for anything needed before a user unlocks.
+- Handle **storage-low** properly — nobody is going to clean up the disk for you.
+</Recap>
+
+## Next
+
+Security, and the keys that make an image trustworthy.

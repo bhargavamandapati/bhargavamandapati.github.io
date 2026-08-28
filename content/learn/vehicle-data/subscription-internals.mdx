@@ -1,0 +1,168 @@
+---
+title: "Subscriptions, sample rates and update filtering"
+description: "What actually happens between a HAL publishing a value and forty apps receiving it — deduplication, rate arbitration, variable update rate, and the power cost of getting it wrong."
+order: 8
+difficulty: "Advanced"
+tags: ["VHAL", "Subscriptions", "Performance"]
+sources:
+  - label: "VHAL interface — subscribe"
+    href: "https://source.android.com/docs/automotive/vhal/vhal-interface"
+  - label: "CarPropertyService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/CarPropertyService.java"
+  - label: "SubscribeOptions AIDL"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/SubscribeOptions.aidl"
+---
+
+An app calls `registerCallback` and values start arriving. Between those two
+facts sits a fan-out, an arbitration and a filter — and every one of them is
+somewhere a value can go missing or a battery can drain.
+
+## One HAL subscription, many app callbacks
+
+Car Service does not open a HAL subscription per app. It maintains **one**
+subscription per property and fans events out.
+
+```text title="What Car Service does with three subscribers"
+App A: PERF_VEHICLE_SPEED @ SENSOR_RATE_UI       (5 Hz)
+App B: PERF_VEHICLE_SPEED @ SENSOR_RATE_NORMAL   (1 Hz)
+App C: PERF_VEHICLE_SPEED @ SENSOR_RATE_FAST     (10 Hz)
+        ↓
+CarPropertyService subscribes to the HAL ONCE, at 10 Hz
+        ↓
+Every event is delivered to A, B and C
+```
+
+Two consequences that surprise people:
+
+- **The fastest subscriber sets the HAL rate.** One app asking for
+  `SENSOR_RATE_FASTEST` makes the HAL publish at that rate for everybody, and the
+  cost is paid by the whole system.
+- **Slower subscribers may receive events faster than they asked for.** The rate
+  is a *request*, not a contract with per-app throttling in every implementation.
+  Your callback must tolerate being called more often than expected.
+
+<Callout type="warning" title="One badly written app degrades the platform">
+An app that subscribes to speed at 100 Hz because it seemed harmless raises the
+HAL's publish rate, the vehicle network thread's wake frequency and every
+subscriber's callback load. On a parked vehicle this is measurable current draw.
+Rate selection is a platform decision disguised as an app one.
+</Callout>
+
+## The HAL side of the contract
+
+```java title="SubscribeOptions"
+parcelable SubscribeOptions {
+    int propId;
+    int[] areaIds;             // empty means "all supported areas"
+    float sampleRate;          // Hz — CONTINUOUS properties only
+    float resolution;          // report changes coarser than this
+    boolean enableVariableUpdateRate;
+}
+```
+
+Three fields shape behaviour:
+
+**`sampleRate`** must land within the property's declared `minSampleRate` and
+`maxSampleRate`. Requesting outside that range is an error, not a silent clamp —
+and a HAL that declares a range it cannot actually sustain produces jerky UI that
+looks like an app bug.
+
+**`resolution`** lets the subscriber say "do not bother me about changes smaller
+than this". Cabin temperature to 0.5 °C rather than every sensor twitch.
+
+**`enableVariableUpdateRate`** asks the HAL to publish only on meaningful change
+rather than on every sample tick, even for a `CONTINUOUS` property. This is the
+single most effective power optimisation available for high-rate signals, and it
+requires the HAL to actually implement it — declaring support and then publishing
+unconditionally is a common and invisible defect.
+
+## Deduplication
+
+A well-behaved HAL does not republish an unchanged value. A well-behaved
+framework does not deliver one.
+
+```cpp title="Filter at the source"
+void VendorVehicleHardware::onSignal(int32_t areaId, float value) {
+    auto& last = mLastPublished[areaId];
+
+    // Below the subscriber's requested resolution — not worth a wakeup.
+    if (std::abs(value - last) < mResolution) return;
+
+    last = value;
+    publish(areaId, value);
+}
+```
+
+Filtering in the HAL is far cheaper than filtering in the app: every event that
+does not get published avoids a binder transaction, a Car Service fan-out and N
+app wakeups.
+
+## What the app must handle
+
+```kotlin title="A callback that survives reality"
+private val callback = object : CarPropertyManager.CarPropertyEventCallback {
+
+    override fun onChangeEvent(value: CarPropertyValue<*>) {
+        // 1. Status is not always AVAILABLE.
+        if (value.status != CarPropertyValue.STATUS_AVAILABLE) {
+            showUnavailable(value.areaId)
+            return
+        }
+
+        // 2. Events can arrive out of order across areas. Timestamps are
+        //    CLOCK_BOOTTIME nanos — compare against what you last rendered.
+        val previous = lastTimestamp[value.areaId] ?: 0L
+        if (value.timestamp < previous) return
+        lastTimestamp[value.areaId] = value.timestamp
+
+        // 3. You may be called faster than you asked for. Do not do
+        //    expensive work here — post to your own throttled renderer.
+        pendingValues[value.areaId] = value.value
+        scheduleRender()
+    }
+
+    override fun onErrorEvent(propertyId: Int, areaId: Int) {
+        resync(propertyId, areaId)
+    }
+}
+```
+
+The third point matters most. `onChangeEvent` runs on a binder thread. Heavy work
+there — layout, allocation, disk — backs up the binder pool inside your process
+and eventually shows up as jank that profiling attributes to rendering.
+
+## Inspecting live subscriptions
+
+```bash title="Who is subscribed to what, and how fast"
+adb shell dumpsys car_service --services CarPropertyService
+
+# The HAL's view
+adb shell lshal debug android.hardware.automotive.vehicle.IVehicle/default
+```
+
+The `CarPropertyService` dump lists active subscriptions with their rates and
+clients. When a property updates faster than anything should need, this tells you
+which package asked for it.
+
+## Choosing a rate honestly
+
+| Signal | Sensible rate | Why |
+| --- | --- | --- |
+| Gear position | `ON_CHANGE` | It is a discrete state |
+| Door open | `ON_CHANGE` | Same |
+| Fuel level / range | `NORMAL` (~1 Hz) | Moves slowly; nobody watches it tick |
+| Cabin temperature | `NORMAL` + resolution | Sensor noise is not information |
+| Speed, for a gauge | `UI` (~5 Hz) | Smooth enough for the eye |
+| Speed, for a control loop | `FAST` (~10 Hz) | Justify it |
+| Anything | `FASTEST` | Measure first; it is almost never right |
+
+<Callout type="tip" title="Ask what the pixel needs">
+A gauge redrawing at 60 fps does not need 60 Hz of data — interpolation between
+5 Hz samples looks identical and costs a twelfth as much. Match the subscription
+rate to the *information* rate, not the frame rate.
+</Callout>
+
+## Next
+
+The property types that do not fit the simple model — and the config conventions
+that make them workable.

@@ -1,0 +1,145 @@
+---
+title: "The multi-screen cockpit"
+description: "Passenger displays, rear entertainment and shared surfaces — configuring displays, moving activities between them, and the assumptions that break when there is more than one screen."
+order: 3
+difficulty: "Advanced"
+tags: ["Multi-display", "Displays", "Cockpit"]
+sources:
+  - label: "Multi-display support"
+    href: "https://source.android.com/docs/automotive/multi_display"
+  - label: "Multi-display configuration"
+    href: "https://source.android.com/docs/automotive/multi_display/multi_display_config"
+  - label: "Activity launch on secondary displays"
+    href: "https://developer.android.com/guide/topics/large-screens/multi-display"
+---
+
+A premium cockpit is five screens: centre stack, cluster, head-up display,
+passenger, and one or two rear. They may run different apps, for different
+people, under different rules, at the same time.
+
+## Configuring displays
+
+Displays are enumerated by the kernel and mapped to occupant zones in product
+config.
+
+```xml title="config.xml — mapping displays to zones"
+<string-array name="config_occupant_zones">
+  <item>occupantZoneId=0,occupantType=DRIVER,seatRow=1,seatSide=driver</item>
+  <item>occupantZoneId=1,occupantType=FRONT_PASSENGER,seatRow=1,seatSide=oppositeDriver</item>
+  <item>occupantZoneId=2,occupantType=REAR_PASSENGER,seatRow=2,seatSide=left</item>
+</string-array>
+
+<string-array name="config_display_uniqueId_to_occupantZone">
+  <item>displayPort:0,occupantZoneId=0</item>   <!-- centre stack -->
+  <item>displayPort:1,occupantZoneId=0</item>   <!-- cluster, same occupant -->
+  <item>displayPort:2,occupantZoneId=1</item>   <!-- passenger -->
+  <item>displayPort:3,occupantZoneId=2</item>   <!-- rear left -->
+</string-array>
+```
+
+```bash title="What the platform actually enumerated"
+adb shell dumpsys display | grep -E 'mDisplayId|uniqueId|mBaseDisplayInfo'
+adb shell dumpsys car_service --services CarOccupantZoneService
+```
+
+When a new board shows a black secondary screen, this mapping is nearly always
+the cause — the port number in config does not match what the kernel reported.
+
+## Launching onto a display
+
+```kotlin title="Targeting a specific display"
+val options = ActivityOptions.makeBasic().apply {
+    launchDisplayId = passengerDisplayId
+}
+context.startActivity(intent, options.toBundle())
+```
+
+Requirements that catch people:
+
+- The activity must be **resizeable** or explicitly support multi-display.
+- Launching onto a display owned by **another user** needs
+  `INTERACT_ACROSS_USERS`.
+- The app must be **installed for that user** — a passenger display running user
+  11 cannot launch an app installed only for user 10.
+
+```bash title="Testing without hardware"
+# Simulated secondary display
+adb shell settings put global overlay_display_devices "1920x720/213"
+
+adb shell am start --display 2 -n com.example/.PassengerActivity
+adb shell dumpsys activity activities | grep -i -A5 displayId
+```
+
+## Per-display everything
+
+The mental shift is that display is now a dimension of almost every question.
+
+**UX restrictions are per display.** A passenger screen may permit video while
+the driver's does not.
+
+```kotlin title="Ask for your display, not globally"
+val restrictions = uxManager.getCurrentCarUxRestrictions(myDisplayId)
+if (restrictions.isRequiresDistractionOptimization) degrade()
+```
+
+**Configuration is per display.** Size, density and orientation differ wildly.
+A cluster might be 1920×720; a rear screen 1280×800.
+
+```kotlin
+val display = context.display
+val metrics = context.resources.displayMetrics   // for THIS context's display
+```
+
+**Input is per display.** A touch on the rear screen is not a touch on the
+driver's. Do not route input globally.
+
+**Audio is per zone**, not per display — but zones and displays are related
+through occupant zones, which is why the two subsystems are wired together.
+
+<Callout type="warning" title="&quot;The&quot; display and &quot;the&quot; user are both wrong now">
+`WindowManager.getDefaultDisplay()` and `ActivityManager.getCurrentUser()` both
+return the driver's. On a passenger app, both are the wrong answer. Get the
+display from your `Context` and the user from your own process.
+</Callout>
+
+## Moving content between screens
+
+"Send this to the rear screen" is a common OEM feature. It is an activity launch
+on another display plus a state handoff — and the state handoff is the hard part,
+because the target may be a different user with different accounts.
+
+```kotlin title="Handing off with state, not just an intent"
+val handoff = Intent(context, PlayerActivity::class.java).apply {
+    putExtra(EXTRA_MEDIA_ID, currentMediaId)
+    putExtra(EXTRA_POSITION_MS, player.currentPosition)
+    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
+context.startActivityAsUser(
+    handoff,
+    ActivityOptions.makeBasic().apply { launchDisplayId = rearDisplayId }.toBundle(),
+    UserHandle.of(rearUserId),
+)
+```
+
+If the content is licensed to an account, the target user may not have it.
+Design the failure: "sign in on the rear screen to continue" is a legitimate
+outcome and much better than a blank player.
+
+## Performance
+
+Every additional display is another surface to compose, at its own refresh rate,
+from the same GPU and memory bandwidth.
+
+```bash title="Watching composition cost"
+adb shell dumpsys SurfaceFlinger --timestats
+adb shell dumpsys SurfaceFlinger | grep -A10 'Display '
+adb shell perfetto -o /data/misc/perfetto-traces/t -t 15s gfx view sched
+```
+
+Practical rules: do not animate on a display nobody is looking at, drop the
+frame rate on secondary displays where you can, and never run a video decode per
+screen if one decode can be shared.
+
+## Next
+
+The head-up display — the smallest screen with the strictest rules.

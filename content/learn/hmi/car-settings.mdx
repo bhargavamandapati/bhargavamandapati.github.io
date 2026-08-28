@@ -1,0 +1,220 @@
+---
+title: "Car Settings and preferences"
+description: "Where every vehicle configuration surface lives — adding an entry, keeping it usable while driving, and deciding whether a setting belongs to the car, the driver, or neither."
+order: 8
+difficulty: "Intermediate"
+tags: ["Settings", "HMI", "OEM"]
+sources:
+  - label: "Customize Car Settings"
+    href: "https://source.android.com/docs/automotive/hmi/car_settings"
+  - label: "Car Settings source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Settings/"
+  - label: "Settings and preferences"
+    href: "https://developer.android.com/develop/ui/views/components/settings"
+---
+
+Every vehicle feature that can be configured ends up in Settings, which makes it
+one of the largest and most contested surfaces on the head unit — and one of the
+few places a driver is genuinely expected to read.
+
+## The first question: who does this setting belong to?
+
+<Plain>
+Three possible owners, and picking wrong causes real bugs.
+
+**The vehicle.** Units (km/h or mph), language, day/night behaviour, ambient
+lighting. These apply to the car regardless of who is driving, and they belong to
+<T>headless system user</T> — user 0.
+
+**The driver.** Seat position, mirror angles, preferred audio source, home
+address. These follow the person and belong to their profile.
+
+**Neither — it is a vehicle property.** Charge limit, regenerative braking level.
+These live in the vehicle's own electronics, and Settings is just a UI onto a
+property.
+</Plain>
+
+<Scenario title="The setting that would not save">
+An engineer stores a preferred audio source in `SharedPreferences` from a service
+running as user 0. The Settings screen, running as the foreground driver user,
+reads it back and finds nothing.
+
+Both are using `SharedPreferences`. They are different files, silently, because
+they are different users.
+
+This looks exactly like a persistence bug and is a user-scoping bug. It is the
+most common Settings defect on automotive, and the fix is to decide the owner
+first and then choose storage accordingly.
+</Scenario>
+
+## Adding an entry
+
+Car Settings is built on the standard preference framework, with automotive
+styling from <T>car-ui-lib</T>.
+
+```xml title="res/xml/comfort_preferences.xml"
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:title="@string/comfort_settings_title">
+
+    <com.android.car.ui.preference.CarUiPreferenceCategory
+        android:title="@string/seat_comfort">
+
+        <com.android.car.ui.preference.CarUiSeekBarDialogPreference
+            android:key="seat_massage_intensity"
+            android:title="@string/massage_intensity"
+            android:max="5"/>
+
+        <com.android.car.ui.preference.CarUiSwitchPreference
+            android:key="seat_heating_auto"
+            android:title="@string/auto_seat_heating"
+            android:summary="@string/auto_seat_heating_summary"/>
+
+    </com.android.car.ui.preference.CarUiPreferenceCategory>
+</PreferenceScreen>
+```
+
+<Plain>
+Use the `CarUi` preference classes rather than the platform ones. They are sized
+for reach, they respond to <T>UX restrictions</T> automatically, and an OEM
+overlay restyles them along with everything else.
+
+A plain `SwitchPreference` will look and behave subtly differently from
+everything around it, and no overlay will fix it.
+</Plain>
+
+## Backing a preference with a vehicle property
+
+Where a setting *is* a vehicle property, do not keep a shadow copy.
+
+```kotlin title="The vehicle is the source of truth"
+class ChargeLimitPreferenceController(
+    context: Context,
+    private val properties: CarPropertyManager,
+) : PreferenceController(context) {
+
+    override fun onCreateInternal() {
+        properties.registerCallback(
+            callback,
+            VehiclePropertyIds.EV_CHARGE_PERCENT_LIMIT,
+            CarPropertyManager.SENSOR_RATE_ONCHANGE,
+        )
+    }
+
+    // Write to the vehicle. Do NOT update the UI here.
+    override fun handlePreferenceChanged(preference: Preference, newValue: Any): Boolean {
+        properties.setFloatProperty(
+            VehiclePropertyIds.EV_CHARGE_PERCENT_LIMIT, GLOBAL, newValue as Float,
+        )
+        return false   // the callback will update it, once the vehicle confirms
+    }
+
+    private val callback = object : CarPropertyManager.CarPropertyEventCallback {
+        override fun onChangeEvent(value: CarPropertyValue<*>) {
+            preference.value = value.value as Float   // confirmed state
+        }
+        override fun onErrorEvent(propertyId: Int, areaId: Int) {
+            refreshFromVehicle()
+        }
+    }
+}
+```
+
+<Plain>
+`return false` is the important line. It tells the preference framework **not** to
+adopt the new value yet.
+
+The value only changes when the vehicle confirms it. If the ECU refuses — because
+the vehicle is charging, because a safety condition is not met — the control
+snaps back to reality instead of showing a lie.
+
+This is the same "never render optimistically" rule from the vehicle data
+module, applied to a settings screen.
+</Plain>
+
+## Settings while driving
+
+Most of Settings should not be reachable while moving, and the platform will
+enforce it.
+
+```xml title="Only mark screens that are genuinely safe"
+<activity android:name=".ComfortSettingsActivity">
+    <meta-data android:name="distractionOptimized" android:value="true"/>
+</activity>
+```
+
+<Plain>
+The honest split:
+
+**Safe while moving** — a single toggle, one slider, something reachable in one
+touch and understandable at a glance. Seat heating. Volume balance.
+
+**Parked only** — anything with text entry, multi-step flows, long lists, or
+consequences the driver needs to read about. Wi-Fi setup. Account sign-in. Factory
+reset.
+
+Marking a multi-step account flow `distractionOptimized` to stop it being blocked
+is exactly the kind of thing OEM acceptance is looking for, and it will be found.
+</Plain>
+
+## Search
+
+Car Settings is large, and drivers will not find things by browsing.
+
+```xml title="Making an entry searchable"
+<SwitchPreference
+    android:key="auto_seat_heating"
+    android:title="@string/auto_seat_heating"
+    android:summary="@string/auto_seat_heating_summary"
+    settings:keywords="@string/auto_seat_heating_keywords"/>
+```
+
+Include the words people actually use, not the words in your specification. Drivers
+search for "warm seat", not "thermal comfort actuation".
+
+## OEM customisation
+
+Almost every vehicle replaces or heavily modifies Settings, and the layers
+available are the same ones from the theming topic.
+
+```bash title="Where an entry is coming from"
+adb shell dumpsys activity service com.android.car.settings
+adb shell cmd overlay list | grep -i settings
+adb shell am start -n com.android.car.settings/.common.CarSettingActivity
+```
+
+<Plain>
+Prefer, in order: an RRO for appearance and strings; a configuration array for
+which entries appear; a separate settings *app* injecting a top-level entry; and
+only then modifying Car Settings itself.
+
+Each step up that list costs more at every platform upgrade, for the vehicle's
+whole life.
+</Plain>
+
+## What good looks like
+
+- **Decide the owner first** — vehicle, driver, or vehicle property.
+- **Never shadow a vehicle property.** Read it, write it, render from the
+  confirmation.
+- **Use CarUi preference classes**, so theming and distraction handling are free.
+- **Be honest about `distractionOptimized`.**
+- **Add search keywords** in the driver's vocabulary.
+- **Overlay before forking.**
+
+<Recap>
+- Every setting belongs to the **vehicle (user 0)**, the **driver's profile**, or
+  the **vehicle's own electronics**. Picking wrong produces a setting that
+  silently does not save.
+- Where a setting is a vehicle property, the **vehicle is the source of truth** —
+  return `false` and wait for confirmation.
+- Use **CarUi preference classes** so styling and distraction behaviour come for
+  free.
+- Only mark a screen `distractionOptimized` if it is **genuinely one-touch and
+  glanceable**.
+- **Search keywords should use the driver's words**, not the specification's.
+</Recap>
+
+## Next
+
+The apps module, where these surfaces are consumed.

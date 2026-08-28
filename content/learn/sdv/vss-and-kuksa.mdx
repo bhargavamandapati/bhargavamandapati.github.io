@@ -1,0 +1,189 @@
+---
+title: "VSS and the Eclipse Kuksa databroker"
+description: "The Vehicle Signal Specification as a shared contract between ECU, platform and HMI teams — and how to test the whole signal path without a vehicle."
+order: 1
+difficulty: "Advanced"
+tags: ["VSS", "SDV", "Kuksa"]
+sources:
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+  - label: "VSS on GitHub"
+    href: "https://github.com/COVESA/vehicle_signal_specification"
+---
+
+A software-defined vehicle programme usually begins with an uncomfortable
+discovery: the signal catalogue already exists, in a format Android has never
+heard of, and three teams are each maintaining their own private mapping of it.
+
+VSS replaces those spreadsheets with a contract.
+
+<DiagramFrame
+  title="From AUTOSAR signals to Android properties"
+  caption="Two generated conversions, one hand-reviewed overlay for what the source cannot express, and a databroker so none of it needs a vehicle to test."
+>
+  <SdvBridge />
+</DiagramFrame>
+
+## What VSS is
+
+A tree of signal definitions maintained by COVESA. Every signal has a dotted
+path, a datatype, a unit and a description — none of it vendor-specific.
+
+```yaml title="Vehicle/Powertrain/Battery.vspec"
+StateOfCharge:
+  Current:
+    datatype: float
+    type: sensor
+    unit: percent
+    min: 0
+    max: 100
+    description: Physical state of charge of the high-voltage battery.
+```
+
+```yaml title="Vehicle/Cabin/Seat.vspec — branch with instances"
+Seat:
+  type: branch
+  instances:
+    - Row[1,2]
+    - ["DriverSide", "Middle", "PassengerSide"]
+
+Seat.Massage.Intensity:
+  datatype: uint8
+  type: actuator
+  min: 0
+  max: 5
+```
+
+Modest on its own. Its value is that the ECU supplier, the platform team and the
+HMI team can now argue about one artefact instead of three private ones.
+
+## Node types map onto VHAL access
+
+| VSS `type` | Meaning | VHAL equivalent |
+| --- | --- | --- |
+| `sensor` | Read-only observation | `VehiclePropertyAccess.READ` |
+| `actuator` | Can be commanded | `READ_WRITE` |
+| `attribute` | Static, set at build | `READ` + `changeMode STATIC` |
+| `branch` | Grouping node | no equivalent — structure only |
+
+That mapping is mechanical, which is exactly why it should be generated.
+
+## The two conversions
+
+### ARXML → VSS
+
+AUTOSAR is the source of truth for the vehicle network. Extracting it means
+walking the ARXML package tree, resolving `SYSTEM-SIGNAL` definitions and their
+`COMPU-METHOD` scaling, and emitting VSS nodes.
+
+```python title="arxml_to_vss.py"
+def to_vss_node(signal: SystemSignal) -> dict:
+    scaling = resolve_compu_method(signal)
+    return {
+        "datatype": DATATYPE_MAP[signal.base_type],
+        "type": "sensor" if signal.read_only else "actuator",
+        "unit": scaling.unit,
+        "min": scaling.apply(signal.raw_min),
+        "max": scaling.apply(signal.raw_max),
+        "description": signal.desc or signal.short_name,
+    }
+```
+
+<Callout type="warning" title="Scaling is where the bugs live">
+`COMPU-METHOD` factor/offset pairs apply to the raw bus value. Convert **once**,
+at the boundary, and record the unit in the VSS node. A signal scaled twice — or
+not at all — produces a plausible-looking number that is wrong by a constant
+factor, which is the hardest kind of defect to notice in a UI.
+</Callout>
+
+### VSS → VHAL
+
+Most of a `VehiclePropConfig` is derivable from a VSS node. Not all of it.
+
+| VSS concept | VHAL equivalent | Derivable? |
+| --- | --- | --- |
+| `datatype: float` | `VehiclePropertyType.FLOAT` | Yes |
+| `type: sensor` | `access = READ` | Yes |
+| `type: actuator` | `access = READ_WRITE` | Yes |
+| `min` / `max` | `VehicleAreaConfig` bounds | Yes |
+| Instance `Row1.DriverSide` | `VehicleAreaSeat.ROW_1_LEFT` | Usually |
+| Sampling behaviour | `ON_CHANGE` vs `CONTINUOUS` | **No** |
+| Permission | Car permission mapping | **No** |
+
+Those last two are the honest limit of automation. VSS describes what a signal
+*is*, not how often to sample it or who may write it. Both are product decisions
+and belong in a small, reviewed overlay file — not guessed by a generator.
+
+## Keep the generated layer generated
+
+The strongest discipline on this work is refusing to hand-edit generated output.
+The moment someone patches a generated VHAL config to fix one signal, the
+generator stops being the source of truth and the mapping begins rotting.
+
+The workflow that survives a multi-year programme:
+
+1. Generate VSS from ARXML.
+2. Apply a small, **reviewed** overlay for what the source cannot express —
+   sample rates, non-conventional area mappings, deliberate omissions.
+3. Generate VHAL configs from the merged tree.
+4. Regenerate in CI and **fail the build if committed output differs**.
+
+Step 4 is what keeps the whole thing alive.
+
+```yaml title=".github/workflows/signals.yml"
+- name: Regenerate signal artefacts
+  run: |
+    python tools/arxml_to_vss.py --in spec/network.arxml --out build/vss.json
+    python tools/vss_overlay.py  --base build/vss.json --overlay spec/overlay.yaml \
+                                 --out build/vss.merged.json
+    python tools/vss_to_vhal.py  --in build/vss.merged.json --out build/DefaultConfig.h
+
+- name: Fail if generated output drifted
+  run: git diff --exit-code generated/
+```
+
+## Testing without a vehicle
+
+The Eclipse Kuksa databroker publishes VSS values over gRPC. Point your VHAL at
+it in a debug build and the whole stack becomes testable on a desk.
+
+```bash title="Driving the stack from a shell"
+docker run -p 55555:55555 ghcr.io/eclipse-kuksa/kuksa-databroker:latest
+
+kuksa-client set Vehicle.Powertrain.Battery.StateOfCharge.Current 42.5
+kuksa-client get Vehicle.Powertrain.Battery.StateOfCharge.Current
+
+# Confirm it surfaced on the Android side
+adb shell dumpsys car_service --get-property 0x21100601
+```
+
+If those two agree, the mapping is correct and the remaining risk is in the
+transport, not the contract. That is a much smaller problem to have.
+
+```python title="Scripted scenarios beat manual drives"
+scenario = [
+    (0.0,  "Vehicle.Powertrain.Transmission.CurrentGear", 1),
+    (0.5,  "Vehicle.Speed", 12.0),
+    (2.0,  "Vehicle.Speed", 48.0),
+    (6.0,  "Vehicle.Cabin.Door.Row1.DriverSide.IsOpen", True),   # while moving
+]
+```
+
+That fourth line is a real test case — door open above speed threshold — and it
+is one you would otherwise have to stage in a car park.
+
+## The part that is not technical
+
+VSS pays off because three teams get a shared vocabulary. It fails when only one
+adopts it. If the supplier keeps shipping ARXML and the HMI team keeps a private
+mapping, you have added a format rather than removed one.
+
+The migration is worth doing only when the **generated artefacts become the thing
+everyone reviews**. Until then it is overhead.
+
+## Next
+
+The transports that carry these signals, and how AAOS fits into a virtualised
+vehicle computer.

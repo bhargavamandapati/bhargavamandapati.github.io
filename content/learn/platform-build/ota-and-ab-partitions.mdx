@@ -1,0 +1,179 @@
+---
+title: "OTA updates and A/B partitions"
+description: "Updating a vehicle in a customer's driveway, with no way to recover it if the update fails. Seamless updates, rollback, and the constraints a metered link and a parked battery impose."
+order: 4
+difficulty: "Advanced"
+tags: ["OTA", "A/B", "Updates"]
+sources:
+  - label: "OTA updates"
+    href: "https://source.android.com/docs/core/ota"
+  - label: "A/B (seamless) system updates"
+    href: "https://source.android.com/docs/core/ota/ab"
+  - label: "update_engine sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/update_engine/"
+---
+
+An OTA on a phone that goes wrong is an annoyance. An OTA on a vehicle that goes
+wrong is a tow truck. The whole design follows from that.
+
+<DiagramFrame
+  title="A/B seamless updates"
+  caption="The new image is written to the inactive slot while the vehicle runs normally from the active one. A reboot swaps them; a failed boot swaps back."
+>
+  <AbPartitions />
+</DiagramFrame>
+
+## Why A/B
+
+The single-slot alternative — boot into a recovery image, apply a patch in place,
+reboot — has a window where the device has neither the old nor the new system. A
+power cut during that window bricks it.
+
+A/B removes the window entirely:
+
+- The vehicle runs from **slot A** while the update is written to **slot B**.
+- Nothing is unavailable during the write; the driver notices nothing.
+- A reboot marks slot B active.
+- If slot B fails to boot a set number of times, the bootloader reverts to A.
+
+The cost is storage: two copies of the read-only partitions. `/data` is shared
+and never duplicated.
+
+```bash title="Slot state"
+adb shell getprop ro.boot.slot_suffix        # _a or _b
+adb shell bootctl get-current-slot
+adb shell bootctl get-suffix 0
+adb shell dumpsys update_engine
+```
+
+## Generating an update
+
+```bash title="Full and incremental packages"
+# Full: everything, large, always works
+ota_from_target_files \
+  -k ~/keys/oem/releasekey \
+  build-1042-target_files.zip \
+  ota-full-1042.zip
+
+# Incremental: only the delta, far smaller — needs BOTH target_files
+ota_from_target_files \
+  -k ~/keys/oem/releasekey \
+  -i build-1041-target_files.zip \
+  build-1042-target_files.zip \
+  ota-incremental-1041-to-1042.zip
+```
+
+<Callout type="warning" title="Keep every released target_files.zip forever">
+An incremental package is generated from the pair of builds. Without the old
+`target_files.zip` you can only ship a full package — potentially gigabytes, over
+a metered vehicle connection the OEM pays for. Losing those artefacts is an
+expensive, irreversible mistake.
+</Callout>
+
+## Applying it, on a vehicle's terms
+
+Three constraints shape when an update may run:
+
+**Battery.** Writing gigabytes takes power. Most programmes require the vehicle
+to be charging or the battery above a threshold, otherwise the update waits.
+
+**Connection.** The payload should arrive over unmetered Wi-Fi where possible —
+the driveway, the dealership — rather than the vehicle's cellular allowance.
+
+**Vehicle state.** Applying while driving is possible with A/B, but reboots are
+not. The swap happens at a moment the driver is not using the vehicle.
+
+Garage Mode is where all three usually align:
+
+```kotlin title="Scheduling the download"
+val job = JobInfo.Builder(OTA_JOB, ComponentName(context, OtaJobService::class.java))
+    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+    .setRequiresCharging(true)
+    .setRequiresDeviceIdle(true)
+    .setPersisted(true)
+    .setBackoffCriteria(60_000, JobInfo.BACKOFF_POLICY_EXPONENTIAL)
+    .build()
+```
+
+```kotlin title="Resumable, because the window will close early"
+override fun onStopJob(params: JobParameters): Boolean {
+    updateEngine.suspend()   // checkpointed; resumes where it stopped
+    return true              // reschedule
+}
+```
+
+An OTA download that restarts from zero every time Garage Mode ends will never
+complete on a vehicle used daily.
+
+## The reboot conversation
+
+The update is staged; the vehicle must now reboot to use it. That reboot cannot
+happen while the driver is mid-journey.
+
+Approaches that work in practice:
+
+- **Defer to next ignition-off.** Swap slots during shutdown; the next start is
+  the new version. Invisible to the driver.
+- **Ask, with a real choice.** "Update ready — install now (about 3 minutes) or
+  tonight?" Only offer "now" when the vehicle is parked and stationary.
+- **Never surprise.** A head unit that reboots itself unexpectedly destroys trust
+  in the whole vehicle, even if the update was flawless.
+
+## Rollback
+
+```bash title="Marking a boot successful"
+# The framework calls this once boot completes and health checks pass
+adb shell bootctl mark-boot-successful
+adb shell bootctl get-number-slots
+```
+
+If the new slot never marks itself successful, the bootloader reverts after a
+configured number of attempts. That mechanism protects against a build that does
+not boot at all.
+
+It does **not** protect against a build that boots and is broken. For that you
+need a health check the platform actually enforces:
+
+```text title="A post-update health gate"
+Boot completes
+  → Car Service reachable?
+  → Vehicle HAL registered?
+  → Display composing frames?
+  → Critical services responding?
+        yes → mark-boot-successful
+        no  → do not mark; let the bootloader revert
+```
+
+<Callout type="warning" title="Rollback protection and rollback are different things">
+Verified boot's rollback *index* prevents flashing an older signed image — a
+security feature. A/B slot reversion is a reliability feature. Bumping the
+rollback index on a release means you cannot revert to the previous build even
+though slot B still holds it. Bump indices deliberately, on security releases,
+not on every build.
+</Callout>
+
+## Testing an update, not just a build
+
+The cases that matter, and the order to run them:
+
+1. **Incremental from the exact previous release.** The path customers take.
+2. **Full package onto an old build.** The recovery path.
+3. **Power loss mid-write.** Pull power during the download; it must resume or
+   restart cleanly, never brick.
+4. **Failed boot on the new slot.** Deliberately corrupt it and confirm reversion.
+5. **`/data` survives.** User profiles, pairings and settings must be intact.
+6. **Downgrade attempt.** Must be refused if the rollback index moved.
+
+```bash title="Driving an update by hand"
+adb shell update_engine_client --payload=file:///data/ota.zip --update
+adb shell update_engine_client --status
+adb shell dumpsys update_engine | grep -i -A5 progress
+```
+
+Case 5 is the one most often missed and most visible to customers: an update that
+loses their Bluetooth pairings and seat profile is remembered long after the
+feature it delivered is forgotten.
+
+## Next
+
+Automated testing that survives contact with real hardware.

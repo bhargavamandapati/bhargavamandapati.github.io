@@ -1,0 +1,372 @@
+---
+title: "Vehicle HAL fundamentals"
+description: "The single doorway between Android and the car, explained slowly — what a vehicle property actually is, why the interface is so small, and the three fields in a config that cause most bugs."
+order: 1
+difficulty: "Intermediate"
+tags: ["VHAL", "HAL", "AIDL"]
+sources:
+  - label: "Vehicle HAL (source.android.com)"
+    href: "https://source.android.com/docs/automotive/vhal"
+  - label: "VHAL interface reference"
+    href: "https://source.android.com/docs/automotive/vhal/vhal-interface"
+  - label: "automotive/vehicle AIDL on cs.android.com"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/"
+  - label: "Reference VHAL implementation"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/impl/"
+---
+
+Everything the car knows reaches Android through one component. Not a collection
+of drivers, not a messaging system — a single interface offering a list of named
+values.
+
+This page explains what that means, why it was designed that way, and the parts
+that trip people up.
+
+## The problem the VHAL solves
+
+Picture what Android would need to do without it.
+
+A car has an engine computer that broadcasts speed as a two-byte number on a wire
+called <T>CAN</T>, scaled by 0.01. A different car uses a three-byte number
+scaled by 0.1, on a different wire, from a different supplier. A third sends it
+over an entirely different network protocol.
+
+Android cannot possibly know all of that. If it tried, every new vehicle would
+require changes to Android itself.
+
+<Plain>
+So the platform draws a line and says:
+
+> *"I do not want to know how your car works. Give me a component that offers
+> me a list of named values I can read, write and watch. You make that
+> component; I will only ever talk to it."*
+
+That component is the <T>Vehicle HAL</T>.
+</Plain>
+
+<Analogy title="Like a universal remote">
+A universal remote does not know how each television works internally. It knows
+about **commands**: volume up, channel down, power. Someone maps those commands
+onto each brand's actual infrared codes.
+
+Android is the remote. The VHAL is the mapping. The car is the television.
+</Analogy>
+
+## What "one property" actually is
+
+A <T>vehicle property</T> is one named piece of information. That is genuinely
+all it is.
+
+Examples of real properties:
+
+| Property | What it holds |
+| --- | --- |
+| `PERF_VEHICLE_SPEED` | How fast the car is going, in metres per second |
+| `GEAR_SELECTION` | Which gear is selected |
+| `HVAC_TEMPERATURE_SET` | The temperature the driver asked for, per seat |
+| `DOOR_LOCK` | Whether a specific door is locked |
+| `INFO_VIN` | The vehicle identification number |
+
+Each property has:
+
+- an **ID** — a number identifying it
+- a **type** — is it a whole number, a decimal, text?
+- an **area** — does it apply to the whole car, or to one specific seat or door?
+- **access rules** — can Android read it, write it, or both?
+- a **change mode** — is it fixed, does it change occasionally, or continuously?
+
+<Plain>
+When someone says "we need to expose the seat heater to Android", what they
+literally mean is "we need to add a vehicle property for it". Nothing else in the
+platform changes.
+</Plain>
+
+## The entire interface
+
+Strip away the code-generation ceremony and the Vehicle HAL offers four things:
+
+| Operation | In plain terms |
+| --- | --- |
+| `getAllPropConfigs()` | "What do you support, and what are the rules for each?" |
+| `getValues()` | "What is the value of these right now?" |
+| `setValues()` | "Please change these to this." |
+| `subscribe()` | "Tell me whenever these change." |
+
+That is it. Four operations, one list of values.
+
+<Plain>
+It is worth sitting with how small that is. There is no way for the car to send
+Android an arbitrary message, no request/response with error details, no
+streaming. Just values you can read, write, and watch.
+
+Every time the model feels restrictive later, remember: the restriction is the
+feature. A small interface is one that can survive fifteen years unchanged.
+</Plain>
+
+## Config is the contract
+
+Here is the part that causes the most confusion for newcomers.
+
+Before anyone reads a value, Android asks the VHAL: *what properties do you
+have?* The answer is a list of **configs** — and that answer is the real
+interface contract.
+
+```java title="The fields of a property config that matter"
+parcelable VehiclePropConfig {
+    int prop;                       // which property
+    VehiclePropertyAccess access;   // READ, WRITE or READ_WRITE
+    VehiclePropertyChangeMode changeMode;   // STATIC, ON_CHANGE or CONTINUOUS
+    VehicleAreaConfig[] areaConfigs;        // which seats/doors, and valid ranges
+    float minSampleRate;            // CONTINUOUS only
+    float maxSampleRate;            // CONTINUOUS only
+}
+```
+
+<Scenario title="The bug this causes, constantly">
+An engineer implements a new property. The read code is correct. The write code
+is correct. It is thoroughly unit tested.
+
+On the vehicle, the app gets `IllegalArgumentException` every time.
+
+The cause: the property was never added to the list returned by
+`getAllPropConfigs()`. As far as Android is concerned, it does not exist — so it
+refuses the request before ever calling the read code.
+
+**If the property is not in the config list, no amount of correct read code will
+make it visible.** This is the single most common VHAL implementation mistake.
+</Scenario>
+
+### `access` — who is allowed to do what
+
+Three choices: `READ`, `WRITE`, or `READ_WRITE`.
+
+The temptation is to declare everything `READ_WRITE` to keep options open. Do
+not. If the car owns a value and Android only observes it, declare `READ`.
+
+<Plain>
+**Why it matters:** if you declare a value writable when the car will actually
+ignore the write, an app will send a change, believe it succeeded, and display
+the new value. The car stays where it was. Now the screen and the vehicle
+disagree, and the driver trusts the screen.
+</Plain>
+
+### `changeMode` — how the value behaves over time
+
+This one has three options and choosing wrong has real consequences.
+
+**`STATIC`** — never changes after startup. The vehicle identification number.
+The number of doors. Android may read it once and cache it forever.
+
+**`ON_CHANGE`** — announced whenever it moves. Gear position. Door open or
+closed. Most things are this.
+
+**`CONTINUOUS`** — sampled at a rate, like a sensor. Speed. Engine RPM. Fuel
+level.
+
+<Scenario title="Two ways to get this wrong">
+**Choosing `CONTINUOUS` for something that rarely moves.** You mark "driver door
+locked" as continuous at 10 Hz. Now the VHAL, the vehicle network thread and
+every subscribed app wake up ten times a second, all day, to be told nothing has
+changed. On a parked car that is measurable battery drain.
+
+**Choosing `ON_CHANGE` for a smooth value.** You mark vehicle speed as
+`ON_CHANGE`. The speedometer now updates in visible jumps instead of moving
+smoothly, and it looks broken.
+</Scenario>
+
+<Plain>
+Rule of thumb: if a human would describe it as *"it's now X"*, use `ON_CHANGE`.
+If they would describe it as *"it's around X and moving"*, use `CONTINUOUS`.
+</Plain>
+
+### `areaConfigs` — which seat, and what range
+
+Many properties exist several times over: one per seat, one per door. The area
+config says which ones are supported and what values are valid for each.
+
+This brings us to the thing that causes more VHAL bugs than anything else.
+
+## Area IDs are bits, not numbers
+
+An <T>area ID</T> is **a set of flags**, not a counting number.
+
+<DiagramFrame
+  title="Seat area IDs are individual bits"
+  caption="The driver's seat is bit 0, the front passenger is bit 2. They are not seat 1 and seat 2 — they are separate switches that can be on together."
+>
+  <AreaIdBitmask />
+</DiagramFrame>
+
+<Plain>
+Read that diagram carefully, because the intuition it corrects is very strong.
+
+If you think "there are two front seats, so the value is 2", you will write a bug.
+`0x0002` is `ROW_1_CENTER` — the middle front seat, which most cars do not even
+have.
+
+Both front seats together is `0x0001 | 0x0004` = `0x0005`.
+</Plain>
+
+<Analogy title="Like light switches, not a dial">
+A dial has positions: 1, 2, 3. Only one at a time.
+
+A row of light switches is different: each one is independently on or off, and
+any combination is possible. Area IDs are light switches.
+</Analogy>
+
+### The two ways to declare seats, and why they differ
+
+```cpp title="Two independently controlled seats"
+.areaConfigs = {
+    { .areaId = ROW_1_LEFT,  .minInt32Value = 0, .maxInt32Value = 5 },
+    { .areaId = ROW_1_RIGHT, .minInt32Value = 0, .maxInt32Value = 5 },
+}
+```
+
+```cpp title="One value covering both seats"
+.areaConfigs = {
+    { .areaId = ROW_1_LEFT | ROW_1_RIGHT, .minInt32Value = 0, .maxInt32Value = 5 },
+}
+```
+
+Both are legal. They mean different things.
+
+The first says: the driver and passenger each have their own setting, and you can
+change one without affecting the other.
+
+The second says: there is one setting, shared, and both seats follow it.
+
+<Scenario title="How this bug is discovered">
+It never shows up in development, because the developer only ever tests the
+driver's seat.
+
+It shows up when a tester adjusts the passenger seat massage and the driver's
+seat starts vibrating too. By then the code is in a build, the config has been
+copied into three other properties, and someone has to work out which of them are
+also wrong.
+</Scenario>
+
+## What a value looks like
+
+When Android reads a property, or receives a change, it gets a `VehiclePropValue`:
+
+```java title="VehiclePropValue"
+parcelable VehiclePropValue {
+    long timestamp;                 // when this value was measured
+    int areaId;                     // which seat/door it applies to
+    int prop;                       // which property
+    VehiclePropertyStatus status;   // AVAILABLE, UNAVAILABLE or ERROR
+    RawPropValues value;            // the actual number, in one of several arrays
+}
+```
+
+Two fields here cause real problems.
+
+### `timestamp` is not what most people assume
+
+It must be **`CLOCK_BOOTTIME`, in nanoseconds** — that is, nanoseconds since the
+device booted, not since 1970.
+
+<Plain>
+If you stamp it with wall-clock time in milliseconds, nothing errors. But
+Android's logic for "is this value stale?" now compares a 1970-based number
+against a boot-based one, and every latency measurement anyone takes is
+meaningless.
+
+This is another silent-failure case, and it is easy to get wrong because
+`System.currentTimeMillis()` is the obvious-looking choice.
+</Plain>
+
+### `status` is not decoration
+
+Three values, and they mean genuinely different things:
+
+- **`AVAILABLE`** — this is a real measurement, trust it.
+- **`UNAVAILABLE`** — the property exists, but there is no meaningful value right
+  now. The sensor is warming up. The subsystem is asleep. The trailer is not
+  attached.
+- **`ERROR`** — something failed.
+
+<Scenario title="Why 'always AVAILABLE' is a lie">
+A HAL is written so that if it has not heard from the sensor yet, it returns 0
+with status `AVAILABLE`.
+
+The driver starts the car. For the first four seconds, before the climate ECU has
+reported anything, the screen confidently displays **0 °C**.
+
+Nobody logged an error, because the HAL said the value was available. The UI did
+exactly what it was told. The correct answer was `UNAVAILABLE`, which would have
+let the UI show a dash instead of a wrong number.
+</Scenario>
+
+## The value union
+
+`RawPropValues` is not a clever tagged union — it is a struct containing several
+arrays, and the property's declared type tells you which one to read.
+
+| Declared type | Read from |
+| --- | --- |
+| `BOOLEAN`, `INT32` | `int32Values[0]` |
+| `INT32_VEC` | all of `int32Values` |
+| `FLOAT` | `floatValues[0]` |
+| `INT64` | `int64Values[0]` |
+| `BYTES` | `byteValues` |
+| `STRING` | `stringValue` |
+| `MIXED` | several at once, described elsewhere |
+
+<Plain>
+Nothing in the code enforces that you read the right array. If a property is
+declared `FLOAT` and you read `int32Values[0]`, you get zero — silently.
+
+The type in the property ID is your only guide, which is one reason the next
+topic on decoding property IDs is worth the effort.
+</Plain>
+
+## Where the framework meets it
+
+On the Android side, exactly one thing talks to the VHAL: `CarPropertyService`,
+inside <T>Car Service</T>.
+
+It does four jobs:
+
+1. Asks for the config list at startup and remembers it.
+2. Checks permissions on every app request.
+3. Opens **one** subscription per property, no matter how many apps want it.
+4. Refuses anything the VHAL never declared.
+
+<DiagramFrame
+  title="One subscription, many listeners"
+  caption="Car Service merges every app's request into a single subscription to the HAL, at the fastest rate any of them asked for. This is why one badly written app affects everybody."
+>
+  <SubscriptionFanout />
+</DiagramFrame>
+
+## Read the reference implementation
+
+AOSP ships a complete, working VHAL that the emulator uses. It is the best
+documentation for this interface that exists.
+
+<Src path="hardware/interfaces/automotive/vehicle/aidl/impl" label="automotive/vehicle/aidl/impl" full />
+
+Two files repay reading:
+
+- **`FakeVehicleHardware`** — how config and value storage fit together. This is
+  the shape your own implementation will take.
+- **`DefaultVehicleHal`** — the request handling and subscription plumbing. You
+  will reuse this rather than rewriting it.
+
+<Recap>
+- The VHAL exists so Android never has to know how any particular car works.
+- A **property** is one named value with a type, an area, access rules and a
+  change mode.
+- **The config list is the contract.** A property not in it does not exist,
+  however correct your read code is.
+- **Area IDs are bits, not counts.** Both front seats is `0x0005`, not `0x0002`.
+- `timestamp` is `CLOCK_BOOTTIME` nanoseconds; `status` must be honest about
+  `UNAVAILABLE`. Both fail silently when wrong.
+- Car Service opens **one** HAL subscription and fans events out to every app.
+</Recap>
+
+## Next
+
+Decoding a property ID by eye — which turns a lot of debugging into arithmetic.

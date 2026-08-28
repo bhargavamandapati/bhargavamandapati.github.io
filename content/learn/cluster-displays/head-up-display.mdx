@@ -1,0 +1,143 @@
+---
+title: "Head-up displays"
+description: "The smallest screen with the strictest rules — projected onto the windscreen, in the driver's forward view, where anything unnecessary is a hazard rather than a feature."
+order: 4
+difficulty: "Intermediate"
+tags: ["HUD", "Displays", "Safety"]
+sources:
+  - label: "Automotive display support"
+    href: "https://source.android.com/docs/automotive/multi_display"
+  - label: "Driver distraction guidelines"
+    href: "https://source.android.com/docs/automotive/driver_distraction/guidelines"
+---
+
+A head-up display projects an image into the driver's forward view. It is the
+only screen the driver looks at without looking away from the road, and that
+privilege comes with the tightest constraints in the cockpit.
+
+## What makes it different
+
+**It is in the safety-critical field of view.** Anything shown there competes
+with the road. A notification that is merely unhelpful on the centre stack is
+actively dangerous here.
+
+**It is optically odd.** The image is a virtual image focused several metres
+ahead, on a windscreen that is curved and tilted. Rendering is pre-warped to
+compensate, usually in hardware or by the display controller — not by your app.
+
+**Contrast is variable and hostile.** The background is the actual road: bright
+sky, dark tunnel, oncoming headlights. Colours that read well in a design tool
+disappear against a white truck.
+
+**It is small and fixed.** A few hundred pixels of usable area, in a fixed
+position, with no scrolling and no interaction.
+
+## Architecturally, it is usually not Android's
+
+On most vehicles the HUD is driven by the cluster domain or a dedicated
+controller, for the same reason as telltales: availability requirements Android
+cannot meet. Android *contributes* content — the next navigation instruction, the
+current speed limit — over the same kind of structured link as the cluster.
+
+```kotlin title="Contributing content, not pixels"
+val hudCard = HudContent.newBuilder()
+    .setPriority(Priority.NAVIGATION)
+    .setManeuver(maneuver.toHudIcon())
+    .setPrimaryText(distanceToStep.shortForm())   // "300 m", not a sentence
+    .build()
+
+hudLink.send(hudCard.toByteArray())
+```
+
+Where the HUD *is* an Android display, it appears as a normal secondary display
+with its own occupant zone mapping — and everything from the multi-display topic
+applies.
+
+```bash title="Is it an Android display?"
+adb shell dumpsys display | grep -iE 'hud|head.?up'
+adb shell dumpsys car_service --services CarOccupantZoneService
+```
+
+## Content rules
+
+The list of things a HUD should show is short, and it is short on purpose:
+
+| Show | Do not show |
+| --- | --- |
+| Current speed | Media artwork |
+| Speed limit | Notification text |
+| Next maneuver + distance | Anything scrollable |
+| Critical warnings | Anything with more than a few words |
+| ADAS state (lane, cruise) | Anything requiring interaction |
+
+<Callout type="warning" title="Everything on a HUD is a hazard budget decision">
+The correct default answer to "can we also show X on the HUD?" is no. Each
+additional element competes for attention in the one place attention must not be
+divided. Adding content to a HUD should require the same justification as
+removing a safety feature.
+</Callout>
+
+## Designing for the optics
+
+**Maximum contrast, minimal fill.** Thin, bright glyphs on transparency. Large
+filled areas obscure the road and look worse against every background.
+
+**No thin strokes.** They vanish against bright backgrounds. Use weight, not
+size, for legibility.
+
+**Very few colours.** White and amber carry almost everything. Red is reserved
+for genuine warnings; using it decoratively destroys its meaning.
+
+**Position matters more than it seems.** Content near the top of the HUD area
+overlaps more sky and less road. Test against real backgrounds, not a design
+canvas.
+
+**Test at night and into low sun.** These are the two conditions that break HUD
+designs, and neither is reproducible on a desk.
+
+## Update rate and jitter
+
+A HUD in the peripheral field is unusually sensitive to *change*, not to
+absolute values. A distance readout that flickers between "300 m" and "290 m"
+draws the eye every time it changes.
+
+```kotlin title="Quantise, then hysteresis"
+// Bad: updates continuously, draws attention constantly
+hud.setDistance("$metres m")
+
+// Better: quantised steps with hysteresis so it does not oscillate at a boundary
+private fun displayDistance(metres: Int): String = when {
+    metres > 1000 -> "${(metres / 100) / 10.0} km"
+    metres > 200  -> "${(metres / 50) * 50} m"
+    metres > 50   -> "${(metres / 10) * 10} m"
+    else          -> "now"
+}
+```
+
+<Callout type="tip" title="Stillness is a feature">
+The best HUD content changes as rarely as it can while remaining correct. If a
+value updates more than a couple of times a second, quantise it. The driver needs
+to know the distance, not to watch it count down.
+</Callout>
+
+## Testing
+
+You cannot properly validate a HUD on a bench, but you can catch most defects:
+
+- Render your content over photographs of real driving scenes — bright sky, wet
+  tarmac, tunnel exit, night with oncoming lights.
+- Check every element at the smallest size it will ever be drawn.
+- Verify behaviour when the source data is stale or missing: the correct
+  response is usually to show nothing, not a last-known value.
+- Confirm the HUD dims with the vehicle's night mode and the driver's brightness
+  setting.
+
+```bash title="Basic checks"
+adb shell dumpsys display | grep -A8 -i hud
+adb shell settings get system screen_brightness_mode
+adb shell dumpsys uimode
+```
+
+## Next
+
+Audio routing at the HAL level.

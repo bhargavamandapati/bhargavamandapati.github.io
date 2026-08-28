@@ -1,0 +1,158 @@
+---
+title: "EVS and the rear-view camera"
+description: "A legally mandated image in under two seconds, on a system that takes fifteen to boot. How the Exterior View System bypasses the framework, and hands over once Android is ready."
+order: 1
+difficulty: "Advanced"
+tags: ["EVS", "Camera", "Boot", "Safety"]
+sources:
+  - label: "Exterior View System"
+    href: "https://source.android.com/docs/automotive/camera-hal"
+  - label: "EVS HAL interface"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/evs/"
+  - label: "CarEvsService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/evs/"
+---
+
+In many markets a reversing camera image is legally required within about two
+seconds of selecting reverse. Android takes fifteen or more to boot. That
+contradiction is why the Exterior View System exists.
+
+<DiagramFrame
+  title="Two paths to the same display"
+  caption="EVS runs as a native service outside the Android framework so it can meet a deadline the framework cannot. CarEvsService takes over later, once Android is up."
+>
+  <EvsBootPath />
+</DiagramFrame>
+
+## Why it cannot be an app
+
+An Android app needs: the kernel, init, the framework, SystemUI, the activity
+stack, SurfaceFlinger, and its own process. That chain is tens of seconds on a
+cold boot. The regulation does not care.
+
+So EVS is deliberately **not** an app:
+
+- It is a **native service**, started early in init.
+- It talks to a dedicated **EVS HAL** for camera and display.
+- It writes to the display directly, before SurfaceFlinger is composing anything.
+- It has no Java, no framework dependency, and no Binder to `system_server`.
+
+<Callout type="warning" title="On many vehicles this is not Android's job at all">
+Plenty of programmes put the reversing image on a separate MCU or a hypervisor
+guest entirely, precisely so it cannot be affected by an Android fault. If your
+programme does that, EVS is a handover interface rather than the primary path —
+find out which model you are on before designing anything.
+</Callout>
+
+## The HAL
+
+```cpp title="The EVS HAL surface, conceptually"
+interface IEvsEnumerator {
+    CameraDesc[] getCameraList();
+    IEvsCamera openCamera(in String cameraId, in Stream streamCfg);
+    IEvsDisplay openDisplay();
+    void closeCamera(in IEvsCamera camera);
+}
+
+interface IEvsCamera {
+    void startVideoStream(in IEvsCameraStream receiver);
+    void doneWithFrame(in BufferDesc[] buffers);
+    void stopVideoStream();
+}
+```
+
+Buffers are shared graphics buffers, not copies. The pipeline is designed so a
+frame goes camera → EVS → display with as few copies as possible, because the
+latency budget is small and the SoC is busy booting everything else.
+
+```bash title="Is EVS present and running?"
+adb shell lshal | grep -i evs
+adb shell ps -A | grep -i evs
+adb shell dumpsys car_service --services CarEvsService
+```
+
+## The handover
+
+Once Android is up, the framework wants control — to overlay guidelines, to
+composite the camera into a larger UI, to let an OEM app own the reversing
+experience. `CarEvsService` manages that transition.
+
+```kotlin title="An app requesting the camera stream"
+val evs = car.getCarManager(Car.CAR_EVS_SERVICE) as CarEvsManager
+
+evs.startVideoStream(
+    CarEvsManager.SERVICE_TYPE_REARVIEW,
+    /* token = */ null,
+    executor,
+    object : CarEvsManager.CarEvsStreamCallback {
+        override fun onStreamEvent(event: Int) {
+            when (event) {
+                CarEvsManager.STREAM_EVENT_STREAM_STOPPED -> releaseSurface()
+                CarEvsManager.STREAM_EVENT_OTHER_SERVICE_REQUESTED -> yieldStream()
+            }
+        }
+
+        override fun onNewFrame(buffer: CarEvsBufferDescriptor) {
+            render(buffer)
+            // MUST be returned, or the pipeline starves within a few frames.
+            evs.returnFrameBuffer(buffer)
+        }
+    },
+)
+```
+
+Two failure modes worth knowing:
+
+**Not returning buffers.** The buffer pool is small. Forgetting
+`returnFrameBuffer` stalls the stream in under a second, and it looks like a
+camera fault rather than an app bug.
+
+**Ignoring `OTHER_SERVICE_REQUESTED`.** Something with higher priority — usually
+the system reversing view — wants the camera. Yield promptly; the platform will
+take it regardless, and holding on produces a torn handover.
+
+## Requires `CAR_EVS` permissions
+
+Camera access on a vehicle is signature-level. An EVS client is a system app,
+not a third-party one, for obvious reasons.
+
+## Where the time actually goes
+
+When the two-second budget is missed, the causes are consistent and rarely in
+EVS itself:
+
+1. **Bootloader and kernel init** — before EVS can start at all.
+2. **Camera sensor initialisation** — some sensors need hundreds of milliseconds
+   to produce a first valid frame.
+3. **Display panel bring-up** — the panel's own power-on sequence.
+4. **The reverse signal path** — if reverse arrives over CAN and the network
+   stack is not up, EVS does not know to start.
+
+```bash title="Measuring it"
+adb shell bootstat --print
+adb logcat -b all | grep -iE 'evs|bootanim|SurfaceFlinger.*boot'
+adb shell dmesg | grep -iE 'evs|camera|panel'
+```
+
+<Callout type="tip" title="Instrument from the physical signal, not from boot">
+The deadline starts when the driver selects reverse, which on a cold start may be
+before or after power-on. Measure from the gear signal edge to first pixel, in
+hardware if you can. Software timestamps taken inside Android miss the part of
+the budget that is already spent.
+</Callout>
+
+## What to test
+
+- Cold boot, reverse selected **immediately** at power-on.
+- Reverse selected while the system is already running.
+- Reverse in and out repeatedly, quickly — handover under churn.
+- Camera disconnected or faulty — the display must fail visibly, not show a
+  frozen last frame.
+
+That last case matters more than it sounds. A stale frame showing an empty
+driveway while a child has walked behind the vehicle is the worst possible
+failure mode, and "freeze on last good frame" is a tempting, wrong default.
+
+## Next
+
+The instrument cluster — the other display Android does not fully own.

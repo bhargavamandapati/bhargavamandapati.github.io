@@ -1,0 +1,366 @@
+---
+title: "Add a custom vehicle property end to end"
+description: "A vendor property from ID allocation to an app reading it — config, permission, SEPolicy, car-lib constant and the six places it fails silently."
+order: 2
+difficulty: "Advanced"
+time: "2–4 hours"
+outcome: "A vendor property SEAT_MASSAGE_INTENSITY (0x25400501) readable and writable per seat, guarded by an OEM permission, visible in dumpsys and consumed by an app."
+prerequisites:
+  - label: "Your own VHAL"
+    href: "/tutorials/vehicle/custom-vhal/"
+  - label: "Anatomy of a vehicle property ID"
+    href: "/learn/vehicle-data/property-anatomy/"
+tags: ["VHAL", "Properties", "Permissions", "SEPolicy"]
+sources:
+  - label: "Vehicle property configuration"
+    href: "https://source.android.com/docs/automotive/vhal/property-configuration"
+  - label: "Special and vendor properties"
+    href: "https://source.android.com/docs/automotive/vhal/special-properties"
+  - label: "VehiclePropertyIds"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java"
+---
+
+Adding a property touches three partitions and six files. Miss one and you get
+the worst failure mode in this platform: no crash, no error, a value that is
+simply always its default.
+
+## Step 1 — Check it does not already exist
+
+```bash title="Search before you define"
+cd ~/aosp
+
+# The HAL-side enum
+grep -i "massage\|SEAT_" \
+  hardware/interfaces/automotive/vehicle/aidl/android/hardware/automotive/vehicle/VehicleProperty.aidl
+
+# The app-facing catalogue
+grep -i "SEAT_" packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java
+```
+
+Reusing a system property gives you its permission mapping, unit conventions and
+CTS coverage for free. Only define your own when nothing fits.
+
+## Step 2 — Allocate the ID
+
+```cpp title="vendor/oem/vega/vehicle/include/VegaProperties.h"
+#pragma once
+
+#include <aidl/android/hardware/automotive/vehicle/VehicleArea.h>
+#include <aidl/android/hardware/automotive/vehicle/VehiclePropertyGroup.h>
+#include <aidl/android/hardware/automotive/vehicle/VehiclePropertyType.h>
+
+namespace android::hardware::automotive::vehicle::vega {
+
+// Write the fields out rather than pasting a magic constant — a reviewer can
+// then check the encoding in five seconds.
+//
+//   VENDOR | SEAT | INT32 | 0x0501  ==  0x25400501
+constexpr int32_t kSeatMassageIntensity =
+        static_cast<int32_t>(aidl::android::hardware::automotive::vehicle::
+                                     VehiclePropertyGroup::VENDOR) |
+        static_cast<int32_t>(aidl::android::hardware::automotive::vehicle::
+                                     VehicleArea::SEAT) |
+        static_cast<int32_t>(aidl::android::hardware::automotive::vehicle::
+                                     VehiclePropertyType::INT32) |
+        0x0501;
+
+}  // namespace android::hardware::automotive::vehicle::vega
+```
+
+<Gotcha title="VENDOR group, always">
+`SYSTEM` is Google's namespace. Pick an unused SYSTEM id today and a future
+platform release will define it as something else — discovered during a platform
+bump, late, on someone else's schedule. Custom properties are `VENDOR`.
+</Gotcha>
+
+Record it in a registry file your whole programme shares. Two teams choosing
+`0x0501` independently is a real and recurring failure.
+
+## Step 3 — Declare the config
+
+```cpp title="VegaVehicleHardware.cpp — add to getAllPropertyConfigs()"
+VehiclePropConfig{
+        .prop = kSeatMassageIntensity,
+        .access = VehiclePropertyAccess::READ_WRITE,
+        .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+        .areaConfigs =
+                {
+                        VehicleAreaConfig{
+                                .areaId = toInt(VehicleAreaSeat::ROW_1_LEFT),
+                                .minInt32Value = 0,
+                                .maxInt32Value = 5,
+                        },
+                        VehicleAreaConfig{
+                                .areaId = toInt(VehicleAreaSeat::ROW_1_RIGHT),
+                                .minInt32Value = 0,
+                                .maxInt32Value = 5,
+                        },
+                },
+},
+```
+
+<Gotcha title="Two area configs, not one OR'd mask">
+`ROW_1_LEFT | ROW_1_RIGHT` in a single config means "one value covering both
+seats". Two separate configs mean "two independently addressable seats". Both are
+legal and they are not interchangeable — the difference surfaces when someone
+adjusts the passenger seat and the driver's moves.
+</Gotcha>
+
+Seed initial values in the constructor so early reads succeed:
+
+```cpp title="VegaVehicleHardware.cpp — constructor"
+for (int32_t area : {toInt(VehicleAreaSeat::ROW_1_LEFT),
+                     toInt(VehicleAreaSeat::ROW_1_RIGHT)}) {
+    VehiclePropValue v{
+            .timestamp = elapsedRealtimeNano(),
+            .areaId = area,
+            .prop = kSeatMassageIntensity,
+            .status = VehiclePropertyStatus::AVAILABLE,
+    };
+    v.value.int32Values = {0};
+    mValues[Key(kSeatMassageIntensity, area)] = std::move(v);
+}
+```
+
+## Step 4 — Implement the write path
+
+```cpp title="VegaVehicleHardware.cpp — setValues"
+StatusCode VegaVehicleHardware::setValues(
+        std::shared_ptr<const SetValuesCallback> callback,
+        const std::vector<SetValueRequest>& requests) {
+    std::vector<SetValueResult> results;
+    std::vector<VehiclePropValue> updates;
+    results.reserve(requests.size());
+
+    for (const auto& request : requests) {
+        SetValueResult result;
+        result.requestId = request.requestId;      // always echo it back
+        const auto& value = request.value;
+
+        if (value.prop != kSeatMassageIntensity) {
+            result.status = StatusCode::INVALID_ARG;
+            results.push_back(std::move(result));
+            continue;
+        }
+        if (value.value.int32Values.size() != 1) {
+            result.status = StatusCode::INVALID_ARG;
+            results.push_back(std::move(result));
+            continue;
+        }
+
+        const int32_t level = value.value.int32Values[0];
+        // Reject out of range. Do NOT clamp silently — the caller believes the
+        // write succeeded and will render the value it asked for.
+        if (level < 0 || level > 5) {
+            result.status = StatusCode::INVALID_ARG;
+            results.push_back(std::move(result));
+            continue;
+        }
+
+        VehiclePropValue stored{
+                .timestamp = elapsedRealtimeNano(),
+                .areaId = value.areaId,
+                .prop = kSeatMassageIntensity,
+                .status = VehiclePropertyStatus::AVAILABLE,
+        };
+        stored.value.int32Values = {level};
+
+        {
+            std::lock_guard<std::mutex> lock(mLock);
+            mValues[Key(kSeatMassageIntensity, value.areaId)] = stored;
+        }
+        updates.push_back(std::move(stored));
+
+        result.status = StatusCode::OK;
+        results.push_back(std::move(result));
+    }
+
+    (*callback)(std::move(results));
+
+    // Publish the change so subscribers see it — including changes the vehicle
+    // itself makes, not only ones Android requested.
+    if (!updates.empty() && mOnChange) {
+        (*mOnChange)(std::move(updates));
+    }
+    return StatusCode::OK;
+}
+```
+
+## Step 5 — Declare the permission
+
+```xml title="device/oem/vega/overlay/frameworks/base/core/res/AndroidManifest.xml"
+<permission
+    android:name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"
+    android:protectionLevel="signature|privileged"
+    android:label="@string/perm_seat_massage_label"
+    android:description="@string/perm_seat_massage_desc" />
+```
+
+```xml title="device/oem/vega/privapp-permissions-vega.xml"
+<permissions>
+  <privapp-permissions package="com.oem.vega.comfort">
+    <permission name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"/>
+  </privapp-permissions>
+</permissions>
+```
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_COPY_FILES += \
+    device/oem/vega/privapp-permissions-vega.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-vega.xml
+```
+
+<Gotcha title="A missing privapp entry stops the boot">
+If a privileged app requests a signature permission not listed in a
+`privapp-permissions` file, `userdebug` builds refuse to boot. This is
+deliberate — a silent security gap becomes an obvious failure. When your image
+stops booting right after adding a permission, look here first.
+</Gotcha>
+
+## Step 6 — Add the constant to car-lib
+
+Apps need a Java constant. Put it in your own library rather than patching
+`VehiclePropertyIds`, so a platform upgrade does not conflict:
+
+```java title="vendor/oem/vega/lib/src/com/oem/vega/car/VegaPropertyIds.java"
+package com.oem.vega.car;
+
+public final class VegaPropertyIds {
+    private VegaPropertyIds() {}
+
+    /** VENDOR | SEAT | INT32 | 0x0501 — seat massage intensity, 0-5. */
+    public static final int SEAT_MASSAGE_INTENSITY = 0x25400501;
+}
+```
+
+```json title="vendor/oem/vega/lib/Android.bp"
+java_library {
+    name: "vega-car-lib",
+    srcs: ["src/**/*.java"],
+    sdk_version: "system_current",
+    product_specific: true,
+}
+```
+
+## Step 7 — Build, flash, verify the platform side
+
+```bash
+m vendor.vega.vehicle vega-car-lib && m -j
+emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 40
+```
+
+<Verify title="Verify the property exists before writing any app code">
+```bash
+# 1. In the config list at all — if not, stop here and fix the config
+adb shell dumpsys car_service --list-properties | grep -i 0x25400501
+
+# 2. Full config: access, change mode, both areas, ranges
+adb shell dumpsys car_service --property 0x25400501
+
+# 3. Read each area independently
+adb shell dumpsys car_service --get-property 0x25400501 -a 1    # ROW_1_LEFT
+adb shell dumpsys car_service --get-property 0x25400501 -a 4    # ROW_1_RIGHT
+
+# 4. Write, then read back
+adb shell dumpsys car_service --set-property 0x25400501 -a 1 3
+adb shell dumpsys car_service --get-property 0x25400501 -a 1    # 3
+
+# 5. Out of range must be REJECTED, not clamped
+adb shell dumpsys car_service --set-property 0x25400501 -a 1 9
+adb shell dumpsys car_service --get-property 0x25400501 -a 1    # still 3
+
+# 6. No denials
+adb shell dmesg | grep -c 'avc.*denied.*vega'
+```
+
+Item 5 is the one people skip. A HAL that clamps silently produces a UI that
+shows 9 while the seat is at 5.
+</Verify>
+
+## Step 8 — Consume it from an app
+
+```kotlin title="SeatMassageController.kt" showLineNumbers
+class SeatMassageController(context: Context) {
+
+    private var properties: CarPropertyManager? = null
+
+    private val callback = object : CarPropertyManager.CarPropertyEventCallback {
+        override fun onChangeEvent(value: CarPropertyValue<*>) {
+            if (value.status != CarPropertyValue.STATUS_AVAILABLE) return
+            // Render from vehicle state, never optimistically.
+            render(value.areaId, value.value as Int)
+        }
+
+        // A rejected set arrives HERE, not as an exception.
+        override fun onErrorEvent(propertyId: Int, areaId: Int) {
+            Log.w(TAG, "massage set rejected: area=$areaId")
+            resyncFromVehicle(areaId)
+        }
+    }
+
+    // Use the lifecycle form: Car Service restarts, and every manager you hold
+    // becomes permanently invalid when it does.
+    private val car = Car.createCar(
+        context, null, Car.CAR_WAIT_TIMEOUT_DO_NOT_WAIT,
+    ) { car, ready ->
+        if (!ready) { properties = null; return@createCar }
+        properties = (car.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager).also {
+            it.registerCallback(
+                callback,
+                VegaPropertyIds.SEAT_MASSAGE_INTENSITY,
+                CarPropertyManager.SENSOR_RATE_ONCHANGE,
+            )
+        }
+    }
+
+    fun setIntensity(areaId: Int, level: Int) {
+        properties?.setIntProperty(
+            VegaPropertyIds.SEAT_MASSAGE_INTENSITY, areaId, level,
+        )
+    }
+}
+```
+
+```xml title="The app's manifest"
+<uses-permission android:name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"/>
+```
+
+<Verify title="Verify the app can actually reach it">
+```bash
+# The permission was granted (privileged app, allowlisted)
+adb shell dumpsys package com.oem.vega.comfort | grep -i seat_massage
+
+# Watch the property move as the app writes
+adb shell dumpsys car_service --get-property 0x25400501 -a 1
+```
+
+A `SecurityException` here means the permission is declared but not granted —
+check the `privapp-permissions` file actually landed in the image.
+</Verify>
+
+## The six-point checklist
+
+When a property does not work, walk this in order. It resolves almost every case:
+
+1. `--list-properties` — does the platform know about it? If not, the config is wrong.
+2. `lshal | grep vehicle` — is the HAL running?
+3. `dmesg | grep avc` — SELinux denial?
+4. `--get-property` — does the HAL return a value at all?
+5. Does the app hold the permission, and is it in `privapp-permissions`?
+6. Is `timestamp` `CLOCK_BOOTTIME` nanoseconds, and are you publishing changes
+   the vehicle originated?
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Not in `--list-properties` | Config not returned by `getAllPropertyConfigs` |
+| `IllegalArgumentException` in app | Property or area not in the config |
+| `SecurityException` | Permission not declared, or privapp entry missing |
+| Value always 0 | Initial value seeded but the write path never stores |
+| Setting one seat changes both | One area config with an OR'd mask |
+| UI drifts from the vehicle | Rendering optimistically; render from `onChangeEvent` |
+| Image will not boot | Missing `privapp-permissions` entry |
+
+## Next
+
+When the property model is the wrong shape, define your own interface instead.

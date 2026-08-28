@@ -1,0 +1,331 @@
+---
+title: "The AAOS stack, layer by layer"
+description: "A map of the whole platform, explained one layer at a time — what each layer is for, who writes it, and a worked example following a single temperature reading from a sensor in the car to the number on the screen."
+order: 2
+difficulty: "Beginner"
+tags: ["Architecture", "AAOS", "Treble"]
+sources:
+  - label: "Automotive architecture (source.android.com)"
+    href: "https://source.android.com/docs/automotive/start/architecture"
+  - label: "Vehicle HAL reference"
+    href: "https://source.android.com/docs/automotive/vhal"
+  - label: "Project Treble"
+    href: "https://source.android.com/docs/core/architecture/treble"
+  - label: "packages/services/Car on cs.android.com"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/"
+---
+
+Almost every AAOS bug you will ever debug comes down to one question: **which
+layer is lying to you?**
+
+A number on the screen is wrong. Is the sensor wrong? Is the car's own computer
+sending the wrong value? Is Android misreading it? Is the app displaying it
+badly? Until you can name the layers, you cannot answer that, and you end up
+guessing.
+
+So this page is the map. Take your time with it — everything else in the
+curriculum refers back to it.
+
+## First, the shape of the problem
+
+A car contains dozens of small computers called <T>ECU</T>s. One controls the
+engine, another the doors, another the climate system. They were designed decades
+before Android existed and they know nothing about it.
+
+Android needs to show the driver what those computers know, and sometimes tell
+them to do something. But Android cannot simply "read the car" — there is no such
+thing. It has to go through several translation steps.
+
+The stack is those translation steps, stacked up.
+
+<DiagramFrame
+  title="The Android Automotive OS stack"
+  caption="Read it from the top down. Everything above the dashed line ships from AOSP and is broadly the same on every AAOS vehicle. Everything below it is written by the car maker or their supplier, and is different on every vehicle."
+>
+  <AaosStack />
+</DiagramFrame>
+
+<Plain>
+Seven layers, but they group into three ideas:
+
+1. **The top three** are Android as you already know it — apps and the framework.
+2. **The middle two** are the car-specific part of Android: Car Service and the
+   Vehicle HAL.
+3. **The bottom two** are the car itself, which is not Android at all.
+
+The dashed line is the boundary between "Google's code" and "the car maker's
+code". Most integration problems happen right around it.
+</Plain>
+
+## Walking down the layers
+
+### Layer 1 — Automotive apps
+
+These are ordinary Android apps, with two extra rules.
+
+First, they cannot touch the vehicle directly. There is no way for an app to open
+the car's wiring and read a message. It must ask the platform.
+
+Second, they must obey the driver distraction rules covered later in the
+curriculum — limits on what may be displayed while the car is moving.
+
+<Plain>
+If you write an app for a car, you are on this layer. You do not modify anything
+below it; you use it.
+</Plain>
+
+### Layer 2 — The Car API (`android.car`)
+
+This is a library your app links against. It is the *public* face of everything
+car-related.
+
+You already know this pattern from ordinary Android: to play a sound you use
+`android.media`; to send a notification you use `android.app`. To read the cabin
+temperature you use <T>android.car</T>.
+
+The two names worth knowing here:
+
+- `VehiclePropertyIds` — the catalogue of every piece of vehicle data Android
+  defines, as a long list of constants.
+- <T>CarPropertyManager</T> — the object you actually call to read or watch a
+  value.
+
+<Analogy title="Like a menu and a waiter">
+`VehiclePropertyIds` is the menu: it lists everything that can be ordered.
+`CarPropertyManager` is the waiter: you tell them what you want and they go and
+get it. Neither of them cooks anything — the kitchen is several layers down.
+</Analogy>
+
+### Layer 3 — The Android framework
+
+The ordinary Android you already know: activity management, window management,
+the package manager. AAOS does not replace this. It adds to it.
+
+### Layer 4 — Car Service
+
+Now we are into the genuinely automotive part.
+
+<T>Car Service</T> is a single process — `com.android.car` — that holds about a
+dozen smaller services inside it. It is the centre of gravity of the whole
+platform.
+
+| Inside Car Service | What it owns |
+| --- | --- |
+| `CarPropertyService` | All vehicle data, and who is allowed to see it |
+| `CarAudioService` | Which speakers a sound comes out of |
+| `CarPowerManagementService` | What happens when the car is switched off |
+| `CarUserService` | Driver profiles and switching between them |
+| `CarUxRestrictionsManagerService` | What the screen may show while moving |
+| `CarWatchdogService` | Noticing when something has stopped responding |
+
+<Plain>
+When your app calls `CarPropertyManager.getFloatProperty(...)`, that call travels
+into Car Service. Car Service checks whether your app is allowed, then asks the
+layer below. It is the gatekeeper for everything vehicle-related.
+</Plain>
+
+<Scenario title="Why one command is worth learning first">
+A colleague says the cabin temperature reads 0 °C on the test vehicle, in July.
+
+Before opening any code, run:
+
+```bash
+adb shell dumpsys car_service --list-properties
+```
+
+This asks Car Service: *what vehicle data do you know about?* If
+`HVAC_TEMPERATURE_CURRENT` is not in that list, the problem is not in the app,
+not in Car Service, and not in the API. The layer below never told Android the
+property exists — so no amount of app debugging will help.
+
+That single command routinely saves an afternoon, and it works because Car
+Service sits at exactly the right point in the stack to answer the question.
+</Scenario>
+
+### Layer 5 — The Vehicle HAL
+
+The <T>VHAL</T> is the narrowest point in the entire stack, and deliberately so.
+
+It offers exactly one thing: a list of named values — <T>vehicle property</T> —
+each of which can be read, written, or watched for changes. That is the whole
+interface.
+
+<Analogy title="Like a hotel reception desk">
+Guests do not wander into the kitchen, the laundry or the boiler room. They ask
+at reception, and reception knows how to reach each department.
+
+The VHAL is that desk. Android never talks to the engine computer or the door
+controller. It asks the VHAL, and the VHAL knows how to reach them.
+
+The reason hotels work this way is the same reason cars do: it means the
+departments can be reorganised without teaching every guest a new route.
+</Analogy>
+
+<Plain>
+Why so narrow? Because this interface has to stay stable for fifteen years while
+everything on both sides of it changes. A small, simple interface is easier to
+keep unchanged than a rich one.
+
+Every time the property model feels limiting, that is the reason.
+</Plain>
+
+### Layer 6 — The vendor vehicle network service
+
+This layer is **not** in AOSP. It is written by the car maker or their supplier,
+and it is different on every vehicle.
+
+Its job is to actually talk to the car: open the <T>CAN</T> connection, read
+messages, and convert raw numbers into the units the VHAL promised.
+
+<Scenario title="The classic scaling bug">
+A door sensor broadcasts the value `215` on the vehicle network. That is not 215
+of anything — the ECU's documentation says the real temperature is
+`value × 0.1 − 40`, so `215` means `−18.5 °C`.
+
+If this layer forgets to apply that conversion, Android faithfully reports
+`215 °C`. Nothing crashes. No error appears anywhere. The UI displays a number
+that is confidently, precisely wrong.
+
+This is why "wrong but stable" values are almost always a translation problem in
+this layer, and why the first question is always "what does the raw bus value
+say?"
+</Scenario>
+
+### Layer 7 — The buses and ECUs
+
+The car's own electronics. Dozens to hundreds of small computers, wired together
+with <T>CAN</T> and other networks, running software that is not Android and was
+often written before Android existed.
+
+## The dashed line: Treble
+
+The dashed line in the diagram is the most important architectural fact in AAOS,
+and it has a name: <T>Treble</T>.
+
+Android is split into separate storage areas called partitions:
+
+- **`/system`** holds the Android framework. Google and the car maker's platform
+  team update this.
+- **`/vendor`** holds hardware-specific code — including the VHAL. The supplier
+  writes this, and it is often frozen for years.
+
+They are only allowed to talk to each other through **fixed, versioned
+interfaces**. Not by sharing code. Not by sharing data structures. Not by one
+calling a function in the other.
+
+<Analogy title="Like a plug and a socket">
+You can replace a lamp without rewiring the house. You can rewire the house
+without buying new lamps. That only works because the plug shape is agreed and
+does not change.
+
+Treble is that agreement. `/system` is the house wiring; `/vendor` is the lamp.
+</Analogy>
+
+<Plain>
+**Why this exists:** a car is sold and then driven for fifteen years. Android
+releases a new version every year. Without this separation, updating Android
+would mean every supplier rewriting and re-testing everything they delivered —
+which in practice means the update never happens, and vehicles stay on old,
+unpatched software.
+
+Treble is what makes it possible to ship a security fix to a seven-year-old car.
+Every restriction it imposes is buying that.
+</Plain>
+
+<Scenario title="A conversation you will have">
+Someone asks: *"Can you just add a field to that struct so the HAL can pass us
+one more value?"*
+
+The answer is no, and the reason is not bureaucracy. That struct is part of a
+versioned interface with a binary compatibility guarantee. Adding a field means
+publishing a new version of the interface, supporting both in parallel, and
+updating the manifest that declares which one the device provides.
+
+It is a scheduled piece of work, not a five-minute change. Knowing that early
+prevents a lot of disappointment later.
+</Scenario>
+
+## Following one value all the way down
+
+Here is the whole stack in one worked example. Your app wants to display the
+cabin temperature.
+
+```kotlin title="What your app writes"
+val car = Car.createCar(context)
+val propertyManager = car.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
+
+val temperature = propertyManager.getFloatProperty(
+    VehiclePropertyIds.HVAC_TEMPERATURE_CURRENT,   // which value
+    VehicleAreaSeat.SEAT_ROW_1_LEFT,               // for which seat
+)
+```
+
+Three lines. Here is what actually happens:
+
+**1. Your app asks the Car API.** `getFloatProperty` is a normal method call
+inside your own process. Nothing has left your app yet.
+
+**2. The request crosses to Car Service.** This is <T>Binder</T> — Android's way
+for one process to ask another process to do something. Your app pauses while it
+waits for an answer.
+
+**3. Car Service checks permission.** Does this app hold
+`android.car.permission.CONTROL_CAR_CLIMATE`? If not, it stops here and your app
+receives a `SecurityException`.
+
+**4. Car Service asks the VHAL.** "Give me property
+`HVAC_TEMPERATURE_CURRENT` for area `SEAT_ROW_1_LEFT`."
+
+**5. The VHAL answers from its cache.** It does not go and ask the car right now
+— its own background thread has been listening to the vehicle network and
+keeping a recent value. It hands back what it last heard.
+
+**6. The value travels back up** through the same path, and `getFloatProperty`
+returns `21.5f`.
+
+<Plain>
+Six places for that number to be wrong. When it is wrong, walk them in order
+rather than guessing:
+
+1. Is the app asking for the right property and the right seat?
+2. Does the app hold the permission? (`SecurityException` if not)
+3. Does Car Service know the property exists? (`--list-properties`)
+4. Is the VHAL running at all? (`adb shell lshal | grep vehicle`)
+5. Is the VHAL's cached value correct? (`--get-property`)
+6. Is the raw value from the car being converted correctly?
+
+Steps 3, 4 and 5 are single commands. Most engineers start at step 1, spend two
+hours there, and the answer was step 3.
+</Plain>
+
+## Layers you are allowed to change
+
+Worth knowing early, because it shapes what job you are actually doing:
+
+| Layer | Can you change it? |
+| --- | --- |
+| Apps | Yes — this is ordinary app development |
+| Car API | Only if you work on the platform |
+| Framework | Only if you work on the platform, and it risks CTS failures |
+| Car Service | Yes, if you are the car maker — but it is an AOSP fork to maintain |
+| Vehicle HAL | Yes — this is the supplier's code |
+| Vendor network service | Yes — this is entirely the supplier's |
+| ECUs | A different team, often a different company |
+
+<Recap>
+- The stack exists because a car's computers and Android speak different
+  languages. Each layer is a translation step.
+- **Car Service** is the gatekeeper: everything vehicle-related passes through
+  it, and it checks permissions.
+- The **VHAL** is deliberately narrow — one list of named values — so it can stay
+  unchanged for fifteen years.
+- **Treble** is the hard boundary between Android's code and the car maker's
+  code. It exists so Android can be updated on old vehicles.
+- When a value is wrong, **name the layer before guessing.**
+  `dumpsys car_service --list-properties` and `lshal | grep vehicle` answer more
+  questions faster than reading code.
+</Recap>
+
+## Next
+
+Getting a build running on your own machine, so you can try all of this.

@@ -1,0 +1,132 @@
+---
+title: "Bluetooth on a head unit"
+description: "Four profiles, one paired phone, and a driver who blames the car when any of them drops. Pairing policy, profile priorities and the reconnection behaviour that decides perceived quality."
+order: 1
+difficulty: "Intermediate"
+tags: ["Bluetooth", "Connectivity", "Pairing"]
+sources:
+  - label: "Bluetooth in automotive"
+    href: "https://source.android.com/docs/automotive/bluetooth"
+  - label: "Android Bluetooth architecture"
+    href: "https://source.android.com/docs/core/connect/bluetooth"
+  - label: "Car Bluetooth sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Settings/"
+---
+
+Bluetooth is the most-used connectivity feature in most vehicles and the one that
+generates the most complaints. Almost none of those complaints are about
+throughput — they are about *reconnection*.
+
+<DiagramFrame
+  title="One pairing, four concurrent profiles"
+  caption="A driver pairs once and expects calls, media, transport control and contacts to all work at once, every time, without thinking about it."
+>
+  <BluetoothProfiles />
+</DiagramFrame>
+
+## The profiles that matter
+
+| Profile | Carries | Fails as |
+| --- | --- | --- |
+| **HFP** | Hands-free calling, call control | "I can't take calls in the car" |
+| **A2DP** | Media audio streaming | "Music won't play" |
+| **AVRCP** | Track metadata and transport control | "The steering wheel buttons do nothing" |
+| **PBAP** | Phonebook and call history | "It doesn't know my contacts" |
+| **MAP** | Messages | "It won't read my texts" |
+
+All five run over one connection to one phone, simultaneously. A vehicle that
+connects A2DP but silently fails HFP looks completely broken to the driver even
+though four-fifths of it worked.
+
+## Automotive-specific policy
+
+Phone Bluetooth is user-driven: you open settings and connect. Vehicle Bluetooth
+must be automatic, because the driver is driving.
+
+**Autoconnect on ignition.** The head unit reconnects to known devices when the
+vehicle starts, in a defined priority order, without being asked.
+
+**A priority list, not a single device.** A household may have several paired
+phones. The platform maintains an ordered list and tries them in turn.
+
+**Per-profile connection state.** Profiles connect independently and can fail
+independently. Retry policy is per profile.
+
+```bash title="Inspecting the state"
+adb shell dumpsys bluetooth_manager | grep -A30 -i 'Bonded devices'
+adb shell dumpsys bluetooth_manager | grep -iE 'profile|connection state'
+adb shell dumpsys car_service --services CarBluetoothService
+```
+
+<Callout type="warning" title="Reconnection is the whole product">
+Drivers pair once and then judge the vehicle on whether it reconnects, silently
+and completely, every single time. A stack that connects perfectly when you
+initiate manually and reconnects 90% of the time on ignition will be reported as
+"Bluetooth doesn't work". The remaining 10% is the entire user experience.
+</Callout>
+
+## Pairing while driving
+
+Pairing requires reading a code and confirming it — precisely the kind of
+interaction UX restrictions block. Most OEMs restrict initiating a new pairing
+while the vehicle is moving, and that is the correct choice.
+
+Design consequence: **the pairing flow is a parked experience**, and everything
+after it must require nothing.
+
+## Audio routing for calls
+
+HFP call audio is not media. It has its own context, its own bus and its own
+volume group, from the audio module:
+
+```xml title="car_audio_configuration.xml — call routing"
+<group>
+  <device address="bus3_call_out">
+    <context context="call"/>
+    <context context="call_ring"/>
+  </device>
+</group>
+```
+
+Call audio is also the case where echo cancellation, noise suppression and
+microphone routing matter most — and where the amplifier and microphone array,
+not Android, do most of the work.
+
+```bash title="Following call audio"
+adb shell dumpsys audio | grep -i -A10 'mode\|IN_CALL'
+adb shell dumpsys telecom | grep -i -A5 'audio route'
+```
+
+## AVRCP metadata
+
+AVRCP carries track title, artist and position from the phone to the head unit.
+Two versions behave differently, and both exist in the field: older ones send
+minimal metadata and no browsing, newer ones support browsing the phone's library
+and absolute volume.
+
+The practical implication is that **you cannot rely on metadata being complete**.
+Missing artwork, missing duration and a position that does not advance are all
+normal for some phones. Render what arrives; do not lay out assuming all of it.
+
+## What to test
+
+The scenarios that find real defects:
+
+1. **Ignition cycle with the phone present** — does everything reconnect?
+2. **Ignition cycle with the phone absent**, then it arrives five minutes later.
+3. **Two known phones present** — does the priority order hold, deterministically?
+4. **A call arriving while media is playing** — does media pause and *resume*?
+5. **Walking out of range mid-call** — does the call transfer to the phone
+   cleanly, or does it drop?
+6. **Phone OS upgrade** — behaviour changes across phone releases and you do not
+   control it.
+
+<Callout type="tip" title="Build a phone matrix and keep it">
+Bluetooth interoperability is empirical. Every programme ends up with a rack of
+phones, and the ones that ship well are the ones that started that rack early and
+ran the six scenarios above on every phone after every stack change.
+</Callout>
+
+## Next
+
+Telephony — including the call the vehicle places on its own.

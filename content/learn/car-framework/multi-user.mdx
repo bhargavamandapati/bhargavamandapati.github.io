@@ -1,0 +1,185 @@
+---
+title: "The headless system user model"
+description: "Why user 0 never reaches the screen, what actually happens during a user switch, and the assumptions from phone Android that will break your automotive app."
+order: 4
+difficulty: "Advanced"
+tags: ["Multi-user", "CarUserService", "Framework"]
+sources:
+  - label: "Multi-user support in automotive"
+    href: "https://source.android.com/docs/automotive/multi_user"
+  - label: "Headless system user mode"
+    href: "https://source.android.com/docs/devices/admin/multi-user#headless-system-user-mode"
+  - label: "CarUserService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/user/CarUserService.java"
+---
+
+On a phone, user 0 is you. On a vehicle, user 0 is nobody — and that single
+difference invalidates a surprising amount of ordinary Android code.
+
+<DiagramFrame
+  title="Headless system user"
+  caption="User 0 runs the platform and never appears on screen. Drivers are separate users layered on top, switchable without restarting anything underneath."
+>
+  <UserModel />
+</DiagramFrame>
+
+## Why a car needs this
+
+A vehicle is shared. Two drivers want their own accounts, apps, media history and
+seat preferences — but the car itself must work before anyone logs in, and must
+keep working during a switch. Climate cannot stop because someone changed profile.
+
+So AAOS separates two concerns:
+
+- **The vehicle** — audio routing, HVAC, connectivity, the VHAL clients. Runs as
+  the **system user (user 0)**, permanently, headlessly.
+- **The person** — apps, accounts, preferences. A **foreground user** (10, 11, …)
+  that can be switched at any time.
+
+This is *headless system user mode*. It is not automotive-only, but automotive is
+where it is universal.
+
+## What runs where
+
+| Runs as user 0 | Runs as the foreground user |
+| --- | --- |
+| Car Service and all subservices | Launcher and system UI surfaces for the user |
+| Vehicle HAL clients | Media, navigation, messaging apps |
+| Audio routing and policy | Anything with per-user accounts or data |
+| Connectivity, telephony stack | Anything the driver personalises |
+| OEM vehicle-control services | |
+
+The rule of thumb: **if it must work with nobody logged in, it belongs to user 0.**
+
+## The assumptions that break
+
+Code written for phones carries assumptions that are simply false here.
+
+### "User 0 is the user"
+
+```kotlin title="Wrong on automotive"
+val userId = UserHandle.USER_SYSTEM  // 0 — the headless system user, not a person
+```
+
+```kotlin title="Right"
+val current = ActivityManager.getCurrentUser()   // the foreground user
+```
+
+Anything scoped to a person — files, accounts, preferences — must use the current
+foreground user, not user 0.
+
+### "There is exactly one user session for my process"
+
+A service running as user 0 outlives every user switch. A service running as the
+foreground user is torn down and recreated on each switch. Which one you are
+changes your entire lifecycle, and it is decided by your manifest and where the
+app is installed, not by your code.
+
+### "`Context` is user-agnostic"
+
+It is not. `context.filesDir` for a user 0 service and for a foreground-user app
+are different directories. Sharing state between them requires an explicit,
+permission-checked mechanism — not a shared path.
+
+<Callout type="warning" title="SharedPreferences do not cross the user boundary">
+A user 0 service writing preferences and a foreground app reading them are using
+two different files, silently. This produces "the setting does not save" bugs
+that look like a persistence problem and are actually a user-scoping problem.
+</Callout>
+
+## What a user switch actually does
+
+```text title="Foreground user 10 -> 11"
+1. CarUserService receives the switch request
+2. Pre-switch listeners are notified  (apps may block briefly, with a timeout)
+3. User 10's foreground processes are stopped
+4. User 11 is started, or resumed if already running
+5. User 11's launcher and UI come up
+6. Post-switch listeners fire
+
+Throughout all of the above: user 0 never restarts.
+Climate, audio routing and the VHAL clients keep running.
+```
+
+Observe it directly:
+
+```bash title="Watching a switch"
+adb shell dumpsys car_service --services CarUserService
+adb shell am get-current-user
+adb logcat -b all | grep -iE 'CarUserService|user.*switch'
+```
+
+## Reacting to switches
+
+```kotlin title="Listening for user lifecycle events"
+val userManager = car.getCarManager(Car.CAR_USER_SERVICE) as CarUserManager
+
+userManager.addListener(executor) { event ->
+    when (event.eventType) {
+        CarUserManager.USER_LIFECYCLE_EVENT_TYPE_SWITCHING ->
+            // Fires BEFORE the switch. Flush state now; you have a deadline.
+            persistPendingState()
+
+        CarUserManager.USER_LIFECYCLE_EVENT_TYPE_STARTING,
+        CarUserManager.USER_LIFECYCLE_EVENT_TYPE_UNLOCKED ->
+            reloadForUser(event.userHandle)
+
+        CarUserManager.USER_LIFECYCLE_EVENT_TYPE_STOPPED ->
+            releaseUserResources(event.userHandle)
+    }
+}
+```
+
+<Callout type="tip" title="Pre-switch listeners are on a timer">
+`SWITCHING` gives you a short window to flush state, and the platform will
+proceed whether you finish or not — a user switch cannot be held hostage by a
+slow app. Persist quickly and asynchronously; do not do network I/O here.
+</Callout>
+
+## Guest and ephemeral users
+
+Most vehicles ship a guest user that is wiped on exit. If your app can be used by
+a guest, assume its data is gone next time and never rely on local persistence
+for anything that matters.
+
+```kotlin
+val userManager = context.getSystemService(UserManager::class.java)
+if (userManager.isGuestUser) {
+    // Offer sign-in rather than assuming a durable profile.
+}
+```
+
+## Occupant zones tie users to seats
+
+On a multi-display vehicle, `CarOccupantZoneManager` maps users to displays and
+seats — driver on the centre display, a passenger with their own user on a second
+screen, rear-seat entertainment on a third.
+
+```kotlin title="Which display belongs to whom"
+val zones = car.getCarManager(Car.CAR_OCCUPANT_ZONE_SERVICE)
+        as CarOccupantZoneManager
+
+zones.allOccupantZones.forEach { zone ->
+    val user = zones.getUserForOccupant(zone)
+    val display = zones.getDisplayForOccupant(
+        zone, CarOccupantZoneManager.DISPLAY_TYPE_MAIN,
+    )
+}
+```
+
+Which means "the current user" is genuinely ambiguous on such a vehicle. There
+may be several foreground users at once, on different screens. Code that assumes
+one is going to misbehave on exactly the flagship trim the OEM cares most about.
+
+## A practical checklist
+
+- Does this need to work with nobody logged in? → user 0.
+- Does it hold personal data? → foreground user, and handle switches.
+- Are you reading `UserHandle.USER_SYSTEM` where you mean "the driver"? → bug.
+- Does your state survive a switch? Test it — `am switch-user 11`.
+- Does your app behave on a guest user that gets wiped? Test that too.
+
+## Next
+
+The HMI module covers what the driver actually sees, and the rules the platform
+enforces on it.

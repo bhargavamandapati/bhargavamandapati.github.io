@@ -1,0 +1,258 @@
+---
+title: "Add a native daemon started by init"
+description: "A vendor service written in C++, built with Soong, started by init at boot — and the SELinux denial you will hit immediately."
+order: 2
+difficulty: "Intermediate"
+time: "1–2 hours"
+outcome: "A vendor.vega.telemetryd daemon running on the device at boot, writing to its own log — plus a deliberate SELinux failure you will fix in the next tutorial."
+prerequisites:
+  - label: "Your own lunch target"
+    href: "/tutorials/platform/custom-lunch-target/"
+tags: ["init", "Soong", "Native", "Daemon"]
+sources:
+  - label: "Android init language"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/core/init/README.md"
+  - label: "Soong build system"
+    href: "https://source.android.com/docs/setup/build"
+  - label: "Android logging"
+    href: "https://source.android.com/docs/core/tests/debug/understanding-logging"
+---
+
+Most vendor code that talks to hardware is a native daemon started by init. This
+builds the smallest useful one, and then deliberately walks into the SELinux wall
+so the next tutorial has something real to fix.
+
+<FileTree>
+vendor/oem/vega/telemetryd/
+├── Android.bp                # Soong module
+├── vega-telemetryd.rc        # init service definition
+└── main.cpp                  # the daemon itself
+</FileTree>
+
+## Step 1 — Write the daemon
+
+```bash title="Create the module directory"
+mkdir -p vendor/oem/vega/telemetryd
+```
+
+```cpp title="vendor/oem/vega/telemetryd/main.cpp" showLineNumbers
+#define LOG_TAG "vega-telemetryd"
+
+#include <android-base/logging.h>
+#include <android-base/properties.h>
+
+#include <chrono>
+#include <fstream>
+#include <thread>
+
+namespace {
+
+constexpr char kStatePath[] = "/data/vendor/vega/telemetry.log";
+
+void WriteSample(int sequence) {
+    // Deliberately writes to a vendor data directory that does not yet have
+    // a SELinux label. This WILL be denied — that is the point of step 5.
+    std::ofstream out(kStatePath, std::ios::app);
+    if (!out) {
+        PLOG(ERROR) << "cannot open " << kStatePath;
+        return;
+    }
+    out << "sample=" << sequence << "\n";
+}
+
+}  // namespace
+
+int main(int /*argc*/, char** /*argv*/) {
+    android::base::InitLogging(nullptr, android::base::LogdLogger());
+
+    const std::string variant =
+        android::base::GetProperty("ro.oem.vehicle.variant", "unknown");
+    LOG(INFO) << "starting, variant=" << variant;
+
+    // Tell init we are up. Anything waiting on this property can proceed.
+    android::base::SetProperty("vendor.vega.telemetryd.ready", "1");
+
+    for (int i = 0; ; ++i) {
+        WriteSample(i);
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
+}
+```
+
+<Gotcha title="Never exit main() in an init service">
+An init service that returns is a service that has died. If your daemon's work
+is finite, either loop, or mark it `oneshot` in the `.rc` file. Without one of
+those, init restarts it forever and you get a boot loop that looks like a crash.
+</Gotcha>
+
+## Step 2 — Write the Soong module
+
+```json title="vendor/oem/vega/telemetryd/Android.bp"
+cc_binary {
+    name: "vega-telemetryd",
+
+    // Lands on /vendor, behind the Treble boundary. It therefore cannot use
+    // framework libraries — only what the vendor image provides.
+    vendor: true,
+
+    srcs: ["main.cpp"],
+
+    shared_libs: [
+        "libbase",
+        "liblog",
+    ],
+
+    cflags: [
+        "-Wall",
+        "-Werror",
+    ],
+
+    // Soong installs this alongside the binary and init picks it up.
+    init_rc: ["vega-telemetryd.rc"],
+}
+```
+
+<Gotcha title="Forgetting init_rc is the most common mistake here">
+Without `init_rc`, the binary is built and installed but nothing ever starts it.
+The symptom is confusing — the file is present on the device, `ls` proves it, and
+`ps` shows nothing. Always pair a `cc_binary` daemon with its `.rc`.
+</Gotcha>
+
+## Step 3 — Write the init service definition
+
+```text title="vendor/oem/vega/telemetryd/vega-telemetryd.rc"
+service vendor.vega.telemetryd /vendor/bin/vega-telemetryd
+    class late_start
+    user system
+    group system
+    # Restart if it dies, but give up if it dies repeatedly at boot.
+    oneshot false
+    disabled
+
+# Start it once the system is up, so it does not compete for CPU during boot.
+on property:sys.boot_completed=1
+    mkdir /data/vendor/vega 0770 system system
+    start vendor.vega.telemetryd
+```
+
+The pieces that matter:
+
+| Directive | Why |
+| --- | --- |
+| `class late_start` | Started after the critical boot path, not during it |
+| `user system` / `group system` | Do not run as root; drop privilege |
+| `disabled` | Not started automatically — the trigger below starts it |
+| `on property:sys.boot_completed=1` | Keeps it off the boot-time critical path |
+| `mkdir … 0770 system system` | init creates the data directory with the right owner |
+
+<Gotcha title="Service names on /vendor must start with vendor.">
+init enforces a naming convention: services defined in a vendor `.rc` must be
+named `vendor.*`. A service called plain `telemetryd` will be rejected, and the
+error appears in the kernel log rather than anywhere obvious.
+</Gotcha>
+
+## Step 4 — Add it to your product
+
+```makefile title="device/oem/vega/vega.mk — add to PRODUCT_PACKAGES"
+PRODUCT_PACKAGES += \
+    vega-telemetryd
+```
+
+```bash title="Build just this module first"
+cd ~/aosp && source build/envsetup.sh
+lunch vega-trunk_staging-userdebug
+
+# Much faster than a full build while iterating
+m vega-telemetryd
+
+# Then the image
+m -j
+```
+
+<Verify title="Verify the binary was built and installed">
+```bash
+# Built into the vendor image
+ls -la $ANDROID_PRODUCT_OUT/vendor/bin/vega-telemetryd
+
+# The .rc travelled with it
+ls -la $ANDROID_PRODUCT_OUT/vendor/etc/init/vega-telemetryd.rc
+```
+Both must exist. If the `.rc` is missing, `init_rc` is absent from `Android.bp`.
+</Verify>
+
+## Step 5 — Run it, and watch it fail
+
+```bash title="Boot and inspect"
+emulator -verbose -no-snapshot &
+adb wait-for-device
+
+# Is it running?
+adb shell ps -A | grep telemetryd
+
+# What did it say?
+adb logcat -b all | grep -i vega-telemetryd
+```
+
+You should see it start and log its variant. You should **also** see it fail to
+write its log file:
+
+```text title="Expected output — this is the lesson"
+vega-telemetryd: starting, variant=premium
+vega-telemetryd: cannot open /data/vendor/vega/telemetry.log: Permission denied
+```
+
+```bash title="Confirm the cause"
+adb shell dmesg | grep -i 'avc.*denied' | grep -i telemetry
+```
+
+```text
+avc: denied { write } for comm="vega-telemetryd"
+  name="vega" dev="dm-3" ino=...
+  scontext=u:r:vendor_vega_telemetryd:s0
+  tcontext=u:object_r:vendor_data_file:s0
+  tclass=dir permissive=0
+```
+
+<Verify title="Verify the daemon runs but is blocked">
+```bash
+adb shell ps -Z | grep telemetryd      # process exists, has an SELinux domain
+adb shell ls -la /data/vendor/vega/    # directory exists
+adb shell ls -la /data/vendor/vega/telemetry.log   # file does NOT exist
+adb shell dmesg | grep -c 'avc.*denied.*telemetryd'  # at least one denial
+```
+
+This is the correct outcome for this tutorial. The daemon is alive, correctly
+built, correctly started — and SELinux is stopping it from doing its job,
+silently, exactly as it will on every real bring-up.
+</Verify>
+
+## Step 6 — Check the domain it landed in
+
+```bash title="Which SELinux domain?"
+adb shell ps -Z | grep telemetryd
+```
+
+If your policy has not defined a domain for this binary, you will see it running
+in a generic domain such as `vendor_init` or `su` (on eng builds), rather than a
+domain of its own. Either way the next tutorial gives it a proper one.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Binary present, process not running | `init_rc` missing, or the `.rc` trigger never fired |
+| `service name must start with vendor.` | Vendor `.rc` service not named `vendor.*` |
+| Restarts in a loop | `main()` returned; loop or mark it `oneshot` |
+| `CANNOT LINK EXECUTABLE` | Used a system-only library from a `vendor: true` module |
+| Starts during boot despite `disabled` | Another `.rc` also references it |
+| No logs at all | Daemon died before `InitLogging`; check `dmesg` |
+
+## What you have now
+
+A real vendor daemon, running in its own process, blocked by SELinux. That is the
+normal state of every new native service before policy is written — and it fails
+quietly, which is why the next tutorial matters more than it looks.
+
+## Next
+
+Write the policy that makes it work.

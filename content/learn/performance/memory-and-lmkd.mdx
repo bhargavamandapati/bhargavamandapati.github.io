@@ -1,0 +1,171 @@
+---
+title: "Memory pressure and the low-memory killer"
+description: "Head units ship with the RAM the bill of materials allowed, not the RAM you wanted. What lmkd kills and in what order, and how to keep your process out of the queue."
+order: 1
+difficulty: "Advanced"
+tags: ["Memory", "lmkd", "Performance"]
+sources:
+  - label: "Low memory killer daemon"
+    href: "https://source.android.com/docs/core/perf/lmkd"
+  - label: "Memory management"
+    href: "https://source.android.com/docs/core/perf/low-ram"
+  - label: "Investigating memory usage"
+    href: "https://developer.android.com/topic/performance/memory"
+---
+
+A head unit's RAM is decided years before your code exists, by a cost engineer.
+It is usually less than you would like, it is shared with a cluster and a
+passenger screen, and it does not grow.
+
+<DiagramFrame
+  title="What lmkd kills, and in what order"
+  caption="Processes are killed from the top down as pressure rises. Everything above the accent band is expendable; the band itself is what must survive."
+>
+  <MemoryPressure />
+</DiagramFrame>
+
+## How the kill order is decided
+
+Every process has an `oom_score_adj` derived from its state. `lmkd` watches
+memory pressure and kills the highest-scoring processes first.
+
+```bash title="Who is expendable right now"
+adb shell dumpsys meminfo
+adb shell dumpsys activity oom | head -60
+adb shell cat /proc/<pid>/oom_score_adj
+```
+
+`dumpsys activity oom` is the one to learn. It lists every process in kill order,
+with its adjustment and why. When something keeps dying, this tells you where the
+platform ranks it.
+
+## Where the memory actually goes
+
+```bash title="A breakdown that is actually actionable"
+adb shell dumpsys meminfo <package>
+adb shell dumpsys meminfo --oom          # grouped by oom adjustment
+adb shell procrank                       # userdebug builds
+adb shell showmap <pid>                  # per-mapping detail
+```
+
+In `dumpsys meminfo` for a process, the numbers worth reading:
+
+| Line | Meaning |
+| --- | --- |
+| **PSS Total** | Your share of memory, including shared pages — the number to track |
+| **Private Dirty** | Memory only you use and that cannot be reclaimed — the number to reduce |
+| **Native Heap** | Bitmaps, buffers, NDK allocations |
+| **Dalvik Heap** | Java/Kotlin objects |
+| **Graphics** | Textures and surfaces — often the biggest and most overlooked |
+
+<Callout type="tip" title="Private Dirty is the number that matters">
+PSS looks alarming but includes shared framework pages you did not cause and
+cannot free. Private Dirty is what disappears when your process dies — that is
+your actual footprint, and the only part you can meaningfully reduce.
+</Callout>
+
+## The automotive-specific pressures
+
+**Multiple displays.** Every surface on every screen is graphics memory. Three
+screens showing three apps is three sets of buffers.
+
+**Long uptime.** A phone reboots weekly. A head unit may run for months across
+suspend cycles. A leak that is invisible in a two-hour test is fatal at three
+months.
+
+**Persistent processes.** Car Service, SystemUI and the vehicle HAL never exit.
+Their footprint is permanent overhead subtracted from everything else.
+
+**No user to intervene.** Nobody swipes away apps in a car. Whatever is running
+stays running until the platform kills it.
+
+## Keeping your process alive
+
+The reliable ways to stop being killed are all about being small and being
+useful, not about asking for special treatment.
+
+**Release on `onTrimMemory`.** This is the platform telling you it is about to
+start killing things.
+
+```kotlin title="Respond honestly to trim callbacks"
+override fun onTrimMemory(level: Int) {
+    when (level) {
+        TRIM_MEMORY_RUNNING_MODERATE,
+        TRIM_MEMORY_RUNNING_LOW -> imageCache.trimToSize(imageCache.maxSize / 2)
+
+        TRIM_MEMORY_RUNNING_CRITICAL -> {
+            imageCache.evictAll()
+            releaseNonEssentialBuffers()
+        }
+
+        TRIM_MEMORY_UI_HIDDEN -> {
+            // Your UI is gone. Every pixel you are holding is waste.
+            releaseAllGraphicsResources()
+        }
+    }
+}
+```
+
+`TRIM_MEMORY_UI_HIDDEN` is the highest-value one and the most commonly ignored.
+An app holding decoded bitmaps for a screen nobody can see is the easiest
+memory win available.
+
+**Bound every cache.** An unbounded cache is a leak with a friendly name.
+
+```kotlin
+// Bounded by memory, not by item count — items vary hugely in size
+private val cache = object : LruCache<String, Bitmap>(
+    (Runtime.getRuntime().maxMemory() / 8).toInt()
+) {
+    override fun sizeOf(key: String, value: Bitmap) = value.byteCount
+}
+```
+
+**Decode images to the size you display.** Loading a 4000-pixel album cover to
+draw it at 200 pixels wastes 400× the memory.
+
+**Do not hold Activity or View references** in anything longer-lived than the
+Activity. This is the single most common Android leak and it is worse here,
+because the process never restarts to clean up after you.
+
+## Finding leaks over long uptime
+
+```bash title="A soak test that finds real leaks"
+# Baseline
+adb shell dumpsys meminfo com.example > before.txt
+
+# Exercise the app for hours, ideally across suspend/resume cycles
+# ... then
+adb shell dumpsys meminfo com.example > after.txt
+diff before.txt after.txt
+
+# Force GC first so you are comparing reachable memory, not garbage
+adb shell am send-trim-memory com.example RUNNING_CRITICAL
+```
+
+<Callout type="warning" title="Test across suspend/resume, not just uptime">
+A head unit suspends and resumes many times a day. Resources reacquired on every
+resume without being released on suspend leak once per ignition cycle — a
+pattern that a continuous soak test will never reproduce.
+</Callout>
+
+## Configuring lmkd
+
+Platform teams tune the pressure thresholds per product:
+
+```text title="Typical properties (product config)"
+ro.lmk.low=1001
+ro.lmk.medium=800
+ro.lmk.critical=0
+ro.lmk.use_psi=true          # pressure-stall based, preferred
+ro.lmk.psi_partial_stall_ms=70
+ro.lmk.psi_complete_stall_ms=700
+```
+
+Tuning these is a balance: kill too eagerly and apps restart constantly, killing
+the experience; kill too late and the whole system stalls under pressure. It is a
+per-product measurement exercise, not a value you can copy from another vehicle.
+
+## Next
+
+Finding out where the time goes, not just the memory.

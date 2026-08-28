@@ -1,0 +1,292 @@
+---
+title: "What happens when you turn the car on"
+description: "The complete boot sequence, stage by stage — from the ignition signal through the bootloader, kernel, init and Car Service to the home screen, and why one missing component stalls the whole thing."
+order: 3
+difficulty: "Intermediate"
+tags: ["Boot", "init", "Architecture"]
+sources:
+  - label: "Android boot flow"
+    href: "https://source.android.com/docs/core/architecture/bootloader"
+  - label: "Android init language"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/core/init/README.md"
+  - label: "Boot time optimization"
+    href: "https://source.android.com/docs/core/perf/boot-times"
+  - label: "system/core/init on cs.android.com"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/core/init/"
+---
+
+You turn the key. Fifteen seconds later there is a home screen. A great deal
+happens in between, and knowing the order pays off constantly — because when
+something does not come up, the question is always *"what was it waiting for?"*
+
+## Why this is worth learning properly
+
+<Scenario title="The bug that sends people in the wrong direction">
+A new board is brought up. The display stays black. Car Service never appears in
+the logs, so somebody starts debugging Car Service.
+
+Two days later it turns out the <T>VHAL</T> was crashing at startup. Car Service
+was waiting for it, correctly and silently, exactly as designed.
+
+Nobody was looking at the VHAL because nobody knew Car Service waits for it. The
+sequence is the debugging tool.
+</Scenario>
+
+<DiagramFrame
+  title="From ignition to home screen"
+  caption="Each stage can only begin once the one above it is ready. The two annotated arrows are the ones that matter most in practice: the camera shortcut, and Car Service blocking on the Vehicle HAL."
+>
+  <BootSequence />
+</DiagramFrame>
+
+## Stage 1 — Power, and a signal that is not software
+
+Before anything digital happens, the vehicle decides to wake up. That decision is
+electrical: the ignition, a door handle, a remote unlock.
+
+<Plain>
+This matters because the clock for every deadline starts **here**, not when
+Android starts. When a requirement says "reversing camera within two seconds", it
+is measured from this moment — and Android will not exist for another several
+seconds.
+</Plain>
+
+## Stage 2 — Boot ROM and bootloader
+
+The chip runs a tiny program burned into it at manufacture. That program loads
+the bootloader, and — critically — **checks it has not been tampered with** before
+running it.
+
+The bootloader does the same for the next stage. This is <T>verified boot</T>: a
+chain where each link verifies the next.
+
+```bash title="What the device says about it afterwards"
+adb shell getprop ro.boot.verifiedbootstate   # green on a production vehicle
+adb shell getprop ro.boot.flash.locked        # 1
+```
+
+<Plain>
+Nothing you write runs here. It matters to you for one reason: this is why you
+cannot simply edit a file on a production head unit. The chain would notice.
+</Plain>
+
+## Stage 3 — The kernel
+
+Linux starts. It probes hardware, loads drivers, and mounts the storage
+partitions — checking them against `dm-verity` hashes as it goes.
+
+```bash title="Where kernel time goes"
+adb shell dmesg | grep -iE 'initcall|probe|took'
+```
+
+If a driver is slow to probe — a display panel, a CAN controller — the time is
+spent here, before Android has any say in it.
+
+## Stage 4 — init, the first process
+
+`init` is process ID 1, the ancestor of everything else. It is not Android; it is
+a small native program that reads configuration files and starts things.
+
+```text title="What an init service definition looks like"
+service vendor.vega.vehicle /vendor/bin/hw/vendor.vega.vehicle
+    class hal            # which group it belongs to
+    user vehicle_network
+    group system inet
+```
+
+init works in **phases**, and services are grouped into **classes** that start
+together:
+
+| Phase | What starts |
+| --- | --- |
+| `early-init` | The absolute basics — device nodes, SELinux load |
+| `init` | Core native services: `logd`, `servicemanager` |
+| `late-init` | Filesystem mounts complete |
+| `boot` | `class core`, then `class hal`, then `class main` |
+| `property:sys.boot_completed=1` | `class late_start` — everything deferrable |
+
+<Plain>
+This is the single most useful thing to understand about boot, because it is the
+main lever you have.
+
+A service in `class hal` competes for CPU during the busiest thirty seconds the
+device ever has. The same service started on `sys.boot_completed` costs nothing.
+
+Most things do not need to exist during boot. Very few teams check.
+</Plain>
+
+<Analogy title="Like a restaurant opening">
+The kitchen and the tills have to be ready before the doors open — those are
+`class core` and `class hal`. The person who restocks the drinks fridge does not,
+and if they try to do it while the first customers are seated, they are in the
+way.
+
+`class late_start` is "do this after the doors open".
+</Analogy>
+
+## Stage 5 — Early services, and the camera shortcut
+
+Among the first things init starts is <T>EVS</T> — the reversing camera path.
+
+This is the exception to everything else on this page. EVS does not wait for
+Android, because it cannot: the regulation says roughly two seconds and Android
+needs fifteen. It is a small native service that talks to a camera and a display
+directly, and it is running long before the framework exists.
+
+<Plain>
+When you see a vehicle show a reversing image almost instantly and then the image
+subtly changes a few seconds later, you are watching the handover from the EVS
+fast path to the Android-based one.
+</Plain>
+
+## Stage 6 — Vendor HALs, including the VHAL
+
+`class hal` starts the hardware abstraction layers: audio, camera, graphics,
+and the <T>Vehicle HAL</T>.
+
+The VHAL connects to the vehicle network, reads the initial state of everything
+it cares about, and registers itself so the framework can find it.
+
+```bash title="Confirming it registered"
+adb shell lshal | grep -i automotive.vehicle
+```
+
+<Scenario title="Why a slow VHAL is a boot-time problem">
+A VHAL implementation opens its CAN connection and then *waits* for the first
+message from each of forty ECUs before it finishes starting. Some ECUs take two
+seconds to begin transmitting.
+
+The VHAL now takes four seconds to register. Car Service, which starts later and
+waits for it, is four seconds late. Everything after Car Service is four seconds
+late.
+
+The fix is to register immediately and populate the cache on a background thread.
+Car Service needs the *config list* to proceed — it does not need every value to
+be current.
+</Scenario>
+
+## Stage 7 — Zygote and system_server
+
+Now Android proper begins.
+
+**Zygote** is a process that starts the Android runtime, preloads the common
+framework classes and resources, and then sits waiting. Every Android app is
+created by *forking* zygote, which is why apps start quickly — the expensive
+setup was done once.
+
+**<T>system_server</T>** is the first fork. It starts the framework services:
+activity manager, window manager, package manager, and dozens more.
+
+<Analogy title="Like a photocopier warm-up">
+Zygote is the photocopier warming up once, in the morning. Every copy after that
+is fast because the machine is already hot.
+
+If each app had to load the entire Android framework itself, app launch would
+take seconds instead of milliseconds.
+</Analogy>
+
+## Stage 8 — Car Service, and the wait
+
+<T>Car Service</T> is a persistent system app. It starts after the framework is
+up, and the first thing it does is connect to the Vehicle HAL.
+
+**It blocks until the VHAL answers.**
+
+<Plain>
+This one fact explains a whole class of confusing bring-up failures.
+
+If the VHAL is missing, crashed, or not declared in the device's interface
+manifest, Car Service does not start. And because so much of the automotive
+experience depends on Car Service, the symptom is not an error message — it is a
+head unit that boots to a black screen.
+
+**When a new board shows nothing, check `lshal | grep vehicle` before anything
+else.** It takes five seconds and it is the answer far more often than it has any
+right to be.
+</Plain>
+
+Once connected, Car Service asks the VHAL for its property configs, caches them,
+and starts its own subservices — audio, power, users, driver distraction — in
+dependency order.
+
+## Stage 9 — Launcher, and boot_completed
+
+The launcher starts, the home screen appears, and the platform sets
+`sys.boot_completed=1`.
+
+That property is a starting gun. Everything in `class late_start` runs now.
+Deferred jobs become eligible. <T>Garage Mode</T> becomes possible.
+
+```bash title="Watching the whole thing"
+adb logcat -b events | grep boot_progress
+adb shell bootstat --print
+```
+
+`boot_progress` events are the framework's own milestones, and comparing them
+across builds is how you notice a regression before it reaches a requirement
+review.
+
+## The part most people miss: this usually does not happen
+
+Everything above describes a **cold boot** — the car has been fully off.
+
+In daily use that is rare. The head unit normally **suspends** rather than
+shutting down, and comes back in about a second. The driver experiences resume,
+not boot.
+
+<Plain>
+Two consequences worth holding on to:
+
+**Optimise both, but know which one customers feel.** Cold boot is what the
+requirements document measures. Resume is what people actually experience twenty
+times a week.
+
+**Test across suspend/resume, not just uptime.** A resource acquired on every
+resume and never released leaks once per ignition cycle — a pattern a continuous
+soak test will never reproduce.
+</Plain>
+
+## A debugging order for "it did not boot"
+
+Work down. Each step is one command.
+
+```bash title="Where did it stop?"
+# 1. Did the kernel come up?
+adb shell dmesg | head -50
+
+# 2. Did init get past the early phases?
+adb shell getprop init.svc.servicemanager    # running
+
+# 3. Are the HALs up? (this is the automotive one that catches people)
+adb shell lshal | grep -i vehicle
+
+# 4. Did system_server start?
+adb shell ps -A | grep system_server
+
+# 5. Did Car Service start?
+adb shell dumpsys car_service --help
+
+# 6. Did boot complete?
+adb shell getprop sys.boot_completed         # 1
+```
+
+The first of those that fails tells you where to look. Steps 3 and 5 are the two
+that are specific to automotive, and step 3 is the one that is most often the
+answer.
+
+<Recap>
+- Boot is a **chain of dependencies**. Something not appearing usually means it is
+  waiting, not broken.
+- **init classes decide when things start.** Moving a service to `late_start` is
+  the cheapest boot-time win available.
+- **EVS bypasses all of this** because a two-second camera deadline cannot wait
+  for Android.
+- **Car Service blocks on the Vehicle HAL.** A missing VHAL looks like a dead head
+  unit, not like a HAL error.
+- The deadline clock starts at the **ignition signal**, not when Android starts.
+- Most of the time the vehicle **resumes** rather than boots — optimise both.
+</Recap>
+
+## Next
+
+Getting a build of your own running, so you can watch all of this happen.

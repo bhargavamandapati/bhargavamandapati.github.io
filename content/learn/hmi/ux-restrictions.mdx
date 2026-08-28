@@ -1,0 +1,195 @@
+---
+title: "Driver distraction and UX restrictions"
+description: "The framework enforces safety rules on your UI whether you cooperate or not. What the restrictions are, how they are configured, and how to build an interface that degrades gracefully."
+order: 2
+difficulty: "Intermediate"
+tags: ["UX Restrictions", "Safety", "HMI"]
+sources:
+  - label: "Driver distraction guidelines"
+    href: "https://source.android.com/docs/automotive/driver_distraction/guidelines"
+  - label: "CarUxRestrictions reference"
+    href: "https://developer.android.com/reference/android/car/drivingstate/CarUxRestrictions"
+  - label: "CarUxRestrictionsManagerService source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/CarUxRestrictionsManagerService.java"
+---
+
+This is the part of AAOS that exists because a car can kill someone. The platform
+does not ask your app to be responsible — it enforces limits in the framework and
+blocks activities that are not marked safe.
+
+Understanding it early saves you from designing an interface that is illegal to
+show while moving.
+
+## Driving state drives everything
+
+```text title="The derivation chain"
+PERF_VEHICLE_SPEED, GEAR_SELECTION, PARKING_BRAKE_ON   (VHAL properties)
+        ↓
+CarDrivingStateService      →  PARKED | IDLING | MOVING | UNKNOWN
+        ↓
+CarUxRestrictionsManagerService  →  a set of restriction flags
+        ↓
+CarPackageManager           →  blocks non-distraction-optimised activities
+```
+
+Each stage derives from the one above. This is why a VHAL that never publishes
+speed produces the baffling symptom "driver distraction never engages" — the
+chain is broken three layers down from where you noticed.
+
+```bash title="Inspecting the chain"
+adb shell dumpsys car_service --services CarDrivingStateService
+adb shell dumpsys car_service --services CarUxRestrictionsManagerService
+```
+
+## The restrictions
+
+`CarUxRestrictions` is a bitmask. The ones that shape design decisions:
+
+| Flag | Effect |
+| --- | --- |
+| `UX_RESTRICTIONS_NO_VIDEO` | No video playback |
+| `UX_RESTRICTIONS_NO_KEYBOARD` | No text entry |
+| `UX_RESTRICTIONS_NO_TEXT_MESSAGE` | No message content displayed |
+| `UX_RESTRICTIONS_LIMIT_STRING_LENGTH` | Truncate to a configured maximum |
+| `UX_RESTRICTIONS_LIMIT_CONTENT` | Cap the number of items in a list |
+| `UX_RESTRICTIONS_NO_SETUP` | No multi-step configuration flows |
+| `UX_RESTRICTIONS_NO_DIALPAD` | No manual number entry |
+| `UX_RESTRICTIONS_FULLY_RESTRICTED` | Everything above at once |
+
+There is also `isRequiresDistractionOptimization()` — the coarse "are we
+restricted at all" question, which is what most UI code should branch on.
+
+## Reacting properly
+
+```kotlin title="Listening and degrading" showLineNumbers
+class BrowseViewModel(car: Car) {
+
+    private val manager = car.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE)
+            as CarUxRestrictionsManager
+
+    fun start() {
+        // The listener fires immediately with the current state, then on change.
+        manager.registerListener { r -> apply(r) }
+        apply(manager.currentCarUxRestrictions)
+    }
+
+    private fun apply(r: CarUxRestrictions) {
+        val restricted = r.isRequiresDistractionOptimization
+
+        // Honour the configured limits rather than inventing your own numbers.
+        val maxItems = if (restricted) r.maxCumulativeContentItems else Int.MAX_VALUE
+        val maxChars = if (restricted) r.maxRestrictedStringLength else Int.MAX_VALUE
+
+        _state.value = BrowseState(
+            items = allItems.take(maxItems).map { it.truncate(maxChars) },
+            searchEnabled = !restricted,
+        )
+    }
+}
+```
+
+<Callout type="tip" title="Read the limits, do not hard-code them">
+`maxCumulativeContentItems` and `maxRestrictedStringLength` come from the
+platform's configuration and differ per OEM and per region. Hard-coding "9 items"
+because that is what your emulator reported will fail somebody's homologation.
+</Callout>
+
+## Distraction-optimised activities
+
+An activity that may be shown while driving must declare itself:
+
+```xml title="AndroidManifest.xml"
+<activity android:name=".BrowseActivity">
+    <meta-data
+        android:name="distractionOptimized"
+        android:value="true"/>
+</activity>
+```
+
+Declaring this is a claim that the activity meets the driver-distraction
+guidelines. `CarPackageManager` checks the flag and blocks activities that lack
+it while driving, replacing them with a "not available while driving" screen.
+
+<Callout type="warning" title="The flag is a safety claim, not a workaround">
+Setting `distractionOptimized=true` on an activity that is not actually safe is
+how you fail OEM acceptance — and it is the wrong thing to do regardless. If your
+screen needs long reading or multi-step input, the correct answer is to restrict
+it while moving.
+</Callout>
+
+## Configuring restrictions (platform side)
+
+OEMs tune the mapping from driving state to restrictions, because regulations
+differ by market.
+
+```xml title="A restriction mapping (platform config)"
+<UxRestrictions>
+  <DrivingState state="parked">
+    <Restrictions requiresDistractionOptimization="false" restrictions="baseline"/>
+  </DrivingState>
+
+  <DrivingState state="idling">
+    <Restrictions requiresDistractionOptimization="true"
+                  restrictions="no_video"/>
+  </DrivingState>
+
+  <DrivingState state="moving" minSpeed="0" maxSpeed="5">
+    <Restrictions requiresDistractionOptimization="true"
+                  restrictions="no_video|no_keyboard"/>
+  </DrivingState>
+
+  <DrivingState state="moving" minSpeed="5">
+    <Restrictions requiresDistractionOptimization="true"
+                  restrictions="fully_restricted"/>
+  </DrivingState>
+</UxRestrictions>
+```
+
+Note the speed bands. "Moving" is not one state — crawling in traffic and
+motorway speed have different rules in most markets.
+
+## Testing without a road
+
+```bash title="Faking driving state"
+# Make the platform believe we are moving
+adb shell dumpsys car_service --set-property 0x11600207 60
+
+# Confirm the derived state and restrictions
+adb shell dumpsys car_service --services CarUxRestrictionsManagerService
+
+# Some builds expose a direct override for testing
+adb shell dumpsys car_service --set-uxr-mode fully_restricted
+adb shell dumpsys car_service --reset-uxr-mode
+```
+
+Write instrumented tests against both states. "Looks fine parked" is not a test
+result for an automotive UI.
+
+```kotlin title="Testing the restricted path"
+@Test fun browseListIsCappedWhileDriving() {
+    setDrivingState(MOVING, speedKph = 60)
+
+    onView(withId(R.id.browse_list))
+        .check(matches(hasItemCountAtMost(maxCumulativeContentItems)))
+    onView(withId(R.id.search)).check(matches(not(isEnabled())))
+}
+```
+
+## Designing for it from the start
+
+The teams that struggle are the ones who design the parked experience and then
+try to subtract from it. The ones that do well design the **moving** experience
+first — big targets, short strings, few items, no typing — and then *add*
+capability when parked.
+
+Practical rules that hold up:
+
+- Every task reachable while moving should complete in one or two touches.
+- Never require reading more than a few words at a glance.
+- Voice is the answer to text entry, not a smaller keyboard.
+- If a screen cannot be made safe, restrict it honestly rather than shipping a
+  compromise that helps nobody.
+
+## Next
+
+The component library and theming system OEMs use to make all of this their own.

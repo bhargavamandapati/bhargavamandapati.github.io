@@ -1,0 +1,163 @@
+---
+title: "The launcher, app categories and what AAOS will run"
+description: "How apps are discovered, categorised and blocked — the manifest metadata that decides whether your app appears at all, and why the app grid is not a phone launcher."
+order: 5
+difficulty: "Intermediate"
+tags: ["Launcher", "App categories", "HMI"]
+sources:
+  - label: "Car launcher and app categories"
+    href: "https://source.android.com/docs/automotive/hmi/car_launcher"
+  - label: "CarLauncher source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Launcher/"
+  - label: "Build apps for Android Automotive OS"
+    href: "https://developer.android.com/training/cars/apps"
+---
+
+An app that installs fine and never appears in the app grid is one of the more
+demoralising first days on AAOS. The cause is almost always manifest metadata.
+
+## How the launcher finds apps
+
+The car launcher does not list everything installed. It queries for specific
+intent categories, and an app that does not declare one is invisible.
+
+```xml title="Making an app visible in the car app grid"
+<activity
+    android:name=".MainActivity"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <!-- This is the one that matters. Not CATEGORY_LAUNCHER. -->
+        <category android:name="android.intent.category.LAUNCHER"/>
+    </intent-filter>
+</activity>
+```
+
+For media and other templated app types the discovery mechanism is different —
+the launcher finds a **service**, not an activity:
+
+```xml title="A media app is discovered through its browse service"
+<service android:name=".MusicService" android:exported="true">
+    <intent-filter>
+        <action android:name="android.media.browse.MediaBrowserService"/>
+    </intent-filter>
+</service>
+```
+
+<Callout type="tip" title="If your app is missing, check discovery before anything else">
+`adb shell pm list packages | grep yourapp` proves it installed.
+`adb shell cmd package query-activities -a android.intent.action.MAIN -c android.intent.category.LAUNCHER`
+proves whether the launcher can see it. Those two commands separate an install
+problem from a manifest problem in ten seconds.
+</Callout>
+
+## Declaring you are an automotive app
+
+```xml title="AndroidManifest.xml"
+<manifest ...>
+    <!-- Required for the Play Store on GAS builds; good hygiene everywhere -->
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="true"/>
+
+    <!-- Explicitly declare what you do NOT need, or the store will assume -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+
+    <application ...>
+        <meta-data
+            android:name="com.android.automotive"
+            android:resource="@xml/automotive_app_desc"/>
+    </application>
+</manifest>
+```
+
+```xml title="res/xml/automotive_app_desc.xml"
+<automotiveApp>
+    <uses name="media"/>
+</automotiveApp>
+```
+
+That `<uses>` element declares your app **type**. It determines which car surface
+hosts you, what template constraints apply, and how the launcher categorises you.
+
+## App categories
+
+| Type | What it means | Who draws the UI |
+| --- | --- | --- |
+| `media` | Audio content | The car's media app |
+| `template` | Navigation, POI, IoT via Car App Library | The car's template host |
+| `video` | Video, parked-only | Your app, restricted while driving |
+| Full activity | Anything the OEM permits | You |
+
+Most third-party apps are `media` or `template`. Full activities are largely the
+preserve of OEM and system apps, because they carry the whole distraction burden
+themselves rather than inheriting a safe template.
+
+## The distraction gate
+
+Declared or not, `CarPackageManager` decides whether an activity may be shown
+while driving.
+
+```xml title="Claiming an activity is safe while moving"
+<activity android:name=".BrowseActivity">
+    <meta-data android:name="distractionOptimized" android:value="true"/>
+</activity>
+```
+
+Without it, the activity is replaced by a "not available while driving" screen
+the moment the vehicle moves. With it, you are asserting the activity meets the
+driver-distraction guidelines — a claim OEM acceptance will test.
+
+```bash title="What the platform thinks of your activity"
+adb shell dumpsys car_service --services CarPackageManagerService
+adb shell cmd car_service check-distraction-optimized com.example .BrowseActivity
+```
+
+## The app grid is not a phone launcher
+
+Practical differences that shape design:
+
+- **Big targets.** Reach at arm's length in a moving vehicle, not thumb precision.
+- **Few items per screen.** `UX_RESTRICTIONS_LIMIT_CONTENT` caps what is shown
+  while driving; a 60-app grid becomes a 9-app grid.
+- **No arbitrary widgets or gestures.** Long-press menus and drag-to-reorder are
+  distraction problems, so most OEMs remove them.
+- **The launcher is OEM-owned.** `CarLauncher` in AOSP is a reference. Every
+  shipping vehicle has a replacement or a heavy overlay, and its behaviour is the
+  OEM's decision, not the platform's.
+
+## Blocked and disallowed apps
+
+OEMs maintain allowlists. An app may be present in the image and still be blocked
+from the grid, from running while driving, or from running at all on that market.
+
+```bash title="Checking blocking state"
+adb shell dumpsys car_service --services CarPackageManagerService | grep -i -A10 block
+adb shell dumpsys package com.example | grep -E 'enabled|stopped|suspended'
+```
+
+<Callout type="warning" title="&quot;It works on the emulator&quot; means very little here">
+The emulator has no OEM allowlist, no market restrictions and a reference
+launcher. An app that appears fine there can be invisible on the target. Test on
+the OEM's image as early as you can get one.
+</Callout>
+
+## A pre-flight checklist
+
+Before wondering why your app is not showing up:
+
+1. `uses-feature android.hardware.type.automotive` declared?
+2. `automotive_app_desc.xml` present with the right `<uses>` type?
+3. The right discovery mechanism — activity intent filter *or* browse service?
+4. `distractionOptimized` on activities that must survive driving?
+5. Unnecessary hardware features marked `required="false"`?
+6. Installed for the **current foreground user**, not user 0?
+
+That last one catches people constantly. `adb install` targets the current user;
+switching users afterwards makes the app vanish.
+
+## Next
+
+The input devices — rotary controllers, steering-wheel buttons and touchpads —
+that phone Android never had to handle.

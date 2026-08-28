@@ -1,0 +1,199 @@
+---
+title: "Testing and debugging the VHAL"
+description: "Driving properties by hand, reading dumpsys output, injecting values into the reference HAL, and building a simulator so you stop waiting for a vehicle."
+order: 6
+difficulty: "Intermediate"
+tags: ["Debugging", "Testing", "VHAL"]
+sources:
+  - label: "Debugging the Vehicle HAL"
+    href: "https://source.android.com/docs/automotive/vhal/vhal-debug"
+  - label: "Reference VHAL implementation"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/impl/"
+  - label: "VTS for automotive"
+    href: "https://source.android.com/docs/compatibility/vts"
+---
+
+Waiting for a vehicle to test a property is how programmes slip. Almost
+everything can be exercised on a desk, and the tooling is better than most
+people realise.
+
+## `dumpsys car_service` is the whole toolbox
+
+If you learn one command from this curriculum, learn this one.
+
+```bash title="Property inspection"
+# Everything the HAL declared — the config list, which IS the contract
+adb shell dumpsys car_service --list-properties
+
+# One property's full config: access, change mode, areas, ranges
+adb shell dumpsys car_service --property 0x25400501
+
+# Read the current value
+adb shell dumpsys car_service --get-property 0x25400501
+
+# Read a specific area
+adb shell dumpsys car_service --get-property 0x25400501 -a 1
+```
+
+The first command answers the only question that matters when a property is not
+working: **does the platform think it exists?** If it is absent, stop debugging
+your app — the problem is in the HAL config.
+
+```bash title="Wider service state"
+adb shell dumpsys car_service                     # everything, very long
+adb shell dumpsys car_service --services CarPropertyService
+adb shell dumpsys car_service --help              # what your build supports
+```
+
+<Callout type="tip" title="The flags differ across releases">
+`dumpsys car_service --help` first, every time you move to a new platform
+version. Options get added and renamed between releases, and a stale command
+line reads as "the feature is missing" when it is only spelled differently.
+</Callout>
+
+## Injecting values into the reference VHAL
+
+The emulator's reference HAL accepts writes for properties a real vehicle would
+own. This lets you test the whole stack above the HAL without hardware.
+
+```bash title="Driving the vehicle from a shell"
+# Pretend we are doing 50 km/h
+adb shell dumpsys car_service --set-property 0x11600207 50
+
+# Change gear selection
+adb shell dumpsys car_service --inject-vhal-event 0x11400400 4
+
+# Per-area write
+adb shell dumpsys car_service --set-property 0x25400501 -a 1 3
+```
+
+This is how you test driver-distraction behaviour without leaving your desk: set
+speed above the restriction threshold and watch the UX restriction state flip.
+
+## Confirming the HAL is alive
+
+```bash title="Is the HAL even running?"
+# Registered HAL services
+adb shell lshal | grep -i vehicle
+
+# The process, and its SELinux domain
+adb shell ps -Z | grep vehicle
+
+# Did it crash on start?
+adb logcat -b all | grep -iE 'vehiclehal|VehicleHal|automotive.vehicle'
+```
+
+A HAL that fails to start produces app-level errors that look like permission or
+API problems. Rule it out in ten seconds before debugging anything upstream.
+
+## The SELinux check you will forget
+
+```bash title="Denials fail silently — go looking for them"
+adb shell dmesg | grep -i 'avc.*denied'
+adb logcat -b all | grep -i avc
+
+# Confirm the device node is labelled as your policy expects
+adb shell ls -Z /dev/can0
+```
+
+A missing SEPolicy rule does not crash your HAL. It makes one read fail, your
+code falls back to a default, and the value is wrong forever. Whenever behaviour
+is "wrong but stable", check denials.
+
+## Automated tests
+
+### VTS — is your HAL a valid HAL?
+
+Vendor Test Suite runs against your implementation and checks it obeys the
+interface contract: configs are well formed, area IDs are consistent, declared
+ranges are honoured, required properties exist.
+
+```bash title="Running the automotive VTS module"
+atest VtsHalAutomotiveVehicle_TargetTest
+```
+
+Run this before integration, not after. It catches the structural mistakes —
+mismatched area configs, impossible access modes — that are painful to diagnose
+once a UI is sitting on top.
+
+### Unit-testing your HAL logic
+
+Keep the vehicle-network code behind an interface so the translation logic is
+testable without a bus:
+
+```cpp title="Testing scaling in isolation"
+TEST(SeatMassageTest, RejectsOutOfRange) {
+    FakeSeatModule seat;
+    VendorVehicleHardware hal(&seat);
+
+    EXPECT_EQ(hal.setValue(makeValue(ROW_1_LEFT, 6)), StatusCode::INVALID_ARG);
+    EXPECT_EQ(hal.setValue(makeValue(ROW_1_LEFT, -1)), StatusCode::INVALID_ARG);
+    EXPECT_EQ(hal.setValue(makeValue(ROW_1_LEFT, 3)), StatusCode::OK);
+}
+
+TEST(SeatMassageTest, ReportsUnavailableWhenModuleAsleep) {
+    FakeSeatModule seat;
+    seat.setReady(false);
+    VendorVehicleHardware hal(&seat);
+
+    EXPECT_EQ(hal.setValue(makeValue(ROW_1_LEFT, 3)), StatusCode::NOT_AVAILABLE);
+}
+```
+
+The bugs that survive to integration are almost always the boring ones: an
+off-by-one on a range, an area ID treated as an index, a status never set to
+`UNAVAILABLE`. Those are exactly the cases a unit test catches cheaply.
+
+### Instrumented tests for the app layer
+
+```kotlin title="Espresso against injected vehicle state"
+@Test fun fanSpeedSliderReflectsVehicleState() {
+    injectProperty(VehiclePropertyIds.HVAC_FAN_SPEED, areaId = SEAT_ROW_1_LEFT, value = 3)
+
+    onView(withId(R.id.fan_speed)).check(matches(withProgress(3)))
+}
+
+@Test fun rejectedSetDoesNotStickInUi() {
+    failNextSet(VehiclePropertyIds.HVAC_FAN_SPEED)
+
+    onView(withId(R.id.fan_speed)).perform(setProgress(5))
+
+    // The UI must fall back to vehicle state, not keep the optimistic value.
+    onView(withId(R.id.fan_speed)).check(matches(withProgress(3)))
+}
+```
+
+That second test is the one worth writing. Optimistic rendering is the most
+common automotive UI defect and it never shows up in a demo.
+
+## Build a simulator
+
+On any programme of size, invest in a signal simulator early. The shape that
+works:
+
+1. A definition of the signals — ideally the VSS tree, so it is shared with the
+   ECU teams rather than invented locally.
+2. A UI that generates controls **from** that definition, so adding a signal
+   costs nothing.
+3. An injection path into the VHAL — a debug socket, or a build variant whose
+   HAL takes values from the tool instead of the bus.
+4. Scripted scenarios: drive-away, park, door-open-while-moving, ignition cycle.
+
+The payoff is that QA can reproduce a defect deterministically instead of
+describing a drive. That change alone usually pays for the tool inside a sprint.
+
+## A debugging order that works
+
+1. `--list-properties` — does the platform know about it?
+2. `lshal` — is the HAL running?
+3. `dmesg | grep avc` — SELinux?
+4. `--get-property` — does the HAL return a value at all?
+5. App permission and `privapp-permissions`.
+6. Only now, your app code.
+
+Most people start at step 6 and spend an afternoon there. Start at step 1.
+
+## Next
+
+You now know the vehicle data path end to end. The framework module covers what
+Car Service does with everything else it owns.

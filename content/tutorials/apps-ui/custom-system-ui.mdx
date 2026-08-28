@@ -1,0 +1,211 @@
+---
+title: "Modify CarSystemUI"
+description: "Add a button to the system bar, change which bars exist, and know exactly when an overlay stops being enough and a fork begins."
+order: 3
+difficulty: "Advanced"
+time: "2–3 hours"
+outcome: "A custom button in the bottom system bar launching your comfort app, configured through overlays rather than a fork of CarSystemUI."
+prerequisites:
+  - label: "RRO theming"
+    href: "/tutorials/apps-ui/custom-rro/"
+  - label: "A system app to launch"
+    href: "/tutorials/apps-ui/custom-system-app/"
+tags: ["CarSystemUI", "System bars", "RRO"]
+sources:
+  - label: "Customize CarSystemUI"
+    href: "https://source.android.com/docs/automotive/hmi/car_ui"
+  - label: "CarSystemUI source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/SystemUI/"
+  - label: "Runtime Resource Overlays"
+    href: "https://source.android.com/docs/core/runtime/rros"
+---
+
+The system bars are the permanent furniture of the vehicle. Most of what an OEM
+wants to change about them is configuration — and configuration can be overlaid,
+which means no fork and no re-merge at every platform upgrade.
+
+## Step 1 — Find what is configurable
+
+```bash title="The config surface"
+cd ~/aosp
+
+# Which bars exist, and their dimensions
+grep -rn "config_enable.*SystemBar" packages/apps/Car/SystemUI/res/values/config.xml
+
+# The bar layouts themselves
+ls packages/apps/Car/SystemUI/res/layout/car_*system_bar*.xml
+```
+
+You are looking at two kinds of thing: boolean and dimension **config values**,
+and **layout files**. Both can be overlaid. Java cannot.
+
+## Step 2 — Change which bars exist
+
+```xml title="VegaSystemUIRRO/res/values/config.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="config_enableTopSystemBar">true</bool>
+    <bool name="config_enableBottomSystemBar">true</bool>
+    <bool name="config_enableLeftSystemBar">false</bool>
+    <bool name="config_enableRightSystemBar">false</bool>
+</resources>
+```
+
+```xml title="VegaSystemUIRRO/res/values/dimens.xml"
+<resources>
+    <dimen name="car_top_system_bar_height">64dp</dimen>
+    <dimen name="car_bottom_system_bar_height">96dp</dimen>
+</resources>
+```
+
+Left and right bars exist because some head units are portrait, where a bottom
+bar wastes the wrong dimension.
+
+## Step 3 — Add a button to the bar
+
+The bar contents are a layout, so replacing the layout adds a button — no code
+change.
+
+```bash title="Start from the real one"
+cp packages/apps/Car/SystemUI/res/layout/car_bottom_system_bar.xml \
+   vendor/oem/vega/overlays/VegaSystemUIRRO/res/layout/
+```
+
+```xml title="VegaSystemUIRRO/res/layout/car_bottom_system_bar.xml"
+<!-- Copied from CarSystemUI and extended. Keep the original ids: CarSystemUI
+     looks them up by name and will crash if one it expects is missing. -->
+<com.android.systemui.car.systembar.CarSystemBarView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:systemui="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/car_bottom_bar"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/system_bar_background_color"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <com.android.systemui.car.systembar.CarSystemBarButton
+            android:id="@+id/home"
+            style="@style/SystemBarButton"
+            systemui:categories="android.intent.category.HOME"
+            systemui:highlightWhenSelected="true"
+            systemui:icon="@drawable/car_ic_home"
+            systemui:intent="intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;launchFlags=0x14000000;end"/>
+
+        <!-- Your addition -->
+        <com.android.systemui.car.systembar.CarSystemBarButton
+            android:id="@+id/vega_comfort"
+            style="@style/SystemBarButton"
+            systemui:highlightWhenSelected="true"
+            systemui:icon="@drawable/vega_ic_comfort"
+            systemui:packages="com.oem.vega.comfort"
+            systemui:intent="intent:#Intent;component=com.oem.vega.comfort/.MainActivity;launchFlags=0x10000000;end"/>
+
+    </LinearLayout>
+</com.android.systemui.car.systembar.CarSystemBarView>
+```
+
+<Gotcha title="Keep every id CarSystemUI looks up">
+The Java in CarSystemUI finds views by id — `R.id.home`, `R.id.notifications`
+and others. Removing one from your overlay layout produces a
+`NullPointerException` during SystemUI startup, which on a head unit looks like
+"no system bars at all". Add to the layout; do not remove from it.
+</Gotcha>
+
+```xml title="Add the icon your layout references"
+<!-- VegaSystemUIRRO/res/drawable/vega_ic_comfort.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp" android:height="44dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+    <path android:fillColor="@android:color/white"
+        android:pathData="M4,18v-6h16v6h-2v-4H6v4H4zM7,6h10v4H7z"/>
+</vector>
+```
+
+## Step 4 — Build and verify
+
+```bash
+m VegaSystemUIRRO && m -j
+emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 45
+```
+
+<Verify title="Verify the overlay applied and SystemUI survived">
+```bash
+# 1. The overlay is enabled
+adb shell cmd overlay list | grep vega
+
+# 2. SystemUI did NOT crash — this is the one that catches a broken layout
+adb logcat -b all | grep -iE 'CarSystemBar|SystemUI.*(FATAL|Exception)'
+
+# 3. Your button is in the view hierarchy
+adb shell dumpsys window | grep -i vega_comfort
+
+# 4. Look at it
+adb shell screencap -p /sdcard/bar.png && adb pull /sdcard/bar.png
+
+# 5. It launches your app
+adb shell input tap 640 690     # coordinates depend on your bar layout
+adb shell dumpsys activity activities | grep -i vega.comfort
+```
+
+Item 2 first. A missing id crashes SystemUI on startup, and the visible symptom
+is a screen with no bars rather than an error.
+</Verify>
+
+## Step 5 — The iteration loop
+
+```bash title="Layout change to on-screen in under a minute"
+m VegaSystemUIRRO
+adb root && adb remount
+adb push $ANDROID_PRODUCT_OUT/product/overlay/VegaSystemUIRRO/VegaSystemUIRRO.apk \
+  /product/overlay/VegaSystemUIRRO.apk
+adb shell pkill -f com.android.systemui
+sleep 5 && adb shell screencap -p /sdcard/bar.png && adb pull /sdcard/bar.png
+```
+
+## When an overlay is not enough
+
+Overlays reach resources. They do not reach behaviour. You need to modify
+CarSystemUI itself when you want:
+
+- New **interaction logic** — a long-press action, a custom gesture
+- A **new component class** the layouts could reference
+- Changes to **when** a bar appears or hides
+- A different **notification ranking** or filtering rule
+
+```bash title="If you must fork, fork narrowly"
+# Copy the single class you need to change, not the app
+cp packages/apps/Car/SystemUI/src/com/android/systemui/car/systembar/CarSystemBar.java \
+   vendor/oem/vega/systemui/src/...
+
+# Then build a variant that substitutes only that class
+```
+
+<Gotcha title="A fork is a fifteen-year commitment, not a sprint decision">
+Every platform upgrade must re-merge your changes into a moving target, for the
+life of the vehicle. Before forking, write down what specifically cannot be
+expressed as an overlay. If that list is short, the answer is usually to extend
+the overlay surface upstream instead — a resource that should have been
+overlayable and is not is a legitimate AOSP contribution.
+</Gotcha>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| No system bars at all | Overlay layout removed an id SystemUI looks up |
+| Bar renders but button does nothing | Malformed `systemui:intent` URI |
+| Overlay listed but not applied | Resource or layout name mismatch with the target |
+| Icon missing | Drawable not included in the overlay's `res/` |
+| Changes need a reboot | Restart SystemUI instead of rebooting |
+| Works on emulator, not on target | Different platform version renamed the layout |
+
+## Next
+
+Product configuration — the audio topology.

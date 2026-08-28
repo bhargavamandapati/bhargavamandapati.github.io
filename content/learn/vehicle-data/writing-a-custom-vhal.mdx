@@ -1,0 +1,255 @@
+---
+title: "Adding a vendor property end to end"
+description: "The complete path for a new vehicle property: ID, config, HAL implementation, permission, SEPolicy and the app that finally reads it — plus every place it silently fails."
+order: 4
+difficulty: "Advanced"
+tags: ["VHAL", "SEPolicy", "Permissions"]
+sources:
+  - label: "Vehicle properties configuration"
+    href: "https://source.android.com/docs/automotive/vhal/property-configuration"
+  - label: "Vendor properties and permissions"
+    href: "https://source.android.com/docs/automotive/vhal/special-properties"
+  - label: "Reference VHAL FakeVehicleHardware"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/vehicle/aidl/impl/fake_impl/"
+  - label: "SELinux for Android"
+    href: "https://source.android.com/docs/security/features/selinux"
+---
+
+Adding a property touches six places across three partitions. Miss one and you
+get the worst failure mode in this platform: no crash, no error, a value that is
+simply always its initial default.
+
+Here is the whole path, in the order I do it.
+
+## 1. Allocate the ID
+
+```kotlin title="VendorProperties.kt"
+/** Seat massage intensity, 0-5, addressable per seat. */
+const val SEAT_MASSAGE_INTENSITY =
+    0x2000_0000.toInt() or  // VENDOR group
+    0x0500_0000 or          // SEAT area
+    0x0040_0000 or          // INT32
+    0x0501                  // vendor id  ->  0x25400501
+```
+
+Record it in your programme's property registry before writing a line of HAL
+code. Two teams choosing `0x0501` independently is a real and recurring failure.
+
+## 2. Declare the config
+
+The config is the contract. Everything downstream reads it.
+
+```cpp title="DefaultConfig.h — vendor property declaration" showLineNumbers
+{
+    .config =
+        {
+            .prop = toInt(VendorProperty::SEAT_MASSAGE_INTENSITY),
+            .access = VehiclePropertyAccess::READ_WRITE,
+            .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+            .areaConfigs =
+                {
+                    VehicleAreaConfig{
+                        .areaId = toInt(VehicleAreaSeat::ROW_1_LEFT),
+                        .minInt32Value = 0,
+                        .maxInt32Value = 5,
+                    },
+                    VehicleAreaConfig{
+                        .areaId = toInt(VehicleAreaSeat::ROW_1_RIGHT),
+                        .minInt32Value = 0,
+                        .maxInt32Value = 5,
+                    },
+                },
+        },
+    .initialValue = {.int32Values = {0}},
+},
+```
+
+Two decisions worth pausing on:
+
+- **`ON_CHANGE`**, not `CONTINUOUS` — massage intensity moves when someone touches
+  a control, not on a sample clock. Declaring `CONTINUOUS` would oblige you to
+  honour `minSampleRate`/`maxSampleRate` and would burn power for nothing.
+- **Two area configs**, not one with an OR'd mask. The seats are independently
+  addressable, so they get independent entries.
+
+## 3. Implement get / set
+
+Your HAL translates between the vehicle network and this contract. The parts that
+matter are validation and honest status reporting.
+
+```cpp title="VendorVehicleHardware.cpp"
+StatusCode VendorVehicleHardware::setValue(const VehiclePropValue& value) {
+    if (value.prop != toInt(VendorProperty::SEAT_MASSAGE_INTENSITY)) {
+        return StatusCode::INVALID_ARG;
+    }
+
+    // Reject out-of-range writes. Do NOT silently clamp: the caller believes
+    // the write succeeded and will render the value it asked for.
+    const int32_t level = value.value.int32Values[0];
+    if (level < 0 || level > 5) {
+        return StatusCode::INVALID_ARG;
+    }
+
+    // The seat module may be asleep or absent on this trim.
+    if (!mSeatModule.isReady(value.areaId)) {
+        return StatusCode::NOT_AVAILABLE;
+    }
+
+    return mSeatModule.requestMassage(value.areaId, level)
+               ? StatusCode::OK
+               : StatusCode::TRY_AGAIN;
+}
+```
+
+When the value changes — whether Android asked for it or the physical seat
+control did — push it:
+
+```cpp title="Publishing a change"
+void VendorVehicleHardware::onSeatModuleUpdate(int32_t areaId, int32_t level) {
+    VehiclePropValue update{
+        // CLOCK_BOOTTIME nanoseconds. Not wall clock, not milliseconds.
+        .timestamp = elapsedRealtimeNano(),
+        .areaId = areaId,
+        .prop = toInt(VendorProperty::SEAT_MASSAGE_INTENSITY),
+        .status = VehiclePropertyStatus::AVAILABLE,
+        .value = {.int32Values = {level}},
+    };
+    mPropertyChangeCallback(std::vector{std::move(update)});
+}
+```
+
+<Callout type="warning" title="Publish changes you did not cause">
+If the driver adjusts a physical control and your HAL only publishes on
+Android-initiated writes, the UI silently drifts out of sync with the vehicle.
+Every state change gets published, regardless of origin.
+</Callout>
+
+## 4. Wire up the permission
+
+Vendor properties are gated. By default AAOS maps them onto the vendor extension
+permission; a programme that needs finer control can declare per-property vendor
+permission categories through the property's `configArray`. Start with the
+default and split later only if you must.
+
+```xml title="Declaring an OEM permission (framework overlay)"
+<permission
+    android:name="com.oem.car.permission.CONTROL_SEAT_MASSAGE"
+    android:protectionLevel="signature|privileged" />
+```
+
+`signature|privileged` means only apps signed with the platform key or installed
+as privileged system apps can hold it. For a vehicle control, that is what you
+want — this is not a runtime permission a user grants in a dialog.
+
+Then grant it to the app that needs it:
+
+```xml title="etc/permissions/privapp-permissions-oem.xml"
+<permissions>
+  <privapp-permissions package="com.oem.car.climate">
+    <permission name="com.oem.car.permission.CONTROL_SEAT_MASSAGE"/>
+  </privapp-permissions>
+</permissions>
+```
+
+<Callout type="warning" title="A missing privapp grant is a boot loop">
+If a privileged app requests a signature-level permission that is not listed in
+a `privapp-permissions` file, the platform refuses to boot on `userdebug` builds.
+This is deliberate — it turns a silent security gap into an obvious failure. When
+your image stops booting right after you added a permission, look here first.
+</Callout>
+
+## 5. SEPolicy
+
+Your HAL is a separate process in a separate domain, and SELinux does not care
+that your code is correct.
+
+```text title="sepolicy/vendor/hal_vehicle_default.te"
+# Read and write the vendor CAN character device
+allow hal_vehicle_default vendor_can_device:chr_file rw_file_perms;
+
+# Talk to the seat controller's HwBinder service
+allow hal_vehicle_default vendor_seat_hwservice:hwservice_manager find;
+
+# Vendor property storage
+allow hal_vehicle_default vendor_vehicle_data_file:dir rw_dir_perms;
+allow hal_vehicle_default vendor_vehicle_data_file:file create_file_perms;
+```
+
+```text title="sepolicy/vendor/file_contexts"
+/dev/can0    u:object_r:vendor_can_device:s0
+```
+
+Verify, do not assume:
+
+```bash title="Check for denials"
+adb shell dmesg | grep -i 'avc.*denied'
+adb logcat -b all | grep -i avc
+
+# Confirm your HAL is running in the domain you expect
+adb shell ps -Z | grep vehicle
+```
+
+A missing rule almost never crashes anything. The read just fails, your code
+returns the initial value, and the UI shows zero forever.
+
+## 6. Consume it
+
+```kotlin title="SeatMassageController.kt" showLineNumbers
+class SeatMassageController(context: Context) {
+
+    private val car = Car.createCar(context)
+    private val properties =
+        car.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
+
+    private val callback = object : CarPropertyManager.CarPropertyEventCallback {
+        override fun onChangeEvent(value: CarPropertyValue<*>) {
+            if (value.status != CarPropertyValue.STATUS_AVAILABLE) return
+            render(value.areaId, value.value as Int)
+        }
+
+        // A rejected set arrives HERE, not as an exception.
+        override fun onErrorEvent(propertyId: Int, areaId: Int) {
+            Log.w(TAG, "massage set failed: prop=$propertyId area=$areaId")
+            resyncFromVehicle(areaId)
+        }
+    }
+
+    fun start() {
+        properties.registerCallback(
+            callback,
+            VendorProperties.SEAT_MASSAGE_INTENSITY,
+            CarPropertyManager.SENSOR_RATE_ONCHANGE,
+        )
+    }
+
+    fun setIntensity(areaId: Int, level: Int) {
+        properties.setIntProperty(
+            VendorProperties.SEAT_MASSAGE_INTENSITY, areaId, level,
+        )
+    }
+}
+```
+
+Always implement `onErrorEvent`. `setIntProperty` is asynchronous — a rejection
+from the ECU arrives on the callback. A UI that optimistically renders the
+requested value and ignores errors will drift out of sync with the vehicle, and
+the driver will trust the screen.
+
+## The checklist
+
+When the property does not work, walk this in order:
+
+1. `dumpsys car_service --list-properties` — is it in the config list at all?
+   If not, the problem is your config, not your code.
+2. `adb shell lshal | grep vehicle` — is the HAL even running?
+3. `dmesg | grep avc` — SELinux denial?
+4. Does the app hold the permission? Is it in `privapp-permissions`?
+5. Is `timestamp` `CLOCK_BOOTTIME` in nanoseconds?
+6. Are you publishing changes that Android did not initiate?
+
+Six checks, in that order, resolve almost every "the property does not work" bug.
+
+## Next
+
+Now look at the framework side of the same interface — `CarPropertyManager` and
+what Car Service does between your HAL and the app.

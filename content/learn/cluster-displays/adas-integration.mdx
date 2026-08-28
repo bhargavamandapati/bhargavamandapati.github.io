@@ -1,0 +1,214 @@
+---
+title: "ADAS integration"
+description: "Lane keeping, adaptive cruise and emergency braking run on their own safety-rated hardware. What Android receives, what it must never do, and how to display a system you do not control."
+order: 6
+difficulty: "Advanced"
+tags: ["ADAS", "Safety", "Cluster"]
+sources:
+  - label: "Automotive architecture"
+    href: "https://source.android.com/docs/automotive/start/architecture"
+  - label: "ISO 26262 — functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+  - label: "VehiclePropertyIds"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/car-lib/src/android/car/VehiclePropertyIds.java"
+---
+
+<T>ADAS</T> covers everything from a lane departure warning to automatic
+emergency braking. It is the most safety-critical software in the vehicle, and
+Android's relationship to it is narrower than most people assume.
+
+## Android's role, stated plainly
+
+<Plain>
+Android **displays** ADAS state. That is essentially the whole relationship.
+
+It does not compute it. It does not decide when to brake. It does not gate
+whether a feature is available. If Android crashes, every ADAS function continues
+working exactly as before, because none of them are waiting for it.
+
+Any design where Android is in an ADAS decision path is a finding, not a feature.
+</Plain>
+
+<Analogy title="Like a scoreboard at a match">
+The scoreboard shows what is happening. It does not referee, and switching it off
+does not change the result.
+
+Android is the scoreboard. The ADAS domain is the referee.
+</Analogy>
+
+## Why the separation is absolute
+
+Three independent reasons, any one of which would be sufficient:
+
+**Safety rating.** ADAS functions carry an <T>ASIL</T> rating — often C or D.
+Demonstrating that level of integrity requires determinism, bounded timing and
+tool qualification that a general-purpose operating system with a garbage
+collector cannot provide.
+
+**Timing.** An emergency braking decision has a latency budget measured in
+milliseconds. A Binder round trip through a framework that might be garbage
+collecting is not an acceptable link in that chain.
+
+**Availability.** The function must work when Android is rebooting, updating, or
+crashed.
+
+## What Android receives
+
+State, usually as vehicle properties or a vendor interface:
+
+| Information | Typical form |
+| --- | --- |
+| Is adaptive cruise engaged? | A state enum |
+| What is the set speed? | A number |
+| Following distance setting | An enum: 1–4 bars |
+| Lane keeping status | Available / active / unavailable |
+| Detected lane markings | Simplified geometry, for the cluster |
+| Detected vehicles ahead | Position and classification, for display |
+| Why is a feature unavailable? | A reason code |
+
+<Plain>
+That last row is worth calling out. "Lane keeping unavailable" with no reason is
+the single most frustrating thing an ADAS UI can show.
+
+The reason codes — no lane markings detected, camera obstructed, speed too low,
+driver hands not detected — are what turn a mysterious failure into something the
+driver can act on. Insist on them in the interface design.
+</Plain>
+
+## Displaying something you do not control
+
+<Scenario title="The visualisation that lied">
+A cluster shows a stylised road with detected lane lines and a car ahead.
+
+To make it look smooth, the rendering code interpolates between updates and
+holds the last known state when data stops arriving.
+
+The ADAS module loses lane detection in heavy rain and stops sending. The cluster
+continues showing confident lane markings, interpolated from data that is now
+several seconds old.
+
+The driver sees a system that appears to be tracking the lane. It is not.
+
+**Stale ADAS state must degrade visibly.** Fade it, grey it, remove it — but do
+not keep drawing it. Smoothness is not worth implying a capability that is not
+there.
+</Scenario>
+
+```kotlin title="Age out the state rather than holding it"
+private var lastUpdateNanos = 0L
+
+fun onAdasState(state: AdasState) {
+    lastUpdateNanos = SystemClock.elapsedRealtimeNanos()
+    render(state)
+}
+
+// On the render tick
+fun tick() {
+    val ageMs = (SystemClock.elapsedRealtimeNanos() - lastUpdateNanos) / 1_000_000
+    when {
+        ageMs < 200  -> { /* current — draw normally */ }
+        ageMs < 1000 -> renderDegraded()      // visibly less confident
+        else         -> renderUnavailable()   // stop claiming anything
+    }
+}
+```
+
+<Plain>
+Note the clock. `elapsedRealtimeNanos()` — a duration, so it must be monotonic,
+for exactly the reasons in the time and clocks topic.
+</Plain>
+
+## The handover problem
+
+Some ADAS features hand control back to the driver: adaptive cruise disengaging,
+lane centring reaching its limit.
+
+<Plain>
+A handover is the most safety-critical moment in the whole interaction, and the
+notification of it is usually **not** Android's job — it is a chime from a
+dedicated audio path and a telltale on the cluster's safety-rated layer.
+
+Android may show a supporting message. It must not be the only indication, and it
+must not be on the critical path for one.
+
+If a requirement says "the head unit shall alert the driver when adaptive cruise
+disengages", that requirement is on the wrong system. Escalate it rather than
+implementing it.
+</Plain>
+
+## Settings that Android does own
+
+Where Android legitimately participates is **configuration**, not operation.
+
+```kotlin title="A setting write, like any other vehicle property"
+properties.setIntProperty(
+    VendorProperties.ADAS_FOLLOWING_DISTANCE, GLOBAL, 3,
+)
+```
+
+Even here, the ADAS module decides whether to accept the change, and may refuse —
+because the vehicle is moving, because the feature is currently unavailable,
+because a safety condition is not met.
+
+<Plain>
+So the same rule as everywhere else applies, and it matters more here: **render
+from the confirmed state, never optimistically.**
+
+A following-distance control that shows 3 bars while the vehicle is actually
+using 2 is not a cosmetic bug. It is a mismatch between what the driver believes
+about the vehicle's behaviour and what the vehicle will do.
+</Plain>
+
+## Debugging across the boundary
+
+```bash title="What Android can see"
+adb shell dumpsys car_service --list-properties | grep -i -E 'ADAS|CRUISE|LANE'
+adb shell lshal | grep -i adas
+adb logcat -b all | grep -i adas
+```
+
+<Plain>
+Android's side is the easy half. The hard half is proving whether a wrong
+visualisation was wrong when Android received it.
+
+As with the cluster topic: **log what you received, with a timestamp and a
+sequence number**, and get the ADAS team to log what they sent. That one
+agreement turns a multi-week inter-company dispute into a five-minute
+comparison.
+</Plain>
+
+## What to push back on
+
+Requirements that arrive on Android and belong elsewhere:
+
+- "The head unit shall warn the driver of an imminent collision."
+- "The infotainment system shall disable lane keeping when the driver requests."
+- "Android shall guarantee the ADAS indicator is displayed within 100 ms."
+- Anything giving Android an availability figure it cannot meet.
+
+<Plain>
+Raising these early is cheap. Raising them during homologation is not, and by
+then someone has built the thing.
+
+The right move is to name the system that should own it and bring in the safety
+engineer — who, in my experience, is usually relieved to be asked.
+</Plain>
+
+<Recap>
+- Android **displays** ADAS state and **configures** settings. It does not compute,
+  decide or gate anything.
+- The separation exists for **three independent reasons**: safety rating, timing,
+  and availability during an Android fault.
+- **Stale state must degrade visibly.** Interpolating over missing data implies a
+  capability that is not there.
+- **Reason codes matter.** "Unavailable" without a reason is the worst possible
+  ADAS message.
+- Handover alerts are **not Android's job** — escalate requirements that put them
+  there.
+- Log what you received, with timestamps, so cross-boundary defects are a
+  comparison rather than an argument.
+</Recap>
+
+## Next
+
+The connectivity module — starting with the key in the driver's pocket.
