@@ -33,14 +33,23 @@ jobs:
       - name: Resolve base path and site URL
         id: pages
         run: |
-          # A repo named <user>.github.io serves from the domain root; any other
-          # repo serves from /<repo>, which Next.js needs as basePath.
           REPO="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY%%/*}"
-          if [[ "$REPO" == *.github.io ]]; then
+
+          # A custom domain always wins. public/CNAME is the single source of
+          # truth, so canonical URLs, Open Graph tags, the sitemap and the RSS
+          # feed all follow it automatically.
+          if [[ -f public/CNAME ]]; then
+            DOMAIN="$(tr -d '[:space:]' < public/CNAME)"
+            echo "base_path=" >> "$GITHUB_OUTPUT"
+            echo "site_url=https://${DOMAIN}" >> "$GITHUB_OUTPUT"
+            echo "Using custom domain: ${DOMAIN}"
+          elif [[ "$REPO" == *.github.io ]]; then
+            # A repo named <user>.github.io serves from the domain root.
             echo "base_path=" >> "$GITHUB_OUTPUT"
             echo "site_url=https://${REPO}" >> "$GITHUB_OUTPUT"
           else
+            # Any other repo serves from /<repo>, which Next.js needs as basePath.
             echo "base_path=/${REPO}" >> "$GITHUB_OUTPUT"
             echo "site_url=https://${OWNER}.github.io/${REPO}" >> "$GITHUB_OUTPUT"
           fi
