@@ -37,6 +37,21 @@ const NOVELTY =
   /\+|demonic|whisper|croak|klatt|auntie|uncle|grandma|grandpa|zarvox|trinoids|boing|bubbles|bells|cellos|organ|jester|wobble|deranged|hysterical|bahh|bad news|good news|albert|bruce|junior|kathy|princess|ralph|superstar|pipe organ|max headroom/i
 const BASIC_ENGINE = /espeak|festival|flite|pico|mbrola|dispatcher|compact|eloquence/i
 
+/**
+ * Decoration that is visible to the eye or to a screen reader, but must not be
+ * read out: the "#" permalink beside every heading, glossary popovers that sit
+ * inside a sentence, icons, and text meant only for assistive technology.
+ */
+const STRIP_FROM_SPEECH =
+  '.heading-anchor, .term-popover, .sr-only, [aria-hidden="true"], [data-no-tts]'
+
+/** The words in an element, with the decoration taken out. */
+function readableText(el: HTMLElement): string {
+  const clone = el.cloneNode(true) as HTMLElement
+  for (const junk of clone.querySelectorAll(STRIP_FROM_SPEECH)) junk.remove()
+  return (clone.textContent || '').replace(/\s+/g, ' ').trim()
+}
+
 type Chunk = { el: HTMLElement; text: string; block: number }
 
 function rank(voice: SpeechSynthesisVoice): number {
@@ -197,7 +212,7 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
     // and starting mid-sentence with no idea what you are listening to is
     // disorienting, especially when the audio is playing in the background.
     const heading = document.querySelector<HTMLElement>('h1')
-    const title = (heading?.innerText || '').replace(/\s+/g, ' ').trim()
+    const title = heading ? readableText(heading) : ''
     if (heading && title) out.push({ el: heading, text: title, block: blockIndex++ })
 
     for (const el of root.querySelectorAll<HTMLElement>(READABLE)) {
@@ -208,7 +223,7 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
       if (el.closest(SKIP_INSIDE)) continue
       const outer = el.parentElement?.closest(READABLE)
       if (outer && root.contains(outer)) continue
-      const text = (el.innerText || '').replace(/\s+/g, ' ').trim()
+      const text = readableText(el)
       if (text.length < 2) continue
       for (const sentence of toSentences(text)) out.push({ el, text: sentence, block: blockIndex })
       blockIndex += 1
