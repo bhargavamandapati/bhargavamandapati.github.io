@@ -1,50 +1,44 @@
 'use client'
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Headphones, Pause, Play, Settings2, SkipBack, SkipForward, Square } from 'lucide-react'
+import { Headphones, Loader2, Pause, Play, Settings2, SkipBack, SkipForward, Sparkles, Square } from 'lucide-react'
+import {
+  NATURAL_VOICES,
+  VOICE_SIZE_MB,
+  cachedVoices,
+  fetchVoice,
+  isNaturalVoice,
+  synthesize,
+} from '@/lib/natural-voice'
 import { cn } from '@/lib/utils'
 
 /**
- * Reads a topic aloud using the browser's own speech synthesis.
+ * Reads a topic aloud, with two engines behind one set of controls.
  *
- * The site is a static export with no server, so cloud TTS is not an option —
- * it would mean shipping an API key. The Web Speech API is free, needs no
- * network round trip on most platforms, and nothing said here leaves the
- * device. Voice quality comes from the operating system, which is why the
- * picker curates rather than lists: a Linux box running speech-dispatcher
- * offers over thirteen thousand voices, nearly all of them the same eSpeak
- * engine wearing different names.
+ * "Natural" voices are a small neural model downloaded once and run locally —
+ * clear and consistent on every platform. "System" voices are whatever the
+ * operating system provides: instant and free, but on a stock Linux desktop
+ * that means eSpeak, which sounds like a robot.
+ *
+ * Neither sends anything to a server. The site is a static export, so cloud
+ * TTS would mean shipping an API key in the bundle.
  */
 
 const VOICE_KEY = 'bm:tts-voice'
 const RATE_KEY = 'bm:tts-rate'
-const MAX_VOICES = 5
+const MAX_SYSTEM_VOICES = 5
+/** Sentences rendered in front of playback, so speech never waits on the model. */
+const LOOKAHEAD = 2
 
-/** Elements worth reading, in document order. */
 const READABLE = 'h2, h3, h4, p, li, blockquote, figcaption, pre'
-
-/** Inside these, the text is not prose and should not be read out. */
 const SKIP_INSIDE = 'pre, .code-window, [role="region"], .term-popover, [data-no-tts]'
 
-/**
- * Joke and effect voices that ship with desktop speech engines, plus eSpeak's
- * "+Name" variant syntax. None of them are usable for listening to an article.
- */
 const NOVELTY =
   /\+|demonic|whisper|croak|klatt|auntie|uncle|grandma|grandpa|zarvox|trinoids|boing|bubbles|bells|cellos|organ|jester|wobble|deranged|hysterical|bahh|bad news|good news|albert|bruce|junior|kathy|princess|ralph|superstar|pipe organ|max headroom/i
-
-/** Engines that predate neural synthesis and sound obviously mechanical. */
 const BASIC_ENGINE = /espeak|festival|flite|pico|mbrola|dispatcher|compact|eloquence/i
 
 type Chunk = { el: HTMLElement; text: string; block: number }
 
-/**
- * Ranks voices so the best ones surface first.
- *
- * Platform naming is the only signal available: Microsoft's neural voices carry
- * "Natural" or "Online", Apple's better ones are "Premium" or "Enhanced", and a
- * non-local voice is generally a server-side neural model.
- */
 function rank(voice: SpeechSynthesisVoice): number {
   const n = voice.name.toLowerCase()
   let score = 0
@@ -59,12 +53,6 @@ function rank(voice: SpeechSynthesisVoice): number {
   return score
 }
 
-/** True when the platform has nothing better than a formant synthesiser. */
-function isBasic(voice: SpeechSynthesisVoice): boolean {
-  return rank(voice) < 15
-}
-
-/** Trims a platform voice name down to something readable in a menu. */
 function prettyName(voice: SpeechSynthesisVoice): string {
   const name = voice.name
     .replace(/^(Microsoft|Google|Apple)\s+/i, '')
@@ -75,28 +63,18 @@ function prettyName(voice: SpeechSynthesisVoice): string {
   return name || voice.name
 }
 
-/**
- * Reduces whatever the platform offers to a handful of distinct English voices.
- *
- * Thirteen thousand entries is not a choice, it is a wall. Novelty voices go,
- * then near-duplicates of the same persona, then everything past the fifth
- * best — enough to pick a voice you get on with, few enough to read at a
- * glance.
- */
+/** Reduces whatever the platform offers to a handful of distinct English voices. */
 function curate(all: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] {
-  const english = all.filter(
-    (v) => v.lang.toLowerCase().startsWith('en') && !NOVELTY.test(v.name),
-  )
+  const english = all.filter((v) => v.lang.toLowerCase().startsWith('en') && !NOVELTY.test(v.name))
   const pool = english.length > 0 ? english : all.filter((v) => !NOVELTY.test(v.name))
   const seen = new Set<string>()
   const picked: SpeechSynthesisVoice[] = []
   for (const voice of [...pool].sort((a, b) => rank(b) - rank(a))) {
-    // Collapse "Aria", "Aria Online" and "Aria Desktop" down to one entry.
     const key = prettyName(voice).toLowerCase().replace(/[^a-z]/g, '')
     if (seen.has(key)) continue
     seen.add(key)
     picked.push(voice)
-    if (picked.length >= MAX_VOICES) break
+    if (picked.length >= MAX_SYSTEM_VOICES) break
   }
   return picked
 }
@@ -120,83 +98,80 @@ function toSentences(text: string): string[] {
   return out
 }
 
-/** Platform-specific advice for readers stuck with a mechanical voice. */
-function betterVoiceHint(): string {
-  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
-  if (/Windows/i.test(ua)) {
-    return 'Windows: Settings → Time & language → Speech → Manage voices, and add a "Natural" voice.'
-  }
-  if (/Mac OS X|Macintosh/i.test(ua)) {
-    return 'macOS: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices, and pick a Premium one.'
-  }
-  if (/Linux|X11/i.test(ua)) {
-    return 'Linux: only eSpeak is installed. `sudo apt install rhvoice speech-dispatcher-rhvoice` gives a far more natural voice after a browser restart.'
-  }
-  return 'Your platform only exposes basic synthesiser voices.'
-}
-
 export function ReadAloud({ targetId, className }: { targetId: string; className?: string }) {
   const [supported, setSupported] = useState<boolean | null>(null)
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
-  const [voiceURI, setVoiceURI] = useState<string>('')
+  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [voiceId, setVoiceId] = useState<string>('')
+  const [downloaded, setDownloaded] = useState<string[]>([])
+  const [downloading, setDownloading] = useState<number | null>(null)
   const [rate, setRate] = useState(1)
   const [playing, setPlaying] = useState(false)
   const [paused, setPaused] = useState(false)
+  const [buffering, setBuffering] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [block, setBlock] = useState(0)
   const [blockCount, setBlockCount] = useState(0)
 
   const chunks = useRef<Chunk[]>([])
   const cursor = useRef(0)
-  /** Bumped on every stop or restart so stale utterance callbacks are ignored. */
+  /** Bumped on every stop or restart so stale callbacks from a cancelled read are ignored. */
   const run = useRef(0)
-  const watchdog = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
-  const lastEvent = useRef(0)
+  const audio = useRef<HTMLAudioElement | null>(null)
+  const rendered = useRef(new Map<number, string>())
   const panelId = useId()
 
-  // ---- Capability and voices ---------------------------------------------
+  const natural = isNaturalVoice(voiceId)
+
+  // ---- Capability, voices, preferences ------------------------------------
   useEffect(() => {
-    // Some browsers expose the object but no working engine behind it, so
-    // probe for the method rather than trusting the property to exist.
-    if (typeof window === 'undefined' || typeof window.speechSynthesis?.speak !== 'function') {
-      setSupported(false)
-      return
-    }
+    if (typeof window === 'undefined') return
+    const speech = typeof window.speechSynthesis?.speak === 'function'
     setSupported(true)
+    if (!speech) return
     const load = () => {
       const list = window.speechSynthesis.getVoices()
-      if (list.length) setVoices(curate(list))
+      if (list.length) setSystemVoices(curate(list))
     }
     load()
     window.speechSynthesis.addEventListener('voiceschanged', load)
     return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
   }, [])
 
-  // Restore the reader's saved preferences.
   useEffect(() => {
     try {
       const savedRate = Number(window.localStorage.getItem(RATE_KEY))
       if (savedRate >= 0.6 && savedRate <= 2) setRate(savedRate)
-      const savedVoice = window.localStorage.getItem(VOICE_KEY)
-      if (savedVoice) setVoiceURI(savedVoice)
+      const saved = window.localStorage.getItem(VOICE_KEY)
+      if (saved) setVoiceId(saved)
     } catch {
       /* storage blocked — defaults are fine */
     }
   }, [])
 
-  // Fall back to the best voice whenever the saved one is not on offer here.
+  // Which natural voices are already on the device, so the label can say so.
   useEffect(() => {
-    if (voices.length === 0) return
-    if (voices.some((v) => v.voiceURI === voiceURI)) return
-    setVoiceURI(voices[0].voiceURI)
-  }, [voices, voiceURI])
+    let alive = true
+    cachedVoices().then((ids) => {
+      if (alive) setDownloaded(ids)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
-  const voice = useMemo(
-    () => voices.find((v) => v.voiceURI === voiceURI),
-    [voices, voiceURI],
+  // Default to the best system voice until the reader chooses otherwise.
+  useEffect(() => {
+    if (voiceId) return
+    if (systemVoices.length > 0) setVoiceId(systemVoices[0].voiceURI)
+  }, [systemVoices, voiceId])
+
+  const systemVoice = useMemo(
+    () => systemVoices.find((v) => v.voiceURI === voiceId),
+    [systemVoices, voiceId],
   )
 
-  // ---- Reading -------------------------------------------------------------
+  // ---- Shared reading machinery -------------------------------------------
   const highlight = useCallback((i: number) => {
     const chunk = chunks.current[i]
     if (!chunk) return
@@ -204,10 +179,6 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
       if (c.el !== chunk.el) c.el.removeAttribute('data-reading')
     }
     chunk.el.setAttribute('data-reading', 'true')
-
-    // Scrolling on every sentence makes the page twitch under the reader and
-    // drags the controls out of reach. Only move when the current block has
-    // actually left the comfortable band below the sticky header.
     const box = chunk.el.getBoundingClientRect()
     const top = 140
     if (box.top >= top && box.bottom <= window.innerHeight - 120) return
@@ -222,13 +193,10 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
     let blockIndex = 0
     for (const el of root.querySelectorAll<HTMLElement>(READABLE)) {
       if (el.tagName === 'PRE') {
-        // Reading source aloud is useless; say that one is here and move on.
         out.push({ el, text: 'Code sample.', block: blockIndex++ })
         continue
       }
       if (el.closest(SKIP_INSIDE)) continue
-      // innerText on a block already covers everything nested inside it, so a
-      // paragraph within a blockquote or list item must not be read again.
       const outer = el.parentElement?.closest(READABLE)
       if (outer && root.contains(outer)) continue
       const text = (el.innerText || '').replace(/\s+/g, ' ').trim()
@@ -239,107 +207,200 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
     return out
   }, [targetId])
 
-  const clearWatchdog = () => {
-    clearInterval(watchdog.current)
-    watchdog.current = undefined
-  }
+  const releaseAudio = useCallback(() => {
+    for (const url of rendered.current.values()) URL.revokeObjectURL(url)
+    rendered.current.clear()
+    if (audio.current) {
+      audio.current.pause()
+      audio.current.removeAttribute('src')
+      audio.current.load()
+    }
+  }, [])
 
   const stop = useCallback(() => {
     run.current += 1
-    window.speechSynthesis.cancel()
-    clearWatchdog()
+    try {
+      window.speechSynthesis?.cancel()
+    } catch {
+      /* nothing to cancel */
+    }
+    releaseAudio()
     for (const c of chunks.current) c.el.removeAttribute('data-reading')
     setPlaying(false)
     setPaused(false)
+    setBuffering(false)
     setBlock(0)
     cursor.current = 0
-  }, [])
+  }, [releaseAudio])
 
-  const speakFrom = useCallback(
-    (start: number) => {
-      const list = chunks.current
-      if (start >= list.length) {
+  // ---- Natural voice ------------------------------------------------------
+  /** Renders the next few sentences in the background so playback never waits. */
+  const renderAhead = useCallback(
+    async (from: number, token: number) => {
+      for (let i = from; i < Math.min(from + LOOKAHEAD, chunks.current.length); i++) {
+        if (token !== run.current) return
+        if (rendered.current.has(i)) continue
+        try {
+          const blob = await synthesize(chunks.current[i].text, voiceId)
+          if (token !== run.current) return
+          rendered.current.set(i, URL.createObjectURL(blob))
+        } catch {
+          return
+        }
+      }
+    },
+    [voiceId],
+  )
+
+  const playNatural = useCallback(
+    async (index: number, token: number) => {
+      if (index >= chunks.current.length) {
         stop()
         return
       }
-      const token = run.current
-      cursor.current = start
-      setBlock(list[start].block)
-      highlight(start)
-      lastEvent.current = Date.now()
+      cursor.current = index
+      setBlock(chunks.current[index].block)
+      highlight(index)
 
-      const utterance = new SpeechSynthesisUtterance(list[start].text)
-      if (voice) utterance.voice = voice
-      utterance.rate = rate
-      utterance.pitch = 1
-      utterance.onstart = () => {
-        lastEvent.current = Date.now()
+      if (!rendered.current.has(index)) {
+        setBuffering(true)
+        try {
+          const blob = await synthesize(chunks.current[index].text, voiceId)
+          if (token !== run.current) return
+          rendered.current.set(index, URL.createObjectURL(blob))
+        } catch {
+          if (token === run.current) {
+            setFailed('Could not generate audio. Switching back to a system voice may help.')
+            stop()
+          }
+          return
+        }
       }
+      if (token !== run.current) return
+      setBuffering(false)
+
+      const el = audio.current
+      if (!el) return
+      el.src = rendered.current.get(index) as string
+      el.playbackRate = rate
+      el.preservesPitch = true
+      void el.play().catch(() => undefined)
+
+      // Drop audio well behind the cursor, and get ahead of the cursor.
+      for (const [i, url] of rendered.current) {
+        if (i < index - 1) {
+          URL.revokeObjectURL(url)
+          rendered.current.delete(i)
+        }
+      }
+      void renderAhead(index + 1, token)
+    },
+    [highlight, rate, renderAhead, stop, voiceId],
+  )
+
+  // ---- System voice -------------------------------------------------------
+  const speakSystem = useCallback(
+    (index: number, token: number) => {
+      if (index >= chunks.current.length) {
+        stop()
+        return
+      }
+      cursor.current = index
+      setBlock(chunks.current[index].block)
+      highlight(index)
+
+      const utterance = new SpeechSynthesisUtterance(chunks.current[index].text)
+      if (systemVoice) utterance.voice = systemVoice
+      utterance.rate = rate
       utterance.onend = () => {
-        if (token !== run.current) return
-        lastEvent.current = Date.now()
-        speakFrom(cursor.current + 1)
+        if (token === run.current) speakSystem(cursor.current + 1, token)
       }
       utterance.onerror = () => {
-        if (token !== run.current) return
-        speakFrom(cursor.current + 1)
+        if (token === run.current) speakSystem(cursor.current + 1, token)
       }
       window.speechSynthesis.speak(utterance)
     },
-    [highlight, rate, stop, voice],
+    [highlight, rate, stop, systemVoice],
   )
 
-  /** Starts (or restarts) reading at a given chunk and arms the stall watchdog. */
+  // ---- Transport ----------------------------------------------------------
   const start = useCallback(
-    (from: number) => {
+    async (from: number) => {
       run.current += 1
-      window.speechSynthesis.cancel()
+      const token = run.current
+      setFailed(null)
       setPlaying(true)
       setPaused(false)
-      clearWatchdog()
-      // Engines occasionally drop an utterance without firing onend — Chrome
-      // does it on long sessions, speech-dispatcher on rapid cancels. If
-      // nothing is speaking and nothing is queued, move the queue along.
-      watchdog.current = setInterval(() => {
-        const s = window.speechSynthesis
-        if (!s.speaking && !s.pending && Date.now() - lastEvent.current > 1600) {
-          lastEvent.current = Date.now()
-          speakFrom(cursor.current + 1)
+
+      if (natural) {
+        releaseAudio()
+        if (!downloaded.includes(voiceId)) {
+          setDownloading(0)
+          try {
+            await fetchVoice(voiceId, (f) => {
+              if (token === run.current) setDownloading(f)
+            })
+          } catch {
+            if (token === run.current) {
+              setFailed('The voice could not be downloaded. Check your connection, or pick a system voice.')
+              setDownloading(null)
+              setPlaying(false)
+            }
+            return
+          }
+          if (token !== run.current) return
+          setDownloading(null)
+          setDownloaded((d) => (d.includes(voiceId) ? d : [...d, voiceId]))
         }
-      }, 800)
+        void playNatural(from, token)
+        return
+      }
+
+      window.speechSynthesis.cancel()
       // Cancel is asynchronous in some engines; let it settle before queueing.
-      window.setTimeout(() => speakFrom(from), 60)
+      window.setTimeout(() => {
+        if (token === run.current) speakSystem(from, token)
+      }, 60)
     },
-    [speakFrom],
+    [downloaded, natural, playNatural, releaseAudio, speakSystem, voiceId],
   )
 
   const play = useCallback(() => {
     if (paused) {
-      start(cursor.current)
+      if (natural && audio.current?.src) {
+        setPaused(false)
+        setPlaying(true)
+        void audio.current.play().catch(() => undefined)
+        return
+      }
+      void start(cursor.current)
       return
     }
     const list = collect()
     chunks.current = list
     setBlockCount(list.length ? list[list.length - 1].block + 1 : 0)
     if (list.length === 0) return
-    start(0)
-  }, [collect, paused, start])
+    void start(0)
+  }, [collect, natural, paused, start])
 
   /**
-   * Pauses by cancelling and remembering the place, rather than by calling
-   * speechSynthesis.pause().
+   * Pauses without calling speechSynthesis.pause().
    *
    * That method is a no-op on Linux and unreliable on several Android
    * browsers: the button flipped to "Resume" while the voice kept talking.
-   * Cancelling and replaying the current sentence works the same everywhere.
+   * The natural engine is an audio element, which pauses properly; the system
+   * engine is cancelled and the current sentence replayed on resume.
    */
   const pause = useCallback(() => {
-    run.current += 1
-    window.speechSynthesis.cancel()
-    clearWatchdog()
+    if (natural) {
+      audio.current?.pause()
+    } else {
+      run.current += 1
+      window.speechSynthesis.cancel()
+    }
     setPaused(true)
     setPlaying(false)
-  }, [])
+  }, [natural])
 
   const skip = useCallback(
     (delta: number) => {
@@ -348,21 +409,23 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
       // Step by block, not by sentence, so the buttons move a paragraph at a
       // time however the prose happens to be punctuated.
       const here = list[cursor.current]?.block ?? 0
-      const target = Math.max(0, Math.min(here + delta, (list[list.length - 1]?.block ?? 0)))
+      const target = Math.max(0, Math.min(here + delta, list[list.length - 1]?.block ?? 0))
       const at = list.findIndex((c) => c.block === target)
-      start(at === -1 ? 0 : at)
+      void start(at === -1 ? 0 : at)
     },
     [start],
   )
 
-  // Changing voice or speed restarts the current sentence so it takes effect.
   const applyAndRestart = useCallback(() => {
     if (!playing && !paused) return
-    start(cursor.current)
+    void start(cursor.current)
   }, [paused, playing, start])
 
   // Always stop when the reader leaves the page.
   useEffect(() => {
+    // The Map instance is stable, so capturing it here frees exactly the
+    // object URLs this component created.
+    const urls = rendered.current
     return () => {
       run.current += 1
       try {
@@ -370,14 +433,15 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
       } catch {
         /* nothing to cancel */
       }
-      clearWatchdog()
+      for (const url of urls.values()) URL.revokeObjectURL(url)
+      urls.clear()
     }
   }, [])
 
   if (supported === false) return null
 
-  const noVoices = supported === true && voices.length === 0
-  const onlyBasic = voices.length > 0 && voices.every(isBasic)
+  const onlySystem = systemVoices.length > 0 && systemVoices.every((v) => rank(v) < 15)
+  const busy = downloading !== null || buffering
 
   return (
     <section
@@ -391,6 +455,17 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
         className,
       )}
     >
+      {/* The natural voice plays through a plain audio element, which pauses
+          and seeks reliably on every platform, unlike speech synthesis. */}
+      <audio
+        ref={audio}
+        hidden
+        onEnded={() => {
+          const token = run.current
+          void playNatural(cursor.current + 1, token)
+        }}
+      />
+
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-1 inline-flex items-center gap-2 text-sm font-medium text-fg">
           <Headphones aria-hidden className="size-4 text-accent" />
@@ -400,10 +475,16 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
         <button
           type="button"
           onClick={playing ? pause : play}
-          disabled={noVoices}
+          disabled={systemVoices.length === 0 && NATURAL_VOICES.length === 0}
           className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm transition-colors hover:border-line-strong hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {playing ? <Pause aria-hidden className="size-4" /> : <Play aria-hidden className="size-4" />}
+          {busy ? (
+            <Loader2 aria-hidden className="size-4 animate-spin" />
+          ) : playing ? (
+            <Pause aria-hidden className="size-4" />
+          ) : (
+            <Play aria-hidden className="size-4" />
+          )}
           {playing ? 'Pause' : paused ? 'Resume' : 'Play'}
         </button>
 
@@ -447,17 +528,22 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
         </button>
       </div>
 
-      {(playing || paused) && blockCount > 0 && (
-        <p className="mt-2 font-mono text-[0.7rem] text-subtle" aria-live="polite">
-          paragraph {block + 1} of {blockCount}
-        </p>
-      )}
-
-      {noVoices && (
-        <p className="mt-2 text-xs leading-relaxed text-muted">
-          Your browser reports no speech voices installed. {betterVoiceHint()}
-        </p>
-      )}
+      <div aria-live="polite" className="empty:hidden">
+        {downloading !== null && (
+          <p className="mt-2 font-mono text-[0.7rem] text-subtle">
+            downloading natural voice · {Math.round(downloading * 100)}% of ~{VOICE_SIZE_MB} MB · once only
+          </p>
+        )}
+        {downloading === null && buffering && (
+          <p className="mt-2 font-mono text-[0.7rem] text-subtle">preparing audio…</p>
+        )}
+        {downloading === null && !buffering && (playing || paused) && blockCount > 0 && (
+          <p className="mt-2 font-mono text-[0.7rem] text-subtle">
+            paragraph {block + 1} of {blockCount}
+          </p>
+        )}
+        {failed && <p className="mt-2 text-xs leading-relaxed text-fg">{failed}</p>}
+      </div>
 
       <div id={panelId} hidden={!showSettings} className="mt-3 border-t border-line pt-3">
         <label
@@ -468,9 +554,9 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
         </label>
         <select
           id={`${panelId}-voice`}
-          value={voiceURI}
+          value={voiceId}
           onChange={(e) => {
-            setVoiceURI(e.target.value)
+            setVoiceId(e.target.value)
             try {
               window.localStorage.setItem(VOICE_KEY, e.target.value)
             } catch {
@@ -480,16 +566,34 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
           }}
           className="mt-1.5 w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-fg outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
         >
-          {voices.map((v) => (
-            <option key={v.voiceURI} value={v.voiceURI}>
-              {prettyName(v)} · {v.lang}
-            </option>
-          ))}
+          <optgroup label="Natural — runs on your device">
+            {NATURAL_VOICES.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label} · {v.accent} ·{' '}
+                {downloaded.includes(v.id) ? 'ready' : `${VOICE_SIZE_MB} MB download`}
+              </option>
+            ))}
+          </optgroup>
+          {systemVoices.length > 0 && (
+            <optgroup label="System — instant, no download">
+              {systemVoices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {prettyName(v)} · {v.lang}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
-        <p className="mt-1.5 text-xs leading-relaxed text-subtle">
-          {onlyBasic
-            ? `These are mechanical-sounding synthesiser voices — the only ones your system offers. ${betterVoiceHint()}`
-            : 'The five clearest English voices your system offers, best first. Voices come from your operating system, not from this site.'}
+
+        <p className="mt-1.5 flex items-start gap-1.5 text-xs leading-relaxed text-subtle">
+          <Sparkles aria-hidden className="mt-0.5 size-3.5 shrink-0 text-accent" />
+          <span>
+            {natural
+              ? `A neural voice that runs entirely in your browser — downloaded once, then it works offline. Nothing you listen to is sent anywhere.`
+              : onlySystem
+                ? `System voices come from your operating system, and yours only offers basic synthesiser voices. Pick a natural voice above for something clearer.`
+                : `System voices come from your operating system and start instantly. The natural voices are clearer and sound the same on every device.`}
+          </span>
         </p>
 
         <label
@@ -508,15 +612,22 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
           onChange={(e) => {
             const next = Number(e.target.value)
             setRate(next)
+            if (audio.current) audio.current.playbackRate = next
             try {
               window.localStorage.setItem(RATE_KEY, String(next))
             } catch {
               /* ignore */
             }
           }}
-          onMouseUp={applyAndRestart}
-          onTouchEnd={applyAndRestart}
-          onKeyUp={applyAndRestart}
+          onMouseUp={() => {
+            if (!natural) applyAndRestart()
+          }}
+          onTouchEnd={() => {
+            if (!natural) applyAndRestart()
+          }}
+          onKeyUp={() => {
+            if (!natural) applyAndRestart()
+          }}
           className="mt-1.5 w-full accent-[var(--accent)]"
         />
       </div>
