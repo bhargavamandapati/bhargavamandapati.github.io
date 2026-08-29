@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:mdx": "node scripts/check-mdx.mjs"
   },
   "dependencies": {
     "github-slugger": "^2.0.0",

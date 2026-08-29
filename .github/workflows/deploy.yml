@@ -45,10 +45,11 @@ jobs:
             echo "site_url=https://${OWNER}.github.io/${REPO}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Lint and typecheck
+      - name: Lint, typecheck and check MDX
         run: |
           npm run lint
           npm run typecheck
+          npm run check:mdx
 
       - name: Build static site
         env:
