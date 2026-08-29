@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import { ArrowLeft, ArrowRight, Code2, ExternalLink, Search } from 'lucide-react'
+import { DiagramFrame } from '@/components/diagrams/primitives'
+import { PropertyRelationMap } from '@/components/diagrams/property-relations'
 import {
   aidlUrl,
   categoryOf,
@@ -11,7 +14,9 @@ import {
   javaUrl,
   propertyBySlug,
   propertySlug,
+  relationGroups,
   summarise,
+  diagramRelations,
   vehicleProperties,
   type VehicleProperty,
 } from '@/lib/vehicle-properties'
@@ -110,6 +115,16 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
   const next = vehicleProperties[index + 1]
   const java = javaUrl(property)
   const enumUrl = dataEnumUrl(property)
+  const groups = relationGroups(property)
+  const dependencies = groups.filter((g) => g.strength === 'dependency')
+
+  // Split the diagram by direction: what this needs, versus what needs this.
+  const NEEDS: string[] = ['requires', 'toggled-by', 'display-units', 'commanded-by']
+  const nodes = diagramRelations(property)
+  const mapNodes = {
+    incoming: nodes.filter((n) => NEEDS.includes(n.kind)).slice(0, 3),
+    outgoing: nodes.filter((n) => !NEEDS.includes(n.kind)).slice(0, 3),
+  }
 
   return (
     <div className="container-page py-10 md:py-14">
@@ -175,6 +190,74 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
               </tbody>
             </table>
           </div>
+
+          {groups.length > 0 && (
+            <>
+              <h2
+                id="related"
+                className="mt-10 scroll-mt-24 text-sm font-semibold uppercase tracking-wider text-subtle"
+              >
+                Related properties
+              </h2>
+              {dependencies.length > 0 ? (
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  This property does not stand alone. The relationships marked{' '}
+                  <strong className="font-medium text-fg">dependency</strong> change what you have
+                  to do — ignore one and reads or writes will appear to work and quietly have no
+                  effect.
+                </p>
+              ) : (
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  Properties that pair with this one, or that name it in their documentation.
+                </p>
+              )}
+
+              {mapNodes.incoming.length + mapNodes.outgoing.length > 0 && (
+                <DiagramFrame
+                  title={`How ${property.name} relates to other properties`}
+                  caption="An arrow points from a property to the one it needs. Anything above the centre must be right before this property behaves; anything below depends on this one."
+                >
+                  <PropertyRelationMap
+                    name={property.name}
+                    incoming={mapNodes.incoming}
+                    outgoing={mapNodes.outgoing}
+                  />
+                </DiagramFrame>
+              )}
+
+              <div className="mt-6 space-y-6">
+                {groups.map((group) => (
+                  <section key={group.kind}>
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <h3 className="text-sm font-semibold text-fg">{group.label}</h3>
+                      <span
+                        className={cn(
+                          'chip',
+                          group.strength === 'dependency' &&
+                            'border-difficulty-advanced/40 text-difficulty-advanced',
+                        )}
+                      >
+                        {group.strength}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm leading-relaxed text-muted">{group.blurb}</p>
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {group.properties.map((other) => (
+                        <li key={other.name}>
+                          <Link
+                            href={`/learn/vehicle-properties/${propertySlug(other)}/`}
+                            className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 font-mono text-xs transition-colors hover:border-accent/50 hover:text-accent"
+                          >
+                            {other.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </>
+          )}
 
           <h2 className="mt-10 text-sm font-semibold uppercase tracking-wider text-subtle">
             Reading it from an app
@@ -243,12 +326,12 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
                       href={enumUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="link-underline font-mono text-accent"
+                      className="link-underline font-mono text-accent [overflow-wrap:anywhere]"
                     >
                       {property.dataEnum}
                     </a>
                   ) : (
-                    <code className="font-mono">{property.dataEnum}</code>
+                    <code className="font-mono [overflow-wrap:anywhere]">{property.dataEnum}</code>
                   )}
                 </Field>
               )}

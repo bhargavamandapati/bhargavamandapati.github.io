@@ -3,11 +3,132 @@ import {
   JAVA_PATH,
   vehicleProperties,
   propertyByName,
+  type PropertyRelation,
+  type RelationKind,
   type VehicleProperty,
 } from '@/data/vehicle-properties'
 import { csFile, csSearch } from '@/lib/aosp'
 
-export { vehicleProperties, propertyByName, type VehicleProperty }
+export {
+  vehicleProperties,
+  propertyByName,
+  type VehicleProperty,
+  type PropertyRelation,
+  type RelationKind,
+}
+
+/**
+ * How each relationship reads on the page.
+ *
+ * `strength` separates the relationships that change what you must *do* from
+ * the ones that are only a documentation cross-reference — so a genuine
+ * dependency is never buried among incidental mentions.
+ */
+export const RELATION_META: Record<
+  RelationKind,
+  { label: string; blurb: string; strength: 'dependency' | 'pairing' | 'reference' }
+> = {
+  requires: {
+    label: 'Requires',
+    blurb: 'Set this first, or the property below has no effect.',
+    strength: 'dependency',
+  },
+  gates: {
+    label: 'Gates',
+    blurb: 'These may become UNAVAILABLE when this property is off.',
+    strength: 'dependency',
+  },
+  'command-for': {
+    label: 'Commands',
+    blurb: 'Write here to act; read the state property to see the result.',
+    strength: 'pairing',
+  },
+  'commanded-by': {
+    label: 'Commanded by',
+    blurb: 'Written to by this property to change behaviour.',
+    strength: 'pairing',
+  },
+  toggles: {
+    label: 'Enables',
+    blurb: 'Must be enabled before the state property reports anything meaningful.',
+    strength: 'dependency',
+  },
+  'toggled-by': {
+    label: 'Enabled by',
+    blurb: 'Reports nothing meaningful until this toggle is on.',
+    strength: 'dependency',
+  },
+  'warns-for': {
+    label: 'Warns for',
+    blurb: 'This carries the warning; the sibling reports or controls the system.',
+    strength: 'pairing',
+  },
+  'has-warning': {
+    label: 'Warning property',
+    blurb: 'The warning surfaced by this system.',
+    strength: 'pairing',
+  },
+  'display-units': {
+    label: 'Displayed using',
+    blurb: 'The value is always reported in a fixed unit; this says how to render it.',
+    strength: 'pairing',
+  },
+  formats: {
+    label: 'Formats',
+    blurb: 'Values whose display unit this property selects.',
+    strength: 'pairing',
+  },
+  mentions: {
+    label: 'References',
+    blurb: 'Named in this property\u2019s own documentation.',
+    strength: 'reference',
+  },
+  'mentioned-by': {
+    label: 'Referenced by',
+    blurb: 'Properties whose documentation names this one.',
+    strength: 'reference',
+  },
+}
+
+export type RelationGroup = {
+  kind: RelationKind
+  label: string
+  blurb: string
+  strength: 'dependency' | 'pairing' | 'reference'
+  properties: VehicleProperty[]
+}
+
+/** Relations grouped by kind, dependencies first. */
+export function relationGroups(property: VehicleProperty): RelationGroup[] {
+  const byKind = new Map<RelationKind, VehicleProperty[]>()
+  for (const rel of property.related) {
+    const target = propertyByName.get(rel.name)
+    if (!target) continue
+    const bucket = byKind.get(rel.kind)
+    if (bucket) bucket.push(target)
+    else byKind.set(rel.kind, [target])
+  }
+  const rank = { dependency: 0, pairing: 1, reference: 2 }
+  return [...byKind.entries()]
+    .map(([kind, properties]) => ({ kind, ...RELATION_META[kind], properties }))
+    .sort((a, b) => rank[a.strength] - rank[b.strength] || a.label.localeCompare(b.label))
+}
+
+/** True when a property has a relationship that changes how you must use it. */
+export function hasDependency(property: VehicleProperty): boolean {
+  return property.related.some((r) => RELATION_META[r.kind].strength === 'dependency')
+}
+
+/** Nodes for the relationship diagram — dependencies and pairings only. */
+export function diagramRelations(
+  property: VehicleProperty,
+  limit = 8,
+): { name: string; kind: RelationKind; label: string }[] {
+  return property.related
+    .filter((r) => RELATION_META[r.kind].strength !== 'reference')
+    .slice(0, limit)
+    .map((r) => ({ name: r.name, kind: r.kind, label: RELATION_META[r.kind].label }))
+}
 
 const HW_INTERFACES = `hardware/interfaces/${AIDL_PATH}`
 const CAR_SERVICE = `packages/services/Car/${JAVA_PATH}`
@@ -120,6 +241,9 @@ export type PropertyRow = {
   summary: string
   inCarApi: boolean
   deprecated: boolean
+  /** Has a relationship that changes how the property must be used. */
+  hasDependency: boolean
+  relatedCount: number
 }
 
 export function propertyRows(): PropertyRow[] {
@@ -136,6 +260,8 @@ export function propertyRows(): PropertyRow[] {
     summary: summarise(p),
     inCarApi: p.javaLine !== undefined,
     deprecated: p.deprecated,
+    hasDependency: hasDependency(p),
+    relatedCount: p.related.length,
   }))
 }
 

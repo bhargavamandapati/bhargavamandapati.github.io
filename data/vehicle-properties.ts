@@ -43,6 +43,22 @@ export type VehicleProperty = {
   accessModes: string[]
   /** Set only when car-lib's constant disagrees with the AIDL's computed ID. */
   javaId?: number
+  /** Derived relationships to other properties. */
+  related: PropertyRelation[]
+}
+
+export type RelationKind =
+  | 'requires' | 'gates'
+  | 'command-for' | 'commanded-by'
+  | 'toggles' | 'toggled-by'
+  | 'warns-for' | 'has-warning'
+  | 'display-units' | 'formats'
+  | 'mentions' | 'mentioned-by'
+
+export type PropertyRelation = {
+  name: string
+  kind: RelationKind
+  note: string
 }
 
 export const AIDL_PATH =
@@ -73,7 +89,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_IDENTIFICATION"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "INFO_MAKE",
@@ -98,7 +115,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "INFO_MODEL",
@@ -123,7 +141,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "INFO_MODEL_YEAR",
@@ -149,7 +168,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "INFO_FUEL_CAPACITY",
@@ -175,6 +195,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "FUEL_VOLUME_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in MILLILITER; this property says which unit to display it in."
+      },
+      {
+        "name": "INFO_EV_BATTERY_CAPACITY",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_TYPE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FUEL_LEVEL",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -201,6 +243,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "FUEL_DOOR_OPEN",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "FUEL_LEVEL",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_CAPACITY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_DOOR_LOCATION",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -227,6 +291,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "EV_BATTERY_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in WATT_HOUR; this property says which unit to display it in."
+      },
+      {
+        "name": "EV_CURRENT_BATTERY_CAPACITY",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "EV_CURRENT_BATTERY_CAPACITY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_CAPACITY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -253,7 +339,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "INFO_FUEL_DOOR_LOCATION",
@@ -279,6 +366,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "INFO_EV_PORT_LOCATION",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_TYPE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_MULTI_EV_PORT_LOCATIONS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -305,6 +409,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "INFO_MULTI_EV_PORT_LOCATIONS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_DOOR_LOCATION",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "INFO_MULTI_EV_PORT_LOCATIONS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -331,7 +452,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "INFO_EXTERIOR_DIMENSIONS",
@@ -357,6 +479,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "DISTANCE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in MILLIMETER; this property says which unit to display it in."
+      }
     ]
   },
   {
@@ -383,6 +512,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "INFO_EV_PORT_LOCATION",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_EV_PORT_LOCATION",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_DOOR_LOCATION",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -406,7 +552,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "INFO_VEHICLE_SIZE_CLASS",
@@ -430,7 +577,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "PERF_ODOMETER",
@@ -455,7 +603,14 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_MILEAGE_3P",
       "PERMISSION_MILEAGE"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DISTANCE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in KILOMETER; this property says which unit to display it in."
+      }
+    ]
   },
   {
     "name": "PERF_VEHICLE_SPEED",
@@ -481,6 +636,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_SPEED"
+    ],
+    "related": [
+      {
+        "name": "VEHICLE_SPEED_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in METER_PER_SEC; this property says which unit to display it in."
+      },
+      {
+        "name": "CURRENT_GEAR",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "GEAR_SELECTION",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -507,6 +679,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_SPEED"
+    ],
+    "related": [
+      {
+        "name": "VEHICLE_SPEED_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in METER_PER_SEC; this property says which unit to display it in."
+      }
     ]
   },
   {
@@ -532,7 +711,8 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_READ_STEERING_STATE_3P",
       "PERMISSION_READ_STEERING_STATE"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "PERF_REAR_STEERING_ANGLE",
@@ -558,7 +738,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_READ_STEERING_STATE"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "INSTANTANEOUS_FUEL_ECONOMY",
@@ -581,7 +762,34 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_MILEAGE_3P"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DISTANCE_DISPLAY_UNITS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FUEL_CONSUMPTION_UNITS_DISTANCE_OVER_VOLUME",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FUEL_VOLUME_DISPLAY_UNITS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INSTANTANEOUS_EV_EFFICIENCY",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INSTANTANEOUS_EV_EFFICIENCY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "INSTANTANEOUS_EV_EFFICIENCY",
@@ -604,7 +812,29 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_MILEAGE_3P"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DISTANCE_DISPLAY_UNITS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "EV_BATTERY_DISPLAY_UNITS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INSTANTANEOUS_FUEL_ECONOMY",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INSTANTANEOUS_FUEL_ECONOMY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "ENGINE_COOLANT_TEMP",
@@ -630,6 +860,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_ENGINE_DETAILED"
+    ],
+    "related": [
+      {
+        "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in CELSIUS; this property says which unit to display it in."
+      }
     ]
   },
   {
@@ -654,7 +891,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_ENGINE_DETAILED"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "ENGINE_OIL_TEMP",
@@ -680,6 +918,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_ENGINE_DETAILED"
+    ],
+    "related": [
+      {
+        "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in CELSIUS; this property says which unit to display it in."
+      }
     ]
   },
   {
@@ -705,7 +950,8 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_CAR_ENGINE_DETAILED_3P",
       "PERMISSION_CAR_ENGINE_DETAILED"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "WHEEL_TICK",
@@ -730,7 +976,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_SPEED"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "FUEL_LEVEL",
@@ -756,6 +1003,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_ENERGY"
+    ],
+    "related": [
+      {
+        "name": "FUEL_VOLUME_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in MILLILITER; this property says which unit to display it in."
+      },
+      {
+        "name": "EV_BATTERY_LEVEL",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_CAPACITY",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_TYPE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -783,6 +1052,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ENERGY_PORTS"
+    ],
+    "related": [
+      {
+        "name": "EV_CHARGE_PORT_OPEN",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INFO_FUEL_TYPE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -809,6 +1090,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_ENERGY"
+    ],
+    "related": [
+      {
+        "name": "EV_BATTERY_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in WATT_HOUR; this property says which unit to display it in."
+      },
+      {
+        "name": "EV_CURRENT_BATTERY_CAPACITY",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FUEL_LEVEL",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -835,6 +1133,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_ENERGY"
+    ],
+    "related": [
+      {
+        "name": "EV_BATTERY_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in WATT_HOUR; this property says which unit to display it in."
+      },
+      {
+        "name": "INFO_EV_BATTERY_CAPACITY",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "EV_BATTERY_LEVEL",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "INFO_EV_BATTERY_CAPACITY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -862,6 +1182,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ENERGY_PORTS"
+    ],
+    "related": [
+      {
+        "name": "FUEL_DOOR_OPEN",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -887,7 +1214,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_ENERGY_PORTS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "EV_BATTERY_INSTANTANEOUS_CHARGE_RATE",
@@ -913,7 +1241,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_ENERGY"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "RANGE_REMAINING",
@@ -941,6 +1270,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_ADJUST_RANGE_REMAINING"
+    ],
+    "related": [
+      {
+        "name": "DISTANCE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in METER; this property says which unit to display it in."
+      }
     ]
   },
   {
@@ -965,7 +1301,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in CELSIUS; this property says which unit to display it in."
+      }
+    ]
   },
   {
     "name": "TIRE_PRESSURE",
@@ -990,7 +1333,19 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_TIRES_3P",
       "PERMISSION_TIRES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "TIRE_PRESSURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in KILOPASCAL; this property says which unit to display it in."
+      },
+      {
+        "name": "CRITICALLY_LOW_TIRE_PRESSURE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CRITICALLY_LOW_TIRE_PRESSURE",
@@ -1016,6 +1371,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_TIRES"
+    ],
+    "related": [
+      {
+        "name": "TIRE_PRESSURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in KILOPASCAL; this property says which unit to display it in."
+      },
+      {
+        "name": "TIRE_PRESSURE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -1039,7 +1406,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_CAR_PEDALS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "BRAKE_PEDAL_COMPRESSION_PERCENTAGE",
@@ -1062,7 +1430,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_CAR_PEDALS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "BRAKE_PAD_WEAR_PERCENTAGE",
@@ -1085,7 +1454,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_BRAKE_INFO"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "BRAKE_FLUID_LEVEL_LOW",
@@ -1108,7 +1478,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_BRAKE_INFO"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "VEHICLE_PASSIVE_SUSPENSION_HEIGHT",
@@ -1131,7 +1502,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DYNAMICS_STATE"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "ENGINE_IDLE_AUTO_STOP_ENABLED",
@@ -1157,7 +1529,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_ENGINE_DETAILED"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "IMPACT_DETECTED",
@@ -1181,7 +1554,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_IMPACT_SENSORS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "VEHICLE_HORN_ENGAGED",
@@ -1208,7 +1582,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_HORN"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "GEAR_SELECTION",
@@ -1234,6 +1609,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_POWERTRAIN"
+    ],
+    "related": [
+      {
+        "name": "CURRENT_GEAR",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "PERF_VEHICLE_SPEED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1260,6 +1647,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_POWERTRAIN"
+    ],
+    "related": [
+      {
+        "name": "GEAR_SELECTION",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "PERF_VEHICLE_SPEED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1285,6 +1684,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_POWERTRAIN"
+    ],
+    "related": [
+      {
+        "name": "PARKING_BRAKE_AUTO_APPLY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1310,6 +1716,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_POWERTRAIN"
+    ],
+    "related": [
+      {
+        "name": "PARKING_BRAKE_ON",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -1337,6 +1750,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_POWERTRAIN"
+    ],
+    "related": [
+      {
+        "name": "EV_REGENERATIVE_BRAKING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "EV_REGENERATIVE_BRAKING_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1362,7 +1787,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_ENERGY"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "NIGHT_MODE",
@@ -1387,7 +1813,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_ENVIRONMENT"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "TURN_SIGNAL_STATE",
@@ -1413,6 +1840,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "TURN_SIGNAL_LIGHT_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "TURN_SIGNAL_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "TURN_SIGNAL_LIGHT_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1439,7 +1883,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_POWERTRAIN"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "ABS_ACTIVE",
@@ -1464,7 +1909,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_DYNAMICS_STATE"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "TRACTION_CONTROL_ACTIVE",
@@ -1489,7 +1935,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_DYNAMICS_STATE"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "EV_STOPPING_MODE",
@@ -1517,7 +1964,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_POWERTRAIN"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "ELECTRONIC_STABILITY_CONTROL_ENABLED",
@@ -1544,6 +1992,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_DYNAMICS_STATE"
+    ],
+    "related": [
+      {
+        "name": "ELECTRONIC_STABILITY_CONTROL_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "ELECTRONIC_STABILITY_CONTROL_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -1568,7 +2028,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DYNAMICS_STATE"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "ELECTRONIC_STABILITY_CONTROL_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "ELECTRONIC_STABILITY_CONTROL_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "TURN_SIGNAL_LIGHT_STATE",
@@ -1593,7 +2065,29 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_READ_EXTERIOR_LIGHTS",
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "TURN_SIGNAL_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "TURN_SIGNAL_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "TURN_SIGNAL_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "TURN_SIGNAL_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "TURN_SIGNAL_SWITCH",
@@ -1621,6 +2115,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "TURN_SIGNAL_LIGHT_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "TURN_SIGNAL_LIGHT_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "TURN_SIGNAL_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1647,6 +2158,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -1674,6 +2192,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      },
+      {
+        "name": "HVAC_FAN_DIRECTION_AVAILABLE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -1700,6 +2230,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in CELSIUS; this property says which unit to display it in."
+      }
     ]
   },
   {
@@ -1727,6 +2269,33 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in CELSIUS; this property says which unit to display it in."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_VALUE_SUGGESTION",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "HVAC_DUAL_ON",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_VALUE_SUGGESTION",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1753,6 +2322,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -1779,6 +2355,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -1805,6 +2388,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -1831,6 +2421,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -1857,6 +2454,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -1883,6 +2487,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_SET",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -1909,6 +2525,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -1935,6 +2558,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -1961,7 +2591,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HVAC_STEERING_WHEEL_HEAT",
@@ -1987,7 +2618,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
@@ -2015,6 +2647,38 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "ENGINE_COOLANT_TEMP",
+        "kind": "formats",
+        "note": "Reported in CELSIUS."
+      },
+      {
+        "name": "ENGINE_OIL_TEMP",
+        "kind": "formats",
+        "note": "Reported in CELSIUS."
+      },
+      {
+        "name": "ENV_OUTSIDE_TEMPERATURE",
+        "kind": "formats",
+        "note": "Reported in CELSIUS."
+      },
+      {
+        "name": "EV_BATTERY_AVERAGE_TEMPERATURE",
+        "kind": "formats",
+        "note": "Reported in CELSIUS."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_CURRENT",
+        "kind": "formats",
+        "note": "Reported in CELSIUS."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_SET",
+        "kind": "formats",
+        "note": "Reported in CELSIUS."
+      }
     ]
   },
   {
@@ -2040,6 +2704,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -2066,6 +2737,88 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_AC_ON",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_ACTUAL_FAN_SPEED_RPM",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_AUTO_ON",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_AUTO_RECIRC_ON",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_DUAL_ON",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_FAN_DIRECTION",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_FAN_DIRECTION_AVAILABLE",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_FAN_SPEED",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_MAX_AC_ON",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_MAX_DEFROST_ON",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_RECIRC_ON",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_SEAT_TEMPERATURE",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_SEAT_VENTILATION",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_CURRENT",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_SET",
+        "kind": "gates",
+        "note": "Turning HVAC power off MAY mark this UNAVAILABLE."
+      },
+      {
+        "name": "HVAC_DEFROSTER",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -2092,6 +2845,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      },
+      {
+        "name": "HVAC_FAN_DIRECTION",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2118,6 +2883,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -2144,6 +2916,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_POWER_ON",
+        "kind": "requires",
+        "note": "HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray."
+      }
     ]
   },
   {
@@ -2170,7 +2949,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HVAC_TEMPERATURE_VALUE_SUGGESTION",
@@ -2195,6 +2975,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
+    ],
+    "related": [
+      {
+        "name": "HVAC_TEMPERATURE_SET",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "HVAC_TEMPERATURE_SET",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2223,6 +3015,38 @@ export const vehicleProperties: VehicleProperty[] = [
     "writePermissions": [
       "PERMISSION_CONTROL_DISPLAY_UNITS",
       "PERMISSION_VENDOR_EXTENSION"
+    ],
+    "related": [
+      {
+        "name": "ADAPTIVE_CRUISE_CONTROL_LEAD_VEHICLE_MEASURED_DISTANCE",
+        "kind": "formats",
+        "note": "Reported in MILLIMETER."
+      },
+      {
+        "name": "INFO_EXTERIOR_DIMENSIONS",
+        "kind": "formats",
+        "note": "Reported in MILLIMETER."
+      },
+      {
+        "name": "PERF_ODOMETER",
+        "kind": "formats",
+        "note": "Reported in KILOMETER."
+      },
+      {
+        "name": "RANGE_REMAINING",
+        "kind": "formats",
+        "note": "Reported in METER."
+      },
+      {
+        "name": "INSTANTANEOUS_EV_EFFICIENCY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "INSTANTANEOUS_FUEL_ECONOMY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2251,6 +3075,23 @@ export const vehicleProperties: VehicleProperty[] = [
     "writePermissions": [
       "PERMISSION_CONTROL_DISPLAY_UNITS",
       "PERMISSION_VENDOR_EXTENSION"
+    ],
+    "related": [
+      {
+        "name": "FUEL_LEVEL",
+        "kind": "formats",
+        "note": "Reported in MILLILITER."
+      },
+      {
+        "name": "INFO_FUEL_CAPACITY",
+        "kind": "formats",
+        "note": "Reported in MILLILITER."
+      },
+      {
+        "name": "INSTANTANEOUS_FUEL_ECONOMY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2279,6 +3120,18 @@ export const vehicleProperties: VehicleProperty[] = [
     "writePermissions": [
       "PERMISSION_CONTROL_DISPLAY_UNITS",
       "PERMISSION_VENDOR_EXTENSION"
+    ],
+    "related": [
+      {
+        "name": "CRITICALLY_LOW_TIRE_PRESSURE",
+        "kind": "formats",
+        "note": "Reported in KILOPASCAL."
+      },
+      {
+        "name": "TIRE_PRESSURE",
+        "kind": "formats",
+        "note": "Reported in KILOPASCAL."
+      }
     ]
   },
   {
@@ -2307,6 +3160,28 @@ export const vehicleProperties: VehicleProperty[] = [
     "writePermissions": [
       "PERMISSION_CONTROL_DISPLAY_UNITS",
       "PERMISSION_VENDOR_EXTENSION"
+    ],
+    "related": [
+      {
+        "name": "EV_BATTERY_LEVEL",
+        "kind": "formats",
+        "note": "Reported in WATT_HOUR."
+      },
+      {
+        "name": "EV_CURRENT_BATTERY_CAPACITY",
+        "kind": "formats",
+        "note": "Reported in WATT_HOUR."
+      },
+      {
+        "name": "INFO_EV_BATTERY_CAPACITY",
+        "kind": "formats",
+        "note": "Reported in WATT_HOUR."
+      },
+      {
+        "name": "INSTANTANEOUS_EV_EFFICIENCY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2334,6 +3209,13 @@ export const vehicleProperties: VehicleProperty[] = [
     "writePermissions": [
       "PERMISSION_CONTROL_DISPLAY_UNITS",
       "PERMISSION_VENDOR_EXTENSION"
+    ],
+    "related": [
+      {
+        "name": "INSTANTANEOUS_FUEL_ECONOMY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2363,7 +3245,24 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_CONTROL_DISPLAY_UNITS",
       "PERMISSION_VENDOR_EXTENSION"
     ],
-    "javaId": 289408516
+    "javaId": 289408516,
+    "related": [
+      {
+        "name": "CRUISE_CONTROL_TARGET_SPEED",
+        "kind": "formats",
+        "note": "Reported in METER_PER_SEC."
+      },
+      {
+        "name": "PERF_VEHICLE_SPEED",
+        "kind": "formats",
+        "note": "Reported in METER_PER_SEC."
+      },
+      {
+        "name": "PERF_VEHICLE_SPEED_DISPLAY",
+        "kind": "formats",
+        "note": "Reported in METER_PER_SEC."
+      }
+    ]
   },
   {
     "name": "EXTERNAL_CAR_TIME",
@@ -2382,7 +3281,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Current date and time suggestion for the Car, encoded as Epoch time\n(in milliseconds). This value denotes the number of milliseconds seconds\nthat have elapsed since 1/1/1970 UTC.\n\nThis property signals a change in CarTime to Android. If the property is supported, VHAL\nmust report the most accurate current CarTime when this property is read, and publish a\nchange to this property when the CarTime value has changed. An on-change event for this\nproperty must be published when CarTime changes for any reason other than the natural elapse\nof time (time delta smaller than 500ms should not trigger an on change event). Android will\nread and subscribe to this property to fetch time from VHAL. This can be useful to\nsynchronize Android's time with other vehicle systems (dash clock etc).\n    int64Values[0] = provided Epoch time (in milliseconds)\n\nWhenever a new Value for the property is received, AAOS will create\nand send an \"ExternalTimeSuggestion\" to the \"TimeDetectorService\".\nIf other sources do not have a higher priority, Android will use this\nto set the system time. For information on how to adjust time source\npriorities and how time suggestions are handled (including how Android\nhandles gitter, drift, and minimum resolution) see Time Detector Service\ndocumentation.\n\nNote that the property may take >0 ms to get propagated through the stack\nand, having a timestamped property helps reduce any time drift. So,\nfor all reads to the property, the timestamp can be used to negate this\ndrift:\n    drift = elapsedTime - PropValue.timestamp\n    effectiveTime = PropValue.value.int64Values[0] + drift\n\nIt is strongly recommended that this property must not be used to retrieve\ntime from ECUs using protocols (GNSS, NTP, Telephony etc). Since these\nprotocols are already supported by Android, it is recommended to use\nAndroid’s own systems for them instead of wiring those through the VHAL\nusing this property.\n\nWARNING: The value available through this property should not be dependent\non value written by Android to ANDROID_EPOCH_TIME property in any way.",
-    "aidlLine": 1872
+    "aidlLine": 1872,
+    "related": [
+      {
+        "name": "ANDROID_EPOCH_TIME",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "ANDROID_EPOCH_TIME",
@@ -2401,7 +3307,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Current date and time, encoded as Epoch time (in milliseconds).\nThis value denotes the number of milliseconds seconds that have\nelapsed since 1/1/1970 UTC.\n\nCarServices will write to this value to give VHAL the Android system's\ntime, if the VHAL supports this property. This can be useful to\nsynchronize other vehicle systems (dash clock etc) with Android's time.\n\nAAOS writes to this property once during boot, and\nwill thereafter write only when some time-source changes are propagated.\nAAOS will fill in VehiclePropValue.timestamp correctly.\nNote that AAOS will not send updates for natural elapse of time.\n    int64Values[0] = provided Unix time (in milliseconds)\n\nNote that the property may take >0 ms to get propagated through the stack\nand, having a timestamped property helps reduce any time drift. So,\nfor all writes to the property, the timestamp can be used to negate this\ndrift:\n    drift = elapsedTime - PropValue.timestamp\n    effectiveTime = PropValue.value.int64Values[0] + drift",
-    "aidlLine": 1918
+    "aidlLine": 1918,
+    "related": [
+      {
+        "name": "EXTERNAL_CAR_TIME",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "STORAGE_ENCRYPTION_BINDING_SEED",
@@ -2419,7 +3332,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "External encryption binding seed.\n\nThis value is mixed with the local key storage encryption key.\nThis property holds 16 bytes, and is expected to be persisted on an ECU separate from\nthe IVI. The property is initially set by AAOS, who generates it using a CSRNG.\nAAOS will then read the property on subsequent boots. The binding seed is expected to be\nreliably persisted. Any loss of the seed results in a factory reset of the IVI.",
-    "aidlLine": 1947
+    "aidlLine": 1947,
+    "related": []
   },
   {
     "name": "ENV_OUTSIDE_TEMPERATURE",
@@ -2445,6 +3359,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_ENVIRONMENT"
+    ],
+    "related": [
+      {
+        "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in CELSIUS; this property says which unit to display it in."
+      }
     ]
   },
   {
@@ -2470,7 +3391,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_POWER"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "AP_POWER_STATE_REPORT",
@@ -2495,7 +3417,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_POWER"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "AP_POWER_BOOTUP_REASON",
@@ -2520,6 +3443,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_POWER"
+    ],
+    "related": [
+      {
+        "name": "VEHICLE_IN_USE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2546,6 +3476,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_POWER"
+    ],
+    "related": [
+      {
+        "name": "PER_DISPLAY_BRIGHTNESS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "PER_DISPLAY_BRIGHTNESS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2571,6 +3513,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_POWER"
+    ],
+    "related": [
+      {
+        "name": "DISPLAY_BRIGHTNESS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "PER_DISPLAY_MAX_BRIGHTNESS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "DISPLAY_BRIGHTNESS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "PER_DISPLAY_MAX_BRIGHTNESS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -2598,7 +3562,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_VALET_MODE"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HEAD_UP_DISPLAY_ENABLED",
@@ -2625,7 +3590,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_HEAD_UP_DISPLAY"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HW_KEY_INPUT",
@@ -2646,7 +3612,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 2133,
     "javaLine": 2746,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "HW_KEY_INPUT_V2",
@@ -2664,7 +3631,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Property to feed H/W input events to android\n\nint32array[0]: target display defined by VehicleDisplay like VehicleDisplay::MAIN,\n               VehicleDisplay::INSTRUMENT_CLUSTER, VehicleDisplay::AUX\nint32array[1]: key code, must use standard android key code like KEYCODE_HOME, KEYCODE_BACK\nint32array[2]: action defined in VehicleHwKeyInputAction like\n               VehicleHwKeyInputAction::ACTION_UP, VehicleHwKeyInputAction::ACTION_UP\nint32array[3]: repeat count of the event. For key down events, this is the repeat count\n               with the first down starting at 0 and counting up from there. For key up\n               events, this is always equal to 0\n\nint64array[0]: down time, elapsed nanoseconds since boot. Denotes the time of the most\n               recent key down event. For the down event, it will be the event time of the\n               down event itself",
-    "aidlLine": 2151
+    "aidlLine": 2151,
+    "related": []
   },
   {
     "name": "HW_MOTION_INPUT",
@@ -2682,7 +3650,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Property to feed H/W input events to android\n\nint32array[0]: target display defined by VehicleDisplay like VehicleDisplay::MAIN,\n               VehicleDisplay::INSTRUMENT_CLUSTER, VehicleDisplay::AUX\nint32array[1]: input type defined in VehicleHwMotionInputSource like\n               VehicleHwMotionInputSource::SOURCE_KEYBOARD,\n               VehicleHwMotionInputSource::SOURCE_DPAD\nint32array[2]: action code defined in VehicleHwMotionInputAction like\n               VehicleHwMotionInputAction::ACTION_UP, VehicleHwMotionInputAction::ACTION_DOWN\nint32array[3]: button state flag defined in VehicleHwMotionButtonStateFlag like\n               VehicleHwMotionButtonStateFlag::BUTTON_PRIMARY,\n               VehicleHwMotionButtonStateFlag::BUTTON_SECONDARY\nint32array[4]: pointer events count, N. N must be a positive integer\nint32array[5:5+N-1]: pointer id, length N\nint32array[5+N:5+2*N-1] : tool type, length N. As defined in VehicleHwMotionToolType like\n                          VehicleHwMotionToolType::TOOL_TYPE_FINGER,\n                          VehicleHwMotionToolType::TOOL_TYPE_STYLUS\n\nfloatArray[0:N-1] : x data, length N\nfloatArray[N:2*N-1] : y data, length N\nfloatArray[2*N:3*N-1] : pressure data, length N\nfloatArray[3*N:4*N-1] : size data, length N\n\nint64array[0]: down time, elapsed nanoseconds since boot. Denotes the time when the user\n               originally pressed down to start a stream of position events. For the down\n               event, it will be the event time of the down event itself",
-    "aidlLine": 2174
+    "aidlLine": 2174,
+    "related": []
   },
   {
     "name": "HW_ROTARY_INPUT",
@@ -2701,7 +3670,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Property to feed H/W rotary events to android\n\nint32Values[0] : RotaryInputType identifying which rotary knob rotated\nint32Values[1] : number of detents (clicks), positive for clockwise,\n                 negative for counterclockwise\nint32Values[2] : target display defined in VehicleDisplay. Events not\n                 tied to specific display must be sent to\n                 VehicleDisplay#MAIN.\nint32values[3 .. 3 + abs(number of detents) - 2]:\n                 nanosecond deltas between pairs of consecutive detents,\n                 if the number of detents is > 1 or < -1\n\nVehiclePropValue.timestamp: when the rotation occurred. If the number of\n                            detents is > 1 or < -1, this is when the\n                            first detent of rotation occurred.",
-    "aidlLine": 2209
+    "aidlLine": 2209,
+    "related": []
   },
   {
     "name": "HW_CUSTOM_INPUT",
@@ -2720,7 +3690,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Defines a custom OEM partner input event.\n\nThis input event must be used by OEM partners who wish to propagate events not supported\nby Android. It is composed by an array of int32 values only.\n\nThe Android properties are:\n\nint32Values[0] : Input code identifying the function representing this event. Valid event\n                 types are defined by CustomInputType.CUSTOM_EVENT_F1 up to\n                 CustomInputType.CUSTOM_EVENT_F10. They represent the custom event to be\n                 defined by OEM partners.\nint32Values[1] : target display type defined in VehicleDisplay. Events not tied to specific\n                 display must be sent to VehicleDisplay#MAIN.\nint32Values[2] : repeat counter, if 0 then event is not repeated. Values 1 or above means\n                 how many times this event repeated.",
-    "aidlLine": 2233
+    "aidlLine": 2233,
+    "related": []
   },
   {
     "name": "DOOR_POS",
@@ -2746,7 +3717,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_DOORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "DOOR_MOVE",
@@ -2772,7 +3744,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_DOORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "DOOR_LOCK",
@@ -2798,7 +3771,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_DOORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "DOOR_CHILD_LOCK_ENABLED",
@@ -2824,7 +3798,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_DOORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_Z_POS",
@@ -2850,7 +3825,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_Z_MOVE",
@@ -2876,7 +3852,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_Y_POS",
@@ -2902,7 +3879,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_Y_MOVE",
@@ -2928,7 +3906,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_LOCK",
@@ -2954,7 +3933,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_FOLD",
@@ -2980,7 +3960,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_AUTO_FOLD_ENABLED",
@@ -3006,7 +3987,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "MIRROR_AUTO_TILT_ENABLED",
@@ -3032,7 +4014,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_MIRRORS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_MEMORY_SELECT",
@@ -3057,6 +4040,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
+    ],
+    "related": [
+      {
+        "name": "SEAT_MEMORY_SET",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -3082,6 +4072,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
+    ],
+    "related": [
+      {
+        "name": "SEAT_MEMORY_SELECT",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -3108,7 +4105,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_BELT_HEIGHT_POS",
@@ -3134,7 +4132,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_BELT_HEIGHT_MOVE",
@@ -3160,7 +4159,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_FORE_AFT_POS",
@@ -3186,7 +4186,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_FORE_AFT_MOVE",
@@ -3212,7 +4213,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_BACKREST_ANGLE_1_POS",
@@ -3238,6 +4240,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
+    ],
+    "related": [
+      {
+        "name": "SEAT_BACKREST_ANGLE_2_POS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -3264,7 +4273,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_BACKREST_ANGLE_2_POS",
@@ -3290,6 +4300,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
+    ],
+    "related": [
+      {
+        "name": "SEAT_BACKREST_ANGLE_1_POS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -3316,7 +4333,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_HEIGHT_POS",
@@ -3342,7 +4360,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_HEIGHT_MOVE",
@@ -3368,7 +4387,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_DEPTH_POS",
@@ -3394,7 +4414,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_DEPTH_MOVE",
@@ -3420,7 +4441,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_TILT_POS",
@@ -3446,7 +4468,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_TILT_MOVE",
@@ -3472,7 +4495,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_LUMBAR_FORE_AFT_POS",
@@ -3498,7 +4522,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_LUMBAR_FORE_AFT_MOVE",
@@ -3524,7 +4549,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_LUMBAR_SIDE_SUPPORT_POS",
@@ -3550,7 +4576,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_LUMBAR_SIDE_SUPPORT_MOVE",
@@ -3576,7 +4603,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_HEADREST_HEIGHT_POS",
@@ -3602,6 +4630,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
+    ],
+    "related": [
+      {
+        "name": "SEAT_HEADREST_HEIGHT_POS_V2",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -3628,6 +4663,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
+    ],
+    "related": [
+      {
+        "name": "SEAT_HEADREST_HEIGHT_POS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -3654,7 +4696,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_HEADREST_ANGLE_POS",
@@ -3680,7 +4723,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_HEADREST_ANGLE_MOVE",
@@ -3706,7 +4750,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_HEADREST_FORE_AFT_POS",
@@ -3732,7 +4777,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_HEADREST_FORE_AFT_MOVE",
@@ -3758,7 +4804,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_FOOTWELL_LIGHTS_STATE",
@@ -3784,6 +4831,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_READ_INTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "CABIN_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SEAT_FOOTWELL_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SEAT_FOOTWELL_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -3811,6 +4875,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_INTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "CABIN_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SEAT_FOOTWELL_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SEAT_FOOTWELL_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -3837,7 +4918,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_AIRBAG_ENABLED",
@@ -3863,6 +4945,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_AIRBAGS"
+    ],
+    "related": [
+      {
+        "name": "SEAT_AIRBAGS_DEPLOYED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -3887,7 +4976,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_CAR_AIRBAGS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "SEAT_AIRBAG_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "SEAT_CUSHION_SIDE_SUPPORT_POS",
@@ -3913,7 +5009,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_CUSHION_SIDE_SUPPORT_MOVE",
@@ -3939,7 +5036,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_LUMBAR_VERTICAL_POS",
@@ -3965,7 +5063,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_LUMBAR_VERTICAL_MOVE",
@@ -3991,7 +5090,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_WALK_IN_POS",
@@ -4017,7 +5117,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "SEAT_BELT_PRETENSIONER_DEPLOYED",
@@ -4040,7 +5141,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_CAR_SEAT_BELTS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "SEAT_OCCUPANCY",
@@ -4065,7 +5167,8 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_READ_CAR_SEATS",
       "PERMISSION_CONTROL_CAR_SEATS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "WINDOW_POS",
@@ -4091,7 +5194,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_WINDOWS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "WINDOW_MOVE",
@@ -4117,7 +5221,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_WINDOWS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "WINDOW_LOCK",
@@ -4143,7 +5248,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_WINDOWS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "WINDSHIELD_WIPERS_PERIOD",
@@ -4167,7 +5273,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_WINDSHIELD_WIPERS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "WINDSHIELD_WIPERS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "WINDSHIELD_WIPERS_STATE",
@@ -4192,7 +5305,24 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_READ_WINDSHIELD_WIPERS_3P",
       "PERMISSION_READ_WINDSHIELD_WIPERS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "WINDSHIELD_WIPERS_PERIOD",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "WINDSHIELD_WIPERS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "WINDSHIELD_WIPERS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "WINDSHIELD_WIPERS_SWITCH",
@@ -4220,6 +5350,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_WINDSHIELD_WIPERS"
+    ],
+    "related": [
+      {
+        "name": "WINDSHIELD_WIPERS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "WINDSHIELD_WIPERS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -4246,7 +5388,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_STEERING_WHEEL"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "STEERING_WHEEL_DEPTH_MOVE",
@@ -4272,7 +5415,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_STEERING_WHEEL"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "STEERING_WHEEL_HEIGHT_POS",
@@ -4298,7 +5442,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_STEERING_WHEEL"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "STEERING_WHEEL_HEIGHT_MOVE",
@@ -4324,7 +5469,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_STEERING_WHEEL"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "STEERING_WHEEL_THEFT_LOCK_ENABLED",
@@ -4350,7 +5496,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_STEERING_WHEEL"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "STEERING_WHEEL_LOCKED",
@@ -4376,7 +5523,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_STEERING_WHEEL"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "STEERING_WHEEL_EASY_ACCESS_ENABLED",
@@ -4402,7 +5550,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_STEERING_WHEEL"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "GLOVE_BOX_DOOR_POS",
@@ -4428,7 +5577,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_GLOVE_BOX"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "GLOVE_BOX_LOCKED",
@@ -4454,7 +5604,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_GLOVE_BOX"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "VEHICLE_MAP_SERVICE",
@@ -4481,7 +5632,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "writePermissions": [
       "PERMISSION_VMS_PUBLISHER",
       "PERMISSION_VMS_SUBSCRIBER"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "LOCATION_CHARACTERIZATION",
@@ -4502,7 +5654,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 3925,
     "javaLine": 4835,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "ULTRASONICS_SENSOR_POSITION",
@@ -4525,7 +5678,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ULTRASONICS_SENSOR_DATA"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "ULTRASONICS_SENSOR_ORIENTATION",
@@ -4548,7 +5702,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ULTRASONICS_SENSOR_DATA"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "ULTRASONICS_SENSOR_FIELD_OF_VIEW",
@@ -4571,7 +5726,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ULTRASONICS_SENSOR_DATA"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "ULTRASONICS_SENSOR_DETECTION_RANGE",
@@ -4594,7 +5750,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ULTRASONICS_SENSOR_DATA"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "ULTRASONICS_SENSOR_SUPPORTED_RANGES",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "ULTRASONICS_SENSOR_SUPPORTED_RANGES",
@@ -4617,7 +5780,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ULTRASONICS_SENSOR_DATA"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "ULTRASONICS_SENSOR_DETECTION_RANGE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "ULTRASONICS_SENSOR_MEASURED_DISTANCE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "ULTRASONICS_SENSOR_MEASURED_DISTANCE",
@@ -4640,7 +5815,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ULTRASONICS_SENSOR_DATA"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "ULTRASONICS_SENSOR_SUPPORTED_RANGES",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "OBD2_LIVE_FRAME",
@@ -4665,6 +5847,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
+    ],
+    "related": [
+      {
+        "name": "OBD2_FREEZE_FRAME",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -4690,6 +5879,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
+    ],
+    "related": [
+      {
+        "name": "OBD2_FREEZE_FRAME_INFO",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "OBD2_LIVE_FRAME",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "OBD2_FREEZE_FRAME_INFO",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -4715,6 +5921,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
+    ],
+    "related": [
+      {
+        "name": "OBD2_FREEZE_FRAME",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "OBD2_FREEZE_FRAME",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "OBD2_FREEZE_FRAME_CLEAR",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -4740,6 +5963,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_CLEAR"
+    ],
+    "related": [
+      {
+        "name": "OBD2_FREEZE_FRAME_INFO",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -4766,7 +5996,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HIGH_BEAM_LIGHTS_STATE",
@@ -4792,7 +6023,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "FOG_LIGHTS_STATE",
@@ -4818,6 +6050,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "FRONT_FOG_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "REAR_FOG_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FRONT_FOG_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "REAR_FOG_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -4844,7 +6098,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HEADLIGHTS_SWITCH",
@@ -4871,7 +6126,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "HIGH_BEAM_LIGHTS_SWITCH",
@@ -4898,7 +6154,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "FOG_LIGHTS_SWITCH",
@@ -4925,6 +6182,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "FRONT_FOG_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "REAR_FOG_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FRONT_FOG_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "REAR_FOG_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -4952,7 +6231,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "CABIN_LIGHTS_STATE",
@@ -4978,6 +6258,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_READ_INTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "CABIN_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "SEAT_FOOTWELL_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "STEERING_WHEEL_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5005,6 +6302,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_INTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "CABIN_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SEAT_FOOTWELL_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "STEERING_WHEEL_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5031,6 +6345,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_READ_INTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "READING_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5058,6 +6379,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_INTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "READING_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -5082,7 +6410,24 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_INTERIOR_LIGHTS"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "CABIN_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "STEERING_WHEEL_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "STEERING_WHEEL_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "STEERING_WHEEL_LIGHTS_SWITCH",
@@ -5109,6 +6454,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_INTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "CABIN_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "STEERING_WHEEL_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "STEERING_WHEEL_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5127,7 +6489,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Support customize permissions for vendor properties\n\nImplement this property if vehicle hal support customize vendor permissions feature.\nVehiclePropConfig.configArray is used to indicate vendor properties and permissions\nwhich selected for this vendor property. The permission must be one of enum in\nVehicleVendorPermission.\nThe configArray is set as follows:\n     configArray[n] = propId : property ID for the vendor property\n     configArray[n+1] = one of enums in VehicleVendorPermission. It indicates the permission\n     for reading value of the property.\n     configArray[n+2] = one of enums in VehicleVendorPermission. It indicates the permission\n     for writing value of the property.\n\nFor example:\nconfigArray = {\n     vendor_prop_1, PERMISSION_VENDOR_SEAT_READ, PERMISSION_VENDOR_SEAT_WRITE,\n     vendor_prop_2, PERMISSION_VENDOR_INFO, PERMISSION_NOT_ACCESSIBLE,\n}\nIf vendor properties are not in this array, they will have the default vendor permission.\nIf vendor chose PERMISSION_NOT_ACCESSIBLE, android will not have access to the property. In\nthe example, Android can not write value for vendor_prop_2.",
-    "aidlLine": 4488
+    "aidlLine": 4488,
+    "related": []
   },
   {
     "name": "DISABLED_OPTIONAL_FEATURES",
@@ -5145,7 +6508,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Allow disabling optional featurs from vhal.\n\nThis property reports optional features that should be disabled.\nAll allowed optional features for the system is declared in Car service overlay,\nconfig_allowed_optional_car_features.\nThis property allows disabling features defined in the overlay. Without this property,\nall the features declared in the overlay will be enabled.\n\nValue read should include all features disabled with ',' separation.\nex) \"com.android.car.user.CarUserNoticeService,storage_monitoring\"",
-    "aidlLine": 4517
+    "aidlLine": 4517,
+    "related": []
   },
   {
     "name": "INITIAL_USER_INFO",
@@ -5166,7 +6530,34 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4534,
     "javaLine": 5533,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "CREATE_USER",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "REMOVE_USER",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SWITCH_USER",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SWITCH_USER",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "USER_IDENTIFICATION_ASSOCIATION",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "SWITCH_USER",
@@ -5187,7 +6578,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4585,
     "javaLine": 5551,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "INITIAL_USER_INFO",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "INITIAL_USER_INFO",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CREATE_USER",
@@ -5208,7 +6611,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4752,
     "javaLine": 5569,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "INITIAL_USER_INFO",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "REMOVE_USER",
@@ -5229,7 +6639,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4799,
     "javaLine": 5587,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "INITIAL_USER_INFO",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "USER_IDENTIFICATION_ASSOCIATION",
@@ -5250,7 +6667,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4831,
     "javaLine": 5605,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "INITIAL_USER_INFO",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "EVS_SERVICE_REQUEST",
@@ -5268,7 +6692,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Enable/request an EVS service.\n\nThe property provides a generalized way to trigger EVS services.  VHAL\nshould use this property to request Android to start or stop EVS service.\n\n int32Values[0] = a type of the EVS service. The value must be one of enums in\n                  EvsServiceType.\n int32Values[1] = the state of the EVS service. The value must be one of enums in\n                  EvsServiceState.\n\nFor example, to enable rear view EVS service, android side can set the property value as\n[EvsServiceType::REAR_VIEW, EvsServiceState::ON].",
-    "aidlLine": 4907
+    "aidlLine": 4907,
+    "related": []
   },
   {
     "name": "POWER_POLICY_REQ",
@@ -5289,7 +6714,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4927,
     "javaLine": 5623,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "POWER_POLICY_GROUP_REQ",
@@ -5310,7 +6736,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4945,
     "javaLine": 5641,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "CURRENT_POWER_POLICY",
@@ -5331,7 +6758,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4965,
     "javaLine": 5659,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "WATCHDOG_ALIVE",
@@ -5352,7 +6780,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4978,
     "javaLine": 5677,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "WATCHDOG_TERMINATED_PROCESS",
@@ -5373,7 +6802,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 4990,
     "javaLine": 5695,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "VHAL_HEARTBEAT",
@@ -5394,7 +6824,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 5002,
     "javaLine": 5713,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "CLUSTER_SWITCH_UI",
@@ -5415,7 +6846,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 5018,
     "javaLine": 5731,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "CLUSTER_REPORT_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CLUSTER_DISPLAY_STATE",
@@ -5436,7 +6874,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 5032,
     "javaLine": 5749,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "CLUSTER_REPORT_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "CLUSTER_REQUEST_DISPLAY",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CLUSTER_REPORT_STATE",
@@ -5457,7 +6907,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 5057,
     "javaLine": 5767,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "CLUSTER_DISPLAY_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "CLUSTER_SWITCH_UI",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "CLUSTER_REQUEST_DISPLAY",
@@ -5478,7 +6940,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 5093,
     "javaLine": 5785,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "CLUSTER_DISPLAY_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "CLUSTER_NAVIGATION_STATE",
@@ -5499,7 +6968,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 5108,
     "javaLine": 5803,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "ELECTRONIC_TOLL_COLLECTION_CARD_TYPE",
@@ -5525,6 +6995,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_STATUS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5551,6 +7028,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CAR_INFO"
+    ],
+    "related": [
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_TYPE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -5577,6 +7061,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "FOG_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FOG_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5604,6 +7100,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "FOG_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FOG_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5630,6 +7138,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "FOG_LIGHTS_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FOG_LIGHTS_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5657,6 +7177,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_EXTERIOR_LIGHTS"
+    ],
+    "related": [
+      {
+        "name": "FOG_LIGHTS_SWITCH",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "FOG_LIGHTS_SWITCH",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5685,7 +7217,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_ENERGY"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "EV_CHARGE_PERCENT_LIMIT",
@@ -5712,6 +7245,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_ENERGY"
+    ],
+    "related": [
+      {
+        "name": "EV_CHARGE_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -5736,7 +7276,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "EV_CHARGE_PERCENT_LIMIT",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "EV_CHARGE_SWITCH",
@@ -5763,7 +7310,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_ENERGY"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "EV_CHARGE_TIME_REMAINING",
@@ -5787,7 +7335,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "EV_REGENERATIVE_BRAKING_STATE",
@@ -5811,7 +7360,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "EV_BRAKE_REGENERATION_LEVEL",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "EV_BRAKE_REGENERATION_LEVEL",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "TRAILER_PRESENT",
@@ -5835,7 +7396,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_PRIVILEGED_CAR_INFO"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "VEHICLE_CURB_WEIGHT",
@@ -5858,7 +7420,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_PRIVILEGED_CAR_INFO"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "GENERAL_SAFETY_REGULATION_COMPLIANCE_REQUIREMENT",
@@ -5877,7 +7440,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "EU's General security regulation compliance requirement.\n\nReturns whether general security regulation compliance is required, if\nso, what type of requirement.",
-    "aidlLine": 5356
+    "aidlLine": 5356,
+    "related": []
   },
   {
     "name": "SUPPORTED_PROPERTY_IDS",
@@ -5895,7 +7459,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": true,
     "description": "(Deprecated) List of all supported property IDs.\n\nA list of all supported property IDs (including this property). This property is required for\nHIDL VHAL to work with large amount of vehicle prop configs where the getAllPropConfigs\npayload exceeds the binder limitation. This issue is fixed in AIDL version using\nLargeParcelable in getAllPropConfigs, so this property is deprecated.\n\nIn HIDL VHAL implementation, if the amount of data returned in getAllPropConfigs exceeds the\nbinder limitation, vendor must support this property and return all the supported property\nIDs. Car service will divide this list into smaller sub lists and use getPropConfigs([ids])\nto query the sub lists. The results will be merged together in Car Service.\n\nThe config array for this property must contain one int element which is the number of\nconfigs per getPropConfigs request by Car Service. This number must be small enough so that\neach getPropConfigs payload will not exceed binder limitation, however, a smaller number will\ncause more requests, which increase overhead to fetch all the configs.",
-    "aidlLine": 5370
+    "aidlLine": 5370,
+    "related": []
   },
   {
     "name": "SHUTDOWN_REQUEST",
@@ -5914,7 +7479,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Request the head unit to be shutdown.\n\n<p>This is required for executing a task when the head unit is powered off (remote task\nfeature). After the head unit is powered-on to execute the task, the head unit should\nbe shutdown. The head unit will send this message once the task is finished.\n\n<p>This is not for the case when a user wants to shutdown the head unit.\n\n<p>This usually involves telling a separate system outside the head unit (e.g. a power\ncontroller) to prepare shutting down the head unit.\n\n<p>Note that the external system must validate whether this request is valid by checking\nwhether the vehicle is currently in use. If a user enters the vehicle after a\nSHUTDOWN_REQUEST is sent, then the system must ignore this request. It\nis recommended to store a VehicleInUse property in the power controller and exposes it\nthrough VEHICLE_IN_USE property. A shutdown request must be ignored if VehicleInUse is true.\n\n<p>If allowed, the external system will start sending a shutdown signal to the head unit,\nwhich will cause VHAL to send SHUTDOWN_PREPARE message to Android. Android will then start\nthe shut down process by handling the message.\n\n<p>This property is only for issuing a request and only supports writing. Every time this\nproperty value is set, the request to shutdown will be issued no matter what the current\nproperty value is. The current property value is meaningless.\n\n<p>Since this property is write-only, subscribing is not allowed and no property change\nevent will be generated.\n\n<p>The value to set indicates the shutdown option, it must be one of\n{@code VehicleApPowerStateShutdownParam}, e.g.,\nVehicleApPowerStateShutdownParam.SLEEP_IMMEDIATELY. This shutdown option might not be honored\nif the system doesn't support such option. In such case, an error will not be returned.\n\n<p>For configuration information, VehiclePropConfig.configArray must have bit flag combining\nvalues in {@code VehicleApPowerStateConfigFlag} to indicate which shutdown options are\nsupported.\n\n<p>Returns error if failed to send the shutdown request to the other system.",
-    "aidlLine": 5395
+    "aidlLine": 5395,
+    "related": [
+      {
+        "name": "VEHICLE_IN_USE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "VEHICLE_IN_USE",
@@ -5933,7 +7505,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 2,
     "deprecated": false,
     "description": "Whether the vehicle is currently in use.\n\n<p>In-use means a human user is present and is intended to use the vehicle. This doesn't\nnecessarily means the human user is in the vehicle. For example, if the human user unlocks\nthe vehicle remotely, the vehicle is considered in use.\n\n<p>If this property is supported:\n\n<p>Each time user powers on the vehicle or the system detects the user is present,\nVEHICLE_IN_USE must be set to true. Each time user powers off the vehicle or the system\ndetects the user is not present, VEHICLE_IN_USE must be set to false.\n\n<p>This property is different than AP_POWER_BOOTUP_REASON in the sense that\nAP_POWER_BOOTUP_REASON is only set once during the system bootup. However, this property\nmight change multiple times during a system bootup cycle.\n\n<p>For example, a device is currently not in use. The system bootup to execute a remote task.\nVEHICLE_IN_USE is false. While the remote task is executing, the user enters the vehicle and\npowers on the vehicle. VEHICLE_IN_USE is set to true. After a driving session, user powers\noff the vehicle, VEHICLE_IN_USE is set to false.\n\n<p>This property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
-    "aidlLine": 5443
+    "aidlLine": 5443,
+    "related": [
+      {
+        "name": "AP_POWER_BOOTUP_REASON",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "SHUTDOWN_REQUEST",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CLUSTER_HEARTBEAT",
@@ -5954,7 +7538,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "aidlLine": 5476,
     "javaLine": 5821,
     "readPermissions": [],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "VEHICLE_DRIVING_AUTOMATION_CURRENT_LEVEL",
@@ -5979,7 +7564,14 @@ export const vehicleProperties: VehicleProperty[] = [
       "PERMISSION_CAR_DRIVING_STATE_3P",
       "PERMISSION_CAR_DRIVING_STATE"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "VEHICLE_DRIVING_AUTOMATION_TARGET_LEVEL",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "VEHICLE_DRIVING_AUTOMATION_TARGET_LEVEL",
@@ -6003,7 +7595,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DRIVING_STATE"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "VEHICLE_DRIVING_AUTOMATION_CURRENT_LEVEL",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "CAMERA_SERVICE_CURRENT_STATE",
@@ -6022,7 +7621,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 3,
     "deprecated": false,
     "description": "Reports current state of CarEvsService types.\n\nInforms other components of current state of each CarEvsService service type with values\ndefined in CameraServiceState. CarEvsService will update this property whenever a service\ntype transitions into a new state.\n\nint32[0]: Current state of REARVIEW service type.\nint32[1]: Current state of SURROUNDVIEW service type.\nint32[2]: Current state of FRONTVIEW service type.\nint32[3]: Current state of LEFTVIEW service type.\nint32[4]: Current state of RIGHTVIEW service type.\nint32[5]: Current state of DRIVERVIEW service type.\nint32[6]: Current state of FRONT_PASSENGERVIEW service type.\nint32[7]: Current state of REAR_PASSENGERVIEW service type.",
-    "aidlLine": 5537
+    "aidlLine": 5537,
+    "related": []
   },
   {
     "name": "PER_DISPLAY_MAX_BRIGHTNESS",
@@ -6040,7 +7640,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "version": 3,
     "deprecated": false,
     "description": "Property to represent max brightness of the displays which are controlled separately.\n\nThis is only used if PER_DISPLAY_BRIGHTNESS is supported.\n\nThe display port uniquely identifies a physical connector on the device\nfor display output, ranging from 0 to 255.\n\nint32Values[0] : display port number\nint32Values[1] : max brightness for display port number specified at int32Values[0]\nint32Values[2] : display port number\nint32Values[3] : max brightness for display port number specified at int32Values[2]\n...",
-    "aidlLine": 5561
+    "aidlLine": 5561,
+    "related": [
+      {
+        "name": "PER_DISPLAY_BRIGHTNESS",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "PER_DISPLAY_BRIGHTNESS",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
@@ -6067,6 +7679,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -6091,7 +7725,29 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "FORWARD_COLLISION_WARNING_ENABLED",
@@ -6118,6 +7774,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "FORWARD_COLLISION_WARNING_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "FORWARD_COLLISION_WARNING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -6142,7 +7815,24 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "FORWARD_COLLISION_WARNING_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "FORWARD_COLLISION_WARNING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "BLIND_SPOT_WARNING_ENABLED",
@@ -6169,6 +7859,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "BLIND_SPOT_WARNING_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "BLIND_SPOT_WARNING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6193,7 +7895,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "BLIND_SPOT_WARNING_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "BLIND_SPOT_WARNING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "LANE_DEPARTURE_WARNING_ENABLED",
@@ -6220,6 +7934,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "LANE_DEPARTURE_WARNING_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "LANE_DEPARTURE_WARNING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6244,7 +7970,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "LANE_DEPARTURE_WARNING_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "LANE_DEPARTURE_WARNING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "LANE_KEEP_ASSIST_ENABLED",
@@ -6271,6 +8009,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "LANE_KEEP_ASSIST_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "LANE_KEEP_ASSIST_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6295,7 +8045,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "LANE_KEEP_ASSIST_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "LANE_KEEP_ASSIST_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "LANE_CENTERING_ASSIST_ENABLED",
@@ -6322,6 +8084,23 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "LANE_CENTERING_ASSIST_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "LANE_CENTERING_ASSIST_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LANE_CENTERING_ASSIST_COMMAND",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -6346,6 +8125,23 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_STATES"
+    ],
+    "related": [
+      {
+        "name": "LANE_CENTERING_ASSIST_STATE",
+        "kind": "command-for",
+        "note": "Write to this to act; read the state property to see the result."
+      },
+      {
+        "name": "LANE_CENTERING_ASSIST_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LANE_CENTERING_ASSIST_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6370,7 +8166,29 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "LANE_CENTERING_ASSIST_COMMAND",
+        "kind": "commanded-by",
+        "note": "Write to this to act; read the state property to see the result."
+      },
+      {
+        "name": "LANE_CENTERING_ASSIST_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "LANE_CENTERING_ASSIST_COMMAND",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "LANE_CENTERING_ASSIST_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "EMERGENCY_LANE_KEEP_ASSIST_ENABLED",
@@ -6397,6 +8215,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "EMERGENCY_LANE_KEEP_ASSIST_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "EMERGENCY_LANE_KEEP_ASSIST_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6421,7 +8251,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "EMERGENCY_LANE_KEEP_ASSIST_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "EMERGENCY_LANE_KEEP_ASSIST_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CRUISE_CONTROL_ENABLED",
@@ -6448,6 +8290,43 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "CRUISE_CONTROL_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "CRUISE_CONTROL_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "ADAPTIVE_CRUISE_CONTROL_LEAD_VEHICLE_MEASURED_DISTANCE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_COMMAND",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_TARGET_SPEED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_TYPE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -6476,6 +8355,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_STATES"
+    ],
+    "related": [
+      {
+        "name": "CRUISE_CONTROL_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6500,7 +8386,44 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "CRUISE_CONTROL_COMMAND",
+        "kind": "commanded-by",
+        "note": "Write to this to act; read the state property to see the result."
+      },
+      {
+        "name": "CRUISE_CONTROL_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "ADAPTIVE_CRUISE_CONTROL_LEAD_VEHICLE_MEASURED_DISTANCE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_COMMAND",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_TARGET_SPEED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CRUISE_CONTROL_COMMAND",
@@ -6524,6 +8447,23 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_STATES"
+    ],
+    "related": [
+      {
+        "name": "CRUISE_CONTROL_STATE",
+        "kind": "command-for",
+        "note": "Write to this to act; read the state property to see the result."
+      },
+      {
+        "name": "CRUISE_CONTROL_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6548,7 +8488,24 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "VEHICLE_SPEED_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in METER_PER_SEC; this property says which unit to display it in."
+      },
+      {
+        "name": "CRUISE_CONTROL_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP",
@@ -6576,6 +8533,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_STATES"
+    ],
+    "related": [
+      {
+        "name": "CRUISE_CONTROL_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6600,7 +8569,24 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DISTANCE_DISPLAY_UNITS",
+        "kind": "display-units",
+        "note": "The value is always reported in MILLIMETER; this property says which unit to display it in."
+      },
+      {
+        "name": "CRUISE_CONTROL_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "CRUISE_CONTROL_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "HANDS_ON_DETECTION_ENABLED",
@@ -6627,6 +8613,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_DRIVER_MONITORING_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "HANDS_ON_DETECTION_WARNING",
+        "kind": "has-warning",
+        "note": "The warning surfaced by this system."
+      }
     ]
   },
   {
@@ -6651,7 +8644,14 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_DRIVER_MONITORING_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "HANDS_ON_DETECTION_WARNING",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
+    ]
   },
   {
     "name": "HANDS_ON_DETECTION_WARNING",
@@ -6675,7 +8675,19 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_DRIVER_MONITORING_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "HANDS_ON_DETECTION_ENABLED",
+        "kind": "warns-for",
+        "note": "This reports the warning; the sibling reports or controls the system behind it."
+      },
+      {
+        "name": "HANDS_ON_DETECTION_DRIVER_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "DRIVER_DROWSINESS_ATTENTION_SYSTEM_ENABLED",
@@ -6702,6 +8714,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_DRIVER_MONITORING_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_WARNING",
+        "kind": "has-warning",
+        "note": "The warning surfaced by this system."
+      },
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6726,7 +8750,24 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_DRIVER_MONITORING_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_WARNING",
+        "kind": "has-warning",
+        "note": "The warning surfaced by this system."
+      },
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_WARNING",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_SYSTEM_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "DRIVER_DROWSINESS_ATTENTION_WARNING_ENABLED",
@@ -6753,6 +8794,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_DRIVER_MONITORING_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_WARNING",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6777,7 +8825,29 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_DRIVER_MONITORING_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_STATE",
+        "kind": "warns-for",
+        "note": "This reports the warning; the sibling reports or controls the system behind it."
+      },
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_SYSTEM_ENABLED",
+        "kind": "warns-for",
+        "note": "This reports the warning; the sibling reports or controls the system behind it."
+      },
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "DRIVER_DROWSINESS_ATTENTION_WARNING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "DRIVER_DISTRACTION_SYSTEM_ENABLED",
@@ -6804,6 +8874,18 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_DRIVER_MONITORING_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "DRIVER_DISTRACTION_WARNING",
+        "kind": "has-warning",
+        "note": "The warning surfaced by this system."
+      },
+      {
+        "name": "DRIVER_DISTRACTION_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6828,7 +8910,24 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_DRIVER_MONITORING_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DRIVER_DISTRACTION_WARNING",
+        "kind": "has-warning",
+        "note": "The warning surfaced by this system."
+      },
+      {
+        "name": "DRIVER_DISTRACTION_WARNING",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "DRIVER_DISTRACTION_SYSTEM_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "DRIVER_DISTRACTION_WARNING_ENABLED",
@@ -6855,6 +8954,13 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_DRIVER_MONITORING_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "DRIVER_DISTRACTION_WARNING",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      }
     ]
   },
   {
@@ -6879,7 +8985,29 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_DRIVER_MONITORING_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "DRIVER_DISTRACTION_STATE",
+        "kind": "warns-for",
+        "note": "This reports the warning; the sibling reports or controls the system behind it."
+      },
+      {
+        "name": "DRIVER_DISTRACTION_SYSTEM_ENABLED",
+        "kind": "warns-for",
+        "note": "This reports the warning; the sibling reports or controls the system behind it."
+      },
+      {
+        "name": "DRIVER_DISTRACTION_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "DRIVER_DISTRACTION_WARNING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "LOW_SPEED_COLLISION_WARNING_ENABLED",
@@ -6906,6 +9034,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "FORWARD_COLLISION_WARNING_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -6930,7 +9080,29 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "FORWARD_COLLISION_WARNING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   },
   {
     "name": "CROSS_TRAFFIC_MONITORING_ENABLED",
@@ -6957,7 +9129,8 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
-    ]
+    ],
+    "related": []
   },
   {
     "name": "CROSS_TRAFFIC_MONITORING_WARNING_STATE",
@@ -6981,7 +9154,8 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": []
   },
   {
     "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
@@ -7008,6 +9182,28 @@ export const vehicleProperties: VehicleProperty[] = [
     ],
     "writePermissions": [
       "PERMISSION_CONTROL_ADAS_SETTINGS"
+    ],
+    "related": [
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "toggles",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
     ]
   },
   {
@@ -7032,7 +9228,39 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_ADAS_STATES"
     ],
-    "writePermissions": []
+    "writePermissions": [],
+    "related": [
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "toggled-by",
+        "note": "The feature must be enabled before the state property reports anything meaningful."
+      },
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_ENABLED",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_COLLISION_WARNING_STATE",
+        "kind": "mentions",
+        "note": "Named in this property’s documentation."
+      },
+      {
+        "name": "AUTOMATIC_EMERGENCY_BRAKING_STATE",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      },
+      {
+        "name": "LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_ENABLED",
+        "kind": "mentioned-by",
+        "note": "This property is named in that one’s documentation."
+      }
+    ]
   }
 ]
 

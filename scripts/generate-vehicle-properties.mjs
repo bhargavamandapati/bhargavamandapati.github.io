@@ -204,6 +204,104 @@ function parseJava(src) {
   return map
 }
 
+
+/**
+ * Derives relationships between properties.
+ *
+ * Everything here is derived from the AIDL rather than hand-listed, so
+ * regenerating cannot leave a relationship stale. Four sources:
+ *
+ *   1. Naming conventions the AIDL uses consistently — _ENABLED/_STATE,
+ *      _COMMAND/_STATE, _WARNING.
+ *   2. The @unit annotation, which pairs a measured value with the
+ *      *_DISPLAY_UNITS property that decides how it is rendered.
+ *   3. The HVAC power rule, which the AIDL states explicitly: only SEAT-area
+ *      HVAC properties may be gated by HVAC_POWER_ON.
+ *   4. Cross-references — one property naming another in its documentation.
+ */
+function deriveRelations(props) {
+  const byName = new Map(props.map((p) => [p.name, p]))
+  const names = new Set(byName.keys())
+  const out = new Map(props.map((p) => [p.name, []]))
+
+  const link = (from, to, kind, note) => {
+    // Both ends must exist: a naming convention can imply a sibling that the
+    // AIDL never actually defines.
+    if (!names.has(from) || !names.has(to) || from === to) return
+    const list = out.get(from)
+    if (list.some((r) => r.name === to && r.kind === kind)) return
+    list.push({ name: to, kind, note })
+  }
+
+  // 1. HVAC power gating. The AIDL is explicit that only SEAT-area HVAC
+  //    properties may appear in HvacPower_DependentProperties, and which ones
+  //    actually do is per-vehicle via configArray — hence "may require".
+  const hvacGated = props
+    .filter((p) => p.name.startsWith('HVAC_') && p.area === 'SEAT' && p.name !== 'HVAC_POWER_ON')
+    .map((p) => p.name)
+  for (const name of hvacGated) {
+    link(name, 'HVAC_POWER_ON', 'requires',
+      'HVAC must be powered on before this has effect. Which properties are gated is per-vehicle, declared in the HVAC_POWER_ON configArray.')
+    link('HVAC_POWER_ON', name, 'gates',
+      'Turning HVAC power off MAY mark this UNAVAILABLE.')
+  }
+
+  // 2. Measured value <-> the units property that formats it.
+  const UNIT_FAMILIES = [
+    ['VEHICLE_SPEED_DISPLAY_UNITS', ['METER_PER_SEC']],
+    ['DISTANCE_DISPLAY_UNITS', ['MILLIMETER', 'METER', 'KILOMETER']],
+    ['FUEL_VOLUME_DISPLAY_UNITS', ['MILLILITER']],
+    ['EV_BATTERY_DISPLAY_UNITS', ['WATT_HOUR']],
+    ['HVAC_TEMPERATURE_DISPLAY_UNITS', ['CELSIUS']],
+    ['TIRE_PRESSURE_DISPLAY_UNITS', ['KILOPASCAL']],
+  ]
+  for (const [unitsProp, units] of UNIT_FAMILIES) {
+    for (const p of props) {
+      if (!p.unit || !units.includes(p.unit) || p.name === unitsProp) continue
+      link(p.name, unitsProp, 'display-units',
+        `The value is always reported in ${p.unit}; this property says which unit to display it in.`)
+      link(unitsProp, p.name, 'formats', `Reported in ${p.unit}.`)
+    }
+  }
+
+  // 3. Naming conventions.
+  for (const name of names) {
+    const pairs = [
+      ['_COMMAND', '_STATE', 'command-for', 'commanded-by',
+       'Write to this to act; read the state property to see the result.'],
+      ['_ENABLED', '_STATE', 'toggles', 'toggled-by',
+       'The feature must be enabled before the state property reports anything meaningful.'],
+    ]
+    for (const [suffix, other, kindA, kindB, note] of pairs) {
+      if (!name.endsWith(suffix)) continue
+      const base = name.slice(0, -suffix.length)
+      const target = base + other
+      link(name, target, kindA, note)
+      link(target, name, kindB, note)
+    }
+    if (name.endsWith('_WARNING')) {
+      const base = name.slice(0, -'_WARNING'.length)
+      for (const sibling of [base + '_STATE', base + '_ENABLED', base + '_SYSTEM_ENABLED']) {
+        link(name, sibling, 'warns-for', 'This reports the warning; the sibling reports or controls the system behind it.')
+        link(sibling, name, 'has-warning', 'The warning surfaced by this system.')
+      }
+    }
+  }
+
+  // 4. Cross-references from the documentation itself.
+  for (const p of props) {
+    const mentioned = new Set(
+      (p.description.match(/\b[A-Z][A-Z0-9_]{5,}\b/g) ?? []).filter((n) => names.has(n) && n !== p.name),
+    )
+    for (const target of mentioned) {
+      link(p.name, target, 'mentions', 'Named in this property\u2019s documentation.')
+      link(target, p.name, 'mentioned-by', 'This property is named in that one\u2019s documentation.')
+    }
+  }
+
+  return out
+}
+
 const [aidlSrc, javaSrc] = await Promise.all([
   fetchText(HW, AIDL_PATH),
   fetchText(CAR, JAVA_PATH),
@@ -224,6 +322,16 @@ for (const p of props) {
   }
 }
 const divergent = props.filter((p) => p.javaId !== undefined)
+
+const relations = deriveRelations(props)
+for (const p of props) {
+  // Cross-references are the weakest signal, so they sort last.
+  const order = ['requires', 'gates', 'command-for', 'commanded-by', 'toggles', 'toggled-by',
+                 'warns-for', 'has-warning', 'display-units', 'formats', 'mentions', 'mentioned-by']
+  p.related = (relations.get(p.name) ?? []).sort(
+    (a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.name.localeCompare(b.name),
+  )
+}
 
 const banner = `// GENERATED FILE — do not edit by hand.
 // Run: node scripts/generate-vehicle-properties.mjs
@@ -272,6 +380,22 @@ export type VehicleProperty = {
   accessModes: string[]
   /** Set only when car-lib's constant disagrees with the AIDL's computed ID. */
   javaId?: number
+  /** Derived relationships to other properties. */
+  related: PropertyRelation[]
+}
+
+export type RelationKind =
+  | 'requires' | 'gates'
+  | 'command-for' | 'commanded-by'
+  | 'toggles' | 'toggled-by'
+  | 'warns-for' | 'has-warning'
+  | 'display-units' | 'formats'
+  | 'mentions' | 'mentioned-by'
+
+export type PropertyRelation = {
+  name: string
+  kind: RelationKind
+  note: string
 }
 
 export const AIDL_PATH =
@@ -292,6 +416,9 @@ console.log(`missing changeMode: ${props.filter((p) => !p.changeMode).length}`)
 console.log(`missing access    : ${props.filter((p) => !p.access).length}`)
 console.log(`unknown group/area/type: ${props.filter((p) => [p.group, p.area, p.type].includes('UNKNOWN')).length}`)
 console.log(`empty description : ${props.filter((p) => !p.description.trim()).length}`)
+const withRel = props.filter((p) => p.related.length).length
+const relCount = props.reduce((n, p) => n + p.related.length, 0)
+console.log(`with relationships : ${withRel} (${relCount} links)`)
 console.log(
   `AIDL/car-lib ID divergence: ${divergent.length}` +
     (divergent.length ? ' -> ' + divergent.map((p) => p.name).join(', ') : ''),
