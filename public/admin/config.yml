@@ -1,0 +1,114 @@
+# yaml-language-server: $schema=https://unpkg.com/@sveltia/cms/schema/sveltia-cms.json
+
+# Sveltia CMS commits straight to this repository, so publishing still runs
+# through the normal GitHub Actions build. Nothing about the static export
+# changes; this is only an editor.
+backend:
+  name: github
+  repo: bhargavamandapati/bhargavamandapati.github.io
+  branch: main
+  # Only token sign-in is offered. The OAuth button needs an OAuth client
+  # deployed somewhere to complete the handshake, and without one it fails in a
+  # way that looks like a bug rather than missing setup. Add `oauth` back here
+  # alongside a `base_url` if that client is ever deployed.
+  auth_methods: [token]
+  commit_messages:
+    create: 'Add post: {{slug}}'
+    update: 'Update post: {{slug}}'
+    delete: 'Remove post: {{slug}}'
+    uploadMedia: 'Add media: {{path}}'
+    deleteMedia: 'Remove media: {{path}}'
+
+# Uploads land in public/media and are referenced as /media/... in a post,
+# which is exactly how Next serves them from the static export.
+media_folder: public/media
+public_folder: /media
+
+collections:
+  - name: blog
+    label: Blog
+    label_singular: Post
+    description: >-
+      Posts publish when Draft is off. Turning Draft on keeps a post out of the
+      live site, the sitemap and the RSS feed, while still showing it on a local
+      dev server.
+    folder: content/blog
+    extension: mdx
+    format: yaml-frontmatter
+    create: true
+    slug: '{{slug}}'
+    # Newest first, matching the order the blog index uses.
+    sortable_fields: [date, title, draft]
+    view_filters:
+      - { label: Drafts, field: draft, pattern: true }
+      - { label: Published, field: draft, pattern: false }
+      - { label: Featured, field: featured, pattern: true }
+    fields:
+      - label: Title
+        name: title
+        widget: string
+        hint: Shown as the page heading and the browser tab title.
+
+      - label: Description
+        name: description
+        widget: text
+        required: true
+        pattern: ['^.{50,180}$', 'Aim for 50–180 characters — this is the search-result and social-card summary.']
+        hint: One or two sentences. Used for search results, link previews and the RSS feed.
+
+      - label: Date
+        name: date
+        widget: datetime
+        format: 'YYYY-MM-DD'
+        date_format: 'YYYY-MM-DD'
+        time_format: false
+        picker_utc: true
+        hint: Publication date. Posts are listed newest first.
+
+      - label: Last updated
+        name: updated
+        widget: datetime
+        format: 'YYYY-MM-DD'
+        date_format: 'YYYY-MM-DD'
+        time_format: false
+        picker_utc: true
+        required: false
+        hint: Optional. Set this when revisiting an older post.
+
+      - label: Tags
+        name: tags
+        widget: list
+        default: []
+        hint: 'Free-form, e.g. AAOS, VHAL, AOSP. These become the tag pages.'
+
+      - label: Draft
+        name: draft
+        widget: boolean
+        default: true
+        hint: On while writing. Turn off to publish — the site rebuilds in a couple of minutes.
+
+      - label: Featured
+        name: featured
+        widget: boolean
+        default: false
+        hint: Pins the post to the top of the blog index.
+
+      - label: Cover image
+        name: cover
+        widget: image
+        required: false
+        hint: Optional. Used on the post header and in social previews.
+
+      - label: Canonical URL
+        name: canonical
+        widget: string
+        required: false
+        pattern: ['^$|^https?://.+', 'Leave empty, or give a full URL beginning with http.']
+        hint: >-
+          Only if this was published somewhere else first (Medium, dev.to). Emits
+          rel="canonical" so search engines credit the original.
+
+      - label: Post
+        name: body
+        widget: markdown
+        hint: Markdown. MDX components from the site are available too.
