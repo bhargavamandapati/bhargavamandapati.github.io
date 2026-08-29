@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, Clock, GraduationCap } from 'lucide-react'
+import { ArrowRight, Clock, Database, GraduationCap } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { CategoryIcon } from '@/components/learn/category-icon'
 import { getAllTopics, getCurriculum, totalReadingMinutes } from '@/lib/learn'
+import { vehicleProperties } from '@/lib/vehicle-properties'
 import { site } from '@/data/site'
 import { cn } from '@/lib/utils'
 
@@ -93,6 +94,59 @@ export default function LearnPage() {
 
       <div className="container-page py-14 md:py-16">
         <div className="space-y-16">
+          <section aria-labelledby="reference-heading">
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-surface text-accent"
+              >
+                <Database className="size-4" />
+              </span>
+              <div>
+                <h2
+                  id="reference-heading"
+                  className="font-display text-xl font-semibold tracking-tight"
+                >
+                  Reference
+                </h2>
+                <p className="mt-0.5 text-sm text-muted">
+                  Lookup material rather than reading material — for when you know what you need.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-7">
+              <article className="card group relative flex flex-col p-6 transition-all hover:border-accent/50 hover:shadow-lg sm:flex-row sm:items-center sm:gap-6">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display text-lg font-semibold leading-snug tracking-tight text-fg">
+                    <Link
+                      href="/learn/vehicle-properties/"
+                      className="after:absolute after:inset-0"
+                    >
+                      Vehicle property reference
+                    </Link>
+                  </h3>
+                  <p className="mt-2 text-[0.9rem] leading-relaxed text-muted">
+                    Every one of the {vehicleProperties.length} vehicle properties Android
+                    Automotive defines, generated directly from{' '}
+                    <code className="font-mono text-[0.85em] text-fg">VehicleProperty.aidl</code>.
+                    Search by name or hex ID, filter by area, type and access, and jump straight to
+                    the AOSP source for any of them.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    <span className="chip">{vehicleProperties.length} properties</span>
+                    <span className="chip">searchable</span>
+                    <span className="chip">source-linked</span>
+                  </div>
+                </div>
+                <ArrowRight
+                  aria-hidden
+                  className="mt-5 size-5 shrink-0 text-subtle transition-transform group-hover:translate-x-1 group-hover:text-accent sm:mt-0"
+                />
+              </article>
+            </div>
+          </section>
+
           {curriculum.map((category) => (
             <section key={category.slug} aria-labelledby={`cat-${category.slug}`}>
               <div className="flex items-start gap-4">

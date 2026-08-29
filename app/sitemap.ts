@@ -3,6 +3,7 @@ import { getAllPosts, getAllTags } from '@/lib/blog'
 import { getAllTopics } from '@/lib/learn'
 import { getAllTutorials } from '@/lib/tutorials'
 import { getAllSdvTopics } from '@/lib/sdv'
+import { vehicleProperties, propertySlug } from '@/lib/vehicle-properties'
 import { projects } from '@/data/resume'
 import { site } from '@/data/site'
 
@@ -69,6 +70,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: t.updated ? new Date(t.updated) : new Date(),
       changeFrequency: 'monthly' as const,
       priority: 0.8,
+    })),
+    {
+      url: `${site.url}/learn/vehicle-properties/`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    },
+    ...vehicleProperties.map((p) => ({
+      url: `${site.url}/learn/vehicle-properties/${propertySlug(p)}/`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly' as const,
+      priority: 0.4,
     })),
     ...sdv.map((t) => ({
       url: `${site.url}/sdv/${t.slug}/`,
