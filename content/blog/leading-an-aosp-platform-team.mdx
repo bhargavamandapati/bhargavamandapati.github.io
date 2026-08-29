@@ -1,0 +1,89 @@
+---
+title: "What Makes an AOSP Platform Team Fast"
+description: "Platform work has a long ramp, obscure failure modes and a variant matrix that grows on its own. Four things that decide whether a team moves — and why most of them are not technical."
+date: "2026-06-18"
+tags: ["Leadership", "AOSP", "Automotive", "Engineering Management"]
+featured: false
+draft: false
+---
+
+Android application teams and AOSP platform teams look similar from the outside and
+behave nothing alike. An app team can onboard an engineer in a fortnight. A platform
+team measures the same ramp in months, because framework modification, SEPolicy and
+board bring-up are not learnable from public documentation alone — the interesting parts
+are always vendor-specific.
+
+That single difference drives most of what follows.
+
+## The ramp is a delivery metric, not an HR one
+
+On an AOSP programme the scarce resource is rarely headcount. It is the number of people
+who can debug a problem without escalating.
+
+An engineer who can read an `avc: denied` line, work out which domain is missing which
+permission, and write the policy themselves has removed a dependency on whoever could
+already do that. Until then, every SELinux problem on the programme queues behind the
+same two people.
+
+<Callout type="tip" title="Pair on the first bring-up, not the third">
+The instinct is to let someone struggle and then help. On platform work the failure
+modes are too obscure for that to teach anything — an engineer staring at a board that
+boots to a blank screen learns nothing from the next four hours except that it is still
+blank.
+</Callout>
+
+This is why mentoring on a platform team is throughput rather than generosity. It is
+also why it is worth tracking: if the same names appear on every escalation six months
+in, the ramp is not working.
+
+## Write the runbook while it still hurts
+
+The best documentation for a gnarly integration is written the day it was solved, by the
+person who solved it — because that is the only moment when the dead ends are still
+fresh. A week later they have been compressed into "and then it worked".
+
+Platform work is unusually dependent on this. A vendor HAL that needs a specific
+init ordering, a display that only comes up if the panel is powered before the
+touch controller, a build that fails unless a particular sepolicy attribute is
+declared first: none of it is in any upstream document, and all of it will be
+rediscovered from scratch by the next person unless somebody writes it down.
+
+## Blockers have a half-life
+
+A blocker raised at the end of one team's day and answered at the end of another's has
+cost twenty-four hours. Three of those in a sprint is a lost week, and nobody notices,
+because each individual delay looked reasonable at the time.
+
+The countermeasure is unglamorous: someone senior reads the blocker channel first thing
+every day and either answers it or escalates it within the hour.
+
+<Callout type="note" title="Make age visible before it is urgent">
+A blocker open for two days should look different in the tracker from one opened this
+morning. If the board renders them identically, the age of a problem stays invisible
+until it is a schedule risk.
+</Callout>
+
+## The variant matrix grows whether you decide it or not
+
+Automotive programmes accumulate variants — trim levels, markets, model years, display
+configurations. Each one that becomes a separate build is a permanent tax on every
+future change: another image to build, another to test, another to ship.
+
+The question worth asking early, and repeatedly, is whether a difference genuinely needs
+to be a build variant or could be runtime configuration — a resource overlay, a feature
+flag, a value read from the VHAL at startup.
+
+An overlay you flip at runtime costs one build. A build flag costs a full matrix row
+forever. Teams that never ask end up with a CI pipeline nobody can keep green and a
+release process that takes a week.
+
+## The pattern underneath
+
+None of these are about writing better code, and that is the point. On a platform
+programme the constraints that actually bind are how quickly a new engineer becomes
+independent, how much hard-won knowledge survives the week it was learned, how long a
+question waits for an answer, and how many combinations you have quietly signed up to
+support.
+
+Get those wrong and a strong team still delivers slowly. Get them right and an ordinary
+one delivers well.
