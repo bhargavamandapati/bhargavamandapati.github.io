@@ -8,6 +8,7 @@ import { SdvModuleIcon } from '@/components/sdv/module-icon'
 import { MarkRead } from '@/components/paths/mark-read'
 import { SourceList } from '@/components/learn/source'
 import { TableOfContents } from '@/components/table-of-contents'
+import { ReadAloud } from '@/components/read-aloud'
 import { mdxComponents } from '@/components/mdx-components'
 import { mdxOptions } from '@/lib/mdx'
 import {
@@ -141,7 +142,8 @@ export default async function SdvTopicPage({ params }: { params: Promise<Params>
             </div>
           </header>
 
-          <article className="prose-bm mt-10">
+          <article id="topic-body" className="prose-bm mt-10">
+            <ReadAloud targetId="topic-body" className="mb-8" />
             <MDXRemote source={topic.content} components={mdxComponents} options={mdxOptions} />
           </article>
 

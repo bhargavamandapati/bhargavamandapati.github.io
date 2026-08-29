@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import { ArrowLeft, ArrowRight, Clock, ExternalLink } from 'lucide-react'
 import { TableOfContents } from '@/components/table-of-contents'
+import { ReadAloud } from '@/components/read-aloud'
 import { mdxComponents } from '@/components/mdx-components'
 import { mdxOptions } from '@/lib/mdx'
 import {
@@ -144,7 +145,8 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
       </header>
 
       <div className="container-page grid gap-12 py-12 md:py-14 lg:grid-cols-[1fr_16rem] lg:gap-16">
-        <article className="prose-bm min-w-0">
+        <article id="topic-body" className="prose-bm min-w-0">
+          <ReadAloud targetId="topic-body" className="mb-8" />
           {post.canonical && (
             <p className="not-prose mb-8 flex items-start gap-2 rounded-lg border border-line bg-surface-2 p-4 text-sm text-muted">
               <ExternalLink aria-hidden className="mt-0.5 size-4 shrink-0 text-accent" />

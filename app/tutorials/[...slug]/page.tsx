@@ -8,6 +8,7 @@ import { TrackIcon } from '@/components/tutorial/track-icon'
 import { OutcomeCard } from '@/components/tutorial/outcome-card'
 import { SourceList } from '@/components/learn/source'
 import { TableOfContents } from '@/components/table-of-contents'
+import { ReadAloud } from '@/components/read-aloud'
 import { mdxComponents } from '@/components/mdx-components'
 import { mdxOptions } from '@/lib/mdx'
 import {
@@ -155,7 +156,8 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
             prerequisites={tutorial.prerequisites}
           />
 
-          <article className="prose-bm mt-10">
+          <article id="topic-body" className="prose-bm mt-10">
+            <ReadAloud targetId="topic-body" className="mb-8" />
             <MDXRemote source={tutorial.content} components={mdxComponents} options={mdxOptions} />
           </article>
 

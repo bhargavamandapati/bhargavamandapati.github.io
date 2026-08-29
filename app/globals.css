@@ -570,3 +570,28 @@ h4:hover .heading-anchor,
 .animate-fade-up {
   animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* Follow-along highlight for the read-aloud player. A tinted band plus a rule
+   in the margin, so the cue survives at any contrast setting and does not
+   depend on colour alone. */
+[data-reading] {
+  position: relative;
+  border-radius: 0.375rem;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  box-shadow:
+    -0.75rem 0 0 color-mix(in oklab, var(--accent) 14%, transparent),
+    0.75rem 0 0 color-mix(in oklab, var(--accent) 14%, transparent);
+  transition: background 0.2s ease;
+}
+[data-reading]::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -1rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reading] { transition: none; }
+}
