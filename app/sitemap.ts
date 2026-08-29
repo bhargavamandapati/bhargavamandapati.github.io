@@ -77,6 +77,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     },
+    {
+      url: `${site.url}/learn/vehicle-simulator/`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    },
     ...vehicleProperties.map((p) => ({
       url: `${site.url}/learn/vehicle-properties/${propertySlug(p)}/`,
       lastModified: new Date(),

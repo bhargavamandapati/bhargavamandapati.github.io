@@ -53,6 +53,11 @@ export const site = {
           description: 'Every vehicle property, searchable and linked to AOSP.',
         },
         {
+          label: 'Property simulator',
+          href: '/learn/vehicle-simulator/',
+          description: 'Change a property in 3D and watch what it does to the car.',
+        },
+        {
           label: 'Tutorials',
           href: '/tutorials/',
           description: 'Step-by-step builds for the things you customise.',

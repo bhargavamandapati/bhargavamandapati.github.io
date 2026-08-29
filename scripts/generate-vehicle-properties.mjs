@@ -378,12 +378,24 @@ async function fetchEnums(names) {
           doc = null
           continue
         }
-        const m = lines[i].match(/^\s{4}([A-Z][A-Z0-9_]*)\s*=\s*([^,]+),/)
+        // A member may declare a value or rely on the implicit increment:
+        //   UNDEFINED = 0,
+        //   LOCK = 1,
+        //   OFF,        <- 2
+        const m = lines[i].match(/^\s{4}([A-Z][A-Z0-9_]*)\s*(?:=\s*([^,]+?))?\s*,?\s*$/)
         if (!m) continue
         const [, member, rawValue] = m
+        let value
+        if (rawValue !== undefined) {
+          value = rawValue.trim()
+        } else {
+          const previous = members[members.length - 1]
+          const previousNumber = previous ? Number(previous.value) : -1
+          value = Number.isNaN(previousNumber) ? '?' : String(previousNumber + 1)
+        }
         members.push({
           name: member,
-          value: rawValue.trim(),
+          value,
           description: doc ? parseDoc(doc).text : '',
         })
         doc = null

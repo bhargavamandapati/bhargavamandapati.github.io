@@ -10419,47 +10419,6 @@ export const carPermissions: Record<string, CarPermission> = {
 }
 
 export const valueEnums: Record<string, EnumDefinition> = {
-  "PortLocationType": {
-    "name": "PortLocationType",
-    "description": "Used by INFO_FUEL_DOOR_LOCATION/INFO_CHARGE_PORT_LOCATION to enumerate fuel door or\nev port location.",
-    "members": [
-      {
-        "name": "UNKNOWN",
-        "value": "0",
-        "description": "Default type if the vehicle does not know or report the Fuel door\nand ev port location."
-      },
-      {
-        "name": "FRONT_LEFT",
-        "value": "1",
-        "description": ""
-      },
-      {
-        "name": "FRONT_RIGHT",
-        "value": "2",
-        "description": ""
-      },
-      {
-        "name": "REAR_RIGHT",
-        "value": "3",
-        "description": ""
-      },
-      {
-        "name": "REAR_LEFT",
-        "value": "4",
-        "description": ""
-      },
-      {
-        "name": "FRONT",
-        "value": "5",
-        "description": ""
-      },
-      {
-        "name": "REAR",
-        "value": "6",
-        "description": ""
-      }
-    ]
-  },
   "FuelType": {
     "name": "FuelType",
     "description": "Used by INFO_FUEL_TYPE to enumerate the type of fuels this vehicle uses.\nConsistent with projection protocol.",
@@ -10528,6 +10487,47 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "FUEL_TYPE_OTHER",
         "value": "12",
         "description": "Fuel type to use when no other types apply. Before using this value, work with\nGoogle to see if the FuelType enum can be extended with an appropriate value."
+      }
+    ]
+  },
+  "PortLocationType": {
+    "name": "PortLocationType",
+    "description": "Used by INFO_FUEL_DOOR_LOCATION/INFO_CHARGE_PORT_LOCATION to enumerate fuel door or\nev port location.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": "Default type if the vehicle does not know or report the Fuel door\nand ev port location."
+      },
+      {
+        "name": "FRONT_LEFT",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "FRONT_RIGHT",
+        "value": "2",
+        "description": ""
+      },
+      {
+        "name": "REAR_RIGHT",
+        "value": "3",
+        "description": ""
+      },
+      {
+        "name": "REAR_LEFT",
+        "value": "4",
+        "description": ""
+      },
+      {
+        "name": "FRONT",
+        "value": "5",
+        "description": ""
+      },
+      {
+        "name": "REAR",
+        "value": "6",
+        "description": ""
       }
     ]
   },
@@ -10668,44 +10668,34 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "ImpactSensorLocation": {
-    "name": "ImpactSensorLocation",
-    "description": "Used to enumerate the various impact sensor locations on the car.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "VehicleOilLevel": {
+    "name": "VehicleOilLevel",
+    "description": "Used to enumerate the current level of VehicleProperty#ENGINE_OIL_LEVEL.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
-        "name": "OTHER",
-        "value": "0x01",
-        "description": "Other impact sensor location. Ideally this should never be used."
+        "name": "CRITICALLY_LOW",
+        "value": "0",
+        "description": "The oil level of the engine is critically low, so the vehicle may be unsafe to drive."
       },
       {
-        "name": "FRONT",
-        "value": "0x02",
-        "description": "Frontal impact sensor. Used for the sensor that detects head-on impact."
+        "name": "LOW",
+        "value": "1",
+        "description": "The oil level of the engine is low and needs to be replaced."
       },
       {
-        "name": "FRONT_LEFT_DOOR_SIDE",
-        "value": "0x04",
-        "description": "Front-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-left door."
+        "name": "NORMAL",
+        "value": "2",
+        "description": "The oil level of the engine is normal for the vehicle."
       },
       {
-        "name": "FRONT_RIGHT_DOOR_SIDE",
-        "value": "0x08",
-        "description": "Front-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-right door."
+        "name": "HIGH",
+        "value": "3",
+        "description": "The oil level of the engine is high, so the vehicle may be unsafe to drive."
       },
       {
-        "name": "REAR_LEFT_DOOR_SIDE",
-        "value": "0x10",
-        "description": "Rear-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-left door."
-      },
-      {
-        "name": "REAR_RIGHT_DOOR_SIDE",
-        "value": "0x20",
-        "description": "Rear-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-right door."
-      },
-      {
-        "name": "REAR",
-        "value": "0x40",
-        "description": "Rear impact sensor. Used for the sensor that detects collisions from the rear."
+        "name": "ERROR",
+        "value": "4",
+        "description": "This value represents an error when retrieving the oil level of the engine."
       }
     ]
   },
@@ -10890,34 +10880,65 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "VehicleOilLevel": {
-    "name": "VehicleOilLevel",
-    "description": "Used to enumerate the current level of VehicleProperty#ENGINE_OIL_LEVEL.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "ImpactSensorLocation": {
+    "name": "ImpactSensorLocation",
+    "description": "Used to enumerate the various impact sensor locations on the car.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
-        "name": "CRITICALLY_LOW",
-        "value": "0",
-        "description": "The oil level of the engine is critically low, so the vehicle may be unsafe to drive."
+        "name": "OTHER",
+        "value": "0x01",
+        "description": "Other impact sensor location. Ideally this should never be used."
       },
       {
-        "name": "LOW",
-        "value": "1",
-        "description": "The oil level of the engine is low and needs to be replaced."
+        "name": "FRONT",
+        "value": "0x02",
+        "description": "Frontal impact sensor. Used for the sensor that detects head-on impact."
       },
       {
-        "name": "NORMAL",
-        "value": "2",
-        "description": "The oil level of the engine is normal for the vehicle."
+        "name": "FRONT_LEFT_DOOR_SIDE",
+        "value": "0x04",
+        "description": "Front-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-left door."
       },
       {
-        "name": "HIGH",
-        "value": "3",
-        "description": "The oil level of the engine is high, so the vehicle may be unsafe to drive."
+        "name": "FRONT_RIGHT_DOOR_SIDE",
+        "value": "0x08",
+        "description": "Front-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-right door."
       },
       {
-        "name": "ERROR",
-        "value": "4",
-        "description": "This value represents an error when retrieving the oil level of the engine."
+        "name": "REAR_LEFT_DOOR_SIDE",
+        "value": "0x10",
+        "description": "Rear-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-left door."
+      },
+      {
+        "name": "REAR_RIGHT_DOOR_SIDE",
+        "value": "0x20",
+        "description": "Rear-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-right door."
+      },
+      {
+        "name": "REAR",
+        "value": "0x40",
+        "description": "Rear impact sensor. Used for the sensor that detects collisions from the rear."
+      }
+    ]
+  },
+  "VehicleTurnSignal": {
+    "name": "VehicleTurnSignal",
+    "description": "Copyright (C) 2021 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n     http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.",
+    "members": [
+      {
+        "name": "NONE",
+        "value": "0x00",
+        "description": ""
+      },
+      {
+        "name": "RIGHT",
+        "value": "0x01",
+        "description": ""
+      },
+      {
+        "name": "LEFT",
+        "value": "0x02",
+        "description": ""
       }
     ]
   },
@@ -10997,27 +11018,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "VehicleTurnSignal": {
-    "name": "VehicleTurnSignal",
-    "description": "Copyright (C) 2021 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n     http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.",
-    "members": [
-      {
-        "name": "NONE",
-        "value": "0x00",
-        "description": ""
-      },
-      {
-        "name": "RIGHT",
-        "value": "0x01",
-        "description": ""
-      },
-      {
-        "name": "LEFT",
-        "value": "0x02",
-        "description": ""
-      }
-    ]
-  },
   "VehicleIgnitionState": {
     "name": "VehicleIgnitionState",
     "description": "Used to enumerate the different states the ignition of the vehicle can be in.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11031,6 +11031,26 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "LOCK",
         "value": "1",
         "description": "Steering wheel is locked"
+      },
+      {
+        "name": "OFF",
+        "value": "2",
+        "description": "Steering wheel is not locked, engine and all accessories are OFF. If\ncar can be in LOCK and OFF state at the same time than HAL must report\nLOCK state.\n\nIf IGNITION_STATE is implemented on a BEV, then this state must\ncommunicate that the BEV's High Voltage battery is disconnected and thus\nthe vehicle is OFF."
+      },
+      {
+        "name": "ACC",
+        "value": "3",
+        "description": "Typically in this state accessories become available (e.g. radio).\nInstrument cluster and engine are turned off"
+      },
+      {
+        "name": "ON",
+        "value": "4",
+        "description": "Ignition is in state ON. Accessories and instrument cluster available,\nengine might be running or ready to be started.\n\nIf IGNITION_STATE is implemented on a BEV, then this state must\ncommunicate that the BEV's High Voltage battery is connected and thus the\nvehicle is ON."
+      },
+      {
+        "name": "START",
+        "value": "5",
+        "description": "Typically in this state engine is starting (cranking)."
       }
     ]
   },
@@ -11350,6 +11370,84 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "VehicleLightSwitch": {
+    "name": "VehicleLightSwitch",
+    "description": "Used by lights switch properties to enumerate user selected switch setting.\n\nXXX_LIGHTS_SWITCH properties report the switch settings that the user\nselects.  The switch setting may be decoupled from the state reported if the\nuser selects AUTOMATIC.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OFF",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "ON",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "DAYTIME_RUNNING",
+        "value": "2",
+        "description": "Daytime running lights mode.  Most cars automatically use DRL but some\ncars allow the user to activate them manually."
+      },
+      {
+        "name": "AUTOMATIC",
+        "value": "0x100",
+        "description": "Allows the vehicle ECU to set the lights automatically"
+      }
+    ]
+  },
+  "VehicleAirbagLocation": {
+    "name": "VehicleAirbagLocation",
+    "description": "Used to enumerate the various airbag locations per seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0x01",
+        "description": "This state is used as an alternative to any VehicleAirbagLocation value that is not defined\nin the platform. Ideally, implementations of VehicleProperty::SEAT_AIRBAGS_DEPLOYED should\nnot use this state. The framework can use this field to remain backwards compatible if\nVehicleAirbagLocation is extended to include additional states."
+      },
+      {
+        "name": "FRONT",
+        "value": "0x02",
+        "description": "Front airbags. This enum is for the airbags that protect the seated person from the front,\nparticularly the seated person's torso."
+      },
+      {
+        "name": "KNEE",
+        "value": "0x04",
+        "description": "Knee airbags. This enum is for the airbags that protect the seated person's knees."
+      },
+      {
+        "name": "LEFT_SIDE",
+        "value": "0x08",
+        "description": "Left side airbags. This enum is for the side airbags that protect the left side of the seated\nperson."
+      },
+      {
+        "name": "RIGHT_SIDE",
+        "value": "0x10",
+        "description": "Right side airbags. This enum is for the side airbags that protect the right side of the\nseated person."
+      },
+      {
+        "name": "CURTAIN",
+        "value": "0x20",
+        "description": "Curtain airbags. This enum is for the airbags lined above the windows of the vehicle."
+      }
+    ]
+  },
+  "RotaryInputType": {
+    "name": "RotaryInputType",
+    "description": "A rotary control which can rotate without limits. These controls use HW_ROTARY_INPUT to report\nrelative clockwise or counterclockwise motion. They have no absolute position.",
+    "members": [
+      {
+        "name": "ROTARY_INPUT_TYPE_SYSTEM_NAVIGATION",
+        "value": "0",
+        "description": "Main rotary control, typically in the center console, used to navigate the user interface."
+      },
+      {
+        "name": "ROTARY_INPUT_TYPE_AUDIO_VOLUME",
+        "value": "1",
+        "description": "Volume control for adjusting audio volume."
+      }
+    ]
+  },
   "CustomInputType": {
     "name": "CustomInputType",
     "description": "Input code values for HW_CUSTOM_INPUT.",
@@ -11406,105 +11504,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "RotaryInputType": {
-    "name": "RotaryInputType",
-    "description": "A rotary control which can rotate without limits. These controls use HW_ROTARY_INPUT to report\nrelative clockwise or counterclockwise motion. They have no absolute position.",
-    "members": [
-      {
-        "name": "ROTARY_INPUT_TYPE_SYSTEM_NAVIGATION",
-        "value": "0",
-        "description": "Main rotary control, typically in the center console, used to navigate the user interface."
-      },
-      {
-        "name": "ROTARY_INPUT_TYPE_AUDIO_VOLUME",
-        "value": "1",
-        "description": "Volume control for adjusting audio volume."
-      }
-    ]
-  },
-  "VehicleLightSwitch": {
-    "name": "VehicleLightSwitch",
-    "description": "Used by lights switch properties to enumerate user selected switch setting.\n\nXXX_LIGHTS_SWITCH properties report the switch settings that the user\nselects.  The switch setting may be decoupled from the state reported if the\nuser selects AUTOMATIC.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OFF",
-        "value": "0",
-        "description": ""
-      },
-      {
-        "name": "ON",
-        "value": "1",
-        "description": ""
-      },
-      {
-        "name": "DAYTIME_RUNNING",
-        "value": "2",
-        "description": "Daytime running lights mode.  Most cars automatically use DRL but some\ncars allow the user to activate them manually."
-      },
-      {
-        "name": "AUTOMATIC",
-        "value": "0x100",
-        "description": "Allows the vehicle ECU to set the lights automatically"
-      }
-    ]
-  },
-  "VehicleSeatOccupancyState": {
-    "name": "VehicleSeatOccupancyState",
-    "description": "Used by seat occupancy to enumerate the current occupancy state of the seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "UNKNOWN",
-        "value": "0",
-        "description": ""
-      },
-      {
-        "name": "VACANT",
-        "value": "1",
-        "description": ""
-      },
-      {
-        "name": "OCCUPIED",
-        "value": "2",
-        "description": ""
-      }
-    ]
-  },
-  "VehicleAirbagLocation": {
-    "name": "VehicleAirbagLocation",
-    "description": "Used to enumerate the various airbag locations per seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0x01",
-        "description": "This state is used as an alternative to any VehicleAirbagLocation value that is not defined\nin the platform. Ideally, implementations of VehicleProperty::SEAT_AIRBAGS_DEPLOYED should\nnot use this state. The framework can use this field to remain backwards compatible if\nVehicleAirbagLocation is extended to include additional states."
-      },
-      {
-        "name": "FRONT",
-        "value": "0x02",
-        "description": "Front airbags. This enum is for the airbags that protect the seated person from the front,\nparticularly the seated person's torso."
-      },
-      {
-        "name": "KNEE",
-        "value": "0x04",
-        "description": "Knee airbags. This enum is for the airbags that protect the seated person's knees."
-      },
-      {
-        "name": "LEFT_SIDE",
-        "value": "0x08",
-        "description": "Left side airbags. This enum is for the side airbags that protect the left side of the seated\nperson."
-      },
-      {
-        "name": "RIGHT_SIDE",
-        "value": "0x10",
-        "description": "Right side airbags. This enum is for the side airbags that protect the right side of the\nseated person."
-      },
-      {
-        "name": "CURTAIN",
-        "value": "0x20",
-        "description": "Curtain airbags. This enum is for the airbags lined above the windows of the vehicle."
-      }
-    ]
-  },
   "WindshieldWipersState": {
     "name": "WindshieldWipersState",
     "description": "Used to enumerate the current state of VehicleProperty#WINDSHIELD_WIPERS_STATE.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11528,6 +11527,27 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "SERVICE",
         "value": "3",
         "description": "Windshield wipers are in the service mode."
+      }
+    ]
+  },
+  "VehicleSeatOccupancyState": {
+    "name": "VehicleSeatOccupancyState",
+    "description": "Used by seat occupancy to enumerate the current occupancy state of the seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "VACANT",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "OCCUPIED",
+        "value": "2",
+        "description": ""
       }
     ]
   },
@@ -11612,6 +11632,79 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "ElectronicTollCollectionCardType": {
+    "name": "ElectronicTollCollectionCardType",
+    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_TYPE.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD_V2",
+        "value": "2",
+        "description": ""
+      }
+    ]
+  },
+  "ElectronicTollCollectionCardStatus": {
+    "name": "ElectronicTollCollectionCardStatus",
+    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_STATUS.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_VALID",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_INVALID",
+        "value": "2",
+        "description": ""
+      },
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_NOT_INSERTED",
+        "value": "3",
+        "description": ""
+      }
+    ]
+  },
+  "EvRegenerativeBrakingState": {
+    "name": "EvRegenerativeBrakingState",
+    "description": "Used by the regenerative braking property to enumerate the current state\nof the regenerative braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "DISABLED",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "PARTIALLY_ENABLED",
+        "value": "2",
+        "description": ""
+      },
+      {
+        "name": "FULLY_ENABLED",
+        "value": "3",
+        "description": ""
+      }
+    ]
+  },
   "EvChargeState": {
     "name": "EvChargeState",
     "description": "Used by EV charging properties to enumerate the current state of the battery charging.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11643,32 +11736,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "ElectronicTollCollectionCardStatus": {
-    "name": "ElectronicTollCollectionCardStatus",
-    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_STATUS.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "UNKNOWN",
-        "value": "0",
-        "description": ""
-      },
-      {
-        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_VALID",
-        "value": "1",
-        "description": ""
-      },
-      {
-        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_INVALID",
-        "value": "2",
-        "description": ""
-      },
-      {
-        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_NOT_INSERTED",
-        "value": "3",
-        "description": ""
-      }
-    ]
-  },
   "TrailerState": {
     "name": "TrailerState",
     "description": "Used to enumerate the current state of VehicleProperty#TRAILER_PRESENT.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11692,53 +11759,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "ERROR",
         "value": "3",
         "description": "The state of the trailer is not available due to an error."
-      }
-    ]
-  },
-  "EvRegenerativeBrakingState": {
-    "name": "EvRegenerativeBrakingState",
-    "description": "Used by the regenerative braking property to enumerate the current state\nof the regenerative braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "UNKNOWN",
-        "value": "0",
-        "description": ""
-      },
-      {
-        "name": "DISABLED",
-        "value": "1",
-        "description": ""
-      },
-      {
-        "name": "PARTIALLY_ENABLED",
-        "value": "2",
-        "description": ""
-      },
-      {
-        "name": "FULLY_ENABLED",
-        "value": "3",
-        "description": ""
-      }
-    ]
-  },
-  "ElectronicTollCollectionCardType": {
-    "name": "ElectronicTollCollectionCardType",
-    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_TYPE.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "UNKNOWN",
-        "value": "0",
-        "description": ""
-      },
-      {
-        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD",
-        "value": "1",
-        "description": ""
-      },
-      {
-        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD_V2",
-        "value": "2",
-        "description": ""
       }
     ]
   },
@@ -11861,27 +11881,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "ForwardCollisionWarningState": {
-    "name": "ForwardCollisionWarningState",
-    "description": "Used to enumerate the state of Forward Collision Warning State (FCW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative to any ForwardCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#FORWARD_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ForwardCollisionWarningState is\nextended to include additional states."
-      },
-      {
-        "name": "NO_WARNING",
-        "value": "1",
-        "description": "FCW is enabled and monitoring safety, but no potential collision is detected."
-      },
-      {
-        "name": "WARNING",
-        "value": "2",
-        "description": "FCW is enabled, detects a potential collision, and is actively warning the user."
-      }
-    ]
-  },
   "AutomaticEmergencyBrakingState": {
     "name": "AutomaticEmergencyBrakingState",
     "description": "Used to enumerate the state of Automatic Emergency Braking (AEB).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11908,6 +11907,27 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "ForwardCollisionWarningState": {
+    "name": "ForwardCollisionWarningState",
+    "description": "Used to enumerate the state of Forward Collision Warning State (FCW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any ForwardCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#FORWARD_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ForwardCollisionWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "FCW is enabled and monitoring safety, but no potential collision is detected."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "FCW is enabled, detects a potential collision, and is actively warning the user."
+      }
+    ]
+  },
   "BlindSpotWarningState": {
     "name": "BlindSpotWarningState",
     "description": "Used to enumerate the state of Blind Spot Warning State (BSW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11926,48 +11946,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "WARNING",
         "value": "2",
         "description": "BSW is enabled, detects a vehicle or object in the vehicle's blind spot, and is actively\nwarning the user."
-      }
-    ]
-  },
-  "LaneDepartureWarningState": {
-    "name": "LaneDepartureWarningState",
-    "description": "Used to enumerate the state of Lane Departure Warning (LDW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any LaneDepartureWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_DEPARTURE_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneDepartureWarningState is\nextended to include additional states."
-      },
-      {
-        "name": "NO_WARNING",
-        "value": "1",
-        "description": "LDW is enabled and monitoring, but the vehicle is centered in the lane."
-      },
-      {
-        "name": "WARNING_LEFT",
-        "value": "2",
-        "description": "LDW is enabled, detects the vehicle is approaching or crossing lane lines on the left side\nof the vehicle, and is currently warning the user."
-      },
-      {
-        "name": "WARNING_RIGHT",
-        "value": "3",
-        "description": "LDW is enabled, detects the vehicle is approaching or crossing lane lines on the right side\nof the vehicle, and is currently warning the user."
-      }
-    ]
-  },
-  "LaneCenteringAssistCommand": {
-    "name": "LaneCenteringAssistCommand",
-    "description": "Used by Lane Centering Assist (LCA) to enumerate commands.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "ACTIVATE",
-        "value": "1",
-        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE = LaneCenteringAssistState#ENABLED, this\ncommand sends a request to activate steering control that keeps the vehicle centered in its\nlane. While waiting for the LCA System to take control of the vehicle,\nVehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATION_REQUESTED state. Once the vehicle takes control of\nsteering, then VehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATED state. Otherwise, an error can be communicated through an\nErrorState value."
-      },
-      {
-        "name": "DEACTIVATE",
-        "value": "2",
-        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE is set to\nLaneCenteringAssistState#ACTIVATION_REQUESTED or LaneCenteringAssistState#ACTIVATED, this\ncommand deactivates steering control and the driver should take full control of the vehicle.\nIf this command succeeds, VehicleProperty#LANE_CENTERING_ASSIST_STATE must be updated to\nLaneCenteringAssistState#ENABLED."
       }
     ]
   },
@@ -11999,6 +11977,84 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "USER_OVERRIDE",
         "value": "4",
         "description": "Many LKA implementations allow the driver to override LKA. This means that the car has\ndetermined it should take some action, but a user decides to take over and do something else.\nThis is often done for safety reasons and to ensure that the driver can always take control\nof the vehicle. This state should be set when the user is actively overriding the LKA system."
+      }
+    ]
+  },
+  "LaneCenteringAssistState": {
+    "name": "LaneCenteringAssistState",
+    "description": "Used to enumerate the state of Lane Centering Assist (LCA).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any LaneCenteringAssistState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_CENTERING_ASSIST_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneCenteringAssistState is\nextended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "LCA is enabled but the ADAS system has not received an activation signal from the driver.\nTherefore, LCA is not steering the car and waits for the driver to send a\nLaneCenteringAssistCommand#ACTIVATE command."
+      },
+      {
+        "name": "ACTIVATION_REQUESTED",
+        "value": "2",
+        "description": "LCA is enabled and the driver has sent an activation command to the LCA system, but the\nsystem has not started actively steering the vehicle. This may happen when LCA needs time to\ndetect valid lane lines. The activation command can be sent through the\nVehicleProperty#LANE_CENTERING_ASSIST_COMMAND vehicle property or through a system external\nto Android. Once LCA is actively steering the vehicle, the state must be updated to\nACTIVATED. If the feature is not able to activate, then the cause can be communicated through\nthe ErrorState values and then return to the ENABLED state."
+      },
+      {
+        "name": "ACTIVATED",
+        "value": "3",
+        "description": "LCA is enabled and actively steering the car to keep it centered in its lane."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "4",
+        "description": "Many LCA implementations allow the driver to override LCA. This means that the car has\ndetermined it should go a certain direction to keep the car centered in the lane, but a user\ndecides to take over and do something else. This is often done for safety reasons and to\nensure that the driver can always take control of the vehicle. This state should be set when\nthe user is actively overriding the LCA system."
+      },
+      {
+        "name": "FORCED_DEACTIVATION_WARNING",
+        "value": "5",
+        "description": "When LCA is in the ACTIVATED state but it will potentially need to deactivate because of\nexternal conditions (e.g. roads curvature is too extreme, the driver does not have their\nhands on the steering wheel for a long period of time, or the driver is not paying\nattention), then the ADAS system will notify the driver of a potential need to deactivate and\ngive control back to the driver."
+      }
+    ]
+  },
+  "LaneCenteringAssistCommand": {
+    "name": "LaneCenteringAssistCommand",
+    "description": "Used by Lane Centering Assist (LCA) to enumerate commands.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "ACTIVATE",
+        "value": "1",
+        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE = LaneCenteringAssistState#ENABLED, this\ncommand sends a request to activate steering control that keeps the vehicle centered in its\nlane. While waiting for the LCA System to take control of the vehicle,\nVehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATION_REQUESTED state. Once the vehicle takes control of\nsteering, then VehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATED state. Otherwise, an error can be communicated through an\nErrorState value."
+      },
+      {
+        "name": "DEACTIVATE",
+        "value": "2",
+        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE is set to\nLaneCenteringAssistState#ACTIVATION_REQUESTED or LaneCenteringAssistState#ACTIVATED, this\ncommand deactivates steering control and the driver should take full control of the vehicle.\nIf this command succeeds, VehicleProperty#LANE_CENTERING_ASSIST_STATE must be updated to\nLaneCenteringAssistState#ENABLED."
+      }
+    ]
+  },
+  "CruiseControlType": {
+    "name": "CruiseControlType",
+    "description": "Used to enumerate the current type of Cruise Control (CC).\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any CruiseControlType value that is not defined in\nthe platform. Ideally, implementations of VehicleProperty#CRUISE_CONTROL_TYPE should not use\nthis state. The framework can use this field to remain backwards compatible if\nCruiseControlType is extended to include additional types."
+      },
+      {
+        "name": "STANDARD",
+        "value": "1",
+        "description": "Standard cruise control is when a system in the vehicle automatically maintains a set speed\nwithout the driver having to keep their foot on the accelerator. This version of cruise\ncontrol does not include automatic acceleration and deceleration to maintain a set time gap\nfrom a vehicle ahead."
+      },
+      {
+        "name": "ADAPTIVE",
+        "value": "2",
+        "description": "Adaptive cruise control is when a system in the vehicle automatically accelerates and\ndecelerates to maintain a set speed and/or a set time gap from a vehicle ahead."
+      },
+      {
+        "name": "PREDICTIVE",
+        "value": "3",
+        "description": "Predictive cruise control is a version of adaptive cruise control that also considers road\ntopography, road curvature, speed limit and traffic signs, etc. to actively adjust braking,\nacceleration, gear shifting, etc. for the vehicle. This feature is often used to optimize\nfuel consumption."
       }
     ]
   },
@@ -12040,6 +12096,151 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "USER_OVERRIDE",
         "value": "6",
         "description": "Many safety feature implementations allow the driver to override said feature. This means\nthat the car has determined it should take some action, but a user decides to take over and\ndo something else. This is often done for safety reasons and to ensure that the driver can\nalways take control of the vehicle. This state should be set when the user is currently\noverriding ELKA."
+      }
+    ]
+  },
+  "LaneDepartureWarningState": {
+    "name": "LaneDepartureWarningState",
+    "description": "Used to enumerate the state of Lane Departure Warning (LDW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any LaneDepartureWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_DEPARTURE_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneDepartureWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "LDW is enabled and monitoring, but the vehicle is centered in the lane."
+      },
+      {
+        "name": "WARNING_LEFT",
+        "value": "2",
+        "description": "LDW is enabled, detects the vehicle is approaching or crossing lane lines on the left side\nof the vehicle, and is currently warning the user."
+      },
+      {
+        "name": "WARNING_RIGHT",
+        "value": "3",
+        "description": "LDW is enabled, detects the vehicle is approaching or crossing lane lines on the right side\nof the vehicle, and is currently warning the user."
+      }
+    ]
+  },
+  "HandsOnDetectionDriverState": {
+    "name": "HandsOnDetectionDriverState",
+    "description": "Used to enumerate the current driver state of Hands On Detection (HOD).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any HandsOnDetectionDriverState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#HANDS_ON_DETECTION_DRIVER_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if HandsOnDetectionDriverState is\nextended to include additional states."
+      },
+      {
+        "name": "HANDS_ON",
+        "value": "1",
+        "description": "The system detects that the driver has their hands on the steering wheel."
+      },
+      {
+        "name": "HANDS_OFF",
+        "value": "2",
+        "description": "The system detects that the driver has their hands off the steering wheel."
+      }
+    ]
+  },
+  "HandsOnDetectionWarning": {
+    "name": "HandsOnDetectionWarning",
+    "description": "Used to enumerate the current warning state of Hands On Detection (HOD).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any HandsOnDetectionWarning value that is\ndefined in the platform. Ideally, implementations of\nVehicleProperty#HANDS_ON_DETECTION_WARNING should not use this state. The framework\ncan use this field to remain backwards compatible if HandsOnDetectionWarning is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "HOD is enabled and the driver's current safety does not warrant sending a warning. This\nstate is independent of whether the driver actually has their hands on or off the wheel."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "HOD is enabled and the driver's hands have been off the wheel for too long a duration,\nand the vehicle is sending a warning to the driver as a consequence of this."
+      }
+    ]
+  },
+  "DriverDrowsinessAttentionState": {
+    "name": "DriverDrowsinessAttentionState",
+    "description": "Used to enumerate the current state of driver drowsiness and attention monitoring.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any DriverDrowsinessAttentionState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionState is\nextended to include additional states."
+      },
+      {
+        "name": "KSS_RATING_1_EXTREMELY_ALERT",
+        "value": "1",
+        "description": "Karolinska Sleepiness Scale Rating 1 described as extermely alert."
+      },
+      {
+        "name": "KSS_RATING_2_VERY_ALERT",
+        "value": "2",
+        "description": "Karolinska Sleepiness Scale Rating 2 described as very alert."
+      },
+      {
+        "name": "KSS_RATING_3_ALERT",
+        "value": "3",
+        "description": "Karolinska Sleepiness Scale Rating 3 described as alert."
+      },
+      {
+        "name": "KSS_RATING_4_RATHER_ALERT",
+        "value": "4",
+        "description": "Karolinska Sleepiness Scale Rating 4 described as rather alert."
+      },
+      {
+        "name": "KSS_RATING_5_NEITHER_ALERT_NOR_SLEEPY",
+        "value": "5",
+        "description": "Karolinska Sleepiness Scale Rating 5 described as neither alert nor sleepy."
+      },
+      {
+        "name": "KSS_RATING_6_SOME_SLEEPINESS",
+        "value": "6",
+        "description": "Karolinska Sleepiness Scale Rating 6 described as some signs of sleepiness."
+      },
+      {
+        "name": "KSS_RATING_7_SLEEPY_NO_EFFORT",
+        "value": "7",
+        "description": "Karolinska Sleepiness Scale Rating 7 described as sleepy with no effort to\nkeep awake."
+      },
+      {
+        "name": "KSS_RATING_8_SLEEPY_SOME_EFFORT",
+        "value": "8",
+        "description": "Karolinska Sleepiness Scale Rating 8 described as sleepy with some effort to\nkeep awake."
+      },
+      {
+        "name": "KSS_RATING_9_VERY_SLEEPY",
+        "value": "9",
+        "description": "Karolinska Sleepiness Scale Rating 9 described as very sleepy, with great\neffort to keep away, and fighthing sleep."
+      }
+    ]
+  },
+  "DriverDrowsinessAttentionWarning": {
+    "name": "DriverDrowsinessAttentionWarning",
+    "description": "Used to enumerate the current warning state of the driver drowsiness and attention monitoring\nsystem.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any DriverDrowsinessAttentionWarning value that is\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_WARNING should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionWarning is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "When the driver drowsiness and attention warning is enabled, and the driver's current\ndrowsiness and attention level does not warrant the system to send a warning."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "When the driver drowsiness and attention warning is enabled, and the system is warning the\ndriver based on its assessment of the driver's current drowsiness and attention level."
       }
     ]
   },
@@ -12115,131 +12316,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "HandsOnDetectionDriverState": {
-    "name": "HandsOnDetectionDriverState",
-    "description": "Used to enumerate the current driver state of Hands On Detection (HOD).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any HandsOnDetectionDriverState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#HANDS_ON_DETECTION_DRIVER_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if HandsOnDetectionDriverState is\nextended to include additional states."
-      },
-      {
-        "name": "HANDS_ON",
-        "value": "1",
-        "description": "The system detects that the driver has their hands on the steering wheel."
-      },
-      {
-        "name": "HANDS_OFF",
-        "value": "2",
-        "description": "The system detects that the driver has their hands off the steering wheel."
-      }
-    ]
-  },
-  "LaneCenteringAssistState": {
-    "name": "LaneCenteringAssistState",
-    "description": "Used to enumerate the state of Lane Centering Assist (LCA).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any LaneCenteringAssistState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_CENTERING_ASSIST_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneCenteringAssistState is\nextended to include additional states."
-      },
-      {
-        "name": "ENABLED",
-        "value": "1",
-        "description": "LCA is enabled but the ADAS system has not received an activation signal from the driver.\nTherefore, LCA is not steering the car and waits for the driver to send a\nLaneCenteringAssistCommand#ACTIVATE command."
-      },
-      {
-        "name": "ACTIVATION_REQUESTED",
-        "value": "2",
-        "description": "LCA is enabled and the driver has sent an activation command to the LCA system, but the\nsystem has not started actively steering the vehicle. This may happen when LCA needs time to\ndetect valid lane lines. The activation command can be sent through the\nVehicleProperty#LANE_CENTERING_ASSIST_COMMAND vehicle property or through a system external\nto Android. Once LCA is actively steering the vehicle, the state must be updated to\nACTIVATED. If the feature is not able to activate, then the cause can be communicated through\nthe ErrorState values and then return to the ENABLED state."
-      },
-      {
-        "name": "ACTIVATED",
-        "value": "3",
-        "description": "LCA is enabled and actively steering the car to keep it centered in its lane."
-      },
-      {
-        "name": "USER_OVERRIDE",
-        "value": "4",
-        "description": "Many LCA implementations allow the driver to override LCA. This means that the car has\ndetermined it should go a certain direction to keep the car centered in the lane, but a user\ndecides to take over and do something else. This is often done for safety reasons and to\nensure that the driver can always take control of the vehicle. This state should be set when\nthe user is actively overriding the LCA system."
-      },
-      {
-        "name": "FORCED_DEACTIVATION_WARNING",
-        "value": "5",
-        "description": "When LCA is in the ACTIVATED state but it will potentially need to deactivate because of\nexternal conditions (e.g. roads curvature is too extreme, the driver does not have their\nhands on the steering wheel for a long period of time, or the driver is not paying\nattention), then the ADAS system will notify the driver of a potential need to deactivate and\ngive control back to the driver."
-      }
-    ]
-  },
-  "CruiseControlType": {
-    "name": "CruiseControlType",
-    "description": "Used to enumerate the current type of Cruise Control (CC).\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any CruiseControlType value that is not defined in\nthe platform. Ideally, implementations of VehicleProperty#CRUISE_CONTROL_TYPE should not use\nthis state. The framework can use this field to remain backwards compatible if\nCruiseControlType is extended to include additional types."
-      },
-      {
-        "name": "STANDARD",
-        "value": "1",
-        "description": "Standard cruise control is when a system in the vehicle automatically maintains a set speed\nwithout the driver having to keep their foot on the accelerator. This version of cruise\ncontrol does not include automatic acceleration and deceleration to maintain a set time gap\nfrom a vehicle ahead."
-      },
-      {
-        "name": "ADAPTIVE",
-        "value": "2",
-        "description": "Adaptive cruise control is when a system in the vehicle automatically accelerates and\ndecelerates to maintain a set speed and/or a set time gap from a vehicle ahead."
-      },
-      {
-        "name": "PREDICTIVE",
-        "value": "3",
-        "description": "Predictive cruise control is a version of adaptive cruise control that also considers road\ntopography, road curvature, speed limit and traffic signs, etc. to actively adjust braking,\nacceleration, gear shifting, etc. for the vehicle. This feature is often used to optimize\nfuel consumption."
-      }
-    ]
-  },
-  "DriverDrowsinessAttentionWarning": {
-    "name": "DriverDrowsinessAttentionWarning",
-    "description": "Used to enumerate the current warning state of the driver drowsiness and attention monitoring\nsystem.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any DriverDrowsinessAttentionWarning value that is\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_WARNING should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionWarning is\nextended to include additional states."
-      },
-      {
-        "name": "NO_WARNING",
-        "value": "1",
-        "description": "When the driver drowsiness and attention warning is enabled, and the driver's current\ndrowsiness and attention level does not warrant the system to send a warning."
-      },
-      {
-        "name": "WARNING",
-        "value": "2",
-        "description": "When the driver drowsiness and attention warning is enabled, and the system is warning the\ndriver based on its assessment of the driver's current drowsiness and attention level."
-      }
-    ]
-  },
-  "HandsOnDetectionWarning": {
-    "name": "HandsOnDetectionWarning",
-    "description": "Used to enumerate the current warning state of Hands On Detection (HOD).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any HandsOnDetectionWarning value that is\ndefined in the platform. Ideally, implementations of\nVehicleProperty#HANDS_ON_DETECTION_WARNING should not use this state. The framework\ncan use this field to remain backwards compatible if HandsOnDetectionWarning is\nextended to include additional states."
-      },
-      {
-        "name": "NO_WARNING",
-        "value": "1",
-        "description": "HOD is enabled and the driver's current safety does not warrant sending a warning. This\nstate is independent of whether the driver actually has their hands on or off the wheel."
-      },
-      {
-        "name": "WARNING",
-        "value": "2",
-        "description": "HOD is enabled and the driver's hands have been off the wheel for too long a duration,\nand the vehicle is sending a warning to the driver as a consequence of this."
-      }
-    ]
-  },
   "DriverDistractionState": {
     "name": "DriverDistractionState",
     "description": "Used to enumerate the current state of driver distraction monitoring.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -12279,27 +12355,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "WARNING",
         "value": "2",
         "description": "When the driver distraction warning is enabled and the system is warning the driver based on\nits assessment of the driver's current distraction level."
-      }
-    ]
-  },
-  "LowSpeedCollisionWarningState": {
-    "name": "LowSpeedCollisionWarningState",
-    "description": "Used to enumerate the state of Low Speed Collision Warning State.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative to any LowSpeedCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LowSpeedCollisionWarningState is\nextended to include additional states."
-      },
-      {
-        "name": "NO_WARNING",
-        "value": "1",
-        "description": "Low Speed Collision Warning is enabled and monitoring for potential collision, but no\npotential collision is detected."
-      },
-      {
-        "name": "WARNING",
-        "value": "2",
-        "description": "Low Speed Collision Warning is enabled, detects a potential collision, and is actively\nwarning the user."
       }
     ]
   },
@@ -12349,6 +12404,27 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "LowSpeedCollisionWarningState": {
+    "name": "LowSpeedCollisionWarningState",
+    "description": "Used to enumerate the state of Low Speed Collision Warning State.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any LowSpeedCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LowSpeedCollisionWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "Low Speed Collision Warning is enabled and monitoring for potential collision, but no\npotential collision is detected."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "Low Speed Collision Warning is enabled, detects a potential collision, and is actively\nwarning the user."
+      }
+    ]
+  },
   "LowSpeedAutomaticEmergencyBrakingState": {
     "name": "LowSpeedAutomaticEmergencyBrakingState",
     "description": "Used to enumerate the state of Low Speed Automatic Emergency Braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -12372,62 +12448,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "USER_OVERRIDE",
         "value": "3",
         "description": "Many Low Speed Automatic Emergency Braking implementations allow the driver to override Low\nSpeed Automatic Emergency Braking. This means that the car has determined it should brake,\nbut a user decides to take over and do something else. This is often done for safety reasons\nand to ensure that the driver can always take control of the vehicle. This state should be\nset when the user is actively overriding the low speed automatic emergency braking system."
-      }
-    ]
-  },
-  "DriverDrowsinessAttentionState": {
-    "name": "DriverDrowsinessAttentionState",
-    "description": "Used to enumerate the current state of driver drowsiness and attention monitoring.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any DriverDrowsinessAttentionState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionState is\nextended to include additional states."
-      },
-      {
-        "name": "KSS_RATING_1_EXTREMELY_ALERT",
-        "value": "1",
-        "description": "Karolinska Sleepiness Scale Rating 1 described as extermely alert."
-      },
-      {
-        "name": "KSS_RATING_2_VERY_ALERT",
-        "value": "2",
-        "description": "Karolinska Sleepiness Scale Rating 2 described as very alert."
-      },
-      {
-        "name": "KSS_RATING_3_ALERT",
-        "value": "3",
-        "description": "Karolinska Sleepiness Scale Rating 3 described as alert."
-      },
-      {
-        "name": "KSS_RATING_4_RATHER_ALERT",
-        "value": "4",
-        "description": "Karolinska Sleepiness Scale Rating 4 described as rather alert."
-      },
-      {
-        "name": "KSS_RATING_5_NEITHER_ALERT_NOR_SLEEPY",
-        "value": "5",
-        "description": "Karolinska Sleepiness Scale Rating 5 described as neither alert nor sleepy."
-      },
-      {
-        "name": "KSS_RATING_6_SOME_SLEEPINESS",
-        "value": "6",
-        "description": "Karolinska Sleepiness Scale Rating 6 described as some signs of sleepiness."
-      },
-      {
-        "name": "KSS_RATING_7_SLEEPY_NO_EFFORT",
-        "value": "7",
-        "description": "Karolinska Sleepiness Scale Rating 7 described as sleepy with no effort to\nkeep awake."
-      },
-      {
-        "name": "KSS_RATING_8_SLEEPY_SOME_EFFORT",
-        "value": "8",
-        "description": "Karolinska Sleepiness Scale Rating 8 described as sleepy with some effort to\nkeep awake."
-      },
-      {
-        "name": "KSS_RATING_9_VERY_SLEEPY",
-        "value": "9",
-        "description": "Karolinska Sleepiness Scale Rating 9 described as very sleepy, with great\neffort to keep away, and fighthing sleep."
       }
     ]
   }
