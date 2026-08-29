@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { LogoMark } from '@/components/brand'
+import { NavDropdown } from '@/components/nav-dropdown'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { site } from '@/data/site'
+import { navItems, site } from '@/data/site'
 import { cn } from '@/lib/utils'
 
 export function SiteHeader() {
@@ -61,19 +62,29 @@ export function SiteHeader() {
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
-          {site.nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive(item.href) ? 'page' : undefined}
-              className={cn(
-                'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive(item.href) ? 'text-accent' : 'text-muted hover:text-fg'
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) =>
+            item.children ? (
+              <NavDropdown
+                key={item.href}
+                label={item.label}
+                items={item.children}
+                active={item.children.some((c) => isActive(c.href))}
+                isActive={isActive}
+              />
+            ) : (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+                className={cn(
+                  'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive(item.href) ? 'text-accent' : 'text-muted hover:text-fg'
+                )}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -98,16 +109,47 @@ export function SiteHeader() {
           className="border-t border-line bg-bg lg:hidden"
         >
           <ul className="container-page flex flex-col py-3">
-            {site.nav.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="block rounded-lg px-2 py-3 text-base font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            {navItems.map((item) =>
+              item.children ? (
+                <li
+                  key={item.href}
+                  className="my-2 border-y border-line py-2 first:mt-0 first:border-t-0 first:pt-0"
                 >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+                  <p className="px-2 pb-1 pt-2 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
+                    {item.label}
+                  </p>
+                  <ul>
+                    {item.children.map((child) => (
+                      <li key={child.href}>
+                        <Link
+                          href={child.href}
+                          aria-current={isActive(child.href) ? 'page' : undefined}
+                          className={cn(
+                            'block rounded-lg px-2 py-3 text-base font-medium transition-colors hover:bg-surface-2 hover:text-fg',
+                            isActive(child.href) ? 'text-accent' : 'text-muted'
+                          )}
+                        >
+                          {child.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ) : (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={isActive(item.href) ? 'page' : undefined}
+                    className={cn(
+                      'block rounded-lg px-2 py-3 text-base font-medium transition-colors hover:bg-surface-2 hover:text-fg',
+                      isActive(item.href) ? 'text-accent' : 'text-muted'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              )
+            )}
           </ul>
         </nav>
       )}

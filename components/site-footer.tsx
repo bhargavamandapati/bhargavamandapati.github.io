@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { LogoMark } from '@/components/brand'
 import { SocialLinks } from '@/components/social-links'
-import { site } from '@/data/site'
+import { navLinks, site } from '@/data/site'
 
 export function SiteFooter() {
   return (
@@ -22,7 +22,7 @@ export function SiteFooter() {
                 Explore
               </h2>
               <ul className="mt-4 space-y-2.5">
-                {site.nav.map((item) => (
+                {navLinks.map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} className="text-sm text-muted transition-colors hover:text-accent">
                       {item.label}

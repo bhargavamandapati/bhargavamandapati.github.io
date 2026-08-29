@@ -36,13 +36,55 @@ export const site = {
     { label: 'About', href: '/#about' },
     { label: 'Experience', href: '/#experience' },
     { label: 'Projects', href: '/projects/' },
-    { label: 'Learn AAOS', href: '/learn/' },
+    {
+      // The AAOS material outgrew a single nav slot, so the curriculum,
+      // the property reference, the tutorials and the glossary sit together.
+      label: 'Learn AAOS',
+      href: '/learn/',
+      children: [
+        {
+          label: 'Learn AAOS',
+          href: '/learn/',
+          description: 'The structured curriculum, from VHAL to homologation.',
+        },
+        {
+          label: 'Vehicle property guide',
+          href: '/learn/vehicle-properties/',
+          description: 'Every vehicle property, searchable and linked to AOSP.',
+        },
+        {
+          label: 'Tutorials',
+          href: '/tutorials/',
+          description: 'Step-by-step builds for the things you customise.',
+        },
+        {
+          label: 'Glossary',
+          href: '/glossary/',
+          description: 'Plain-language definitions for the vocabulary.',
+        },
+      ],
+    },
     { label: 'SDV', href: '/sdv/' },
-    { label: 'Tutorials', href: '/tutorials/' },
-    { label: 'Glossary', href: '/glossary/' },
     { label: 'Skills', href: '/#skills' },
     { label: 'Writing', href: '/blog/' },
   ],
 } as const
 
 export type Site = typeof site
+
+export type NavChild = { label: string; href: string; description: string }
+export type NavItem = {
+  label: string
+  href: string
+  children?: readonly NavChild[]
+}
+
+/** Nav as the header consumes it, with groups intact. */
+export const navItems: readonly NavItem[] = site.nav
+
+/** Every destination, flattened — for the footer's sitemap-style list. */
+export const navLinks: { label: string; href: string }[] = navItems.flatMap((item) =>
+  item.children
+    ? item.children.map((c) => ({ label: c.label, href: c.href }))
+    : [{ label: item.label, href: item.href }],
+)
