@@ -17,6 +17,26 @@ Focus is Android's answer to "two things want to make noise". In a car the stake
 are higher: a collision warning must be audible immediately, and it must never be
 the thing that gets ducked.
 
+<Plain>
+Focus is a **politeness protocol**. Nothing in Android physically stops an app
+from playing audio without it — the API will happily make noise.
+
+What focus does is let apps agree about who should be heard right now, and tell
+each other when that changes. An app that ignores it is not blocked; it is just
+rude, and the result is two sounds on top of each other.
+
+In a car that matters more than on a phone, because one of those sounds might be
+a warning the driver needs to hear.
+</Plain>
+
+<Analogy title="Like a meeting room">
+Anyone can start talking. Focus is the convention that you ask for the floor,
+and that you stop — or drop to a murmur — when somebody more important needs it.
+
+The chair does not gag people. It just tells everyone who has the floor, and
+well-behaved participants act on that.
+</Analogy>
+
 ## The focus model
 
 An app requests focus, stating what it wants and for how long. The framework
@@ -100,6 +120,25 @@ how you end up talking over a collision warning. Handle the denial.
 </Callout>
 
 ## What the car changes
+<Scenario title="A phone call arriving during music, in a car">
+The driver is playing music. A call comes in.
+
+1. The dialler requests focus with `AUDIOFOCUS_GAIN_TRANSIENT`.
+2. `CarAudioService` resolves the request against the **interaction matrix** for
+   that zone — can CALL and MUSIC coexist, and if not, who wins?
+3. Music is configured to lose to a call, so the media app's
+   `onAudioFocusChange` fires with `AUDIOFOCUS_LOSS_TRANSIENT`.
+4. The media app pauses. Not ducks — pauses, because the loss was not
+   `..._CAN_DUCK`.
+5. The call plays through the CALL context's bus.
+6. Call ends, dialler abandons focus, media app gets `AUDIOFOCUS_GAIN` and
+   resumes.
+
+The important detail is step 2. On a phone the rules are fixed by the framework.
+In a car they come from the **zone's configuration**, so an OEM can decide that,
+say, a parking-sensor chime coexists with a call rather than interrupting it.
+</Scenario>
+
 
 Car audio focus is evaluated **per zone** and with an **interaction matrix**
 rather than simple last-request-wins.
@@ -182,6 +221,21 @@ Android being alive will not survive a safety review.
 The third test is the one that catches real bugs. Resume-after-interruption is
 where most media apps fail, and the driver notices immediately — the music simply
 never comes back after a phone call.
+
+<Recap>
+- Focus is a **convention, not a lock** — nothing stops an app playing without
+  it, which is exactly why every app must honour it.
+- Request the right **duration**: permanent for media, transient for a prompt,
+  `..._MAY_DUCK` when the other sound can simply be quietened.
+- Always implement `onAudioFocusChange` and act on it, including
+  `AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK`.
+- In a car, **who wins is decided per zone by configuration**, not by fixed
+  framework rules — an OEM can tune the interaction matrix.
+- **Safety sounds are never ducked**, and are often not Android's job at all —
+  many chimes are generated below Android and mixed in the amplifier.
+- Test focus by forcing the interactions, not by hoping they occur: start a
+  call over media, a prompt over a call, a reverse chime over everything.
+</Recap>
 
 ## Next
 

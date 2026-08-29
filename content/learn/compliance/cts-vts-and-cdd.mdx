@@ -24,6 +24,31 @@ Google services and from claiming Android compatibility at all.
   <ComplianceSuites />
 </DiagramFrame>
 
+<Plain>
+Three things with initials, doing three different jobs.
+
+**CDD** is a document. It states what a device must do to be called Android.
+
+**CTS** is a test suite that checks the *framework* behaves the way the CDD says.
+
+**VTS** is a test suite that checks the *vendor* half — your HALs — honour the
+interfaces they claim to implement.
+
+You do not get to pick. Shipping with Google services means passing all of it.
+</Plain>
+
+<Analogy title="Like a building inspection">
+The building code is a document nobody enjoys reading, and it decides what
+"a house" legally means.
+
+The inspection checks the structure against the code. A second inspection checks
+that the contractor's own work — wiring, plumbing — meets the standards it
+claimed.
+
+You can build whatever you like. You just cannot call it a house and sell it
+until both inspections pass.
+</Analogy>
+
 ## The CDD
 
 The Compatibility Definition Document is the written specification: what a device
@@ -100,6 +125,27 @@ specific to the programme, and the one that finds the most defects. It is not
 Google's and it is not optional.
 
 ## Why failures arrive late
+<Scenario title="A CTS failure two weeks before sign-off">
+A programme runs CTS for the first time late, and 400 tests fail.
+
+Triage nearly always sorts them into three piles.
+
+**Genuine bugs** — a framework change that broke documented behaviour. These are
+the ones worth having found, and they are usually the smallest pile.
+
+**Configuration** — a missing feature flag, a permission not granted, a
+`ro.product` property that does not match reality. Large pile, quick fixes,
+but each needs someone to work out which knob.
+
+**Not applicable** — tests for hardware the vehicle does not have. These need a
+documented waiver, not a code change, and assembling the waivers takes longer
+than anyone plans for.
+
+The lesson is not "run CTS earlier" as a slogan. It is that the second and third
+piles are **process work with a lead time**, and they are invisible until you
+run the suite once.
+</Scenario>
+
 
 The pattern is consistent: compliance runs are scheduled near the end, take days
 to execute, and produce failures that require framework or HAL changes — which
@@ -125,6 +171,19 @@ it. The information existed the whole time; only the feedback was late. Moving
 the suite earlier is a scheduling change, not an engineering one, and it is the
 highest-leverage thing available.
 </Callout>
+
+<Recap>
+- **CDD** is the document, **CTS** tests the framework against it, **VTS** tests
+  your HALs against their interfaces.
+- Passing is a condition of shipping with Google services — it is not optional
+  or negotiable.
+- Run the suites **early and continuously**; the first run always produces a
+  large pile that is mostly configuration and waivers, not bugs.
+- Failures split into genuine bugs, configuration, and not-applicable — the last
+  needs documented waivers, which have their own lead time.
+- Other suites (GTS, STS, and the security patch requirements) surface late on
+  programmes that were not looking for them.
+</Recap>
 
 ## Next
 

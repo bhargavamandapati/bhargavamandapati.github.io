@@ -16,6 +16,23 @@ sources:
 A head unit feels cheap or expensive based on almost nothing but latency. Not
 throughput, not frame rate — the delay between a touch and a visible response.
 
+<Plain>
+Startup matters more in a car than on a phone, for a reason that has nothing to
+do with impatience: a driver who taps an icon and waits is a driver looking at a
+screen instead of the road.
+
+So the budgets are tighter, and "fast enough on my desk" is not the standard —
+the target hardware is usually far slower than a development machine.
+</Plain>
+
+<Analogy title="Like a queue at a toll booth">
+A two-second delay per car is invisible to the driver and catastrophic for the
+queue behind them.
+
+In a car the queue is the driver's attention. Every second your app takes is a
+second borrowed from the road.
+</Analogy>
+
 ## The budgets that matter
 
 | Interaction | Budget | What happens beyond it |
@@ -154,6 +171,27 @@ override fun onBindViewHolder(holder: VH, position: Int) {
 }
 ```
 
+<Scenario title="Where startup time actually goes">
+An app takes 2.8 seconds to first frame on the target board and 0.9 on a phone.
+
+Measuring rather than guessing usually finds:
+
+- **Application.onCreate** doing eager initialisation — analytics, dependency
+  graphs, database opens — that nothing on the first screen needs.
+- **Synchronous disk reads** on the main thread, which cost far more on the
+  slower flash in a head unit.
+- **Layout inflation** of a complex first screen.
+- **A blocking `Car` connection**, waiting for Car Service before drawing
+  anything.
+
+The last one is automotive-specific and very common: the app waits for vehicle
+data it does not need to render its first frame.
+
+The fix pattern is the same throughout — **draw something first, then connect.**
+Render the frame with an explicit unknown state, and populate it when the data
+arrives.
+</Scenario>
+
 ## What to hold on to
 
 - **Measure cold, warm and hot separately.** They have different causes.
@@ -162,6 +200,20 @@ override fun onBindViewHolder(holder: VH, position: Int) {
 - **Use baseline profiles.** It is the cheapest large win available.
 - **Test on the target.** Head unit CPUs are far slower than a development
   machine, and every budget above is measured there.
+
+<Recap>
+- Startup time in a car is **attention borrowed from the road**, which is why the
+  budgets are tighter than on a phone.
+- Target hardware is much slower than a development machine — always measure on
+  the board.
+- The usual costs: eager `Application.onCreate` work, main-thread disk reads,
+  heavy first-screen layouts, and blocking on `Car`.
+- **Draw first, connect second.** Render an explicit unknown state and fill it in
+  when data arrives.
+- Baseline profiles help meaningfully on constrained hardware.
+- Perceived responsiveness is about the first frame and consistent
+  frame times, not the total load.
+</Recap>
 
 ## Next
 

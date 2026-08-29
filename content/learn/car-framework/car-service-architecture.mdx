@@ -17,6 +17,27 @@ Car Service is where Android stops being a phone OS. It is a single process
 (`com.android.car`) holding a dozen subservices, and almost every automotive
 behaviour you will ever debug lives inside it.
 
+<Plain>
+Car Service is the layer between apps and the vehicle. It is not one service — it
+is a **container of subservices**, each owning one area: properties, audio, power,
+users, watchdog, and a dozen more.
+
+Apps never talk to a subservice directly. They get a manager from `Car`, and the
+manager talks to the subservice over Binder.
+
+The shape matters because when something breaks, knowing which subservice owns it
+tells you where to look.
+</Plain>
+
+<Analogy title="Like a reception desk">
+You do not wander into the building looking for the right department. You ask at
+reception, and reception connects you.
+
+`Car` is reception. `CarPropertyManager` is the line to one department. If that
+department is closed, reception can still connect you to the others — which is
+exactly what happens when one subservice fails to start.
+</Analogy>
+
 ## How it starts
 
 Car Service is not an ordinary app. It is a persistent system app started early
@@ -158,6 +179,26 @@ committed to.
 </Callout>
 
 ## When Car Service dies
+<Scenario title="What happens to your app when Car Service restarts">
+Car Service crashes — a subservice hit an exception during a vehicle event.
+
+From your app's point of view:
+
+1. Every `Car`-derived manager you hold becomes **invalid**. Calls throw.
+2. Your registered callbacks stop firing. No error, just silence.
+3. Car Service restarts a moment later.
+4. Your stale managers **do not recover** — they still reference a dead Binder.
+
+Apps that assumed `Car` connects once at startup are now permanently broken until
+the user restarts them, and the symptom is "the climate screen stopped updating"
+with nothing in the log.
+
+The fix is to register a lifecycle listener when connecting, and re-acquire your
+managers and re-register your callbacks when it fires. It is a few lines, and it
+is the difference between an app that survives a platform restart and one that
+quietly dies.
+</Scenario>
+
 
 It restarts. Everything holding a manager gets an invalid object, and apps that
 cached one without a lifecycle listener break permanently until they are killed.
@@ -169,6 +210,21 @@ adb logcat -b all | grep -iE 'car_service|CarService.*(crash|restart|died)'
 This is why the app-side guidance is always "use the lifecycle-listener form of
 `Car.createCar` and re-fetch your managers". On a desk it never happens. On a
 vehicle over a long drive it does.
+
+<Recap>
+- Car Service is a **container of subservices**, each owning one domain, started
+  in a defined dependency order.
+- Apps reach it through `Car` and the manager objects it hands out — never
+  directly.
+- `dumpsys car_service` is the primary diagnostic; each subservice contributes
+  its own section.
+- **Dependency order matters**: a subservice that fails to start can leave others
+  degraded rather than obviously broken.
+- If Car Service dies, your managers and callbacks are **permanently invalid** —
+  register a lifecycle listener and re-acquire them.
+- Adding your own subservice means touching the service list, permissions and
+  SEPolicy, not just writing a class.
+</Recap>
 
 ## Next
 

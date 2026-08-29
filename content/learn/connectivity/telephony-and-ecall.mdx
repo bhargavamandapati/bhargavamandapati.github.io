@@ -17,6 +17,28 @@ There are two kinds of calling in a vehicle and they have almost nothing in
 common. One is convenience. The other is a regulated safety function with
 availability requirements Android cannot meet on its own.
 
+<Plain>
+Two quite different things share this page.
+
+**Hands-free calling** is a convenience feature built on Bluetooth and the
+Telecom framework. If it fails, the driver is annoyed.
+
+**eCall** is a regulated emergency system that places an automatic call and
+transmits the vehicle's position after a crash. If it fails, somebody may not be
+found.
+
+They share a page because they share a phone stack. They share almost nothing
+else, and conflating them in a design discussion is a mistake.
+</Plain>
+
+<Analogy title="Like a doorbell and a fire alarm">
+Both make a noise when something happens. One is a convenience, tested when
+somebody notices it is broken.
+
+The other is inspected, certified, and expected to work on the worst day of
+somebody's life.
+</Analogy>
+
 ## Hands-free calling
 
 The ordinary case: the driver's phone is connected over HFP, and the head unit is
@@ -108,6 +130,25 @@ it should not depend on network state, accounts, or anything that might be
 unavailable after an accident.
 
 ## Data connectivity and the TCU
+<Scenario title="Why eCall is not an Android feature">
+It is worth being precise about why eCall does not live in Android.
+
+- It must work when **Android is not running** — after a crash that may have
+  damaged the head unit, or before boot has completed.
+- It must work with the **vehicle's own power** and its own backup battery.
+- It is **type-approved**: the implementation is certified, and changing it means
+  re-approval.
+- It has a **hard time budget** from crash detection to call connected.
+
+So eCall lives in the telematics unit, with its own modem, its own power and its
+own certification. Android may show that a call is in progress. It does not place
+it, and it must not be able to prevent it.
+
+The general principle this illustrates: **anything whose failure mode is physical
+harm lives outside Android**, and the interface between them is deliberately
+narrow.
+</Scenario>
+
 
 Most vehicles have a Telematics Control Unit — a separate module with its own
 modem and SIM, providing data to the whole vehicle. Android is a *client* of it,
@@ -135,6 +176,18 @@ val job = JobInfo.Builder(JOB_ID, component)
     .setPersisted(true)
     .build()
 ```
+
+<Recap>
+- **Hands-free calling** is a convenience on Bluetooth and Telecom; **eCall** is a
+  regulated emergency system.
+- eCall lives in the **telematics unit**, with its own modem, power and
+  certification — not in Android.
+- Android may observe an emergency call; it must never be able to prevent one.
+- Call audio interacts with audio zones and focus; a call is not just another
+  media stream.
+- The general rule: anything whose failure causes **physical harm** sits outside
+  Android, behind a narrow interface.
+</Recap>
 
 ## Next
 

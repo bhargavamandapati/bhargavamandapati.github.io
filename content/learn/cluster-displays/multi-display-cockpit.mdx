@@ -17,6 +17,23 @@ A premium cockpit is five screens: centre stack, cluster, head-up display,
 passenger, and one or two rear. They may run different apps, for different
 people, under different rules, at the same time.
 
+<Plain>
+A cockpit has several screens — centre, cluster, passenger, rear seats — and they
+are not interchangeable. Each has its own user, its own input, its own
+restrictions and its own owner.
+
+Nearly every multi-display bug comes from code that says "the display", "the
+user" or "the current Activity" as if there were only one of each.
+</Plain>
+
+<Analogy title="Like rooms in a shared house">
+Each room has its own occupant, its own lights and its own rules. "Turn the light
+on" is not a complete instruction until you say which room.
+
+Code that assumes a single display is giving that incomplete instruction and
+hoping.
+</Analogy>
+
 ## Configuring displays
 
 Displays are enumerated by the kernel and mapped to occupant zones in product
@@ -125,6 +142,26 @@ If the content is licensed to an account, the target user may not have it.
 Design the failure: "sign in on the rear screen to continue" is a legitimate
 outcome and much better than a blank player.
 
+<Scenario title="The assumptions that break on a second screen">
+Four things that work on one display and quietly fail on several:
+
+**`startActivity` with no display** lands wherever the calling context defaults
+to, which is often the driver's screen.
+
+**Density and size** differ per display. A layout tuned for a 12-inch centre
+screen looks wrong on a 7-inch rear one, and `dp` does not save you from a
+different aspect ratio.
+
+**"The current user"** is not one answer — a rear display may belong to a
+different user than the front.
+
+**Input focus** is per display. Assuming a single focused view across the system
+produces controls that respond on the wrong screen.
+
+The habit that avoids all four: whenever you write display, user or focus, ask
+**"which one?"** — and if the code cannot answer, that is the bug.
+</Scenario>
+
 ## Performance
 
 Every additional display is another surface to compose, at its own refresh rate,
@@ -139,6 +176,19 @@ adb shell perfetto -o /data/misc/perfetto-traces/t -t 15s gfx view sched
 Practical rules: do not animate on a display nobody is looking at, drop the
 frame rate on secondary displays where you can, and never run a video decode per
 screen if one decode can be shared.
+
+<Recap>
+- A cockpit has several displays with **different users, densities, inputs and
+  restrictions**.
+- Always **specify the launch display**; the default is rarely what you meant.
+- Density, size and aspect ratio vary — design for a range, not the reference
+  screen.
+- **User and input focus are per display**, so "the current user" is not a single
+  answer.
+- Moving content between screens is an explicit operation, not a drag.
+- Several displays compositing at once is a real GPU cost; measure on the target
+  hardware.
+</Recap>
 
 ## Next
 

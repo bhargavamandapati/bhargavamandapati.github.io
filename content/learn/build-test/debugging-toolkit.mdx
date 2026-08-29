@@ -17,6 +17,21 @@ Automotive bugs are cheap to fix and expensive to *locate*, because the stack is
 deep and every layer can plausibly be blamed. A fixed triage order is worth more
 than any single clever tool.
 
+<Plain>
+Almost every automotive Android problem is diagnosed faster by working **down the
+stack in order** than by jumping to the layer you suspect.
+
+The order below is not arbitrary: each step rules out everything above it, so a
+failure tells you where to stop looking as much as where to look.
+</Plain>
+
+<Analogy title="Like finding out why the lights are off">
+Check the switch, then the bulb, then the fuse, then the street. Not because it
+is thorough, but because each answer eliminates a whole branch.
+
+Starting at the street with a ladder is how an afternoon disappears.
+</Analogy>
+
 ## The triage order
 
 Work down. Do not skip.
@@ -133,6 +148,32 @@ adb shell cmd overlay dump com.oem.rro.night
 
 adb shell pkill -f com.android.systemui   # restart SystemUI, no reboot
 ```
+
+<Scenario title="A property the app cannot read, triaged properly">
+Work down; stop at the first failure.
+
+```bash
+# 1. Is the HAL even running?
+adb shell lshal | grep vehicle
+
+# 2. Does Car Service know the property?
+adb shell dumpsys car_service --list-properties | grep -i my_prop
+
+# 3. Can anything read it outside the app?
+adb shell dumpsys car_service --get-property 0x21100f00 0
+
+# 4. Is SELinux blocking something?
+adb logcat -b all | grep 'avc: denied'
+
+# 5. Is the app running as the user you think?
+adb shell am get-current-user
+```
+
+Each step eliminates a layer. Fail at 1 and nothing above matters. Pass 1–3 and
+fail in the app, and it is almost always **permission or area ID** — not the HAL.
+
+Most time lost to debugging in this ecosystem comes from starting at step 5.
+</Scenario>
 
 ## A reproduction script
 

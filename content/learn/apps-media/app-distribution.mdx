@@ -16,6 +16,23 @@ sources:
 "How do users get this app?" has four answers on AAOS, and choosing wrong early
 costs quarters, not sprints.
 
+<Plain>
+Getting an app onto a vehicle is a different question from getting one onto a
+phone, and the answer depends on decisions the OEM made years earlier.
+
+There are four routes — Play, an OEM store, baked into the system image, or
+sideloaded for development — and they differ in who approves the app, how it is
+signed, and how it gets updated afterwards.
+</Plain>
+
+<Analogy title="Like getting a product into a shop">
+You can be on the main chain's shelves, in a regional chain, built into the
+fittings, or handed over the counter to a colleague.
+
+Same product. Completely different approvals, contracts and restocking
+arrangements — and the choice is usually made for you by which shop it is.
+</Analogy>
+
 ## The four routes
 
 | Route | Who decides | Cadence | Permissions available |
@@ -134,6 +151,28 @@ the signatures differ. If you need both routes, you need two variants, and you
 should design for that from the start.
 
 ## A practical decision order
+<Scenario title="Why the same APK cannot go everywhere">
+A team builds one app and expects to ship it through every route. It does not
+work that way.
+
+**Play on a GAS vehicle** — signed by you, distributed by Google, updated
+independently of the vehicle. Requires meeting Play's automotive quality rules.
+
+**An OEM store** — signed by you, approved by the OEM, updated on their cadence.
+Each OEM has its own submission process.
+
+**In the system image** — signed by the **platform key**, updated only with a
+system OTA. This is how privileged apps ship, and it means your release cadence
+becomes the vehicle's release cadence.
+
+**Sideloaded** — development only, and only on unlocked units.
+
+The signing difference is the one that catches people: an app needing privileged
+permissions **must** be in the system image, which means it cannot be updated
+through a store. That is an architectural decision, not a packaging one, and it
+is worth making deliberately rather than discovering late.
+</Scenario>
+
 
 1. **Does it actuate the vehicle?** → system image. Talk to the OEM now.
 2. **Is it media or templated, on a GAS vehicle?** → Play Store. Read the quality
@@ -141,6 +180,18 @@ should design for that from the start.
 3. **Non-GAS?** → OEM store, per OEM, with per-OEM integration work.
 4. **Still exploring?** → sideload on a dev unit, but do not let the prototype's
    permissions set expectations the distribution route cannot meet.
+
+<Recap>
+- Four routes: **Play on GAS vehicles, an OEM store, the system image, or
+  sideloading** for development.
+- The route determines who approves the app, how it is signed and how it updates.
+- **Privileged apps must ship in the system image**, so their cadence is the
+  vehicle's OTA cadence — not a store's.
+- Play distribution requires meeting automotive-specific quality rules.
+- Sideloading works only on unlocked development units.
+- Decide the route **early**; it constrains permissions, signing and release
+  planning.
+</Recap>
 
 ## Next
 

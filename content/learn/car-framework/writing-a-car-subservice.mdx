@@ -18,6 +18,24 @@ comfort features, a vendor telematics client, a proprietary feature manager.
 Here is the whole shape, including the parts that are easy to skip and expensive
 to skip.
 
+<Plain>
+Adding a subservice to Car Service means writing five things that have to agree
+with each other:
+
+**AIDL interface → service implementation → registration → manager → permissions**
+
+None of them is difficult. The work is that they are in five different places,
+and a mismatch in any one produces a failure that points somewhere else.
+</Plain>
+
+<Analogy title="Like opening a new counter in a post office">
+You need the counter itself, someone staffed behind it, a sign so people know it
+exists, a queue system that routes to it, and a rule about who may use it.
+
+Miss the sign and the counter is invisible. Miss the rule and anyone walks up.
+Each piece is small; the coordination is the job.
+</Analogy>
+
 ## The five pieces
 
 1. An **AIDL interface** the app side calls.
@@ -210,6 +228,29 @@ might reasonably be a separate, lower-privilege permission — split read from
 write rather than granting one permission that does both.
 
 ## Threading rules
+<Scenario title="The threading mistake that only appears under load">
+A new subservice does its work directly in the Binder call, because it is fast
+enough in testing.
+
+In the vehicle, under real load, apps start reporting ANRs — and not in your
+service, in **unrelated** ones.
+
+The cause: Binder has a **finite thread pool**, shared across the process. A
+subservice that blocks in a Binder call holds one of those threads. Enough
+concurrent calls and the pool is exhausted, so every other subservice in Car
+Service stops answering too.
+
+The rules that avoid this:
+
+- **Never block in a Binder call.** Hand off to your own handler and return.
+- **Never call back into an app synchronously** while holding a lock.
+- Assume callers are malicious or buggy — validate everything, and never let a
+  caller's behaviour determine how long you hold a thread.
+
+Car Service is a single process shared by every vehicle subsystem. A mistake in
+yours degrades all of them.
+</Scenario>
+
 
 - **`init()` must not block.** It runs on the Car Service startup path, and every
   millisecond there is boot time.
@@ -234,6 +275,19 @@ void publish(int areaId, int level) {
     mListeners.finishBroadcast();
 }
 ```
+
+<Recap>
+- Five pieces must agree: **AIDL interface, service, registration, manager,
+  permissions**.
+- The manager is what apps see; the service is what runs inside Car Service.
+- Registration order matters, because subservices start in a dependency
+  sequence.
+- **Never block in a Binder call** — the thread pool is shared with every other
+  subservice in the process.
+- Validate all input and assume callers may be buggy or hostile.
+- Add SEPolicy alongside the code; a subservice that will not start with silent
+  logs is a policy problem.
+</Recap>
 
 ## Next
 

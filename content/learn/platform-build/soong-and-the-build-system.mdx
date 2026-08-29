@@ -17,6 +17,23 @@ AOSP moved from Make to **Soong**, which reads declarative `Android.bp` files an
 generates Ninja build rules. You will meet it the first time you add a module,
 and again every time something does not link.
 
+<Plain>
+Soong is AOSP's build system. You describe **modules** in `Android.bp` files —
+what to build, what it depends on, where it goes — and Soong works out the order.
+
+It is deliberately declarative. There are no loops, no conditionals, no scripting.
+That feels limiting until you have watched a build system with all three become
+unmaintainable.
+</Plain>
+
+<Analogy title="Like a parts list rather than instructions">
+You state what each component is and what it is made from. The factory works out
+the assembly order.
+
+You cannot say "and if it is Tuesday, do this differently" — which is exactly
+why anybody can read the list and know what will be built.
+</Analogy>
+
 ## A blueprint file
 
 `Android.bp` is JSON-like and declarative. No conditionals, no loops, no shell —
@@ -136,6 +153,27 @@ A dependency outside that list fails at build time. On a large platform this is
 what stops a slow accretion of cross-team coupling that nobody intended.
 
 ## When the build fails
+<Scenario title="Reading a Soong failure that names the wrong thing">
+A build fails with a missing-dependency error naming a module you have never
+heard of.
+
+The usual causes, in the order worth checking:
+
+1. **Visibility.** The module exists but is not visible to yours. The error says
+   "not found", which is misleading — it is there, you are just not allowed to
+   see it.
+2. **Wrong partition.** A `vendor` module depending on a `system` one crosses the
+   Treble boundary and is rejected by design.
+3. **Name typo.** Soong has no fuzzy matching; a one-character difference is a
+   missing module.
+4. **Not included in the product.** It builds, but nothing pulls it into the
+   image, so it is absent at runtime rather than at build time.
+
+The first two are the interesting ones, because they are the build system
+enforcing an architectural rule rather than reporting a mistake. "Not found"
+frequently means "not allowed".
+</Scenario>
+
 
 ```bash title="Diagnosing"
 # What does this module actually depend on?
@@ -163,6 +201,21 @@ The failures that recur:
 
 That last one is worth internalising: a build that only works incrementally is
 broken. Verify from clean before claiming it builds.
+
+<Recap>
+- Soong builds from **declarative `Android.bp` modules** — no loops, conditionals
+  or scripting, on purpose.
+- Modules declare what they are, what they depend on and which partition they
+  belong to.
+- **Visibility** rules mean "module not found" often really means "not allowed to
+  depend on that".
+- Partition boundaries are enforced at build time; vendor code cannot casually
+  depend on system code.
+- `m <module>` builds one module, which is far faster than a full build when
+  iterating.
+- A module that builds is not necessarily in the image — it also has to be pulled
+  in by the product.
+</Recap>
 
 ## Next
 

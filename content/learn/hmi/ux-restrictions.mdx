@@ -20,6 +20,27 @@ blocks activities that are not marked safe.
 Understanding it early saves you from designing an interface that is illegal to
 show while moving.
 
+<Plain>
+The platform decides how distracting your app is allowed to be, and it changes
+that decision while the car is moving.
+
+When the vehicle starts moving, `CarUxRestrictionsManager` tells every app what
+is now forbidden: long text, video, complex lists, keyboard entry. Ignore it and
+the platform blocks your Activity outright.
+
+This is not a design guideline. It is enforced, and it is a legal requirement in
+several markets.
+</Plain>
+
+<Analogy title="Like a library that gets stricter as it fills">
+Quiet study at 9am; total silence by exam week. The rules are not personal, they
+are a function of the state of the room, and everyone gets the same instruction
+at the same moment.
+
+Your job is not to judge whether the rule is reasonable. It is to notice the
+announcement and comply.
+</Analogy>
+
 ## Driving state drives everything
 
 ```text title="The derivation chain"
@@ -176,6 +197,30 @@ result for an automotive UI.
 ```
 
 ## Designing for it from the start
+<Scenario title="A screen that has to survive the car starting to move">
+A settings screen shows a scrollable list of forty options with descriptions, and
+a search box.
+
+Parked, that is fine. At 5 km/h it is illegal.
+
+What the app must do the moment restrictions change:
+
+1. `onUxRestrictionsChanged` fires with `UX_RESTRICTIONS_NO_SETUP` and
+   `..._LIMIT_CONTENT`.
+2. Collapse to a short list — the platform-specified maximum, typically a handful
+   of items.
+3. Truncate long strings to the allowed length.
+4. Dismiss the keyboard and disable text entry.
+5. Do **not** simply block the whole screen if a compliant version exists; a
+   driver who can no longer change the temperature is a worse outcome than a
+   simplified list.
+
+The mistake to avoid is treating this as an error path bolted on at the end. A
+screen designed only for the parked state usually has to be rebuilt, because the
+restricted version is a genuinely different layout rather than the same one with
+things hidden.
+</Scenario>
+
 
 The teams that struggle are the ones who design the parked experience and then
 try to subtract from it. The ones that do well design the **moving** experience
@@ -189,6 +234,20 @@ Practical rules that hold up:
 - Voice is the answer to text entry, not a smaller keyboard.
 - If a screen cannot be made safe, restrict it honestly rather than shipping a
   compromise that helps nobody.
+
+<Recap>
+- The platform decides what is too distracting **while driving**, and enforces it
+  by blocking non-compliant Activities.
+- `CarUxRestrictionsManager` reports the current restrictions and notifies you
+  when they change; register for changes, do not read once.
+- Restrictions cover text length, list length, video, keyboard entry and setup
+  flows.
+- Mark compliant screens `distractionOptimized`; unmarked Activities are blocked
+  when driving.
+- **Design the restricted layout first**, not as an afterthought — it is usually a
+  different screen, not the same one with parts hidden.
+- Test by faking the driving state; you do not need a road.
+</Recap>
 
 ## Next
 

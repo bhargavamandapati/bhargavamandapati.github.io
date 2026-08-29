@@ -17,6 +17,24 @@ Connectivity in a vehicle is not a phone's connectivity with a different antenna
 The economics, the lifetime and the availability model are all different, and
 each one changes how you should design.
 
+<Plain>
+Connectivity in a vehicle is not the phone model with a different antenna. Three
+things differ, and each has consequences that reach into app design.
+
+**Somebody else owns the modem** — usually a telematics unit, not Android.
+
+**Somebody pays for every byte**, and it may be the customer.
+
+**The vehicle outlives the network generation** it shipped with.
+</Plain>
+
+<Analogy title="Like a company phone with a strict expenses policy">
+You have a connection, but it is not yours, the bill goes to someone who reviews
+it, and the handset has to last far longer than you would personally keep one.
+
+That changes what you would reasonably do with it.
+</Analogy>
+
 ## Who owns the modem
 
 Three arrangements, and it matters which one you are on:
@@ -138,6 +156,26 @@ leaves the vehicle:
 - Make every upload switchable off per market, at runtime.
 - Retain nothing longer than the stated purpose requires.
 
+<Scenario title="The fifteen-year modem problem">
+A vehicle ships in 2020 with a 4G modem. In 2035 it is still on the road, and
+carriers in several markets have retired the bands it uses.
+
+This is not hypothetical — it has already happened with 2G and 3G shutdowns,
+stranding vehicles whose connected features simply stopped.
+
+What it means when you design a feature:
+
+- **Anything cloud-dependent must degrade gracefully**, permanently, not as an
+  error state.
+- A feature the customer paid for should not become useless because a network
+  generation was retired.
+- The modem may be **replaceable hardware** on some programmes; if not, the
+  software has to assume the connection may end for good.
+
+The uncomfortable version: a connected feature designed with no offline story is
+a feature with an expiry date you have not told the customer about.
+</Scenario>
+
 ## A design checklist
 
 1. Does the feature work offline? For days?
@@ -146,6 +184,21 @@ leaves the vehicle:
 4. Is the sync incremental and resumable?
 5. Is the protocol versioned for a server that will outlive its design?
 6. Does it check `NET_CAPABILITY_VALIDATED`, not just "connected"?
+
+<Recap>
+- The modem usually belongs to a **telematics unit**, not to Android — you are a
+  consumer of connectivity, not its owner.
+- **Data is metered and someone pays**; batch, compress, and defer to Wi-Fi where
+  possible.
+- Vehicles **outlive network generations**, so every cloud dependency needs a
+  permanent degraded mode.
+- Wi-Fi in a vehicle is used for updates, hotspot and diagnostics, each with
+  different policy.
+- Location and connectivity data are **privacy-sensitive**; collect the minimum
+  and keep it on the vehicle where you can.
+- Test in aeroplane mode routinely — no connectivity is a normal state, not an
+  edge case.
+</Recap>
 
 ## Next
 

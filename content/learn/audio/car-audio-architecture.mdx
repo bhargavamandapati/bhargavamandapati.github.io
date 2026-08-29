@@ -27,6 +27,34 @@ The model that handles this is **zones, contexts and buses**.
   <AudioZones />
 </DiagramFrame>
 
+<Plain>
+Three words carry the whole model, and they answer three different questions.
+
+**Context** — *what kind of sound is this?* Music, navigation, a phone call, a
+warning chime.
+
+**Bus** — *which physical output does it leave through?* A wire to the amplifier.
+
+**Zone** — *which part of the cabin does it belong to?* The front, the rear seats.
+
+Everything else in car audio is configuration that connects those three.
+</Plain>
+
+<Analogy title="Like a post room">
+A letter has a **kind** — invoice, legal notice, junk mail. That is the context.
+
+The post room has **pigeonholes** it can put things into. Those are the buses.
+
+And the building has **floors**, each with its own post room and its own rules.
+Those are the zones.
+
+Nobody writes "put this in pigeonhole 3" on an envelope. You write what the letter
+*is*, and the sorting rules decide where it goes. Change the rules and every
+letter routes differently without a single sender changing anything.
+
+That indirection is exactly what `car_audio_configuration.xml` buys you.
+</Analogy>
+
 ## The three concepts
 
 ### Audio context — *what kind of sound is this?*
@@ -136,6 +164,23 @@ The rear zone above lists all eleven contexts on one device precisely because of
 this. Validate exhaustively, not by ear.
 </Callout>
 
+<Scenario title="Following one navigation prompt through the system">
+A driver is playing music in the front while a passenger watches a film in the
+back. Navigation says "turn left in 200 metres".
+
+1. The navigation app plays a stream tagged `AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE`.
+2. `CarAudioService` maps that usage to the **NAVIGATION** context.
+3. It looks up which zone the navigation app belongs to — zone 0, the main cabin.
+4. In zone 0's configuration, NAVIGATION routes to `bus1_nav_out`.
+5. The stream goes out that bus. The amplifier attenuates `bus0_media_out`
+   slightly while `bus1_nav_out` is active.
+6. Music dips. The prompt is clear. The film in the rear zone is **untouched**,
+   because it is a different zone with its own focus and its own buses.
+
+Notice what the navigation app never specified: no speaker, no volume, no
+ducking. It said what the sound was *for* and the platform did the rest.
+</Scenario>
+
 ## Volume groups
 
 A volume group is a set of devices that move together under one control. The
@@ -210,6 +255,22 @@ dump against your configuration XML — the mismatch is almost always there.
 That last one is the classic bring-up bug: the configuration references
 `bus0_media_out` and the audio HAL calls it `bus0_output`. Nothing errors; the
 routing simply never matches.
+
+<Recap>
+- Car audio is a **routing problem** before it is a playback problem.
+- **Context** is what a sound is for, **bus** is where it physically goes, and
+  **zone** is which part of the cabin it belongs to.
+- Apps declare `AudioAttributes`; they never name a speaker. The mapping from
+  usage to context to bus lives in configuration.
+- `car_audio_configuration.xml` declares the whole topology. Every context must
+  be routed in every zone, or streams fall silent.
+- **Zones have independent focus**, which is what lets a rear passenger keep
+  watching while the driver gets a navigation prompt.
+- Multiple buses exist so an **external amplifier** can mix and attenuate in
+  hardware, without software ducking.
+- Most audio bring-up failures are configuration errors, not code errors — a
+  missing context route or an address that does not match the HAL exactly.
+</Recap>
 
 ## Next
 

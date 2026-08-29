@@ -24,6 +24,28 @@ content and playback state; the car draws it.
   <MediaBrowseTree />
 </DiagramFrame>
 
+<Plain>
+A car media app is two things, and only one of them is a UI.
+
+**`MediaBrowserService`** exposes your content as a browsable tree the car's own
+media app renders. You do not draw it.
+
+**`MediaSession`** exposes playback state and the transport controls, so the
+steering wheel, the cluster and voice can all control playback without knowing
+anything about your app.
+
+Get those right and the car does the rest. Draw your own player instead and you
+lose all of it.
+</Plain>
+
+<Analogy title="Like supplying a jukebox rather than a shop">
+You do not build the cabinet, the buttons or the display. You supply a catalogue
+in an agreed format and respond to play, pause and skip.
+
+The venue builds one cabinet everyone knows how to use, and your catalogue works
+in any venue that has one.
+</Analogy>
+
 ## The two halves
 
 **`MediaBrowserService`** exposes your content as a tree the car can render as
@@ -183,6 +205,28 @@ And handle `AUDIOFOCUS_LOSS_TRANSIENT` by pausing and **resuming afterwards**.
 Music that never comes back after a navigation prompt or a phone call is the
 single most-reported media defect in this domain.
 
+<Scenario title="Why the browse tree has to be shallow">
+A streaming service exposes its full library: genres, then decades, then artists,
+then albums, then tracks. Five levels.
+
+Parked, a passenger can navigate that. Driving, the platform limits how many
+items may be shown at once and how deep a driver may go, because every level is
+a glance away from the road.
+
+What works instead:
+
+- **Front-load the useful things.** Recently played, continue listening,
+  downloaded — the entries that satisfy most sessions in one tap.
+- **Keep it two or three levels deep** for anything reachable while driving.
+- **Mark the browsable/playable flags correctly** so the car knows what is a
+  folder and what is a track.
+- **Let voice handle the long tail.** Deep catalogue search is a spoken query,
+  not a scroll.
+
+The mental model that helps: the driver is not browsing your library, they are
+answering "what do I want to hear right now" in one or two taps.
+</Scenario>
+
 ## Testing
 
 ```bash title="Inspect what the car sees"
@@ -199,6 +243,20 @@ The **Media Controller Test** app in AOSP
 (<Src path="packages/apps/Car/tests" label="packages/apps/Car/tests" />) connects
 to your browse service and exercises the tree and session directly — the fastest
 way to find a malformed tree before the OEM's UI does.
+
+<Recap>
+- A car media app is a **`MediaBrowserService`** (your catalogue) plus a
+  **`MediaSession`** (playback state and controls) — the car draws the UI.
+- Getting both right means the steering wheel, cluster and voice all work for
+  free.
+- Keep the browse tree **shallow and short**; front-load the entries that satisfy
+  most sessions immediately.
+- Set browsable and playable flags correctly, or the car cannot tell folders from
+  tracks.
+- Surface **errors the driver can act on** — sign-in required, no connection —
+  through the session, not a dialog.
+- Set `AudioAttributes` correctly so routing and ducking behave.
+</Recap>
 
 ## Next
 

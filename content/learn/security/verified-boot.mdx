@@ -17,6 +17,26 @@ A vehicle should not run software the OEM did not sign. Verified boot is how tha
 is enforced, and it is a chain: each stage verifies the next before handing over
 control.
 
+<Plain>
+Verified boot answers: **is the software running the software we signed?**
+
+It works as a chain. Each stage checks the signature of the next before handing
+control to it, starting from a key burned into the hardware that cannot be
+changed. Break any link and the device refuses to continue.
+
+The point is not to stop someone modifying the device. It is to make
+modification **detectable** — the device knows, and can refuse.
+</Plain>
+
+<Analogy title="Like a tamper-evident seal">
+A seal does not stop anyone opening the box. It makes it obvious that it was
+opened.
+
+Verified boot is the same idea applied at every layer: the bootloader is sealed
+by hardware, the kernel by the bootloader, the system image by the kernel. Break
+one and everything after it knows.
+</Analogy>
+
 ## The chain
 
 ```text title="Each link verifies the next"
@@ -136,6 +156,23 @@ audit trail. Consequences for you:
   improvise it.
 
 ## Debugging a boot that stops
+<Scenario title="A device that boots on your desk and not on the line">
+An engineer flashes a locally built image and it boots. The same image on a
+production-locked unit hangs before the splash screen.
+
+The difference is the bootloader state. Their desk unit is unlocked, so signature
+verification is skipped. The production unit is locked, so:
+
+- The image was signed with a **development key**, not the release key.
+- `vbmeta` verification fails.
+- The bootloader refuses, exactly as designed.
+
+The lesson is that "it boots on my board" proves very little about a locked
+device, and that the last stage before shipping — building with real release
+keys, on a locked unit — needs to happen **early enough to find problems**, not
+in the final week.
+</Scenario>
+
 
 ```bash title="Working out where the chain broke"
 adb shell getprop | grep -iE 'verifiedboot|verity|vbmeta'
@@ -146,6 +183,20 @@ fastboot getvar all      # bootloader state, when Android will not come up
 If verification is failing after a legitimate change, the usual causes are: a
 partition flashed without regenerating `vbmeta`, a mismatched key, or a
 rollback index that went backwards.
+
+<Recap>
+- Verified boot is a **chain of signature checks** rooted in a hardware key, so
+  modification is detectable rather than impossible.
+- **AVB** and `vbmeta` describe and sign what each partition should contain.
+- **dm-verity** verifies system partitions block by block, continuously, not just
+  once at boot.
+- **Rollback protection** stops an attacker installing an older, vulnerable
+  image.
+- An unlocked development board skips all of this, so "it boots here" says
+  nothing about a locked production unit.
+- Test with **real release keys on a locked device early** — leaving it to the
+  end reliably produces a late, expensive surprise.
+</Recap>
 
 ## Next
 

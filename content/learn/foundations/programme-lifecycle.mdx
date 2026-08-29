@@ -15,6 +15,24 @@ Engineers arriving from consumer software are usually blindsided not by the
 technology but by the *cadence*. Understanding it explains most of the decisions
 that otherwise look irrational.
 
+<Plain>
+An automotive programme runs on a schedule built around **hardware samples** —
+successive generations of prototype boards and vehicles, each more final than the
+last.
+
+Software teams arriving from web or mobile usually misread this. The dates are
+not targets that can slip a fortnight; they are tied to tooling, supplier
+contracts and physical builds that were committed years earlier.
+</Plain>
+
+<Analogy title="Like a theatre run">
+There is a first read-through, a technical rehearsal, a dress rehearsal and an
+opening night. The dates were set when the theatre was booked.
+
+You can change the play. You cannot move opening night because a scene is not
+ready — the audience already has tickets.
+</Analogy>
+
 ## The sample phases
 
 Vehicle programmes progress through hardware maturity gates. Software is judged
@@ -112,6 +130,27 @@ first cross-company defect argument.
 </Callout>
 
 ## What this means for how you work
+<Scenario title="Why a feature was cut that was nearly finished">
+A feature is 90% complete two weeks before a sample gate. It is cut.
+
+The reasoning is not about the code:
+
+- The gate needs a **stable build** for a fixed number of physical vehicles.
+- Anything merged now must be regression-tested against everything else,
+  and the test window is fixed.
+- A defect found after the gate may mean **re-flashing a fleet** of prototypes
+  that are already distributed across test sites.
+- The next gate is months away, so the cost of waiting is high — but the cost of
+  destabilising this one is higher.
+
+The instinct from software delivery — "it is nearly done, let it in" — is
+precisely the wrong one here, because the expensive thing is not the merge, it is
+everything downstream that was scheduled around a stable build.
+
+Understanding this changes how you plan: **land risky work early in a cycle**, and
+treat the weeks before a gate as reserved for stabilisation.
+</Scenario>
+
 
 - **Land things early in a gate**, not the week before it.
 - **Make features degrade**, so a missing option package is a hidden control
@@ -121,6 +160,19 @@ first cross-company defect argument.
 
 None of that is exotic engineering practice. It is just that automotive punishes
 the absence of it more visibly than most software does.
+
+<Recap>
+- Automotive schedules are built around **hardware sample gates**, fixed years in
+  advance and tied to physical builds.
+- The **vendor boundary** exists partly for schedule reasons: it lets framework
+  and vendor work proceed on different clocks.
+- **Variants multiply everything** — every build, test and release, permanently.
+- The **support tail** runs for a decade or more after production ends.
+- Land risky work **early in a cycle**; the weeks before a gate are for
+  stabilisation, not features.
+- A nearly-finished feature being cut is usually a schedule decision, not a
+  judgement on the code.
+</Recap>
 
 ## Next
 

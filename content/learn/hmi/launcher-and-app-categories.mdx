@@ -16,6 +16,22 @@ sources:
 An app that installs fine and never appears in the app grid is one of the more
 demoralising first days on AAOS. The cause is almost always manifest metadata.
 
+<Plain>
+An Android app does not appear in a car simply because it is installed. It has to
+**declare itself** as an automotive app, and it has to declare what kind of app
+it is.
+
+Get either wrong and the app is invisible — no error, no warning, just absent
+from the grid.
+</Plain>
+
+<Analogy title="Like a trade directory">
+Being in town is not enough to appear in the directory. You have to be listed,
+and listed under a category, or nobody looking for a plumber will ever find you.
+
+An unlisted business is not broken. It is just never found.
+</Analogy>
+
 ## How the launcher finds apps
 
 The car launcher does not list everything installed. It queries for specific
@@ -143,6 +159,25 @@ launcher. An app that appears fine there can be invisible on the target. Test on
 the OEM's image as early as you can get one.
 </Callout>
 
+<Scenario title="An app installed and invisible">
+An APK installs successfully. It never appears in the launcher.
+
+Work through the reasons in order:
+
+1. **No `automotive_app_desc` metadata.** The app has not declared it is for cars.
+2. **No matching intent filter.** The launcher looks for specific categories;
+   `LAUNCHER` alone is not always enough.
+3. **Wrong app category.** Declared as media but with no `MediaBrowserService`,
+   so the launcher finds nothing to show.
+4. **Blocked by policy.** Some builds allowlist what may appear.
+5. **Installed for the wrong user.** Installed as user 0 while the launcher runs
+   as the foreground user.
+
+Every one of these is silent. `adb shell dumpsys package <name>` and checking the
+declared metadata answers the first three in under a minute, which beats
+reinstalling repeatedly.
+</Scenario>
+
 ## A pre-flight checklist
 
 Before wondering why your app is not showing up:
@@ -156,6 +191,19 @@ Before wondering why your app is not showing up:
 
 That last one catches people constantly. `adb install` targets the current user;
 switching users afterwards makes the app vanish.
+
+<Recap>
+- Apps must **declare themselves automotive** and declare a **category**;
+  otherwise they are silently absent.
+- The launcher discovers apps by intent filters and metadata, not by installation
+  alone.
+- Categories carry behaviour — a media app is expected to expose a
+  `MediaBrowserService`.
+- The **distraction gate** hides or blocks apps not marked as
+  distraction-optimised while driving.
+- Some builds **allowlist** which apps may appear at all.
+- Multi-user matters: an app installed for the wrong user will not show.
+</Recap>
 
 ## Next
 

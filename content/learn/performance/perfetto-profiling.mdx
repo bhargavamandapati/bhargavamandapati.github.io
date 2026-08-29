@@ -15,6 +15,22 @@ sources:
 
 "The UI is janky" is not a bug report. Perfetto turns it into one.
 
+<Plain>
+Perfetto records what the whole system was doing, microsecond by microsecond —
+every thread, every scheduling decision, every frame.
+
+That is its value and its difficulty. The data is always there; the skill is
+knowing which question to ask before you open it, or you will scroll through
+thirty seconds of timeline learning nothing.
+</Plain>
+
+<Analogy title="Like CCTV for the whole building">
+Every camera recorded everything. That is useless until you know the time and the
+door — and enormously powerful once you do.
+
+Decide what you are looking for before you sit down with the footage.
+</Analogy>
+
 ## Capturing a trace
 
 ```bash title="A general-purpose automotive trace"
@@ -133,6 +149,28 @@ constrained head unit, sustained load leads to throttling, and throttling looks
 exactly like a software regression.
 
 ## Turning a trace into a fix
+<Scenario title="Working from a symptom to a cause in a trace">
+The symptom: the media list stutters when scrolling.
+
+**1. Start from the frames.** Find the dropped frames on the timeline. Perfetto
+marks them, so you do not need to guess when it happened.
+
+**2. Look at the frame that missed.** What was the UI thread doing during it? A
+long slice is your answer; a gap means it was **not scheduled**, which is a
+different problem.
+
+**3. If it was busy** — find the slice. Usually layout, inflation, or a bitmap
+decode that should not be on the main thread.
+
+**4. If it was waiting** — find what held the lock, or which process took the CPU.
+On a shared cockpit SoC this is frequently something outside your app entirely.
+
+Step 4 is the one worth knowing about, because it is invisible from inside your
+process. An app can be perfectly written and still drop frames because another
+partition is saturating the CPU — and the only way to see that is a system-wide
+trace.
+</Scenario>
+
 
 The discipline that makes profiling productive:
 
@@ -153,6 +191,19 @@ A trace of the system behaving well is as valuable as one of it behaving badly.
 Without a baseline, you cannot tell whether 90 ms of binder time in Car Service
 is a problem or normal. Capture one now, while nothing is wrong.
 </Callout>
+
+<Recap>
+- Perfetto records the **whole system**, which is what lets you see causes outside
+  your own process.
+- Decide the question before opening the trace, or you will learn nothing from
+  the timeline.
+- For jank, start at the **dropped frame** and work backwards.
+- A busy UI thread and a **starved** one look similar in the symptom and need
+  completely different fixes.
+- Add your own trace points around suspicious work; they cost almost nothing.
+- On a shared SoC, the cause is often another process — which is exactly what a
+  system-wide trace is for.
+</Recap>
 
 ## Next
 

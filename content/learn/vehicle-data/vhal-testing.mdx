@@ -17,6 +17,26 @@ Waiting for a vehicle to test a property is how programmes slip. Almost
 everything can be exercised on a desk, and the tooling is better than most
 people realise.
 
+<Plain>
+Almost every VHAL problem is diagnosed by answering four questions in order:
+
+1. **Is the HAL running at all?**
+2. **Does it list the property?**
+3. **Can I read a value from the shell?**
+4. **Can the app read it?**
+
+Each has a different tool, and doing them out of order is why debugging sessions
+take a day instead of ten minutes.
+</Plain>
+
+<Analogy title="Like tracing a dead socket">
+You check the fuse, then the consumer unit, then the wall socket, then the
+appliance. Nobody sensible starts by dismantling the appliance.
+
+The order matters because each step rules out everything before it — and the
+expensive investigation is the one you avoid by doing the cheap check first.
+</Analogy>
+
 ## `dumpsys car_service` is the whole toolbox
 
 If you learn one command from this curriculum, learn this one.
@@ -183,6 +203,42 @@ The payoff is that QA can reproduce a defect deterministically instead of
 describing a drive. That change alone usually pays for the tool inside a sprint.
 
 ## A debugging order that works
+<Scenario title="A property the app cannot read">
+Work down the layers; stop at the first failure.
+
+**1. Is the HAL alive?**
+
+```bash
+adb shell lshal | grep vehicle
+```
+
+Nothing listed → the HAL is not starting. Go straight to `logcat` and SEPolicy;
+nothing above this can work.
+
+**2. Does Car Service know the property?**
+
+```bash
+adb shell dumpsys car_service --list-properties | grep -i my_prop
+```
+
+Absent → the config is wrong, or the ID does not match what you think.
+
+**3. Can you read it outside your app?**
+
+```bash
+adb shell dumpsys car_service --get-property 0x21100f00 0
+```
+
+Fails here → the problem is in the HAL's `get`, not in your app.
+
+**4. Can the app read it?**
+
+Only now is your app code a suspect. If steps 1–3 pass and step 4 fails, it is
+almost always **permission or area ID**, not the HAL.
+
+Most wasted debugging time comes from starting at step 4.
+</Scenario>
+
 
 1. `--list-properties` — does the platform know about it?
 2. `lshal` — is the HAL running?
@@ -192,6 +248,21 @@ describing a drive. That change alone usually pays for the tool inside a sprint.
 6. Only now, your app code.
 
 Most people start at step 6 and spend an afternoon there. Start at step 1.
+
+<Recap>
+- Debug in layers: **HAL alive → property listed → readable from shell → readable
+  from the app**. Stop at the first failure.
+- `lshal`, `dumpsys car_service --list-properties` and `--get-property` answer
+  the first three without writing any code.
+- The reference VHAL lets you **inject values**, so you can exercise the whole
+  stack without a vehicle.
+- A HAL that will not start with nothing in its logs is an **SEPolicy** problem —
+  check `avc: denied` before anything else.
+- Write automated tests against injected values; a suite that runs per commit
+  catches regressions a manual check never will.
+- A simulator that replays recorded traces is worth more than any synthetic
+  generator.
+</Recap>
 
 ## Next
 

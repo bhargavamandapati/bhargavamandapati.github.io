@@ -15,6 +15,25 @@ A head-up display projects an image into the driver's forward view. It is the
 only screen the driver looks at without looking away from the road, and that
 privilege comes with the tightest constraints in the cockpit.
 
+<Plain>
+A head-up display projects onto the windscreen, in the driver's forward view,
+while they are driving at speed.
+
+That single fact drives every rule about it: extremely limited content, no
+colour subtlety, no small text, no animation that draws the eye, and an update
+cadence that must not stutter.
+
+It is also, in most vehicles, **not Android's** to draw.
+</Plain>
+
+<Analogy title="Like writing on a windscreen">
+Anything you put there is between the driver and the road. The question is never
+"does this look good" but "is this worth occluding the road for".
+
+That standard rules out almost everything, which is why a HUD shows four things
+and not forty.
+</Analogy>
+
 ## What makes it different
 
 **It is in the safety-critical field of view.** Anything shown there competes
@@ -120,6 +139,24 @@ value updates more than a couple of times a second, quantise it. The driver need
 to know the distance, not to watch it count down.
 </Callout>
 
+<Scenario title="Why an animation that looks smooth on a desk is wrong on a HUD">
+A team adds a subtle fade to the speed readout on the HUD. It looks fine on a
+bench monitor.
+
+In the vehicle it is a problem:
+
+- The image is **focused at distance**, overlaid on a moving road. Motion in the
+  periphery attracts the eye involuntarily — exactly what you do not want.
+- HUD optics have **limited contrast and no true black**; a fade passes through
+  values that render as a smear.
+- Any **jitter** in update timing is far more visible than on a panel, because
+  the background is moving.
+
+The rule that follows: on a HUD, prefer **discrete state changes over
+transitions**, keep the element count tiny, and treat a dropped frame as a defect
+rather than a blemish.
+</Scenario>
+
 ## Testing
 
 You cannot properly validate a HUD on a bench, but you can catch most defects:
@@ -137,6 +174,18 @@ adb shell dumpsys display | grep -A8 -i hud
 adb shell settings get system screen_brightness_mode
 adb shell dumpsys uimode
 ```
+
+<Recap>
+- A HUD sits **between the driver and the road**, so the bar for showing anything
+  is far higher than on a panel.
+- In most vehicles it is **not drawn by Android** — Android supplies data at most.
+- Content is tightly limited: speed, next maneuver, a few critical warnings.
+- The optics constrain colour, contrast and text size in ways a desk monitor
+  hides.
+- Prefer **discrete changes over animation**; peripheral motion pulls the eye.
+- **Jitter matters more than latency** — an uneven update rate is more distracting
+  than a slightly late one.
+</Recap>
 
 ## Next
 

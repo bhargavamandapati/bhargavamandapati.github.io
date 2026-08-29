@@ -19,6 +19,22 @@ this version actually have?"
 
 This is a map of the inflection points, not a changelog.
 
+<Plain>
+You will work on whatever version the programme is on, which is usually not the
+newest. So the useful skill is not knowing every release — it is **working out
+what your build has** and reading AOSP at the matching version.
+
+Reading the wrong branch's source is one of the most common ways to waste a day
+in this ecosystem.
+</Plain>
+
+<Analogy title="Like using the wrong edition of a manual">
+The diagrams look right, the part numbers are close, and the bolt you are told to
+remove does not exist on your model.
+
+Nothing warns you. You simply cannot find the thing the book says is there.
+</Analogy>
+
 ## The shape of the timeline
 
 | Era | What defined it |
@@ -114,10 +130,42 @@ branch before concluding the platform is broken.
 </Callout>
 
 ## Choosing a branch for learning
+<Scenario title="Finding out what you are actually running">
+Before reading any source, establish the version:
+
+```bash
+adb shell getprop ro.build.version.release   # Android version
+adb shell getprop ro.build.version.sdk       # API level
+adb shell getprop ro.build.version.security_patch
+adb shell dumpsys car_service | head          # car framework details
+```
+
+Then read AOSP **on the matching branch**, not on `main`. On cs.android.com the
+branch is part of the URL, and it is easy to forget you are looking at something
+years ahead of your device.
+
+The classic symptom of getting this wrong: an API you can see clearly in the
+source, documented and obviously correct, that does not exist on your build. The
+code is real — it just has not shipped yet in your version.
+</Scenario>
+
 
 Track a recent release tag rather than `main`. `main` moves daily and a build
 failure there is usually someone else's half-landed refactor, not your mistake.
 Learn on something stable, then move.
+
+<Recap>
+- You will work on the version the programme uses, not the newest — so learn to
+  **identify it** rather than memorising releases.
+- `getprop` and `dumpsys car_service` tell you the Android version, API level and
+  car framework details.
+- **Read AOSP on the matching branch.** `main` is often years ahead of a shipping
+  vehicle.
+- The changes that matter most across versions are the **HIDL to AIDL
+  migration**, multi-user behaviour, and the audio and property APIs.
+- An API that is clearly in the source and missing on your device usually means
+  you are reading the wrong branch.
+</Recap>
 
 ## Next
 

@@ -17,6 +17,25 @@ Every OEM wants a head unit that looks like theirs and nobody else's. Every OEM
 also wants to take Android platform upgrades for the next fifteen years. Those
 two goals fight, and the Car UI Library plus RROs is how AOSP resolves it.
 
+<Plain>
+Every OEM wants the interface to look like their brand. Google wants one AOSP
+tree. Those two pull in opposite directions, and forking the UI to resolve it
+makes every future Android upgrade a merge.
+
+The answer is **overlays**: the code stays shared, and appearance comes from
+resources an OEM replaces at build time without touching the source.
+</Plain>
+
+<Analogy title="Like a stage set">
+The play is the same script every night. The set, lighting and costumes change
+per production.
+
+Nobody rewrites the script to stage it differently — and that is precisely why the
+script can be revised centrally and every production still benefits.
+
+Forking the script is what an RRO exists to prevent.
+</Analogy>
+
 ## The problem being solved
 
 The naive approach is to fork: copy the system apps, restyle them, ship. It
@@ -165,6 +184,27 @@ one head unit will need redoing for the next programme, and there is always a
 next programme.
 
 ## The discipline that keeps this working
+<Scenario title="The habit that decides whether the next upgrade hurts">
+Two teams need a taller list row.
+
+**Team A** edits the layout XML in the AOSP tree. It works. At the next Android
+upgrade, that file has changed upstream, and someone spends a day resolving a
+conflict they no longer understand — repeated for every such edit, every upgrade.
+
+**Team B** overlays the dimension resource:
+
+```xml
+<dimen name="car_list_item_height">96dp</dimen>
+```
+
+Same result. At the next upgrade, the overlay applies unchanged, because it never
+touched the source.
+
+Multiply by a few hundred customisations and this is the difference between an
+Android upgrade taking weeks and taking a year. It is the single most valuable
+habit on an AAOS programme, and it costs nothing at the time.
+</Scenario>
+
 
 1. **No hard-coded visual values.** Colours, dimensions and drawables are named
    resources, always.
@@ -179,6 +219,20 @@ next programme.
 That last one catches people. An overlay referencing a resource name that no
 longer exists does not error — it just does nothing, and the component quietly
 reverts to the AOSP default in the middle of your brand experience.
+
+<Recap>
+- **Car UI Library** provides the shared automotive components; OEM branding
+  arrives through **runtime resource overlays**, not forks.
+- Anything an OEM might change — a dimension, colour, drawable, string — should
+  be a **resource**, never a hardcoded value.
+- **Never edit AOSP source to restyle something.** Every such edit is a conflict
+  at the next upgrade.
+- Day/night is a first-class requirement, not a nice-to-have; test both.
+- Screen geometries vary widely across vehicles — design for a range, not one
+  reference display.
+- The discipline is cheap when applied consistently and enormously expensive to
+  retrofit.
+</Recap>
 
 ## Next
 

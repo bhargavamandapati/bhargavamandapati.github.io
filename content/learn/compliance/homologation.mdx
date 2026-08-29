@@ -17,6 +17,25 @@ Homologation is the process by which a regulator certifies a vehicle type as
 legal to sell. It is mostly about brakes, lights and emissions — but a
 surprising amount of it lands on the infotainment system.
 
+<Plain>
+Homologation is the process of getting a vehicle type legally approved for sale
+in a market. It is mostly a mechanical and emissions exercise — but a growing
+part of it now lands on the software team.
+
+The practical consequence: a handful of things you might treat as product
+decisions are actually **legal requirements that differ per market**, and getting
+one wrong does not fail a test, it blocks a launch.
+</Plain>
+
+<Analogy title="Like a driving licence per country">
+You can drive. That is not the question. The question is whether *this* country
+recognises your licence, and each one has its own paperwork, its own minimum
+standards and its own renewal rules.
+
+The car is the same car. The approval is per market, and it has to be obtained
+again when the car changes.
+</Analogy>
+
 ## What software gets asked about
 
 **Driver distraction.** Limits on what may be displayed and interacted with while
@@ -124,6 +143,20 @@ Combined with UX restrictions truncating strings, a label that only fits in
 English will be unreadable in German while driving.
 
 ## Approval is per vehicle type, and changes are re-approvals
+<Scenario title="A units bug that would have blocked a launch">
+A programme ships a build where the cluster shows speed in km/h and the
+infotainment trip computer shows it in mph, because two teams read two different
+settings.
+
+On a phone this is a cosmetic inconsistency. In a vehicle being homologated for
+a market that mandates km/h as the primary display, it is a **failed approval**.
+The vehicle cannot be sold until it is fixed and re-submitted.
+
+The fix is architectural rather than cosmetic: one source of truth for display
+units — a vehicle property every consumer reads — instead of each surface having
+its own setting. Anything else drifts.
+</Scenario>
+
 
 Once a vehicle type is approved, a change to a regulated function may require
 re-approval. That is why platform freeze exists, and why "just add a warning
@@ -138,6 +171,22 @@ Most engineers on a programme cannot name which parts of their work are subject
 to homologation. Find out in week one. It changes how you version, how you test,
 and how much notice you must give before changing something.
 </Callout>
+
+<Recap>
+- Homologation approves a **vehicle type for a market**, and part of it now lands
+  on software.
+- The regulated surface includes **units, mandatory telltales, language, the
+  reversing camera timing**, and driver-distraction behaviour.
+- These are legal requirements that **differ per market**, which is a major
+  source of the variant matrix.
+- **Units are not cosmetic** — drive them from one source of truth so surfaces
+  cannot disagree.
+- Language matters beyond translation: text expansion breaks layouts that were
+  only ever tested in English.
+- Approval is **per type**, and a significant software change is a
+  re-approval — which is why release cadence and homologation are planned
+  together.
+</Recap>
 
 ## Next
 

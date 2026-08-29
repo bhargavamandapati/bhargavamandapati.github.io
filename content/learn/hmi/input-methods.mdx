@@ -17,6 +17,23 @@ Plenty of vehicles put the display where the driver cannot comfortably reach it,
 and drive the UI with a rotary knob on the console or buttons on the steering
 wheel. If your layout only works by touch, it does not work on those vehicles.
 
+<Plain>
+Not every vehicle has a touchscreen you can reach. Many use a **rotary
+controller** on the centre console, and most have **steering wheel buttons**.
+
+Both are discrete: they move focus from one element to the next. That is a
+fundamentally different interaction from touch, where the user points at what
+they want, and it is the reason so many apps are unusable on a rotary vehicle.
+</Plain>
+
+<Analogy title="Like a TV remote versus a touchscreen">
+With a remote you cannot point at a thing. You press *down* four times and
+*right* twice, and something had better be highlighted so you know where you are.
+
+An interface designed only for pointing becomes a guessing game with a remote.
+That is exactly what happens to a touch-only app on a rotary vehicle.
+</Analogy>
+
 ## The input devices
 
 | Device | How it arrives | Notes |
@@ -165,11 +182,44 @@ accessibility for free.
 </Callout>
 
 ## The design rule
+<Scenario title="Making a screen work on a rotary controller">
+An app has a grid of album art. On a touchscreen it is fine. On a rotary vehicle
+the user turns the knob and nothing visibly happens.
+
+The three things missing:
+
+1. **Focusable views.** Custom views default to not focusable. If nothing can take
+   focus, rotation does nothing.
+2. **A visible focus indicator.** Focus may be moving correctly and be invisible,
+   which is indistinguishable from broken.
+3. **Focus areas.** Without them, rotation walks every element in layout order
+   rather than moving between sensible groups, so reaching anything takes
+   twenty clicks.
+
+The test is quick and worth doing on every screen: **unplug the touchscreen
+mentally and drive the UI with the arrow keys alone.** If you cannot reach
+something, or cannot see where you are, a rotary user cannot either.
+</Scenario>
+
 
 Build the screen as a small number of clearly grouped regions, each containing a
 short list of large, obviously focusable controls. That is a good touch design
 and the only workable rotary design — which is the point. Screens that are
 painful with a knob are usually painful at speed with a finger too.
+
+<Recap>
+- Many vehicles have no reachable touchscreen; **rotary controllers and steering
+  wheel buttons** are primary input, not accessibility extras.
+- Rotary input moves **focus** between elements — a different model from
+  pointing.
+- Views must be explicitly **focusable**, with a **visible focus indicator**.
+- **Focus areas** group elements so rotation moves sensibly rather than walking
+  every view.
+- Steering wheel controls map to key events; handle them rather than assuming
+  touch.
+- Test with arrow keys via `adb` — you do not need the hardware to find the
+  problems.
+</Recap>
 
 ## Next
 

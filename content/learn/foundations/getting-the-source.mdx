@@ -18,6 +18,24 @@ sources:
 You cannot learn this platform by reading about it. You need a build you can
 break. This page gets you there, with realistic expectations about cost.
 
+<Plain>
+Before anything else: AOSP is **large**. Hundreds of gigabytes of source, hours
+to sync, hours more to build, and a machine specification well above a normal
+laptop.
+
+Knowing that up front changes how you plan. Most people should start with the
+**emulator** and a prebuilt automotive target, and only move to hardware when
+they have a reason.
+</Plain>
+
+<Analogy title="Like ordering a container of parts">
+You do not order the container to fix one bracket. You order it when you are
+building the machine.
+
+Sync the tree when you need to change the platform. Use the emulator when you
+need to use it.
+</Analogy>
+
 ## What it actually costs
 
 Be honest with your hardware before you start:
@@ -149,12 +167,43 @@ Read it. It is the clearest example of a correct VHAL you will find, and every
 custom VHAL you write will be judged against its behaviour.
 
 ## Hardware, when you outgrow the emulator
+<Scenario title="A first day that goes well">
+The order that avoids wasted hours:
+
+1. **Check the machine first** — disk, RAM and CPU. Discovering the disk is too
+   small four hours into a sync is a bad afternoon.
+2. **Sync with a shallow depth** if you only need to build, not to read history.
+3. **Pick an automotive target** — `aosp_car_x86_64` or similar — not a phone
+   target, or the car framework simply will not be there.
+4. **Build and run the emulator** before changing anything, so you know the
+   baseline works.
+5. **Verify it is genuinely automotive**: check that Car Service is running and
+   the car packages are present. A phone build with an automotive skin looks
+   convincing until nothing works.
+
+Step 5 catches a surprisingly common false start, and takes ten seconds.
+</Scenario>
+
 
 The emulator cannot teach you timing, boot, thermals, or real bus behaviour.
 When you need hardware, the practical options are an OEM/supplier development
 head unit (what you will actually have on a programme), or a general-purpose
 automotive-capable SoC board with a CAN interface. Either way the missing piece
 is the same: a vendor VHAL bridging Android to the real network.
+
+<Recap>
+- AOSP is **hundreds of gigabytes and hours of build time** — plan the machine
+  before starting.
+- Start with the **emulator and an automotive target**; move to hardware when you
+  have a specific reason.
+- Choose a genuine automotive target — a phone target has no car framework.
+- **Verify the build is really automotive** by checking Car Service and the car
+  packages are present.
+- The **reference VHAL** lets you inject values and exercise the whole stack
+  without a vehicle.
+- Establish a working baseline before changing anything, so failures have an
+  obvious cause.
+</Recap>
 
 ## Next
 

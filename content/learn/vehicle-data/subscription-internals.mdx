@@ -17,6 +17,27 @@ An app calls `registerCallback` and values start arriving. Between those two
 facts sits a fan-out, an arbitration and a filter — and every one of them is
 somewhere a value can go missing or a battery can drain.
 
+<Plain>
+When ten apps subscribe to vehicle speed, the HAL is not asked ten times.
+
+Car Service keeps **one** subscription per property at the highest rate anyone
+asked for, and fans the results out to every registered listener. Your callback
+rate is what you asked for; the HAL's rate is whatever the greediest subscriber
+needed.
+
+That has a consequence worth internalising: **asking for a high rate is not free
+for other people**, and it is the most common way an app degrades a system it
+does not own.
+</Plain>
+
+<Analogy title="Like a shared newspaper subscription">
+The building takes one copy of the paper and photocopies the pages people asked
+for. One resident wanting a hourly edition changes the delivery for the whole
+building, not just for them.
+
+Everyone else still gets what they asked for. The cost, however, is shared.
+</Analogy>
+
 ## One HAL subscription, many app callbacks
 
 Car Service does not open a HAL subscription per app. It maintains **one**
@@ -145,6 +166,25 @@ clients. When a property updates faster than anything should need, this tells yo
 which package asked for it.
 
 ## Choosing a rate honestly
+<Scenario title="An app that made the whole system slower">
+A UI team wants a smooth speed animation, so they subscribe to
+`PERF_VEHICLE_SPEED` at 100 Hz.
+
+What actually happens:
+
+- Car Service raises the **HAL** subscription to 100 Hz, because it is now the
+  highest requested rate.
+- The VHAL polls the bus at 100 Hz and dispatches 100 events per second.
+- Every one crosses a Binder boundary and wakes Car Service.
+- CPU load rises measurably, and on a constrained cockpit SoC that shows up as
+  jank somewhere unrelated.
+- The display refreshes at 60 Hz, so **at least forty of those samples per
+  second are discarded unseen**.
+
+The honest rate for a smooth animation is the display rate at most, and usually
+far less with interpolation. Asking for more than you can render is pure cost.
+</Scenario>
+
 
 | Signal | Sensible rate | Why |
 | --- | --- | --- |
@@ -161,6 +201,20 @@ A gauge redrawing at 60 fps does not need 60 Hz of data — interpolation betwee
 5 Hz samples looks identical and costs a twelfth as much. Match the subscription
 rate to the *information* rate, not the frame rate.
 </Callout>
+
+<Recap>
+- Car Service holds **one HAL subscription per property**, at the highest rate any
+  subscriber requested, and fans out to all listeners.
+- Your requested rate is a **maximum, not a guarantee** — the HAL may deliver
+  fewer events.
+- `CONTINUOUS` properties are sampled; `ON_CHANGE` properties fire only when the
+  value moves.
+- Requesting a high rate imposes cost on the **whole system**, not just your app.
+- Never request more than you can render — anything above the display rate is
+  discarded unseen.
+- `dumpsys car_service` shows live subscriptions and rates, which is how you find
+  the app that raised the floor for everyone.
+</Recap>
 
 ## Next
 

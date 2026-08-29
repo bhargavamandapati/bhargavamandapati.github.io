@@ -17,6 +17,26 @@ You will not certify Android to ISO 26262. What you will do is work alongside
 systems that are certified, and recognise when a requirement has landed on the
 wrong side of that line.
 
+<Plain>
+Functional safety asks one narrow question: **if this malfunctions, can it hurt
+someone, and what have you done about it?**
+
+That is narrower than "is this good software". A navigation app that crashes is
+a quality problem. A navigation app that crashes and takes the speedometer with
+it is a safety problem — and the difference is entirely about what else was
+sharing that screen.
+</Plain>
+
+<Analogy title="Two questions about a ladder">
+"Is this a good ladder?" asks about height, weight, how pleasant it is to use.
+
+"Can this ladder drop someone?" is a different question with a different method:
+what could fail, how likely, how bad, and what stops it.
+
+ISO 26262 is a rigorous way of asking the second question, and it deliberately
+does not care about the first.
+</Analogy>
+
 ## What ASIL means
 
 ISO 26262 classifies hazards by severity, exposure and controllability, producing
@@ -106,6 +126,22 @@ ISO 26262, and confusing the two leads to the wrong conversation: distraction
 compliance is your responsibility, functional safety integrity generally is not.
 
 ## Recognising a misassigned requirement
+<Scenario title="A design review you will sit in">
+Someone proposes drawing the speedometer needle in Android, because the
+animation would be nicer.
+
+The wrong response is "no, because rules". The useful one is to ask which parts
+are actually regulated.
+
+Typically: the numeric speed and the mandatory telltales are; the styling around
+them is not. The usual landing point is that a safety-rated component renders a
+plain speed readout and the telltales, Android draws everything around it, and
+the display controller composites the two so it looks like one design.
+
+Getting to that answer requires knowing where the line falls — which is why this
+topic is worth your time even though you will never write safety-certified code.
+</Scenario>
+
 
 Warning signs that a requirement has landed on Android that should not have:
 
@@ -125,6 +161,23 @@ Every vehicle programme has one, and they are usually delighted to be asked. Fiv
 minutes with them resolves questions that otherwise circulate through three teams
 for a fortnight.
 </Callout>
+
+<Recap>
+- Functional safety asks only whether a malfunction can cause harm, and what
+  prevents it.
+- **ASIL** comes from severity, exposure and controllability, and it applies to a
+  **hazard**, not to a component.
+- **Android is QM.** There is no ISO 26262 certification for AOSP, and that is a
+  design decision rather than a gap.
+- Safety-rated content is rendered by something else — a separate MCU, a
+  certified guest — and composited above Android.
+- **Freedom from interference** is the property a shared SoC must demonstrate:
+  nothing Android does may affect the safety partition.
+- Driver distraction is a **different regime** from functional safety; do not
+  conflate them.
+- The most useful skill here is recognising a requirement that has been assigned
+  to the wrong side of the boundary.
+</Recap>
 
 ## Next
 

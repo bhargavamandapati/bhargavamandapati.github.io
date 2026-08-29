@@ -25,6 +25,26 @@ reachable in one touch while driving.
   <SystemUiLayout />
 </DiagramFrame>
 
+<Plain>
+CarSystemUI is the frame around every app: the status bar, the navigation bar,
+notifications, volume, the keyguard.
+
+It replaces phone SystemUI because the requirements are different — the bars
+carry vehicle controls rather than notifications, they are always visible, and
+they belong to the OEM's brand.
+
+For app developers the practical point is simple: **you do not own the whole
+screen**, and the parts you do not own can change size.
+</Plain>
+
+<Analogy title="Like the dashboard trim around a screen">
+The bezel is not part of your app, it is not going away, and it is not yours to
+move. Design for the hole it leaves.
+
+An app that assumes it has the whole panel ends up with its controls behind the
+trim.
+</Analogy>
+
 ## What it is
 
 `CarSystemUI` lives at <Src path="packages/apps/Car/SystemUI" label="packages/apps/Car/SystemUI" />
@@ -127,6 +147,24 @@ a speed threshold. Mislabelling a marketing message as `CATEGORY_CALL` to get
 visibility is the kind of thing that fails OEM review.
 
 ## Where your app begins
+<Scenario title="Content hidden behind a bar that was not there in the emulator">
+An app puts a confirm button at the bottom of the screen. It works on the
+emulator, and in the vehicle the button sits behind the navigation bar.
+
+The emulator's bars are a different height from the OEM's, because CarSystemUI is
+overlaid per product. Any layout that hardcodes an offset for them is guessing.
+
+The fix is to use the insets the system gives you rather than a constant:
+
+- Respect `WindowInsets` for the system bars.
+- Never hardcode a bar height, in either direction.
+- Test on the target product's build, not just the emulator, because the bars are
+  the most product-specific part of the UI.
+
+The general rule: **treat the usable area as something you are told, not
+something you know.**
+</Scenario>
+
 
 Between the bars. That is it.
 
@@ -164,6 +202,19 @@ adb logcat -b all | grep -i carsystembar
 
 `cmd overlay enable/disable` is the fastest theming loop there is — no rebuild, no
 reflash, just restart SystemUI and look.
+
+<Recap>
+- CarSystemUI owns the frame — bars, notifications, volume, keyguard — and
+  replaces phone SystemUI.
+- The bars carry **vehicle controls**, are always visible, and are heavily
+  OEM-branded.
+- Your app does not own the whole screen; use **`WindowInsets`** rather than
+  hardcoding bar heights.
+- Bar sizes are product-specific, so the emulator is not a reliable guide.
+- Customise CarSystemUI through **overlays**, not by forking it.
+- `dumpsys activity` and the layout inspector show what is actually occupying the
+  screen when something is hidden.
+</Recap>
 
 ## Next
 

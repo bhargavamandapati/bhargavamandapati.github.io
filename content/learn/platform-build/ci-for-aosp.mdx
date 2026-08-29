@@ -17,6 +17,23 @@ An AOSP build is hours of CPU and hundreds of gigabytes. Multiply by a team and 
 variant matrix and build infrastructure stops being a detail — it becomes the
 main determinant of how fast the programme moves.
 
+<Plain>
+AOSP CI is dominated by one fact: a full build takes hours and tens of gigabytes,
+and you have a matrix of variants to build.
+
+Everything else — what to cache, what to gate on, what to keep — follows from
+trying to make that affordable enough to run often.
+</Plain>
+
+<Analogy title="Like a print run">
+Printing one book is expensive; printing a thousand is cheap per copy. So you
+batch, and you check the proofs carefully, because a mistake found after the run
+costs the whole run.
+
+CI for AOSP is the same shape: the expensive step forces you to catch things
+before you reach it.
+</Analogy>
+
 ## The economics
 
 | Build type | Typical time |
@@ -139,6 +156,30 @@ deliver over a metered vehicle connection.
 unreadable without the symbols for that exact build.
 
 ## Metrics that keep a programme honest
+<Scenario title="The variant matrix that grows without anyone deciding to">
+A programme starts with two builds. Two years later CI takes eleven hours and
+nobody can say why.
+
+The usual arithmetic:
+
+```yaml
+soc:     [gen3, gen4]      # 2
+market:  [eu, us, cn]      # x3
+cluster: [standard, hud]   # x2
+                           # = 12 full builds, every time
+```
+
+Each dimension was added by someone solving a real problem, and none of them was
+obviously wrong on its own.
+
+The lever is not more build machines. It is asking, per dimension, whether it
+must be a separate **image** at all — or whether it could be a resource overlay,
+a runtime property, or a feature flag read at startup.
+
+An overlay you flip at runtime costs one build. A build flag costs a full matrix
+row forever, and nobody ever removes one.
+</Scenario>
+
 
 Track these per build and publish the trend:
 
@@ -154,6 +195,20 @@ is manufactured. A programme that discovers `/system` is 200 MB over at C-sample
 has a genuine crisis. Track the size per build from day one and alert on the
 trend, not on the failure.
 </Callout>
+
+<Recap>
+- AOSP CI is dominated by **build cost**; every decision follows from making it
+  affordable to run often.
+- Cache aggressively — ccache and prebuilt artefacts change the economics more
+  than hardware does.
+- Gate on the **fast** checks; run the full matrix less often.
+- **Variant explosion** is the usual cause of unusable CI; prefer overlays and
+  runtime configuration over build flags.
+- Keep artefacts that let you reproduce a shipped image years later, including
+  the manifest and the SBOM.
+- Track build time and rig hours per feature — if they are not falling, the
+  pipeline is not improving.
+</Recap>
 
 ## Next
 

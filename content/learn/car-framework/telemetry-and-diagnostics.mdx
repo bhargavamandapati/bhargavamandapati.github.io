@@ -18,6 +18,28 @@ them wastes a lot of meetings. One is *platform* metrics — is Android healthy.
 The other is *vehicle* diagnostics — is the car healthy. Different services,
 different data, very different privacy rules.
 
+<Plain>
+Two different things live on this page, and they answer different questions.
+
+**CarTelemetryService** collects platform metrics — how the system is behaving,
+for the people who build it.
+
+**CarDiagnosticManager** exposes OBD-II data — how the vehicle is behaving, for
+diagnostics and service.
+
+They share a page because they share a constraint: both touch data that is
+sensitive, metered and regulated, so what you may collect is a smaller question
+than what you can collect.
+</Plain>
+
+<Analogy title="Like a fitness tracker and a medical scan">
+One quietly records ordinary activity to spot trends. The other is an
+instrumented look inside, done for a specific reason, and the results are
+sensitive.
+
+Nobody objects to step counts. Everyone has an opinion about who sees the scan.
+</Analogy>
+
 ## CarTelemetryService — platform metrics
 
 `CarTelemetryService` collects metrics about the Android system itself: process
@@ -120,6 +142,27 @@ user 0. Usage analytics are about a person and belong to their profile — and
 should not follow them into a guest session.
 
 ## Building your own metrics pipeline
+<Scenario title="Designing telemetry that will actually be allowed to ship">
+A team wants to know whether a redesigned media browser is easier to use.
+
+**The version that gets rejected:** log every tap with a timestamp and screen
+name, upload continuously. That is behavioural data about an identifiable
+vehicle, on a metered connection, needing consent — for a question that never
+required per-tap detail.
+
+**The version that ships:** compute the metric on the vehicle — median taps to
+start playback, per session — accumulate a daily summary, and upload roughly
+forty bytes with everything else.
+
+No individual interactions leave the car. No consent-gated category is touched,
+because a distribution is not behaviour tied to a person. And the team gets a
+**better** answer — a fleet-wide distribution rather than a pile of events to
+process.
+
+The general rule: **compute on the vehicle, ship the answer.** It is cheaper, it
+is more private, and it is usually more useful.
+</Scenario>
+
 
 Most programmes end up with an OEM telemetry service alongside the platform one.
 The shape that survives review:
@@ -148,6 +191,21 @@ class MetricUploadJob : JobService() {
     }
 }
 ```
+
+<Recap>
+- **CarTelemetryService** collects platform metrics; **CarDiagnosticManager**
+  exposes OBD-II vehicle data.
+- Both sit behind privileged permissions — this is not data an ordinary app
+  reaches.
+- Cellular bandwidth is **metered and shared** across the fleet; your events are
+  not free.
+- **Compute on the vehicle and ship the answer**, rather than shipping raw events
+  to compute later.
+- Anything keyed to a vehicle is personal data in most jurisdictions, regardless
+  of what the values describe.
+- Know which consent your feature depends on, and what it should do for a
+  customer who declined.
+</Recap>
 
 ## Next
 

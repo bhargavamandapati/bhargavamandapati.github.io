@@ -23,6 +23,23 @@ wrong is a tow truck. The whole design follows from that.
   <AbPartitions />
 </DiagramFrame>
 
+<Plain>
+A/B means there are two copies of the system partitions. The vehicle runs one and
+writes the update into the other, then switches on the next boot.
+
+The property that matters: **the running system is never modified**. A failure at
+any point before the switch leaves the vehicle exactly as it was, which is what
+makes updating a car survivable at all.
+</Plain>
+
+<Analogy title="Like redecorating the spare room">
+You do not paint the room you are sleeping in. You do up the spare, and move when
+it is finished.
+
+If you run out of paint halfway, you still have somewhere to sleep. That is the
+entire argument for the extra storage A/B costs.
+</Analogy>
+
 ## Why A/B
 
 The single-slot alternative — boot into a recovery image, apply a patch in place,
@@ -153,6 +170,26 @@ not on every build.
 </Callout>
 
 ## Testing an update, not just a build
+<Scenario title="Why testing a flash is not testing an update">
+A team flashes each new build to a clean device and it works. In the field, the
+update fails for a subset of vehicles.
+
+Flashing and updating are different operations. An update has to cope with:
+
+- **Accumulated state** — user data, apps, settings from a version two releases
+  back.
+- **Migration** — schema changes to anything persisted.
+- **Interruption** — the vehicle being started mid-write.
+- **Version skew** — the new cockpit running against unchanged ECUs.
+- **Low storage** — a device that has been in use for two years, not a clean one.
+
+None of these appear when you flash a clean device, which is exactly the test
+everyone runs.
+
+The rule: **test the upgrade path from the previous shipped version, with real
+accumulated state.** That is the operation customers actually perform.
+</Scenario>
+
 
 The cases that matter, and the order to run them:
 
@@ -173,6 +210,18 @@ adb shell dumpsys update_engine | grep -i -A5 progress
 Case 5 is the one most often missed and most visible to customers: an update that
 loses their Bluetooth pairings and seat profile is remembered long after the
 feature it delivered is forgotten.
+
+<Recap>
+- **A/B** keeps two copies of the system partitions, so the running system is
+  never modified and any failure before the switch is harmless.
+- The cost is storage — roughly double for the partitions it covers.
+- Updates apply in the background and take effect on the next boot, which is why
+  Garage Mode matters.
+- **Rollback protection** stops an older, vulnerable image being installed.
+- Flashing a clean device is **not** a test of updating — accumulated state,
+  migration and interruption are where failures live.
+- Test the upgrade from the previously shipped version, not from nothing.
+</Recap>
 
 ## Next
 

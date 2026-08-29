@@ -24,6 +24,25 @@ contradiction is why the Exterior View System exists.
   <EvsBootPath />
 </DiagramFrame>
 
+<Plain>
+Several markets require the reversing camera image within about two seconds of
+selecting reverse — including from a completely cold start.
+
+Android cannot boot that fast. Not "has not been optimised enough": the framework
+simply does not come up in two seconds.
+
+So the reversing camera is **not an Android app**. It is a separate early-boot
+path that runs before, and independently of, the Android framework.
+</Plain>
+
+<Analogy title="Like emergency lighting">
+It is on its own circuit with its own battery, precisely because the thing it
+protects against is the main system failing.
+
+Nobody wires the emergency lights through the building's smart lighting
+controller, however good that controller is.
+</Analogy>
+
 ## Why it cannot be an app
 
 An Android app needs: the kernel, init, the framework, SystemUI, the activity
@@ -141,6 +160,25 @@ hardware if you can. Software timestamps taken inside Android miss the part of
 the budget that is already spent.
 </Callout>
 
+<Scenario title="Where the two seconds actually go">
+A programme misses the reversing camera deadline and the instinct is to optimise
+the EVS app.
+
+The measurement usually says otherwise:
+
+- **Detecting reverse gear** — how quickly the signal reaches the system at all.
+  Often a bus latency, not software.
+- **Camera power-on and sensor stabilisation** — hardware, and frequently the
+  largest single number.
+- **First frame through the pipeline** — buffer allocation and the display path.
+- **The handover to Android**, later, once the framework is up — which must be
+  seamless, with no black frame between the two.
+
+The EVS app's own code is rarely the problem. The wins are in gear detection,
+camera warm-up and having the display path ready before the frame arrives — and
+none of them are visible without measuring each stage separately.
+</Scenario>
+
 ## What to test
 
 - Cold boot, reverse selected **immediately** at power-on.
@@ -152,6 +190,21 @@ the budget that is already spent.
 That last case matters more than it sounds. A stale frame showing an empty
 driveway while a child has walked behind the vehicle is the worst possible
 failure mode, and "freeze on last good frame" is a tempting, wrong default.
+
+<Recap>
+- The reversing camera is a **regulatory requirement with a hard deadline**,
+  typically around two seconds from cold.
+- Android cannot boot in that time, so **EVS runs before and independently of the
+  framework**.
+- The EVS HAL owns the camera and display path early; Android takes over later
+  through a **seamless handover**.
+- The time goes into gear detection, camera power-on and the first frame — rarely
+  into app code.
+- Test from **cold boot**, not from a warm system, because that is the case the
+  regulation is about.
+- The handover must be visually invisible; a black frame between the two is a
+  defect.
+</Recap>
 
 ## Next
 

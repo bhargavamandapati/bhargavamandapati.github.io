@@ -26,6 +26,28 @@ VSS replaces those spreadsheets with a contract.
   <SdvBridge />
 </DiagramFrame>
 
+<Plain>
+Every carmaker named their signals differently. One calls it `VehSpd`, another
+`SPEED_ACT`, a third `v_veh_kph`. Same quantity, three names, and every tool
+written against one is useless against the others.
+
+VSS is an agreed tree of names for the things a vehicle knows — 
+`Vehicle.Speed`, `Vehicle.Cabin.Door.Row1.DriverSide.IsOpen` — so that software
+above it can be written once.
+
+It is a **vocabulary**, not a protocol. It says nothing about how bytes move.
+</Plain>
+
+<Analogy title="Like scientific names for plants">
+Gardeners across countries call the same plant a dozen different things. The
+Latin binomial means a specialist anywhere can be certain which plant is meant.
+
+Nobody stops using the local name in conversation. The formal name exists so
+that when information crosses a boundary, it survives the crossing intact.
+
+VSS is the binomial. `VehSpd` is the local name.
+</Analogy>
+
 ## What VSS is
 
 A tree of signal definitions maintained by COVESA. Every signal has a dotted
@@ -145,6 +167,30 @@ Step 4 is what keeps the whole thing alive.
 ```
 
 ## Testing without a vehicle
+<Scenario title="What a broker actually changes about your week">
+A team needs to test the low-battery warning path through the cluster.
+
+**Without a broker:** book an EV, drive it until the pack is genuinely low,
+reproduce, drive back, change one line, repeat. Two or three attempts a day, each
+costing a vehicle and a driver.
+
+**With one:**
+
+```bash
+kuksa-client set Vehicle.Powertrain.TractionBattery.StateOfCharge.Current 8
+```
+
+The warning appears. The whole path above the broker — service, app, UI,
+cluster — is exercised in a second, on a laptop.
+
+The vehicle is now only needed for the part *below* the broker: does the CAN
+feeder translate correctly? That is a much smaller question, and it stops
+blocking everyone else.
+
+This is the single largest productivity change available to an AAOS team, and it
+is mostly a plumbing decision rather than a technical breakthrough.
+</Scenario>
+
 
 The Eclipse Kuksa databroker publishes VSS values over gRPC. Point your VHAL at
 it in a debug build and the whole stack becomes testable on a desk.
@@ -182,6 +228,21 @@ mapping, you have added a format rather than removed one.
 
 The migration is worth doing only when the **generated artefacts become the thing
 everyone reviews**. Until then it is overhead.
+
+<Recap>
+- **VSS is a vocabulary, not a protocol** — an agreed name tree for what a
+  vehicle knows.
+- Node types (branch, sensor, actuator, attribute) map naturally onto VHAL
+  access modes.
+- Two conversions matter: the vehicle's native signals into VSS, and VSS into
+  vehicle properties. Keep both **generated**, not hand-written.
+- A **data broker** holds current values and decouples producers from consumers,
+  which is what makes desk testing possible.
+- Setting a signal from a command line exercises the entire stack above the
+  broker without a vehicle.
+- The hard part is usually **agreeing the mapping** across teams and suppliers,
+  not writing the code.
+</Recap>
 
 ## Next
 

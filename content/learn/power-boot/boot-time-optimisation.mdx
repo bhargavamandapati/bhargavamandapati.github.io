@@ -24,6 +24,24 @@ target — not on your laptop.
   <BootTimeline />
 </DiagramFrame>
 
+<Plain>
+Boot time work goes wrong the same way almost every time: somebody optimises the
+part they can see rather than the part that is slow.
+
+The fix is unglamorous. Get a timeline first — a real one, from the bootloader
+through to the first frame — and only then decide what to change. Almost every
+programme discovers the seconds are somewhere other than where they assumed.
+</Plain>
+
+<Analogy title="Like a delayed journey">
+If a journey takes three hours instead of two, you do not start by driving
+faster. You look at where the time actually went: an hour queueing at one
+junction, or five minutes lost at each of twelve.
+
+Those two problems have completely different fixes, and you cannot tell them
+apart without the timeline.
+</Analogy>
+
 ## Measure before optimising
 
 ```bash title="Where the time went"
@@ -126,6 +144,26 @@ two-second deadline. That is the EVS architecture, and it is a design decision,
 not a tuning one.
 
 ## What does not help
+<Scenario title="Where the seconds usually turn out to be">
+A programme is two seconds over its boot budget. The instinct is to make the
+launcher lighter.
+
+The measurement says otherwise:
+
+- **Bootloader and kernel** — 1.4s. Some of it is a verification step that could
+  run in parallel.
+- **init and early services** — 2.1s. One vendor HAL blocks for 800ms waiting on
+  a bus that is not ready yet.
+- **Zygote and system server** — 3.2s, largely fixed cost.
+- **Boot-completed receivers** — 1.9s, because eleven apps registered for it and
+  three of them do real work there.
+- **Launcher first frame** — 0.4s.
+
+The launcher — the visible part, the one everyone wanted to optimise — is the
+smallest number on the list. The wins are the blocking HAL and the
+boot-completed stampede, and neither is visible without the trace.
+</Scenario>
+
 
 - **Micro-optimising app startup** while a service is blocking init for four
   seconds.
@@ -141,6 +179,21 @@ requirement. Measure it on real hardware in CI, publish the trend, and fail the
 build on a regression beyond a threshold. It is the only thing that keeps a
 number honest over a multi-year programme.
 </Callout>
+
+<Recap>
+- **Measure first.** Boot timelines almost never match intuition, and the visible
+  part is rarely the slow part.
+- Use bootchart, `systrace`/Perfetto and `dmesg` timestamps to get a real
+  timeline from bootloader to first frame.
+- The recurring wins are **blocking init services**, **boot-completed
+  receivers** doing real work, and **serialised steps that could be parallel**.
+- Deferring work is usually better than making it faster — most of it does not
+  need to happen before the first frame.
+- What does not help: micro-optimising app code, removing small services,
+  or tuning the launcher, which is typically the smallest slice.
+- Early camera requirements are met by a **path that bypasses the framework**
+  entirely, not by making Android boot faster.
+</Recap>
 
 ## Next
 

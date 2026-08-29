@@ -24,6 +24,30 @@ available. That requirement drives the architecture.
   <ClusterArchitecture />
 </DiagramFrame>
 
+<Plain>
+There are two completely different architectures behind "Android drives the
+cluster", and knowing which one you are on changes everything about how you work.
+
+**Option A** — the cluster is another Android display. You can launch Activities
+onto it.
+
+**Option B** — the cluster is a separate system entirely, often QNX or an RTOS.
+Android **sends it data** over a link and never draws a pixel.
+
+Ask which one on day one. Almost every cluster question has a different answer
+depending on the answer to this one.
+</Plain>
+
+<Analogy title="Like a second monitor versus a fax machine">
+A second monitor is part of your computer. You drag a window onto it.
+
+A fax machine is a separate device that speaks a protocol. You send it content
+and it renders that content its own way.
+
+Both put your information on another screen. Almost nothing else about them is
+alike.
+</Analogy>
+
 ## Option A — the cluster is an Android display
 
 The head unit's SoC drives both screens. The cluster is a second display in the
@@ -129,6 +153,24 @@ what an unknown version must do.
 </Callout>
 
 ## Debugging across the boundary
+<Scenario title="Why the cluster shows a stale value and the centre screen does not">
+Navigation guidance updates instantly on the centre display and lags by several
+seconds on the cluster.
+
+On **Option A** this would be a rendering problem. On **Option B** it almost never
+is — the usual causes are on the link:
+
+1. The message is sent at a lower rate than the centre screen updates.
+2. It is queued behind other traffic on a shared channel.
+3. The cluster side buffers before rendering, deliberately, to avoid flicker.
+4. The two ends disagree about what a change is worth sending for.
+
+None of that is visible from `logcat` on the Android side, because Android
+believes it sent the message. Debugging means instrumenting **both ends** and
+comparing timestamps — which is why programmes that put a trace point at each end
+of the link early save themselves weeks later.
+</Scenario>
+
 
 ```bash title="The Android side"
 adb shell dumpsys car_service --services ClusterHomeService
@@ -144,6 +186,20 @@ each demonstrating it is not their layer.
 Log what you sent, with a timestamp and a sequence number, and insist the cluster
 team logs what they received. That single agreement resolves most cross-boundary
 arguments in minutes rather than weeks.
+
+<Recap>
+- Two architectures hide behind "Android drives the cluster": **another Android
+  display**, or **a separate system fed with data**.
+- Establish which one you are on before anything else; the answers differ
+  completely.
+- On the separate-system model, Android is a **data source** — it sends
+  structured values, not pixels.
+- Safety-critical telltales are **never** Android's responsibility in either
+  model.
+- Cross-boundary debugging needs instrumentation at **both ends**; Android's logs
+  only prove it sent something.
+- Occupant zones determine which display belongs to which seat and user.
+</Recap>
 
 ## Next
 

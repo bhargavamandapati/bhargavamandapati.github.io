@@ -17,6 +17,22 @@ Every other input method competes with driving for attention. Voice does not, or
 at least does so far less. That is why voice is architecturally privileged on
 AAOS rather than being an optional extra.
 
+<Plain>
+Voice is not a nice extra in a car. It is often the **only** way to do something
+complex while driving, because everything else is restricted.
+
+The practical consequence for an app developer is that you mostly do not build a
+voice interface. You make your app **legible to the assistant** — describe what
+things are in the platform's vocabulary, and voice works.
+</Plain>
+
+<Analogy title="Like labelling your stock properly">
+You do not staff every aisle. You label things so the shop's own assistant can
+find them for a customer who asks.
+
+An unlabelled box is not found, however good the assistant is.
+</Analogy>
+
 ## The assistant slot
 
 A vehicle has one active assistant, bound as a `VoiceInteractionService`. On GAS
@@ -134,6 +150,26 @@ tts.setAudioAttributes(speechAttrs)
 An app that speaks with `USAGE_MEDIA` will duck itself, be routed to the media
 bus, and be silenced by a rear passenger's volume control.
 
+<Scenario title="Getting voice for free by doing the ordinary things well">
+Two media apps. Saying "play the next track" works in one and not the other.
+
+The one that works did nothing voice-specific. It simply:
+
+- Implemented a proper **`MediaSession`** with the standard transport actions.
+- Declared its **playback state** accurately, so the assistant knows what "next"
+  means right now.
+- Used **`MessagingStyle`** for its notifications, so replies can be spoken.
+- Set correct **`AudioAttributes`**, so its output ducks properly when the
+  assistant speaks.
+
+The other built a custom player with its own controls, and the assistant has
+nothing to talk to.
+
+This is the general pattern in automotive: **the platform rewards standard
+implementations**. Every custom substitute for a framework concept quietly opts
+you out of behaviour you would otherwise get for nothing.
+</Scenario>
+
 ## Testing
 
 ```bash title="What the platform sees"
@@ -144,6 +180,19 @@ adb shell dumpsys media_session | grep -i -A5 'queue\|actions'
 # Fire a media voice command without speaking
 adb shell am start -a android.media.action.MEDIA_PLAY_FROM_SEARCH -e query "jazz"
 ```
+
+<Recap>
+- Voice is often the **only** interaction available while driving, not a
+  convenience feature.
+- You rarely build a voice interface — you make your app **legible** to the
+  assistant.
+- A proper `MediaSession` gives media apps voice control for free.
+- **Semantic notification actions** let the assistant read and reply without
+  the driver touching anything.
+- App Actions and deep intents expose specific capabilities to voice.
+- Custom substitutes for framework concepts quietly opt you out of behaviour you
+  would otherwise get automatically.
+</Recap>
 
 ## Next
 

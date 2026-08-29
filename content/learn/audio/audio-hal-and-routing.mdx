@@ -18,6 +18,30 @@ Those addresses have to exist. What creates them is the audio HAL and
 `audio_policy_configuration.xml`, one layer below — and the two files are edited
 by different people, which is exactly why they drift.
 
+<Plain>
+There are two files, they describe the same speakers from two different angles,
+and they must agree exactly.
+
+**`audio_policy_configuration.xml`** is the *Android* view: which output devices
+exist, what formats they accept, what the mixer can do with them.
+
+**`car_audio_configuration.xml`** is the *car* view: which of those devices
+belong to which zone, and which context routes to which one.
+
+The link between them is a **string** — the device address. If it does not match
+character for character in both files, the platform will not tell you; audio will
+simply not come out.
+</Plain>
+
+<Analogy title="Like a wiring diagram and a room plan">
+The wiring diagram lists every socket in the building and what it can carry.
+The room plan says which sockets are in which room and what plugs into them.
+
+Both are needed, and they have to refer to the same sockets by the same names.
+Rename one on a single drawing and an electrician wires up a room that never
+gets power — with nothing visibly wrong on either sheet.
+</Analogy>
+
 ## The two configuration files
 
 ```text title="Who declares what"
@@ -128,6 +152,26 @@ chime heard — needs physical measurement, and it is the number that matters fo
 anything that must be synchronised with a visual cue.
 
 ## Common bring-up failures
+<Scenario title="Silent media, and how you would find it">
+Media plays — the UI shows a progress bar advancing — but no sound.
+
+**Step 1.** Is it reaching the HAL? `adb shell dumpsys media.audio_flinger` and
+look for an active track. If there is none, the problem is above the HAL.
+
+**Step 2.** Which device did it route to? `adb shell dumpsys car_audio_service`
+shows the zone, context and the bus each stream landed on.
+
+**Step 3.** Compare that bus address with `audio_policy_configuration.xml`. This
+is where the bug usually is — `bus0_media_out` in one file and `bus0_media`
+in the other. Two different strings, no error, no sound.
+
+**Step 4.** If the addresses match, the trail goes below Android: is the
+amplifier unmuted, is the channel enabled, is the wire connected.
+
+The order matters. Most people start at step 4 with a multimeter, when the answer
+was a typo in step 3.
+</Scenario>
+
 
 | Symptom | Cause |
 | --- | --- |
@@ -144,6 +188,21 @@ with more than a handful of buses, generate both from a single definition and
 diff the generated output in CI. It eliminates the whole address-mismatch class
 of defect permanently.
 </Callout>
+
+<Recap>
+- Two files describe the same hardware: `audio_policy_configuration.xml` is
+  Android's view, `car_audio_configuration.xml` is the car's.
+- They are joined by the **device address string**, matched exactly. A mismatch
+  produces silence with no error.
+- Generate both from one source if you can — it removes an entire class of
+  bring-up bug.
+- `dumpsys media.audio_flinger` and `dumpsys car_audio_service` tell you where a
+  stream actually went; check those before suspecting hardware.
+- Multiple buses exist so the **amplifier** can mix in hardware; that is a
+  latency and quality win over software ducking.
+- Latency is dominated by buffer sizes and the path through the amplifier, not
+  by the Android framework.
+</Recap>
 
 ## Next
 

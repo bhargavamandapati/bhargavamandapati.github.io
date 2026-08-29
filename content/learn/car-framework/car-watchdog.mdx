@@ -17,6 +17,30 @@ A phone that hangs gets rebooted by its owner. A head unit that hangs is a safet
 and warranty problem, so the platform polices it. CarWatchdog is that policing,
 and it has two jobs: liveness and resource discipline.
 
+<Plain>
+CarWatchdog exists because a vehicle cannot rely on someone noticing that
+something has hung.
+
+It does two quite different jobs:
+
+**Health checks** — services must periodically say they are alive. Stop
+answering and you get killed.
+
+**Resource overuse** — apps that write too much to storage get warned, then
+throttled, then killed.
+
+The second one surprises people, because on a phone nothing cares how much you
+write.
+</Plain>
+
+<Analogy title="Like a night watchman">
+Someone walks the building on a schedule and expects a response at each station.
+Miss a check-in and they come looking, and eventually they raise the alarm.
+
+Separately, they notice that one office is filling the skip every single night —
+not an emergency, but not sustainable either, and eventually somebody has a word.
+</Analogy>
+
 ## Health checks
 
 CarWatchdog pings registered clients. A client that does not answer within its
@@ -143,6 +167,26 @@ private fun flush() = db.runInTransaction {
 ```
 
 ## What termination looks like
+<Scenario title="Why your app was killed overnight">
+A telemetry component buffers events to disk, flushing every few seconds. It runs
+fine for a week, then users report it disappearing.
+
+CarWatchdog killed it for **I/O overuse**. Flash in a vehicle has a finite write
+endurance and a fifteen-year service life, so sustained writes are treated as a
+real problem rather than a performance detail.
+
+What to do instead:
+
+- **Batch aggressively.** One write a minute rather than twenty a second.
+- **Keep buffers in memory** and flush on a schedule or at shutdown, not per
+  event.
+- **Aggregate before writing.** A count is smaller than the events it counts.
+- **Check your quota** in `dumpsys car_watchdog` rather than guessing.
+
+The warning arrives before the kill, in the logs. Nobody reads it, which is why
+the first symptom is usually the termination.
+</Scenario>
+
 
 An app killed for overuse is not just stopped — it may be prevented from
 restarting until the next daily window, and repeated offenders can be disabled
@@ -159,6 +203,19 @@ Run a realistic session with `dumpsys car_watchdog` before and after and compare
 written bytes. A feature that looks free on a development machine with fast NVMe
 can be the top consumer on the target.
 </Callout>
+
+<Recap>
+- CarWatchdog does two jobs: **liveness checks** on services and **resource
+  overuse** monitoring on apps.
+- Services must respond to health pings; failing to answer gets the process
+  killed.
+- **I/O overuse is real** — flash endurance over a fifteen-year life makes
+  sustained writes a genuine constraint.
+- Warnings arrive in the log before termination, and are almost always missed.
+- Batch and aggregate writes; keep buffers in memory and flush on a schedule.
+- `dumpsys car_watchdog` shows your quota and current usage — check it rather
+  than guessing.
+</Recap>
 
 ## Next
 

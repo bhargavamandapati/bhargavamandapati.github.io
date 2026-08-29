@@ -26,6 +26,26 @@ That changes everything.
   <PowerStates />
 </DiagramFrame>
 
+<Plain>
+A phone has two interesting states: on, and off. A car has several, and the
+difference between them is what the driver expects when they get back in.
+
+The one that matters most is that "off" usually is not off. The system is
+**suspended** — memory kept alive, everything else powered down — so that opening
+the door brings the screen back in under a second rather than in thirty.
+</Plain>
+
+<Analogy title="Sleeping versus moving out">
+Shutting down is moving out of a flat: everything packed, lights off, and coming
+back means unpacking it all again.
+
+Suspend is going to sleep. The room is dark and nothing is happening, but every
+book is still on the shelf where you left it, and waking takes a moment rather
+than a morning.
+
+A driver who returns to their car after ten minutes expects the second one.
+</Analogy>
+
 ## The states
 
 | State | What is happening |
@@ -145,6 +165,25 @@ future promptly — the platform proceeds on timeout regardless, and everything 
 had not written is lost.
 
 ## Boot time is a contract
+<Scenario title="Why the media app must handle a resume it never asked for">
+A driver parks, goes into a shop, comes back twenty minutes later.
+
+1. Ignition off. `CarPowerManagementService` broadcasts `SHUTDOWN_PREPARE`.
+2. Registered components get a short window to save state. The media app writes
+   its queue position.
+3. The system suspends to RAM. No processes are killed; nothing is torn down.
+4. Door opens. The system resumes.
+5. Every process is **exactly where it was** — same objects in memory, same
+   Activities, same open sockets.
+
+Step 5 is where bugs live. Your app did not restart, so `onCreate` never runs
+again. But twenty minutes passed: your cached location is stale, your network
+socket is dead, and the token you fetched has expired.
+
+Code that only refreshes on `onCreate` will show the driver stale data
+indefinitely, because in a suspend/resume world `onCreate` may not run for days.
+</Scenario>
+
 
 OEMs commit to numbers, usually along these lines:
 
@@ -179,6 +218,21 @@ Any blocking call in a subservice's `init()` — a slow HAL, a file read, a netw
 wait — delays the entire platform coming up. This is the single most common
 self-inflicted boot-time regression on automotive programmes.
 </Callout>
+
+<Recap>
+- A vehicle's "off" is usually **suspend to RAM**, not shutdown — which is what
+  makes instant-on possible.
+- `CarPowerManagementService` drives the transitions and gives components a
+  bounded window to save state.
+- **Garage Mode** is the parked, powered window where updates and maintenance
+  work happens without the driver waiting.
+- On resume, your process is exactly as it was: `onCreate` does not run, so
+  anything time-sensitive must be refreshed explicitly.
+- Assume the save window is short and may be cut off — persist incrementally
+  rather than in one big write at shutdown.
+- Boot time is a **regulatory contract** in some markets, not a performance
+  goal, which is why the reversing camera path bypasses the framework.
+</Recap>
 
 ## Next
 

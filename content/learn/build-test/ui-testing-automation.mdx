@@ -18,6 +18,23 @@ wrong state, the user is wrong, the display is wrong, or Car Service restarted
 halfway through. Building a suite that survives that is mostly about controlling
 those variables explicitly.
 
+<Plain>
+The thing that makes automotive UI tests unreliable is not the UI. It is that the
+**vehicle state changes underneath them** — driving state, user switches,
+properties arriving late.
+
+So the first move is not to write tests. It is to get deterministic control of
+the vehicle state, so a test can say "we are now driving" rather than hoping.
+</Plain>
+
+<Analogy title="Like a film set">
+You do not wait for the right weather. You control the light, because a scene
+that depends on the sky is a scene you cannot shoot twice the same way.
+
+A test that depends on real vehicle state is a test that passes and fails for
+reasons unrelated to the code.
+</Analogy>
+
 ## Fake the vehicle first
 
 A test that depends on ambient vehicle state is flaky by construction. Set the
@@ -169,6 +186,23 @@ suite protects nothing. Move a flake out of the gating set the day it is
 identified, file it, and fix it — do not leave it failing intermittently while
 people learn to re-run the job.
 </Callout>
+
+<Scenario title="The states every screen needs tested in">
+A single screen has more states in a car than on a phone, and most flakes come
+from testing only one of them.
+
+- **Parked and driving.** UX restrictions change the layout, sometimes
+  completely.
+- **Day and night.** Theming is a first-class requirement, not a preference.
+- **Touch and rotary.** A screen can be perfect on touch and unreachable on a
+  rotary controller.
+- **Data present, absent and stale.** Vehicle properties are frequently
+  unavailable early in boot.
+- **Two users.** Anything per-user behaves differently after a switch.
+
+Testing the parked, daytime, touch, data-present, single-user case is testing one
+cell of that grid — and it is the cell least likely to break in the field.
+</Scenario>
 
 ## What is worth automating
 

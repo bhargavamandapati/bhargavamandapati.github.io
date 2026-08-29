@@ -20,6 +20,24 @@ it. Your app never touches a pixel.
 That sounds restrictive. It is, and it is the reason those apps are allowed to
 run while driving.
 
+<Plain>
+The Car App Library lets you build a car app without drawing any UI. You describe
+**what** you want — a list, a grid, a message, a pane — and the host renders it in
+the vehicle's own style.
+
+You give up layout control. In exchange you get an app that is automatically
+distraction-compliant, correctly styled for every OEM, and usable with a rotary
+controller you have never tested on.
+</Plain>
+
+<Analogy title="Like filling in a form rather than designing one">
+You supply the fields and their values. The organisation decides the typeface,
+spacing and paper size, and it looks like everything else they produce.
+
+You cannot make it look how you like — and that is exactly why it works in a
+thousand offices without you visiting any of them.
+</Analogy>
+
 ## Why templates exist
 
 A template guarantees things a free-form layout cannot:
@@ -133,6 +151,26 @@ private val surfaceCallback = object : SurfaceCallback {
 of your surface; ignoring the visible area puts the route under a UI element.
 
 ## Templated vs full activity
+<Scenario title="Choosing between a template and a full Activity">
+The decision comes down to one question: **does your app need to draw something
+the templates cannot express?**
+
+**Templates are the right choice** for browsing, selecting, confirming,
+messaging, point-of-interest lists — most apps, in other words. You get
+distraction compliance and OEM styling free, and your app works on vehicles you
+have never seen.
+
+**A full Activity is necessary** when you genuinely need a custom drawing surface
+— a map, a camera view, a live visualisation.
+
+The failure mode worth avoiding: choosing a full Activity because the templates
+feel restrictive, then spending months reimplementing distraction compliance,
+rotary focus, day/night theming and per-OEM styling by hand — badly, and again
+for every vehicle.
+
+If a template can express it, use the template.
+</Scenario>
+
 
 | | Templated app | Full activity |
 | --- | --- | --- |
@@ -158,6 +196,19 @@ adb logcat -b all | grep -iE 'CarApp|TemplateHost|throttl'
 
 Watch for throttling warnings in that log filter. They are the clearest signal
 that your screen is invalidating too often.
+
+<Recap>
+- The Car App Library is **declarative**: you describe content, the host renders
+  it in the vehicle's style.
+- You get distraction compliance, OEM theming and rotary support without
+  implementing them.
+- The template set covers lists, grids, panes, messages and navigation — most app
+  needs.
+- **Navigation apps get a drawing surface**; other categories do not.
+- Choose a full Activity only when you truly need custom drawing, and understand
+  what you take on by doing so.
+- Test with the desktop head unit before touching real hardware.
+</Recap>
 
 ## Next
 

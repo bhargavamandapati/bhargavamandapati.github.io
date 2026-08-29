@@ -16,6 +16,29 @@ sources:
 Two rules decide whether a feature is even buildable by your team. Learn them
 before scoping, not during integration.
 
+<Plain>
+Two separate ideas share this page because they constrain the same work.
+
+**Permissions** decide which apps may do what. In a car there is an extra tier
+above the usual ones: things only apps signed by the platform, or explicitly
+allowlisted, may touch.
+
+**Treble** is a hard architectural line between the Android framework and vendor
+code, so the two halves can be updated independently.
+
+Both exist to answer the same question — who is allowed to depend on what — at
+different layers.
+</Plain>
+
+<Analogy title="Like a hotel">
+Guest keycards open guest rooms. Staff cards open service areas. A few doors need
+both a card and a manager present.
+
+Treble is the wall between the guest wing and the plant room. You can renovate
+the lobby without touching the boiler, and vice versa — because there is a
+defined interface between them rather than a shared corridor.
+</Analogy>
+
 ## The permission tiers
 
 **Tier 1 — normal and dangerous.** Any app can declare them; dangerous ones
@@ -155,6 +178,23 @@ Treble is what makes a security patch to the framework possible in year seven of
 a vehicle programme. Every restriction it imposes is buying that.
 
 ## A design checklist
+<Scenario title="Why your app cannot read that property">
+An app requests a vendor property and gets a `SecurityException`, despite the
+permission being declared in its manifest.
+
+The usual chain of causes:
+
+1. The permission is `signatureOrPrivileged`, so declaring it is not enough.
+2. The app is not signed with the platform key.
+3. It is installed in `/data` rather than `/system/priv-app`, so it is not
+   privileged at all.
+4. Even installed correctly, it is missing from the **privileged permission
+   allowlist** XML — which is a separate file most people forget.
+
+All four have to be right. The error message tells you none of this, which is why
+knowing the tiers matters more than reading the exception.
+</Scenario>
+
 
 Before committing to a feature:
 
@@ -167,6 +207,21 @@ Before committing to a feature:
 
 Answering these in week one avoids the conversation in month six where a feature
 turns out to require the OEM to ship your code and nobody had asked them.
+
+<Recap>
+- Car permissions add tiers above the normal ones: **signature** and
+  **privileged**, for things ordinary apps must not reach.
+- A privileged permission needs the app in `priv-app` **and** an entry in the
+  allowlist XML — declaring it in the manifest is not enough.
+- OEMs can define their own permissions for vendor properties, and should, rather
+  than widening an existing one.
+- **Treble** separates framework from vendor so each can be updated
+  independently; the VINTF manifests describe the contract.
+- The boundary forbids vendor code from depending on framework internals — which
+  feels restrictive until the first framework upgrade that does not require a
+  vendor rewrite.
+- When access fails, walk the tiers in order rather than reading the exception.
+</Recap>
 
 ## Next
 

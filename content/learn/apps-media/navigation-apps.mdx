@@ -16,6 +16,23 @@ sources:
 Navigation is the one templated app category that gets a real drawing surface,
 and the only one expected to render onto a second screen it does not own.
 
+<Plain>
+A navigation app in a car draws to two places: the **centre screen**, where it
+owns a map surface, and the **cluster**, where it does not draw at all — it sends
+structured turn data and the cluster renders it in the vehicle's own style.
+
+That split is the thing to internalise. On the cluster you are a **data source**,
+not a renderer.
+</Plain>
+
+<Analogy title="Like a co-driver and a road sign">
+The co-driver has the map open and can show you anything. The road sign shows one
+instruction, in the standard shape everyone recognises, because a driver at
+70 km/h has half a second to read it.
+
+You supply the sign's content. You do not get to design the sign.
+</Analogy>
+
 ## The two surfaces
 
 A navigation app is responsible for **the map**. The host is responsible for
@@ -158,6 +175,26 @@ audioManager.requestAudioFocus(
 Taking `AUDIOFOCUS_GAIN` for a turn prompt stops the driver's music permanently.
 It is a common bug and an extremely annoying one.
 
+<Scenario title="Why maneuver types are an enumeration">
+A navigation app wants to show "bear left onto the slip road, then keep right".
+
+On the centre screen, that text is fine. On the cluster it cannot be sent as
+text, because:
+
+- The cluster renders in the **vehicle's own visual language**, with the OEM's
+  icons — it needs to know *which* arrow to draw.
+- It must be translated into the driver's language by the vehicle, not by you.
+- It may be a low-resolution or partially safety-rated surface with a fixed set
+  of glyphs.
+
+So the API takes a **maneuver type from a fixed enumeration** — turn left, slight
+right, roundabout exit 3 — plus a distance. The cluster maps that to its own icon.
+
+If your instruction does not map cleanly onto the enumeration, the honest answer
+is to pick the closest one and put the nuance on the centre screen. Inventing a
+type is not an option, and sending text will simply not be displayed.
+</Scenario>
+
 ## Testing
 
 ```bash title="Navigation and cluster state"
@@ -168,6 +205,18 @@ adb shell dumpsys display | grep -i cluster
 
 The emulator can present a cluster display, which is enough to verify that you
 are publishing well-formed maneuvers even without OEM hardware.
+
+<Recap>
+- Navigation apps have two surfaces: a **map they draw** on the centre screen and
+  a **data feed** to the cluster they do not draw.
+- On the cluster you supply **maneuver type from a fixed enumeration** plus
+  distance; the vehicle renders it in its own style and language.
+- Respect the **visible area** — bars, curved corners and OEM overlays reduce what
+  is actually usable.
+- Guidance must keep working in the background and while other apps are in front.
+- Test on a product build; the cluster surface and safe area are highly
+  product-specific.
+</Recap>
 
 ## Next
 

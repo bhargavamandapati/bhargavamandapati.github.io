@@ -17,6 +17,27 @@ SELinux is the reason your perfectly correct HAL returns nothing at all. It fail
 quietly, it fails consistently, and it is almost always the answer when behaviour
 is *wrong but stable*.
 
+<Plain>
+SELinux answers one question, over and over, millions of times a second:
+**"is this thing allowed to do that to that other thing?"**
+
+Every process has a label. Every file, socket and service has a label. A rule
+says which labels may do what to which. If no rule permits an action, it is
+denied — even for root.
+
+That last part is what surprises people. Being root does not help. If policy does
+not allow it, it does not happen.
+</Plain>
+
+<Analogy title="Like a building pass">
+Your pass is not "senior enough to go anywhere". It says exactly which doors open
+for you.
+
+Being the chief executive does not open the server room if the pass was not
+programmed for it. And when a door refuses, the log says which pass, which door,
+and what it tried — which is precisely what an `avc: denied` line is.
+</Analogy>
+
 ## Everything has a label
 
 SELinux labels every process (a **domain**) and every object — file, socket,
@@ -156,11 +177,57 @@ it should be receiving through a proper interface.
 5. **Treat neverallow failures as design feedback**, not obstacles.
 
 ## The symptom to remember
+<Scenario title="Reading a denial, start to finish">
+Your new vendor service will not start. `logcat` has:
+
+```
+avc: denied { read } for pid=1893 comm="my_vhal"
+  name="vendor_prop" dev="tmpfs" ino=1234
+  scontext=u:r:hal_vehicle_default:s0
+  tcontext=u:object_r:vendor_default_prop:s0 tclass=file
+```
+
+Read it as a sentence, right to left:
+
+- `scontext` — **who**: a process in domain `hal_vehicle_default`.
+- `tcontext` — **what**: a file labelled `vendor_default_prop`.
+- `tclass` + `{ read }` — **doing what**: reading a file.
+
+So: "the vehicle HAL tried to read a property file and policy has no rule for
+it."
+
+The fix is a rule saying exactly that and nothing more:
+
+```
+allow hal_vehicle_default vendor_default_prop:file r_file_perms;
+```
+
+The temptation is `audit2allow`, which generates rules mechanically. It is fine
+for finding the shape, but it will happily hand you something far broader than
+you need — and on a shipping build every unnecessary `allow` is a permanent
+weakening you have to justify.
+</Scenario>
+
 
 A missing SEPolicy rule does not crash anything. Your HAL's read fails, your code
 falls back to a default, the framework reports the default, and the UI shows a
 plausible wrong value forever. Whenever something is **wrong but stable**, check
 denials before you check your logic.
+
+<Recap>
+- SELinux is **default-deny**: no rule means no, and root does not override it.
+- Everything has a **label**; policy is rules between labels, not between users.
+- An `avc: denied` line names the source domain, the target label, the class and
+  the permission — enough to write the exact rule.
+- Work in **permissive** to collect denials, then write policy and return to
+  enforcing. Never ship permissive.
+- Use `audit2allow` to find the shape, then **narrow it by hand** — every extra
+  `allow` is a permanent weakening.
+- `neverallow` rules are compile-time assertions you cannot override; hitting one
+  means the design is wrong, not the policy.
+- The symptom to remember: a service that silently fails to start, with nothing
+  in its own logs, is a policy problem until proven otherwise.
+</Recap>
 
 ## Next
 

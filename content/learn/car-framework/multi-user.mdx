@@ -23,6 +23,29 @@ difference invalidates a surprising amount of ordinary Android code.
   <UserModel />
 </DiagramFrame>
 
+<Plain>
+A phone has one owner. A car has a household — and a valet, and whoever borrowed
+it last weekend.
+
+Android's answer is real multi-user support, with a twist specific to cars: the
+**system user (user 0) stays running headless**, holding all the vehicle
+services, while a separate foreground user owns the UI and the person's data.
+
+Almost every multi-user bug in automotive comes from code that assumed those two
+were the same user.
+</Plain>
+
+<Analogy title="Like a hotel and its staff">
+The building's systems — heating, lifts, fire alarm — run continuously and belong
+to nobody in particular. That is user 0.
+
+Guests come and go, each with their own room, preferences and belongings. That is
+the foreground user.
+
+Confusing the two produces exactly the bugs you would expect: a guest's settings
+applied to the boiler, or the boiler's state stored in a guest's room.
+</Analogy>
+
 ## Why a car needs this
 
 A vehicle is shared. Two drivers want their own accounts, apps, media history and
@@ -171,6 +194,26 @@ Which means "the current user" is genuinely ambiguous on such a vehicle. There
 may be several foreground users at once, on different screens. Code that assumes
 one is going to misbehave on exactly the flagship trim the OEM cares most about.
 
+<Scenario title="The bug this causes, over and over">
+A vendor service stores a value using `Context.getSharedPreferences` and reads it
+back later. Works in testing, wrong in the vehicle.
+
+What happened: the service runs as **user 0**, so it wrote to user 0's storage.
+The app reading it runs as the **foreground user**, whose storage is a completely
+different directory. The read returns the default, silently.
+
+The same mistake in other clothes:
+
+- `getExternalFilesDir` resolving to a different path than expected.
+- A `ContentProvider` query returning nothing because it ran in the wrong user.
+- A broadcast that never arrives, because it was sent to one user and the
+  receiver lives in another.
+- Account data that is present for one driver and absent for another.
+
+The tell is always the same: **it works on a single-user device and fails in the
+car**, with no error, just wrong or missing data.
+</Scenario>
+
 ## A practical checklist
 
 - Does this need to work with nobody logged in? → user 0.
@@ -178,6 +221,22 @@ one is going to misbehave on exactly the flagship trim the OEM cares most about.
 - Are you reading `UserHandle.USER_SYSTEM` where you mean "the driver"? → bug.
 - Does your state survive a switch? Test it — `am switch-user 11`.
 - Does your app behave on a guest user that gets wiped? Test that too.
+
+<Recap>
+- The **system user (0) runs headless** and holds vehicle services; a separate
+  foreground user owns the UI and personal data.
+- Most automotive multi-user bugs come from code assuming those are the same
+  user.
+- Storage, preferences, accounts, content providers and broadcasts are all
+  **per-user** — the same call returns different data depending on who runs it.
+- A user switch is not a reboot: services in user 0 keep running while the
+  foreground user changes underneath them.
+- **Guest and ephemeral users** discard state deliberately; do not store anything
+  you need to survive in them.
+- Occupant zones tie users to seats and displays, so "the current user" is not
+  even a single answer on a multi-display vehicle.
+- Always test with a second user, not just the one created at first boot.
+</Recap>
 
 ## Next
 

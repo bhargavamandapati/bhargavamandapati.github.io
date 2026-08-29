@@ -19,6 +19,23 @@ people using them simultaneously.
 
 `CarOccupantZoneService` is how the platform stops pretending otherwise.
 
+<Plain>
+An occupant zone is the platform's answer to a question a phone never asks:
+**who is this screen for?**
+
+A zone ties together a seat, one or more displays, and a user. That lets the
+system know that the rear-left screen belongs to a passenger, not the driver —
+which changes what may be shown on it and who owns it.
+</Plain>
+
+<Analogy title="Like seats in a cinema">
+A ticket is not just admission to the building; it names a seat. The seat
+determines which screen you can see and which armrest is yours.
+
+Occupant zones do the same job: they turn "a display" into "the display in front
+of the person in seat 2, who is signed in as this user".
+</Analogy>
+
 ## The model
 
 An **occupant zone** is a seat position that can have a user and one or more
@@ -117,6 +134,26 @@ When a screen stays black on a new board, this pairing is the usual culprit: the
 display port in the config does not match what the kernel enumerated.
 
 ## What breaks in ordinary code
+<Scenario title="An Activity that launched on the wrong screen">
+A rear-seat app starts an Activity and it appears on the **centre display**,
+in front of the driver.
+
+The cause is almost always a `startActivity` with no display specified. Android
+defaults to the display the calling context belongs to — and a service running in
+user 0 has no meaningful display, so it lands on the default one.
+
+The fix is explicit:
+
+1. Get the occupant zone for the seat you mean.
+2. Ask it for the display ID.
+3. Pass that display through `ActivityOptions.setLaunchDisplayId`.
+
+The broader lesson: on a multi-display vehicle, **"the screen" is not a thing**.
+Any code that assumes a single display will eventually put something in front of
+the wrong person, and on a driving surface that can be a distraction problem
+rather than a cosmetic one.
+</Scenario>
+
 
 **Assuming one display.** `WindowManager.getDefaultDisplay()` gives you *a*
 display, not necessarily yours. Use the display from your own `Context`.
@@ -149,6 +186,20 @@ adb shell am start --display 2 -n com.example/.PassengerActivity
 
 Simulated overlay displays are crude but they catch the whole class of "assumed
 display 0" bugs before hardware exists.
+
+<Recap>
+- An occupant zone ties a **seat, its displays and a user** together.
+- It is what lets the platform know a screen belongs to a passenger rather than
+  the driver — which changes the rules that apply to it.
+- Query the zone graph rather than assuming; seat and display layout is
+  per-product configuration.
+- **Always specify a launch display** for Activities on a multi-display vehicle;
+  the default is rarely what you meant.
+- Ordinary single-display assumptions — "the" display, "the" user, "the" current
+  Activity — are the usual source of bugs.
+- Test with a real multi-zone configuration; single-display emulators hide all of
+  this.
+</Recap>
 
 ## Next
 

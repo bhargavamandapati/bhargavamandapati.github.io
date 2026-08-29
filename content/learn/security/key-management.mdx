@@ -17,6 +17,26 @@ Every trust decision on a vehicle traces back to a key. Knowing which key signs
 what — and which ones you will never hold — saves a lot of confused conversations
 about why your app cannot do something.
 
+<Plain>
+Signing keys decide two things: **what the device will run**, and **which apps
+get privileged access**.
+
+There are a handful of platform keys, they are generated once per programme, and
+losing control of them is not recoverable by any technical means — every device
+already shipped trusts them.
+
+That is why the operational practice around them is heavier than the engineering.
+</Plain>
+
+<Analogy title="Like the master key to a building">
+Anyone holding it can open every door, and the only way to undo that is to change
+every lock in the building.
+
+So the interesting questions are not cryptographic. They are: who can hold it,
+where does it live, who signs off on a use, and what happens if it walks out of
+the door.
+</Analogy>
+
 ## The platform keys
 
 AOSP defines a small set of signing keys, each with a distinct role:
@@ -141,6 +161,23 @@ adb shell getprop | grep -i keystore
 ```
 
 ## Operational practice
+<Scenario title="What signing looks like on a real programme">
+On a development build, keys are the AOSP test keys checked into the tree.
+Everyone has them, they are public, and anything signed with them is trusted only
+by unlocked development units.
+
+On a release build:
+
+- The real keys live in an **HSM**, not on disk and not in the repository.
+- Signing happens on a dedicated build machine that engineers do not log into.
+- The request to sign a release is an **approval step** with a record.
+- The output is reproducible and archived, because in eight years someone will
+  need to know exactly what was in the image a specific vehicle received.
+
+The engineering here is a day's work. The process around it is what takes the
+programme months to get right, and it is what an audit actually examines.
+</Scenario>
+
 
 - **Separate keys per environment.** Dev, integration and production keys are
   never the same key.
@@ -152,6 +189,21 @@ adb shell getprop | grep -i keystore
 - **Plan for expiry.** Certificates in vehicles do expire, and a fleet that
   cannot reach its backend because nobody diaried a renewal is a real and
   recurring incident class.
+
+<Recap>
+- Platform keys decide what the device runs and which apps are privileged;
+  compromise is unrecoverable by technical means.
+- Development builds use **public AOSP test keys** — trusted only by unlocked
+  units, never by production.
+- Release keys belong in an **HSM**, used on a dedicated machine, behind an
+  approval step with a record.
+- An app signed with the platform key gets `signature`-level permissions; that is
+  a decision with security weight, not a convenience.
+- Keys inside the vehicle (for OTA, attestation, secure storage) are hardware
+  backed where possible.
+- Build signing early with real keys on a locked device, or you will find the
+  problems in the final week.
+</Recap>
 
 ## Next
 

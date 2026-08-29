@@ -19,6 +19,24 @@ may be withheld entirely until the vehicle stops.
 
 None of that is a bug. It is the distraction model doing its job.
 
+<Plain>
+A car notification is not a phone notification with a bigger font. The platform
+treats it by **category**, and the category decides whether it is shown while
+driving, whether it can be read aloud, and whether it is silently dropped.
+
+Set the category wrongly and your notification either never appears when it
+matters, or appears when it should not — and the second is a distraction problem,
+not a bug report.
+</Plain>
+
+<Analogy title="Like triage at a hospital door">
+Nobody reads every form on arrival. They read the category, and the category
+determines what happens next and how fast.
+
+Write the wrong category on the form and the right treatment arrives at the wrong
+time.
+</Analogy>
+
 ## Category decides almost everything
 
 On automotive, `Notification.CATEGORY_*` is not metadata — it is the input to
@@ -137,6 +155,24 @@ confirm it looks right, then set speed above the threshold and confirm it
 degrades to something still *useful* rather than something empty.
 
 ## Design rules that hold up
+<Scenario title="Why the message notification was read aloud and yours was not">
+Two apps post a notification while driving. One is announced by the assistant and
+offers a spoken reply. The other is silently suppressed.
+
+The difference is not luck. The first used **`MessagingStyle`** with a category
+of `CATEGORY_MESSAGE`, so the platform could understand it as a message — who
+sent it, what it says, and how to reply — and expose it safely without the driver
+touching anything.
+
+The second used a custom layout with a generic category. The platform cannot read
+it, cannot summarise it, and cannot offer a safe interaction, so it hides it.
+
+The lesson generalises: **structure earns you behaviour**. Describing what a
+notification *is* in the platform's own vocabulary gets you handling you would
+never get from a custom view, and custom layouts in a car mostly buy you
+suppression.
+</Scenario>
+
 
 - **One glance, one fact.** "Alex: running late" not a paragraph.
 - **Front-load the identity.** The sender is the part that survives truncation.
@@ -144,6 +180,19 @@ degrades to something still *useful* rather than something empty.
   it cannot be dealt with while driving.
 - **Never require reading to act.** Actions must be understandable from the
   action label alone.
+
+<Recap>
+- **Category decides almost everything**: whether a notification shows while
+  driving, is read aloud, or is dropped.
+- Use **`MessagingStyle`** for messages — it is what lets the platform summarise
+  and offer a safe spoken reply.
+- Custom notification layouts mostly buy you **suppression**; structure earns you
+  behaviour.
+- UX restrictions suppress or truncate notifications while driving; design for the
+  restricted form.
+- Channels still matter for user control and importance.
+- Test while faking the driving state, not just parked.
+</Recap>
 
 ## Next
 

@@ -17,6 +17,30 @@ sources:
 that decide which modules exist, which partitions they land on, and hundreds of
 runtime settings. Knowing the layers tells you where to put a change.
 
+<Plain>
+Three files decide what a build actually is, and knowing which one owns a setting
+saves a great deal of searching.
+
+**Product makefile** — what software goes in: apps, packages, properties,
+overlays.
+
+**Board makefile** — what hardware it runs on: architecture, partitions, kernel.
+
+**Overlays** — framework configuration values, changed without touching AOSP
+source.
+
+Put a setting in the wrong layer and it either has no effect or leaks into builds
+it should not.
+</Plain>
+
+<Analogy title="Like specifying a car">
+The **model** decides the shape of the thing. The **trim** decides what is
+fitted. The **options list** adjusts details without changing either.
+
+Ask for heated seats on the chassis specification and nothing happens — it is the
+right request written on the wrong document.
+</Analogy>
+
 ## The three layers
 
 ```text title="device/oem/vega/"
@@ -150,6 +174,24 @@ persists. This is one of the more frustrating classes of "my config change did
 nothing".
 
 ## Verifying a target
+<Scenario title="A setting that had no effect, and why">
+An engineer adds a framework config value to the product makefile. The build
+succeeds and the value is ignored.
+
+The reason: framework configuration lives in **resource overlays**, not in
+makefile variables. The makefile happily accepted an assignment nothing reads.
+
+The general rule for placing a setting:
+
+- **Does it change what software is installed?** Product makefile.
+- **Does it describe the hardware or partitioning?** Board makefile.
+- **Is it a framework value AOSP reads from resources?** Overlay.
+- **Is it a runtime toggle?** A system property.
+
+Nothing warns you when you choose wrongly — the build succeeds and the setting is
+silently inert, which is why "it built fine" proves very little here.
+</Scenario>
+
 
 ```bash title="Did the image come out as intended?"
 lunch vega-trunk_staging-userdebug
@@ -168,6 +210,20 @@ adb shell cmd overlay list
 
 The four `adb` checks take ten seconds and confirm the product config actually
 took effect — which is not the same as the build succeeding.
+
+<Recap>
+- Three layers: **product** (what software), **board** (what hardware),
+  **overlays** (framework configuration).
+- Choosing the wrong layer usually produces **silence**, not an error — the build
+  succeeds and the setting does nothing.
+- Framework values belong in **resource overlays**, never in AOSP source.
+- Inheritance between product makefiles is how variants share a base; keep the
+  shared parts genuinely shared.
+- Verify a target by inspecting the built image and properties, not by trusting
+  the makefile.
+- Every extra build variant is a permanent cost; prefer runtime configuration
+  where you can.
+</Recap>
 
 ## Next
 

@@ -18,6 +18,31 @@ subscribe to. That shift — signal-oriented to service-oriented — is most of 
 "software-defined vehicle" means in practice, and it changes how the Android side
 is built.
 
+<Plain>
+Three things that get mentioned together and are not the same.
+
+**AUTOSAR** is how most of the vehicle's non-Android software is built.
+
+**SOME/IP** is how that software talks over Ethernet — increasingly, how your
+VHAL gets its data.
+
+**Virtualisation** is how Android ends up sharing a chip with all of it.
+
+You will not write AUTOSAR code. You will consume its services, boot next to it,
+and share resources with it.
+</Plain>
+
+<Analogy title="Like a hospital">
+Classic AUTOSAR ECUs are the monitoring equipment: single-purpose, always
+working, absolutely trusted, and not something anyone updates on a Tuesday.
+
+Adaptive AUTOSAR and Android are the records system and the staff — they
+coordinate, present information, and get improved constantly.
+
+You want both. You would not run the heart monitor on the records system, and
+you would not schedule appointments on the heart monitor.
+</Analogy>
+
 ## Classic vs Adaptive AUTOSAR
 
 | | Classic Platform | Adaptive Platform |
@@ -144,6 +169,25 @@ from Android — but the two increasingly appear on the same device, and it is
 worth knowing which one someone means.
 
 ## What actually matters in practice
+<Scenario title="Following ambient light from a sensor to your app">
+1. A photodiode in the front-left zone reports to a zone controller over LIN.
+2. The zone controller publishes it as a SOME/IP event — `LightingService`,
+   event `AmbientLevel`, in lux.
+3. In central compute, your **VHAL implementation is a SOME/IP client**
+   subscribed to that event. On each notification it scales the value and calls
+   `onPropertyEvent` for a vendor property.
+4. `CarPropertyService` fans it out to registered listeners.
+5. Your app's `CarPropertyManager` callback fires and the UI switches to a night
+   theme.
+
+Steps 1–2 are somebody else's problem. **Step 3 is the seam you own.** Steps 4–5
+are ordinary Android.
+
+Note what the app never learns: that a photodiode exists, that LIN exists, that
+SOME/IP exists. It asked for a property and got a number. That opacity is the
+design working.
+</Scenario>
+
 
 For most engineers on an SDV programme, the day-to-day reality is narrower than
 the architecture diagrams suggest:
@@ -155,6 +199,21 @@ the architecture diagrams suggest:
 The value of understanding the layer below is knowing **where to look** when a
 value is wrong — and being able to say, with evidence, whether the defect is in
 Android or arrived that way.
+
+<Recap>
+- **Classic AUTOSAR** is statically configured C on microcontrollers — rigid on
+  purpose, because rigidity is what makes safety provable.
+- **Adaptive AUTOSAR** is C++ on a POSIX OS with service discovery and updates,
+  for the parts that must change.
+- **SOME/IP** is service-oriented communication over Ethernet; in a modern
+  vehicle your VHAL is often a SOME/IP client rather than a CAN decoder.
+- A **hypervisor** partitions one SoC so Android, a safety guest and vendor
+  software coexist with guaranteed resources.
+- **AAOS is a peer, not an AUTOSAR platform.** The VHAL is the seam where the two
+  worlds meet.
+- Practically: expect fixed resource budgets, a boot order you do not control,
+  and properties that are read-only because they originate elsewhere.
+</Recap>
 
 ## Next
 

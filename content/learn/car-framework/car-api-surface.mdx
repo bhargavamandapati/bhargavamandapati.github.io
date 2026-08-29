@@ -16,6 +16,23 @@ sources:
 The most common question from an app team new to AAOS is "can I get X?" This page
 is the map that answers it.
 
+<Plain>
+`android.car` is the entire public surface of the vehicle for an app. One entry
+point, `Car`, hands out managers, and each manager owns one area.
+
+The practical skill is not memorising them. It is knowing **what you are allowed
+to reach** from an ordinary app, what needs privilege, and how to find out at
+runtime rather than assuming.
+</Plain>
+
+<Analogy title="Like a switchboard">
+There is one number to call, and the operator connects you to a department. Some
+departments will talk to anyone. Some need you to be staff. A few do not exist in
+this building at all.
+
+Asking the operator is always better than guessing an extension.
+</Analogy>
+
 ## Everything starts at `Car`
 
 ```kotlin title="The entry point"
@@ -102,6 +119,25 @@ Even with access, `CarUxRestrictionsManager` may block the interaction above a
 speed threshold.
 
 ## Feature detection, not assumption
+<Scenario title="Why the same APK behaves differently in two vehicles">
+An app calls `CarPropertyManager.getProperty(HVAC_SEAT_TEMPERATURE, ...)` and
+works fine in one vehicle, throws in another.
+
+Nothing is broken. The second vehicle simply does not have heated seats, so the
+property is not in its config.
+
+This is normal and permanent: **the same APK runs across a range of vehicles with
+different hardware**. The correct pattern is to ask rather than assume:
+
+1. `getPropertyList()` or `isPropertyAvailable()` before using a property.
+2. Hide UI for features the vehicle does not have — do not show a disabled
+   control the driver can never use.
+3. Treat absence as a normal state, not an error worth logging loudly.
+
+The same applies to whole managers: a `Car.getCarManager` call can return null
+for a subsystem this build does not include.
+</Scenario>
+
 
 Different vehicles, trims and platform versions expose different things. Ask:
 
@@ -152,6 +188,19 @@ the experience less jarring.
 
 The Javadoc in `car-lib` is genuinely good and is the fastest way to answer
 "what does this actually do".
+
+<Recap>
+- `Car` is the single entry point; every capability arrives as a manager from it.
+- The managers worth knowing first are property, audio, power, UX restrictions,
+  occupant zone and watchdog.
+- Permissions are **two-tier**: normal ones any app can request, and
+  signature/privileged ones that need platform signing plus allowlisting.
+- **Detect features, never assume them** — the same APK runs on vehicles with
+  different hardware, and absence is normal.
+- A manager itself can be null if the build does not include that subsystem.
+- **UX restrictions apply to you**, not just to the launcher; check them before
+  showing anything complex while driving.
+</Recap>
 
 ## Next
 

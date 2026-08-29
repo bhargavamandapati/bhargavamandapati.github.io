@@ -24,6 +24,21 @@ passenger screen, and it does not grow.
   <MemoryPressure />
 </DiagramFrame>
 
+<Plain>
+A vehicle head unit has far less RAM than a modern phone and has to keep running
+for weeks without a reboot. When memory runs short, **lmkd** kills processes —
+and it decides which ones by a score that mostly reflects how visible they are.
+
+The practical version: **background processes die**. If your app needs to survive
+being out of sight, that has to be designed rather than assumed.
+</Plain>
+
+<Analogy title="Like a lifeboat with a list">
+There is a written order for who leaves first, and it is not negotiable in the
+moment. What you can influence is which category you are in — before the
+emergency, not during it.
+</Analogy>
+
 ## How the kill order is decided
 
 Every process has an `oom_score_adj` derived from its state. `lmkd` watches
@@ -149,6 +164,24 @@ resume without being released on suspend leak once per ignition cycle — a
 pattern that a continuous soak test will never reproduce.
 </Callout>
 
+<Scenario title="Why the app was killed and what to do instead">
+A media app is killed while the driver is using navigation, and playback stops.
+
+The cause is not a bug in the app. It went to the background, its oom score rose,
+memory got tight, and lmkd did exactly its job.
+
+What actually keeps playback alive:
+
+- A **foreground service** with a media notification, which changes the category
+  rather than pleading for an exception.
+- Releasing memory on `onTrimMemory` so you are a smaller target.
+- **Persisting state continuously**, so being killed costs the driver nothing —
+  the app resumes where it was.
+
+The last point is the one that matters most, and it generalises: on a constrained
+device, the goal is not to be unkillable. It is to make being killed **cheap**.
+</Scenario>
+
 ## Configuring lmkd
 
 Platform teams tune the pressure thresholds per product:
@@ -165,6 +198,18 @@ ro.lmk.psi_complete_stall_ms=700
 Tuning these is a balance: kill too eagerly and apps restart constantly, killing
 the experience; kill too late and the whole system stalls under pressure. It is a
 per-product measurement exercise, not a value you can copy from another vehicle.
+
+<Recap>
+- Vehicle head units have **less RAM and far longer uptime** than phones, so
+  memory pressure is normal rather than exceptional.
+- **lmkd** kills by score, and background processes are the first to go.
+- Use a **foreground service** for work that must survive, rather than hoping.
+- Respond to `onTrimMemory` and release what you can.
+- **Persist state continuously** so a kill costs the user nothing — the goal is
+  cheap death, not immortality.
+- Long uptime makes slow leaks visible that a phone would never surface; profile
+  over days, not minutes.
+</Recap>
 
 ## Next
 

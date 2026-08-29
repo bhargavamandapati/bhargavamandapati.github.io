@@ -17,6 +17,29 @@ Most properties are a number in an area. Then somebody needs to express a set of
 seat positions, or a diagnostic frame, or a command with a result — and the
 simple model starts to strain.
 
+<Plain>
+Most properties are a single number. A minority are not, and those are where the
+API stops being obvious.
+
+**Vectors** hold several values of one type — the four tyre pressures, say.
+
+**MIXED** holds a mixture of types in one property, with a `configArray` that
+tells you the shape.
+
+MIXED exists because some vehicle concepts genuinely do not fit one number. It is
+also the least self-describing thing in the VHAL, and the usual advice is to
+avoid it unless you truly need it.
+</Plain>
+
+<Analogy title="Like a parcel with a packing list">
+An ordinary property is a labelled box: you know what is inside from the label.
+
+MIXED is an unlabelled box with a packing list taped to the side. The list —
+`configArray` — tells you it holds two integers, then a float, then a string.
+
+Get the list wrong and you unpack garbage, confidently.
+</Analogy>
+
 ## Vector types
 
 The easy case. `INT32_VEC`, `INT64_VEC` and `FLOAT_VEC` carry several values of
@@ -133,6 +156,24 @@ cycle. If it can change — even rarely, even only after a service action — it
 `ON_CHANGE`.
 
 ## When to stop using properties
+<Scenario title="A MIXED property that should not have been one">
+A team models "charging session" as a single MIXED property holding state, power,
+time remaining, connector type and a station identifier.
+
+It works, and then it does not scale:
+
+- Every consumer must parse `configArray` correctly, and each does it slightly
+  differently.
+- Changing one field means changing the shape, and every consumer breaks at once.
+- A change to any field fires an event for the whole property, so an app that
+  only cares about power wakes for every time-remaining tick.
+- It cannot be partially unavailable — either all of it is there or none.
+
+Five plain properties would have avoided all four problems. The rule of thumb:
+if the fields change at different rates or matter to different consumers, they
+want to be different properties.
+</Scenario>
+
 
 The property model is state. It is not RPC, not streaming, and not bulk transfer.
 Signs you have outgrown it:
@@ -154,6 +195,21 @@ belongs in properties, because the framework's caching, subscription and
 permission machinery is built for it. Everything else can be a service you define,
 and it will be easier to evolve.
 </Callout>
+
+<Recap>
+- **Vector** properties hold several values of one type; the area or index tells
+  you which is which.
+- **MIXED** holds several types in one property, described by `configArray` —
+  powerful, poorly self-describing, and easy to misuse.
+- If fields change at different rates or serve different consumers, use
+  **separate properties** instead.
+- `configArray` also carries meaning for ordinary properties, such as supported
+  values and unit conversion tables.
+- **Backported** properties let a newer definition be used on an older platform.
+- **Static** properties never change and should be read once and cached.
+- When a concept needs structure, versioning and partial availability, it has
+  outgrown the property model — use a car service instead.
+</Recap>
 
 ## Next
 

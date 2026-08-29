@@ -21,6 +21,25 @@ simply always its initial default.
 
 Here is the whole path, in the order I do it.
 
+<Plain>
+Adding a vendor property is six steps, and skipping any one of them produces a
+different confusing failure.
+
+**ID → config → get/set → permission → SEPolicy → consume.**
+
+Most of the time lost on this task is spent on steps 4 and 5, because their
+failure modes look like bugs in step 3.
+</Plain>
+
+<Analogy title="Like adding a new extension to a phone system">
+Allocating the number is the easy part. It also has to appear in the directory,
+be physically connected, be permitted to dial out, and be reachable through the
+firewall.
+
+Miss any one and the phone looks installed but does not work — and the symptom
+rarely points at the step you missed.
+</Analogy>
+
 ## 1. Allocate the ID
 
 ```kotlin title="VendorProperties.kt"
@@ -235,6 +254,31 @@ from the ECU arrives on the callback. A UI that optimistically renders the
 requested value and ignores errors will drift out of sync with the vehicle, and
 the driver will trust the screen.
 
+<Scenario title="The six ways this goes wrong, and what each looks like">
+Each step has a distinctive failure, and knowing them turns an afternoon of
+guessing into a two-minute diagnosis.
+
+**ID wrong** — the property does not exist. `getPropertyList` never shows it.
+
+**Config missing or malformed** — property exists but has no areas or the wrong
+access; `getProperty` throws or returns nothing.
+
+**get/set not implemented** — reads return `StatusCode.NOT_AVAILABLE`.
+
+**Permission not wired** — app gets a `SecurityException`, even though the
+property is clearly there in `dumpsys`.
+
+**SEPolicy missing** — this is the nasty one. The HAL fails to start or cannot
+reach the bus, with **nothing useful in its own logs**. The evidence is an
+`avc: denied` line somewhere else entirely.
+
+**Consumer wrong** — everything works, the app reads the wrong area ID and sees
+nothing.
+
+The pattern: the further down the list, the less the error message resembles the
+cause.
+</Scenario>
+
 ## The checklist
 
 When the property does not work, walk this in order:
@@ -248,6 +292,20 @@ When the property does not work, walk this in order:
 6. Are you publishing changes that Android did not initiate?
 
 Six checks, in that order, resolve almost every "the property does not work" bug.
+
+<Recap>
+- Six steps: **allocate the ID, declare the config, implement get/set, wire the
+  permission, add SEPolicy, consume it**.
+- Vendor IDs use the `VENDOR` group; never reuse or invent a system ID.
+- The config declares areas, access and change mode — get these wrong and the
+  property exists but misbehaves.
+- Permission problems surface as `SecurityException` **in the app**, not in
+  the HAL.
+- **SEPolicy failures are silent in the HAL's own logs** — a service that will not
+  start is a policy problem until proven otherwise.
+- Test each layer separately: HAL alive, property listed, value readable,
+  permission granted, app receiving.
+</Recap>
 
 ## Next
 

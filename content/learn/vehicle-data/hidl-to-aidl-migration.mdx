@@ -17,6 +17,26 @@ The property model did not change. The plumbing did. If you inherit a HIDL VHAL,
 this is what the migration actually involves — and it is more than a mechanical
 rewrite.
 
+<Plain>
+HIDL and AIDL are two generations of the same idea: a way to describe an
+interface so the framework and a vendor HAL can talk across the Treble boundary.
+
+AIDL replaced HIDL because AIDL was already the language Android used everywhere
+else, and maintaining two IPC description languages was pure overhead.
+
+For you this is mostly a **migration** story: the concepts survive, the
+boilerplate changes, and a handful of behavioural differences will catch you.
+</Plain>
+
+<Analogy title="Like changing the form, not the request">
+The council still needs to know your address, and it still sends someone round.
+What changed is the form you fill in — different boxes, different order, some
+fields that used to be free text now have a dropdown.
+
+The process is the same. The paperwork is different, and the differences are
+where mistakes happen.
+</Analogy>
+
 ## Why it happened
 
 HIDL was Treble's first attempt at a stable vendor interface. AIDL already
@@ -155,6 +175,27 @@ the AIDL adapter is a few hundred lines and the vehicle logic is unchanged.
 </Callout>
 
 ## What to re-test, not assume
+<Scenario title="The differences that actually bite">
+Four behavioural changes account for most migration bugs.
+
+**Error reporting.** HIDL returned status through the return value; AIDL uses
+exceptions and `ScopedAStatus`. Code that ignored a status silently now throws.
+
+**Nullability.** AIDL is explicit about `@nullable`. Interfaces that quietly
+relied on null now fail to compile — which is an improvement, once you have fixed
+them all.
+
+**Versioning.** AIDL's stable versioning is stricter about what counts as a
+compatible change. Adding a field is fine; reordering is not.
+
+**Threading.** The dispatch model differs enough that code assuming a particular
+callback thread can break in ways that only appear under load.
+
+The last one is why "it compiles and the smoke test passes" is not migration
+complete. Re-test **concurrency and error paths** specifically; they are where
+the differences live.
+</Scenario>
+
 
 The property model is identical, so the tests worth re-running are the ones about
 the *plumbing*:
@@ -173,6 +214,20 @@ adb shell dumpsys car_service --list-properties | wc -l   # same count as before
 
 That property count check is crude and catches a surprising amount: if the number
 changed across the migration, a config was lost in translation.
+
+<Recap>
+- AIDL replaced HIDL because Android already used AIDL everywhere else; the
+  concepts carry over.
+- The differences that matter: **error reporting**, **explicit nullability**,
+  **stable versioning rules**, and **threading/dispatch**.
+- Both can coexist during migration, which lets you move one HAL at a time.
+- Migrate the interface and implementation together, and keep the old one until
+  the new path is proven.
+- **Re-test error paths and concurrency**, not just the happy path — that is where
+  the behavioural differences surface.
+- Stable AIDL versioning is stricter than it looks: adding fields is fine,
+  reordering is not.
+</Recap>
 
 ## Next
 

@@ -17,6 +17,28 @@ sources:
 It looks like a simple getter API. The places it surprises people are all about
 lifecycle, asynchrony and error handling.
 
+<Plain>
+`CarPropertyManager` is the whole app-facing surface of vehicle data. Four
+verbs cover almost everything you will ever do:
+
+**get** a value now · **set** a value · **subscribe** to changes · **ask whether
+it is available at all**
+
+The complexity is not in the API. It is in the fact that a car is not a
+well-behaved data source: values arrive late, disappear, differ per seat, and
+reject writes for reasons that surface somewhere other than the call you made.
+</Plain>
+
+<Analogy title="Like reading instruments on a ship">
+A dial shows a value now. A logbook records changes. Some instruments only work
+when the engine is running, and some readings are per-compartment rather than
+per-ship.
+
+None of that is complicated on its own. What makes it awkward is that the
+instrument can go dark at any moment, and the sensible response is different for
+each one.
+</Analogy>
+
 ## Getting a Car instance
 
 `Car` is the entry point to every automotive manager. The subtlety is that Car
@@ -205,6 +227,26 @@ does not have those features is a classic multi-variant defect. Ask the platform
 Read it at <Src path="packages/services/Car/service/src/com/android/car/CarPropertyService.java" label="CarPropertyService.java" />.
 
 ## Common failures, and what they actually mean
+<Scenario title="A value that reads fine on the bench and null in the vehicle">
+An app calls `getIntProperty(HVAC_TEMPERATURE_SET, areaId)` in `onCreate` and
+shows the result. It works in the emulator and returns null in the car.
+
+Why: in the emulator the reference VHAL has a value ready immediately. In a real
+vehicle, the HVAC ECU may not have reported yet when your Activity starts, so the
+property is genuinely **not available yet**.
+
+The fix is not a retry loop. It is to accept that vehicle data is a stream, not a
+lookup:
+
+1. Register a callback **first**.
+2. Do an initial `get` for a value if one already exists.
+3. Render an explicit "unknown" state until something arrives.
+4. Let the callback populate the UI when it does.
+
+Showing a plausible default — 22°C because that seemed reasonable — is worse than
+showing nothing, because the driver cannot tell it is fiction.
+</Scenario>
+
 
 | Symptom | Usual cause |
 | --- | --- |
@@ -213,6 +255,22 @@ Read it at <Src path="packages/services/Car/service/src/com/android/car/CarPrope
 | Value never updates | HAL is not publishing changes it did not originate |
 | Callback stops after a while | Car Service restarted; you did not re-register |
 | Works on emulator, not on target | Reference VHAL supports it; the real one does not declare it |
+
+<Recap>
+- `CarPropertyManager` gives you four operations: **get, set, subscribe, and
+  check availability**.
+- Get a `Car` instance properly and handle disconnection — Car Service can
+  restart underneath you.
+- Values may be **unavailable**, especially early in boot. Design for a stream
+  with an explicit unknown state, not a lookup.
+- **Writes are asynchronous in effect**: `setProperty` returning does not mean the
+  vehicle complied, and errors arrive through the callback.
+- **Availability is per area** and changes at runtime; never assume all areas of a
+  property behave alike.
+- Prefer subscribing over polling; Car Service already deduplicates and fans out
+  a single HAL subscription.
+- Never invent a plausible default for a missing value — say you do not know.
+</Recap>
 
 ## Next
 

@@ -24,6 +24,24 @@ throughput — they are about *reconnection*.
   <BluetoothProfiles />
 </DiagramFrame>
 
+<Plain>
+Bluetooth in a car is not one feature. It is half a dozen **profiles** doing
+different jobs at once for the same phone: calls, media, metadata, contacts,
+messages.
+
+A phone connects one profile at a time in most people's experience. A car
+connects several simultaneously, automatically, every time the driver gets in —
+which is where most of the difficulty comes from.
+</Plain>
+
+<Analogy title="Like a docking station">
+Plugging in one cable connects the monitor, the keyboard, the network and the
+charger at once.
+
+When it works, nobody thinks about it. When one of the four fails, the user says
+"the dock is broken" — not "HFP failed to connect".
+</Analogy>
+
 ## The profiles that matter
 
 | Profile | Carries | Fails as |
@@ -108,6 +126,26 @@ The practical implication is that **you cannot rely on metadata being complete**
 Missing artwork, missing duration and a position that does not advance are all
 normal for some phones. Render what arrives; do not lay out assuming all of it.
 
+<Scenario title="The reconnection case that everyone under-tests">
+Pairing works. The problems come afterwards.
+
+A driver's real week looks like this:
+
+- Gets in with the phone in a pocket; **all profiles must reconnect
+  automatically**, in a sensible order, within a few seconds.
+- Two phones in the car — the platform has to pick one, predictably, and the
+  driver has to be able to override it.
+- A call arrives **while media is playing** from the same phone.
+- The phone leaves range mid-call; the call must transfer, not drop.
+- Pairing is attempted **while driving**, which is restricted.
+
+Almost none of this is exercised by pairing once at a desk, which is the test
+most teams actually run.
+
+The single highest-value test is the ordinary one: **walk away, come back, and
+see whether everything reconnects on its own.**
+</Scenario>
+
 ## What to test
 
 The scenarios that find real defects:
@@ -126,6 +164,17 @@ Bluetooth interoperability is empirical. Every programme ends up with a rack of
 phones, and the ones that ship well are the ones that started that rack early and
 ran the six scenarios above on every phone after every stack change.
 </Callout>
+
+<Recap>
+- A car connects **several Bluetooth profiles at once** — HFP, A2DP, AVRCP, PBAP,
+  MAP — not one at a time.
+- Automatic **reconnection** is the part users judge, and the part least tested.
+- Multiple paired phones need predictable selection and an override.
+- Pairing is **restricted while driving**; design the flow for the parked case.
+- Call audio routing interacts with audio focus and zones — test a call arriving
+  over playing media.
+- Test the ordinary week: leave, return, reconnect — not just first pairing.
+</Recap>
 
 ## Next
 
