@@ -1,0 +1,30 @@
+---
+title: 'Day 1: Android Automotive OS vs Android Auto — they are NOT the same thing.'
+description: Android Automotive OS vs Android Auto — they are NOT the same thing.
+date: 2026-08-29
+updated: 2026-08-29
+tags:
+  - '#AndroidAutomotive'
+draft: true
+featured: false
+cover: /media/pasted-image-1788025550142.png
+canonical: ''
+---
+
+Most people (even some engineers) mix these up. Here's the actual difference:
+
+Android Auto = your phone's screen, mirrored.
+
+It's an app. Your phone does all the work — maps, music, calls — and just projects the interface onto the car's display. Unplug the phone, the screen goes blank.
+
+Android Automotive OS (AAOS) = the car's actual operating system.
+
+No phone required. AAOS runs natively on the vehicle's hardware, directly powering the infotainment, and in many builds, the instrument cluster too. It talks to the car itself — engine, HVAC, sensors — through a layer called VHAL (Vehicle HAL), which passes real vehicle signals into apps like climate control, range estimates, and diagnostics.
+
+Think of it this way:
+
+Android Auto is a guest borrowing the screen.
+
+AAOS is the resident that owns the house.
+
+This distinction matters more every year — GM, Ford, and several other automakers have already dropped Android Auto/CarPlay support in favor of a fully native AAOS experience. The car itself is becoming the computer.
