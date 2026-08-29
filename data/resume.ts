@@ -27,7 +27,6 @@ export type Project = {
   highlights: string[]
   stack: string[]
   /** OEM the programme was delivered for, when it is named on the résumé. */
-  clients?: string[]
 }
 
 export type SkillGroup = {
@@ -64,7 +63,7 @@ export const profile = {
     { label: 'Years in software', value: '10+' },
     { label: 'Largest team led', value: '15' },
     { label: 'AOSP platforms shipped', value: 'Info 3.0 → 5.0' },
-    { label: 'Automotive OEM', value: 'General Motors' },
+    { label: 'Programmes', value: 'Global OEM' },
   ],
 } as const
 
@@ -97,7 +96,7 @@ export const experience: Role[] = [
       'Delivered tools such as a VSS Simulation Tool and data converters to accelerate validation.',
       'Managed multi-variant feature rollouts, ensuring scalability across vehicle programs.',
       'Mentored engineers in AOSP bring-up and framework development, enhancing team capability.',
-      'Travelled to Shanghai to engage with the client team, addressing major challenges and ensuring project success.',
+      'Travelled onsite to engage with the customer team, addressing major challenges and ensuring project success.',
     ],
   },
   {
@@ -111,7 +110,7 @@ export const experience: Role[] = [
       'Migrated legacy RTOS C/C++ vehicle control applications into Android, enabling cockpit digitization.',
       'Implemented Virtual Control features (Drive & Park, Doors, Windows, Lights) using CAN Manager, Vehicle Properties and Vendor Properties.',
       'Created custom dynamic cards and widgets generated automatically based on signal types.',
-      'Developed OEM-specific designs with RRO themes, supporting Cadillac infotainment branding.',
+      'Developed OEM-specific designs with RRO themes, supporting the customer\u2019s infotainment branding.',
       'Built a Validator app and Espresso UI automation to validate middleware and UI stability.',
       'Supported agile delivery through scrums, PI planning, story estimation and bug fixing.',
     ],
@@ -143,7 +142,7 @@ export const experience: Role[] = [
     highlights: [
       'Developed an Android prototype platform showcasing next-gen in-vehicle experiences.',
       'Contributed to prototype architecture for next-generation Android infotainment systems.',
-      'Developed infotainment apps (Home, Audio, Climate, Navigation, Trailer, Favorites, Phone, Settings) for Cadillac proof-of-concepts.',
+      'Developed infotainment apps (Home, Audio, Climate, Navigation, Trailer, Favorites, Phone, Settings) for OEM proof-of-concepts.',
       'Built the Multi-Functional Control (MFC) library for hardware-driven navigation of Android widgets.',
       'Co-developed a Skew library to enhance freeform display with dynamic widget skewing.',
       'Focused on UI/UX implementation, aligning with OEM brand guidelines.',
@@ -183,18 +182,17 @@ export const projects: Project[] = [
     domain: 'Cluster & Middleware',
     featured: true,
     summary:
-      'A system service enabling TCP/IP communication between the Center Stack and Instrument Cluster for GM vehicles.',
+      'A system service enabling TCP/IP communication between the Center Stack and Instrument Cluster.',
     description:
-      'A system service module for GM vehicles enabling TCP/IP communication between Center Stack and Instrument Cluster using FSA architecture. The GM cluster is divided into multiple zones; this module manages Zone 3, dedicated to infotainment features such as Audio, Phone, Navigation and OnStar cards.',
+      'A system service module enabling TCP/IP communication between Center Stack and Instrument Cluster using FSA architecture. The cluster is divided into multiple zones; this module manages Zone 3, dedicated to infotainment features such as Audio, Phone, Navigation and connected-services cards.',
     highlights: [
       'Led a 10-member cross-functional team of developers and testers, ensuring smooth coordination and delivery across sprints.',
       'Joined the project mid-way and took ownership of feature delivery and stabilization for multiple infotainment variants.',
       'Delivered key infotainment features (Audio, Phone, Navigation, OnStar) by preparing UIs and transmitting them to the cluster via protobuf over TCP/IP.',
-      'Oversaw UI preparation logic for Zone 3 infotainment cards, ensuring compliance with GM design standards.',
+      'Oversaw UI preparation logic for Zone 3 infotainment cards, ensuring compliance with the OEM design standards.',
       'Worked closely with QA to validate features across multiple cluster–center stack configurations, ensuring robust multi-variant support.',
     ],
     stack: ['Android', 'TCP/IP', 'Protobuf', 'FSA Architecture', 'Kotlin', 'Java'],
-    clients: ['General Motors'],
   },
   {
     slug: 'virtual-controls',
@@ -205,19 +203,18 @@ export const projects: Project[] = [
     domain: 'Cockpit Digitization',
     featured: true,
     summary:
-      'Replaced physical Cadillac cockpit buttons with software controls by migrating RTOS C/C++ logic to Android Automotive.',
+      'Replaced physical cockpit buttons with software controls by migrating RTOS C/C++ logic to Android Automotive.',
     description:
-      'Migrated RTOS-based C/C++ Virtual Controls to Android Automotive OS for a digital cockpit in Cadillac. Replaced physical buttons (Drive & Park, Doors, etc.) with software controls via infotainment UI, leveraging CarPropertyManager, CAN Manager and Vendor Properties.',
+      'Migrated RTOS-based C/C++ Virtual Controls to Android Automotive OS for a digital cockpit programme. Replaced physical buttons (Drive & Park, Doors, etc.) with software controls via infotainment UI, leveraging CarPropertyManager, CAN Manager and Vendor Properties.',
     highlights: [
-      "Converted RTOS C/C++ implementation into Android, enabling seamless integration with GM's infotainment stack.",
+      'Converted RTOS C/C++ implementation into Android, enabling seamless integration with the OEM infotainment stack.',
       'Implemented full Virtual Control features (Drive & Park, Doors, Windows, Lights) using CAN Manager, Vehicle Properties and Vendor Properties.',
       'Created custom views for dynamic card UIs that adapt automatically based on vehicle signal types.',
-      'Built drag-and-drop home screen widgets, dynamic card tiles and Cadillac-specific theme overlays (RRO).',
+      'Built drag-and-drop home screen widgets, dynamic card tiles and brand-specific theme overlays (RRO).',
       'Automated testing via Espresso UI test cases and built a Validator app to confirm correct functioning of CarPropertyManager, CAN Manager and Ultifi services.',
-      "Contributed to Cadillac's next-gen cockpit prototype, demonstrating the feasibility of software-defined controls in place of physical buttons.",
+      'Contributed to a next-generation cockpit prototype, demonstrating the feasibility of software-defined controls in place of physical buttons.',
     ],
     stack: ['Android Automotive', 'CarPropertyManager', 'CAN Manager', 'RRO', 'Espresso', 'C/C++', 'RTOS'],
-    clients: ['General Motors', 'Cadillac'],
   },
   {
     slug: 'project-guava',
@@ -240,26 +237,25 @@ export const projects: Project[] = [
     stack: ['AOSP', 'HAL', 'SEPolicy', 'Android Framework', 'C/C++', 'Board Bring-up'],
   },
   {
-    slug: 'gm-info-35c-prototype',
-    name: 'GM INFO 3.5C Prototype — Cadillac',
+    slug: 'info-35c-prototype',
+    name: 'Infotainment 3.5C Prototype',
     period: 'Apr 2016 — Jun 2018',
     start: '2016-04',
     end: '2018-06',
     domain: 'Prototype & Libraries',
     featured: true,
     summary:
-      "The Android infotainment prototype that secured GM's trust and paved the way for Info 3.x → 4.0.",
+      'The Android infotainment prototype that secured the customer\u2019s trust and paved the way for Info 3.x \u2192 4.0.',
     description:
-      'Created an Android infotainment prototype for Cadillac, showcasing next-gen cockpit features and aiding GM in Android adoption validation.',
+      'Created an Android infotainment prototype showcasing next-gen cockpit features, and supported the OEM through Android adoption validation.',
     highlights: [
       'Delivered infotainment apps: Home, Audio, Climate, Navigation, Trailer, Favorites, Phone and Settings.',
       'Collaborated with a team to design the prototype architecture, ensuring modularity and scalability for future infotainment programs.',
       'Co-developed the Multi-Functional Control (MFC) library, enabling intuitive navigation using a hardware MFC controller.',
       'Contributed to the Skew library, optimizing freeform display with dynamic widget skewing and edge utilization, and a Blur library for unique UI.',
-      "The prototype's success directly secured GM's trust, paving the way for larger infotainment programs (Info 3.x → Info 4.0).",
+      'The prototype\u2019s success secured the customer\u2019s trust, paving the way for larger infotainment programmes (Info 3.x \u2192 Info 4.0).',
     ],
     stack: ['Android', 'Java', 'Custom Views', 'MFC Library', 'Skew Library', 'UI/UX'],
-    clients: ['General Motors', 'Cadillac'],
   },
   {
     slug: 'hmi-infotainment-5',
@@ -280,15 +276,15 @@ export const projects: Project[] = [
     stack: ['Android Automotive', 'HMI', 'Kotlin', 'Jetpack Compose', 'Embedded Sensors'],
   },
   {
-    slug: 'gm-automotive-infotainment',
-    name: 'General Motors — Automotive Infotainment',
+    slug: 'automotive-infotainment-platform',
+    name: 'Automotive Infotainment Platform',
     period: 'Oct 2016 — Apr 2025',
     start: '2016-10',
     end: '2025-04',
     domain: 'OEM Programme',
     featured: false,
     summary:
-      'Nearly a decade across GM infotainment variants — Info 3.0, 3.5, 5.0 and 4.0 — from Model Year 2016 onward.',
+      'Nearly a decade across OEM infotainment variants \u2014 Info 3.0, 3.5, 5.0 and 4.0 \u2014 from Model Year 2016 onward.',
     description:
       'Automotive Infotainment has multiple variants — Info3.0, Info3.5, Info5.0 and Info4.0 — built from Model Year 2016 to date, with Info3.5 and Info4.0 going into upcoming model years. Infotainment development builds on hardware HMI-CSM, HUD, Cluster, Camera and RVC. This hardware is controlled in-vehicle directly or indirectly by SWC, MFC, face plates and vehicle CAN messages.',
     highlights: [
@@ -297,7 +293,6 @@ export const projects: Project[] = [
       'Handled control paths via SWC, MFC, face plates and vehicle CAN messages.',
     ],
     stack: ['Android', 'HUD', 'Cluster', 'RVC', 'CAN', 'MFC'],
-    clients: ['General Motors'],
   },
 ]
 

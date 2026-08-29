@@ -33,9 +33,18 @@ export const site = {
     medium: 'https://medium.com/@bhargavamandapati',
   },
   nav: [
-    { label: 'About', href: '/#about' },
-    { label: 'Experience', href: '/#experience' },
-    { label: 'Projects', href: '/projects/' },
+    {
+      // The portfolio sections live together so the nav is not half CV and
+      // half curriculum.
+      label: 'About',
+      href: '/#about',
+      children: [
+        { label: 'About', href: '/#about', description: 'Who I am and what I work on.' },
+        { label: 'Experience', href: '/#experience', description: 'Roles, and what each one delivered.' },
+        { label: 'Projects', href: '/projects/', description: 'Selected automotive platform work.' },
+        { label: 'Skills', href: '/#skills', description: 'Languages, platforms and ways of working.' },
+      ],
+    },
     {
       // The AAOS material outgrew a single nav slot, so the curriculum,
       // the property reference, the tutorials and the glossary sit together.
@@ -75,7 +84,6 @@ export const site = {
       ],
     },
     { label: 'SDV', href: '/sdv/' },
-    { label: 'Skills', href: '/#skills' },
     { label: 'Writing', href: '/blog/' },
   ],
 } as const

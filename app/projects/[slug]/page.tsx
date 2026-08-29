@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ArrowRight, Building2, CalendarDays, Layers } from 'lucide-react'
-import { CompanyMark, TechIcon } from '@/components/brand-icon'
+import { ArrowLeft, ArrowRight, CalendarDays, Layers } from 'lucide-react'
+import { TechIcon } from '@/components/brand-icon'
 import { projects } from '@/data/resume'
 import { site } from '@/data/site'
 
@@ -125,23 +125,6 @@ export default async function ProjectPage({ params }: { params: Promise<Params> 
               ))}
             </ul>
           </div>
-
-          {project.clients && (
-            <div className="card mt-5 p-6">
-              <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-tight">
-                <Building2 aria-hidden className="size-4 text-accent" />
-                Delivered for
-              </h2>
-              <ul className="mt-4 space-y-3">
-                {project.clients.map((client) => (
-                  <li key={client} className="flex items-center gap-3">
-                    <CompanyMark name={client} size="sm" />
-                    <span className="text-sm text-muted">{client}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           <Link
             href={`/projects/${next.slug}/`}

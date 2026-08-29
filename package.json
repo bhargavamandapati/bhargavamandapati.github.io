@@ -5,7 +5,7 @@
   "description": "Portfolio and engineering blog of Bhargava Mandapati — Android Automotive / AOSP engineer.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node --experimental-strip-types --no-warnings scripts/build-search-index.mjs && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
