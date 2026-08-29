@@ -206,6 +206,20 @@ export function createExteriorScene(
 
   const headlamps = [lamp(-0.6, 2.14, 0.5, 0.16, 0x4a4f57), lamp(0.6, 2.14, 0.5, 0.16, 0x4a4f57)]
   const taillamps = [lamp(-0.6, -2.14, 0.5, 0.14, 0x3a1f1e), lamp(0.6, -2.14, 0.5, 0.14, 0x3a1f1e)]
+  // Fog lamps sit outboard and lower than the headlamps.
+  const fogLamps = [lamp(-0.86, 2.06, 0.2, 0.12, 0x4a4f57), lamp(0.86, 2.06, 0.2, 0.12, 0x4a4f57)]
+  // A wide, short pool for them, distinct from the main beams.
+  const fogPoolMat = new THREE.MeshBasicMaterial({
+    color: 0xffe9b0,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  })
+  const fogPool = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.6), fogPoolMat)
+  fogPool.rotation.x = -Math.PI / 2
+  fogPool.position.set(0, 0.018, 3.6)
+  scene.add(fogPool)
   const indicators = {
     left: [lamp(0.92, 2.05, 0.14, 0.3, 0x4a3a20), lamp(0.92, -2.05, 0.14, 0.3, 0x4a3a20)],
     right: [lamp(-0.92, 2.05, 0.14, 0.3, 0x4a3a20), lamp(-0.92, -2.05, 0.14, 0.3, 0x4a3a20)],
@@ -502,6 +516,8 @@ export function createExteriorScene(
     const fogLampsOn = powered && (state.fogLights || state.frontFog === 1)
     const headOn = powered && state.headlights
     headlamps.forEach((l) => (l.material as THREE.MeshBasicMaterial).color.setHex(headOn ? 0xfff6dd : 0x4a4f57))
+    fogLamps.forEach((l) => (l.material as THREE.MeshBasicMaterial).color.setHex(fogLampsOn ? 0xfff0c0 : 0x4a4f57))
+    fogPoolMat.opacity = THREE.MathUtils.damp(fogPoolMat.opacity, fogLampsOn ? 0.16 : 0, 6, delta)
     beamMat.opacity = THREE.MathUtils.damp(beamMat.opacity, headOn ? (state.highBeam ? 0.3 : 0.18) : 0, 6, delta)
     beams.forEach((b, i) => {
       b.scale.y = state.highBeam ? 1.5 : 1

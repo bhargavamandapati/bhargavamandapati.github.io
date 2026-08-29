@@ -12,7 +12,6 @@ import {
   zones,
   type AppKind,
   type CockpitState,
-  type ZoneId,
 } from '@/data/cockpit'
 import { cn } from '@/lib/utils'
 
