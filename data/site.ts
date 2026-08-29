@@ -58,6 +58,11 @@ export const site = {
           description: 'Change a property in 3D and watch what it does to the car.',
         },
         {
+          label: 'Cockpit & displays',
+          href: '/learn/cockpit-displays/',
+          description: 'Occupant zones, multi-display and UX restrictions, live.',
+        },
+        {
           label: 'Tutorials',
           href: '/tutorials/',
           description: 'Step-by-step builds for the things you customise.',

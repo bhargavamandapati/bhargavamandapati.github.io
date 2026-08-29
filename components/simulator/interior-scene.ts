@@ -235,6 +235,28 @@ export function createInteriorScene(
   gearMesh.position.set(-0.18, 0.585, 0.26)
   scene.add(gearMesh)
 
+  // ---- Pedals -------------------------------------------------------------
+  function pedal(x: number, colour: number) {
+    const g = new THREE.Group()
+    g.position.set(x, 0.24, 0.86)
+    const pad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.13, 0.26, 0.04),
+      new THREE.MeshStandardMaterial({ color: colour, roughness: 0.6 }),
+    )
+    pad.position.y = 0.1
+    pad.rotation.x = 0.5
+    g.add(pad)
+    scene.add(g)
+    return g
+  }
+  const acceleratorPedal = pedal(0.44, 0x1f2937)
+  const brakePedalMesh = pedal(0.26, 0x3f1f22)
+
+  // Footwell glow.
+  const footwell = new THREE.PointLight(0xfbbf24, 0, 1.6)
+  footwell.position.set(0.34, 0.4, 0.7)
+  scene.add(footwell)
+
   // ---- Wipers -------------------------------------------------------------
   const wiperArms = [-0.35, 0.42].map((x) => {
     const g = new THREE.Group()
@@ -370,13 +392,15 @@ export function createInteriorScene(
     ctx.beginPath()
     ctx.arc(rx, cy, r, Math.PI * 0.78, Math.PI * 2.22)
     ctx.stroke()
-    ctx.strokeStyle = state.engineRpm > 5500 ? '#f87171' : '#5eead4'
+    const rpmArc = Math.max(state.engineRpm, state.accelerator * 62)
+    ctx.strokeStyle = rpmArc > 5500 ? '#f87171' : '#5eead4'
     ctx.beginPath()
-    ctx.arc(rx, cy, r, Math.PI * 0.78, Math.PI * 0.78 + Math.PI * 1.44 * Math.min(state.engineRpm / 7000, 1))
+    ctx.arc(rx, cy, r, Math.PI * 0.78, Math.PI * 0.78 + Math.PI * 1.44 * Math.min(rpmArc / 7000, 1))
     ctx.stroke()
     ctx.fillStyle = '#e6edf6'
     ctx.font = '700 60px ui-sans-serif, system-ui'
-    ctx.fillText(String(Math.round(state.engineRpm)), rx, cy + 12)
+    const rpm = Math.max(state.engineRpm, state.accelerator * 62)
+    ctx.fillText(String(Math.round(rpm)), rx, cy + 12)
     ctx.fillStyle = '#7d8ea6'
     ctx.font = '500 22px ui-monospace, monospace'
     ctx.fillText('rpm', rx, cy + 48)
@@ -389,6 +413,11 @@ export function createInteriorScene(
     ctx.font = '500 18px ui-monospace, monospace'
     ctx.fillText(`${state.batteryLevel}%  ·  ${Math.round((state.batteryLevel / 100) * 420)} km`, w / 2, h * 0.62)
     ctx.fillText(`OUT ${state.outsideTemp}°C   CABIN ${readout.cabinTemp.toFixed(1)}°C`, w / 2, h * 0.72)
+    ctx.fillText(
+      `ODO ${Math.round(state.odometer).toLocaleString('en-GB')} km · CHG LIMIT ${state.chargeLimit}%`,
+      w / 2,
+      h * 0.98,
+    )
     const STOPPING = ['OTHER', 'CREEP', 'ROLL', 'HOLD']
     const REGEN = ['UNKNOWN', 'OFF', 'PARTIAL', 'FULL']
     ctx.fillText(
@@ -399,7 +428,9 @@ export function createInteriorScene(
     ctx.fillText(
       state.leadDistance > 500
         ? `LEAD ${(state.leadDistance / 1000).toFixed(0)} m · GAP ${(state.timeGap / 1000).toFixed(1)} s`
-        : `COOLANT ${Math.round(state.coolantTemp)}°C · LIMIT ${state.chargeLimit}%`,
+        : state.chargeState === 1
+          ? `${(state.chargeRate / 1000).toFixed(0)} W · ${state.chargeCurrentLimit} A · ${Math.round(state.chargeTimeRemaining / 60)} min left`
+          : `COOLANT ${Math.round(state.coolantTemp)}°C · BATT ${Math.round(state.batteryTemp)}°C`,
       w / 2,
       h * 0.82,
     )
@@ -429,6 +460,17 @@ export function createInteriorScene(
       [state.hvacAc && state.hvacPower, state.hvacMaxAc ? 'MAX A/C' : 'A/C', '#5eead4'],
       [state.regenState > 1, 'REGEN', '#5eead4'],
       [state.chargeState === 1, 'CHG', '#5eead4'],
+      [!state.seatAirbag, 'AIRBAG OFF', '#fbbf24'],
+      [!state.escEnabled, 'ESC OFF', '#fbbf24'],
+      [state.handsOnEnabled && state.handsOnState === 2 && flash, 'HANDS OFF', '#f87171'],
+      [state.drowsinessEnabled && state.drowsinessState >= 8, 'REST', '#fbbf24'],
+      [state.lowSpeedCollision === 2 && flash, 'LSC', '#fbbf24'],
+      [state.crossTrafficEnabled && state.crossTrafficWarning > 1 && flash, 'CTM', '#fbbf24'],
+      [state.impact !== 0, 'IMPACT', '#f87171'],
+      [state.batteryTemp > 45, 'BATT TEMP', '#f87171'],
+      [state.wheelLocked, 'LOCKED', '#fbbf24'],
+      [state.idleAutoStop && readout.effectiveSpeed < 0.5 && powered, 'AUTO-STOP', '#5eead4'],
+      [state.autonomyLevel >= 4, `L${state.autonomyLevel - 1}`, '#5eead4'],
     ]
     let tx = 34
     let ty = 42
@@ -580,11 +622,16 @@ export function createInteriorScene(
       laneDashes[i].position.z = ((base + scroll + 280) % 280) - 6
     }
 
+    // Seat position moves the eye point, which is the whole reason it exists.
+    const eyeZ = -0.5 - state.seatForeAft / 300
+    const eyeY = 1.22 + state.seatHeight / 400
+
     // Steering wheel, with the road banking slightly.
-    wheel.rotation.z = THREE.MathUtils.damp(wheel.rotation.z, (-state.steeringAngle * Math.PI) / 180 * 2.2, 8, delta)
+    wheel.rotation.z = THREE.MathUtils.damp(wheel.rotation.z, state.wheelLocked ? 0 : ((-state.steeringAngle * Math.PI) / 180) * 2.2, 8, delta)
     world.rotation.z = THREE.MathUtils.damp(world.rotation.z, (state.steeringAngle / 35) * 0.05, 4, delta)
     camera.position.x = 0.34 + Math.sin(elapsed * 8) * 0.0025 * Math.min(speed / 12, 1)
-    camera.position.y = 1.22 + Math.sin(elapsed * 11) * 0.002 * Math.min(speed / 12, 1)
+    camera.position.y = eyeY + Math.sin(elapsed * 11) * 0.002 * Math.min(speed / 12, 1)
+    camera.position.z = THREE.MathUtils.damp(camera.position.z, eyeZ, 5, delta)
     camera.lookAt(0.24 - (state.steeringAngle / 35) * 0.6, 1.0, 1.6)
 
     // SWC pads glow when cruise or lane keep is engaged.
@@ -638,6 +685,23 @@ export function createInteriorScene(
       airflow.setMatrixAt(i, dummy.matrix)
     }
     airflow.instanceMatrix.needsUpdate = true
+
+    // Pedals travel and the accelerator drives engine speed.
+    acceleratorPedal.rotation.x = THREE.MathUtils.damp(acceleratorPedal.rotation.x, (state.accelerator / 100) * 0.45, 10, delta)
+    brakePedalMesh.rotation.x = THREE.MathUtils.damp(brakePedalMesh.rotation.x, (state.brakePedal / 100) * 0.45, 10, delta)
+    footwell.intensity = THREE.MathUtils.damp(footwell.intensity, state.footwellLights === 1 ? 3 : 0, 5, delta)
+
+    // Steering column reach and height, and the easy-access retraction.
+    const retracted = state.easyAccess && !powered
+    wheel.position.z = THREE.MathUtils.damp(wheel.position.z, 0.3 - state.columnDepth / 500 + (retracted ? 0.16 : 0), 6, delta)
+    wheel.position.y = THREE.MathUtils.damp(wheel.position.y, 0.86 + state.columnHeight / 600 + (retracted ? 0.1 : 0), 6, delta)
+
+    // Rim lighting.
+    const rimLight = rim.material as THREE.MeshStandardMaterial
+    if (state.wheelLights === 1) {
+      rimLight.emissive.setHex(0x22d3ee)
+      rimLight.emissiveIntensity = 0.5 + Math.sin(elapsed * 3) * 0.15
+    }
 
     // Wipers.
     const wiperRate = state.wipers >= 8 ? 5.5 : state.wipers >= 3 ? 1.7 : 0

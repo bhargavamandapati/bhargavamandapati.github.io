@@ -78,6 +78,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: `${site.url}/learn/cockpit-displays/`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    },
+    {
       url: `${site.url}/learn/vehicle-simulator/`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,

@@ -107,6 +107,53 @@ export type SimState = {
   hvacAuto: boolean // HVAC_AUTO_ON
   hvacMaxAc: boolean // HVAC_MAX_AC_ON
   wheelHeat: number // HVAC_STEERING_WHEEL_HEAT
+
+  // Pedals and steering column
+  accelerator: number // % — ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE
+  brakePedal: number // % — BRAKE_PEDAL_COMPRESSION_PERCENTAGE
+  columnDepth: number // STEERING_WHEEL_DEPTH_POS
+  columnHeight: number // STEERING_WHEEL_HEIGHT_POS
+  wheelLocked: boolean // STEERING_WHEEL_LOCKED
+  easyAccess: boolean // STEERING_WHEEL_EASY_ACCESS_ENABLED
+  wheelLights: number // VehicleLightSwitch — STEERING_WHEEL_LIGHTS_SWITCH
+  rearSteering: number // PERF_REAR_STEERING_ANGLE
+
+  // More lighting
+  frontFog: number // VehicleLightSwitch — FRONT_FOG_LIGHTS_SWITCH
+  rearFog: number // VehicleLightSwitch — REAR_FOG_LIGHTS_SWITCH
+  footwellLights: number // VehicleLightSwitch — SEAT_FOOTWELL_LIGHTS_SWITCH
+
+  // Seat adjustment
+  seatForeAft: number // SEAT_FORE_AFT_POS
+  seatHeight: number // SEAT_HEIGHT_POS
+  headrestHeight: number // SEAT_HEADREST_HEIGHT_POS_V2
+  seatAirbag: boolean // SEAT_AIRBAG_ENABLED
+  seatBolster: number // SEAT_CUSHION_SIDE_SUPPORT_POS
+
+  // More assistance
+  escEnabled: boolean // ELECTRONIC_STABILITY_CONTROL_ENABLED
+  autonomyLevel: number // VehicleAutonomousState
+  handsOnEnabled: boolean // HANDS_ON_DETECTION_ENABLED
+  handsOnState: number // HandsOnDetectionDriverState
+  drowsinessEnabled: boolean // DRIVER_DROWSINESS_ATTENTION_SYSTEM_ENABLED
+  drowsinessState: number // DriverDrowsinessAttentionState
+  lowSpeedCollision: number // LowSpeedCollisionWarningState
+  crossTrafficEnabled: boolean // CROSS_TRAFFIC_MONITORING_ENABLED
+  crossTrafficWarning: number // CrossTrafficMonitoringWarningState
+  parkingDistance: number // mm — ULTRASONICS_SENSOR_MEASURED_DISTANCE
+
+  // Energy detail
+  chargeTimeRemaining: number // s — EV_CHARGE_TIME_REMAINING
+  chargeRate: number // mW — EV_BATTERY_INSTANTANEOUS_CHARGE_RATE
+  batteryTemp: number // °C — EV_BATTERY_AVERAGE_TEMPERATURE
+  chargeCurrentLimit: number // A — EV_CHARGE_CURRENT_DRAW_LIMIT
+
+  // Misc
+  odometer: number // km — PERF_ODOMETER
+  idleAutoStop: boolean // ENGINE_IDLE_AUTO_STOP_ENABLED
+  impact: number // ImpactSensorLocation — IMPACT_DETECTED
+  windowLock: boolean // WINDOW_LOCK
+  childLock: boolean // DOOR_CHILD_LOCK_ENABLED
 }
 
 export const initialState: SimState = {
@@ -193,6 +240,47 @@ export const initialState: SimState = {
   hvacAuto: false,
   hvacMaxAc: false,
   wheelHeat: 0,
+
+  accelerator: 0,
+  brakePedal: 0,
+  columnDepth: 0,
+  columnHeight: 0,
+  wheelLocked: false,
+  easyAccess: false,
+  wheelLights: 0,
+  rearSteering: 0,
+
+  frontFog: 0,
+  rearFog: 0,
+  footwellLights: 0,
+
+  seatForeAft: 0,
+  seatHeight: 0,
+  headrestHeight: 0,
+  seatAirbag: true,
+  seatBolster: 0,
+
+  escEnabled: true,
+  autonomyLevel: 2, // LEVEL_0
+  handsOnEnabled: false,
+  handsOnState: 1, // HANDS_ON
+  drowsinessEnabled: false,
+  drowsinessState: 1, // KSS_RATING_1_EXTREMELY_ALERT
+  lowSpeedCollision: 1, // NO_WARNING
+  crossTrafficEnabled: false,
+  crossTrafficWarning: 1, // NO_WARNING
+  parkingDistance: 0,
+
+  chargeTimeRemaining: 0,
+  chargeRate: 0,
+  batteryTemp: 22,
+  chargeCurrentLimit: 32,
+
+  odometer: 18420,
+  idleAutoStop: true,
+  impact: 0,
+  windowLock: false,
+  childLock: false,
 }
 
 export type ControlKind = 'toggle' | 'range' | 'enum'
@@ -1035,6 +1123,439 @@ export const controls: Control[] = [
     max: 3,
     step: 1,
     requires: 'hvacPower',
+  },
+
+  // ---- Pedals and steering column -----------------------------------------
+  {
+    key: 'accelerator',
+    property: 'ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE',
+    label: 'Accelerator pedal',
+    kind: 'range',
+    group: 'Pedals & column',
+    affects: 'Presses the pedal and raises engine speed. It reports the pedal, it does not drive the car.',
+    reported: true,
+    min: 0,
+    max: 100,
+    step: 1,
+    unit: '%',
+    note: 'A 0–100 float, not 0–1.',
+  },
+  {
+    key: 'brakePedal',
+    property: 'BRAKE_PEDAL_COMPRESSION_PERCENTAGE',
+    label: 'Brake pedal',
+    kind: 'range',
+    group: 'Pedals & column',
+    affects: 'Presses the pedal, lights the brake lamps and slows the car.',
+    reported: true,
+    min: 0,
+    max: 100,
+    step: 1,
+    unit: '%',
+  },
+  {
+    key: 'columnDepth',
+    property: 'STEERING_WHEEL_DEPTH_POS',
+    label: 'Column reach',
+    kind: 'range',
+    group: 'Pedals & column',
+    affects: 'Moves the wheel towards you and away.',
+    min: -50,
+    max: 50,
+    step: 5,
+  },
+  {
+    key: 'columnHeight',
+    property: 'STEERING_WHEEL_HEIGHT_POS',
+    label: 'Column height',
+    kind: 'range',
+    group: 'Pedals & column',
+    affects: 'Raises and lowers the wheel.',
+    min: -50,
+    max: 50,
+    step: 5,
+  },
+  {
+    key: 'easyAccess',
+    property: 'STEERING_WHEEL_EASY_ACCESS_ENABLED',
+    label: 'Easy access',
+    kind: 'toggle',
+    group: 'Pedals & column',
+    affects: 'Retracts the wheel when the ignition is off, to let the driver out.',
+  },
+  {
+    key: 'wheelLocked',
+    property: 'STEERING_WHEEL_LOCKED',
+    label: 'Steering locked',
+    kind: 'toggle',
+    group: 'Pedals & column',
+    affects: 'The wheel stops responding to the steering angle.',
+  },
+  {
+    key: 'wheelLights',
+    property: 'STEERING_WHEEL_LIGHTS_SWITCH',
+    label: 'Wheel rim lighting',
+    kind: 'enum',
+    group: 'Pedals & column',
+    affects: 'Lights the rim — used on some vehicles to signal hand-over.',
+    options: [
+      { value: 0, label: 'OFF' },
+      { value: 1, label: 'ON' },
+      { value: 0x100, label: 'AUTOMATIC' },
+    ],
+  },
+  {
+    key: 'rearSteering',
+    property: 'PERF_REAR_STEERING_ANGLE',
+    label: 'Rear steering angle',
+    kind: 'range',
+    group: 'Pedals & column',
+    affects: 'Steers the rear wheels — visible from above.',
+    reported: true,
+    min: -12,
+    max: 12,
+    step: 1,
+    unit: '°',
+  },
+
+  // ---- More lighting -------------------------------------------------------
+  {
+    key: 'frontFog',
+    property: 'FRONT_FOG_LIGHTS_SWITCH',
+    label: 'Front fog lights',
+    kind: 'enum',
+    group: 'Lights',
+    affects: 'A wide, low pool at the front.',
+    note: 'Newer builds split the old FOG_LIGHTS into front and rear.',
+    options: [
+      { value: 0, label: 'OFF' },
+      { value: 1, label: 'ON' },
+      { value: 0x100, label: 'AUTOMATIC' },
+    ],
+  },
+  {
+    key: 'rearFog',
+    property: 'REAR_FOG_LIGHTS_SWITCH',
+    label: 'Rear fog lights',
+    kind: 'enum',
+    group: 'Lights',
+    affects: 'A bright red lamp at the back.',
+    options: [
+      { value: 0, label: 'OFF' },
+      { value: 1, label: 'ON' },
+      { value: 0x100, label: 'AUTOMATIC' },
+    ],
+  },
+  {
+    key: 'footwellLights',
+    property: 'SEAT_FOOTWELL_LIGHTS_SWITCH',
+    label: 'Footwell lights',
+    kind: 'enum',
+    group: 'Lights',
+    affects: 'Glow in the driver and passenger footwells.',
+    options: [
+      { value: 0, label: 'OFF' },
+      { value: 1, label: 'ON' },
+      { value: 0x100, label: 'AUTOMATIC' },
+    ],
+  },
+
+  // ---- Seat adjustment -----------------------------------------------------
+  {
+    key: 'seatForeAft',
+    property: 'SEAT_FORE_AFT_POS',
+    label: 'Seat fore/aft',
+    kind: 'range',
+    group: 'Occupants',
+    affects: 'Slides the driver seat, which moves the eye point in the cabin view.',
+    min: -50,
+    max: 50,
+    step: 5,
+  },
+  {
+    key: 'seatHeight',
+    property: 'SEAT_HEIGHT_POS',
+    label: 'Seat height',
+    kind: 'range',
+    group: 'Occupants',
+    affects: 'Raises the driver, changing how much road you see over the dash.',
+    min: -50,
+    max: 50,
+    step: 5,
+  },
+  {
+    key: 'headrestHeight',
+    property: 'SEAT_HEADREST_HEIGHT_POS_V2',
+    label: 'Headrest height',
+    kind: 'range',
+    group: 'Occupants',
+    affects: 'Raises the headrest.',
+    min: 0,
+    max: 100,
+    step: 10,
+    note: 'The V2 property is per seat; the original was GLOBAL, which was the bug it fixed.',
+  },
+  {
+    key: 'seatBolster',
+    property: 'SEAT_CUSHION_SIDE_SUPPORT_POS',
+    label: 'Side bolsters',
+    kind: 'range',
+    group: 'Occupants',
+    affects: 'Tightens the cushion bolsters around the occupant.',
+    min: -30,
+    max: 30,
+    step: 5,
+  },
+  {
+    key: 'seatAirbag',
+    property: 'SEAT_AIRBAG_ENABLED',
+    label: 'Passenger airbag',
+    kind: 'toggle',
+    group: 'Occupants',
+    affects: 'Switching it off lights the passenger airbag telltale — a legal requirement.',
+  },
+
+  // ---- More assistance -----------------------------------------------------
+  {
+    key: 'autonomyLevel',
+    property: 'VEHICLE_DRIVING_AUTOMATION_CURRENT_LEVEL',
+    label: 'Automation level',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'Shown on the cluster. Levels above 2 change who is responsible.',
+    reported: true,
+    options: [
+      { value: 0, label: 'UNKNOWN' },
+      { value: 1, label: 'LEVEL_0' },
+      { value: 2, label: 'LEVEL_1' },
+      { value: 3, label: 'LEVEL_2' },
+      { value: 4, label: 'LEVEL_3' },
+      { value: 5, label: 'LEVEL_4' },
+      { value: 6, label: 'LEVEL_5' },
+    ],
+  },
+  {
+    key: 'escEnabled',
+    property: 'ELECTRONIC_STABILITY_CONTROL_ENABLED',
+    label: 'Stability control',
+    kind: 'toggle',
+    group: 'Driver assistance',
+    affects: 'Off lights a permanent telltale — the driver must know it is disabled.',
+  },
+  {
+    key: 'handsOnEnabled',
+    property: 'HANDS_ON_DETECTION_ENABLED',
+    label: 'Hands-on detection',
+    kind: 'toggle',
+    group: 'Driver assistance',
+    affects: 'Enables the wheel sensor. Its state means nothing until this is on.',
+  },
+  {
+    key: 'handsOnState',
+    property: 'HANDS_ON_DETECTION_DRIVER_STATE',
+    label: 'Hands on wheel',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'HANDS_OFF flashes a warning to retake the wheel.',
+    reported: true,
+    requires: 'handsOnEnabled',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'HANDS_ON' },
+      { value: 2, label: 'HANDS_OFF' },
+    ],
+  },
+  {
+    key: 'drowsinessEnabled',
+    property: 'DRIVER_DROWSINESS_ATTENTION_SYSTEM_ENABLED',
+    label: 'Drowsiness monitoring',
+    kind: 'toggle',
+    group: 'Driver assistance',
+    affects: 'Enables driver attention monitoring.',
+  },
+  {
+    key: 'drowsinessState',
+    property: 'DRIVER_DROWSINESS_ATTENTION_STATE',
+    label: 'Driver alertness',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'A drowsy rating lights the take-a-break warning.',
+    reported: true,
+    requires: 'drowsinessEnabled',
+    note: 'The values are Karolinska Sleepiness Scale ratings, 1 alert to 9 very sleepy.',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'KSS_RATING_1_EXTREMELY_ALERT' },
+      { value: 5, label: 'KSS_RATING_5_NEITHER_ALERT_NOR_SLEEPY' },
+      { value: 8, label: 'KSS_RATING_8_SLEEPY_WITH_EFFORT' },
+      { value: 9, label: 'KSS_RATING_9_VERY_SLEEPY' },
+    ],
+  },
+  {
+    key: 'lowSpeedCollision',
+    property: 'LOW_SPEED_COLLISION_WARNING_STATE',
+    label: 'Low-speed collision',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'Warns while manoeuvring — separate from the high-speed system.',
+    reported: true,
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'NO_WARNING' },
+      { value: 2, label: 'WARNING' },
+    ],
+  },
+  {
+    key: 'crossTrafficEnabled',
+    property: 'CROSS_TRAFFIC_MONITORING_ENABLED',
+    label: 'Cross traffic monitoring',
+    kind: 'toggle',
+    group: 'Driver assistance',
+    affects: 'Watches for traffic crossing behind while reversing.',
+  },
+  {
+    key: 'crossTrafficWarning',
+    property: 'CROSS_TRAFFIC_MONITORING_WARNING_STATE',
+    label: 'Cross traffic warning',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'Flashes an arrow on the side traffic is coming from.',
+    reported: true,
+    requires: 'crossTrafficEnabled',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'NO_WARNING' },
+      { value: 2, label: 'WARNING_FRONT_LEFT' },
+      { value: 3, label: 'WARNING_FRONT_RIGHT' },
+      { value: 6, label: 'WARNING_REAR_LEFT' },
+      { value: 7, label: 'WARNING_REAR_RIGHT' },
+    ],
+  },
+  {
+    key: 'parkingDistance',
+    property: 'ULTRASONICS_SENSOR_MEASURED_DISTANCE',
+    label: 'Parking sensor distance',
+    kind: 'range',
+    group: 'Driver assistance',
+    affects: 'Draws proximity arcs around the car, closer and redder as it shrinks.',
+    reported: true,
+    min: 0,
+    max: 2500,
+    step: 50,
+    unit: 'mm',
+    format: (mm) => (mm === 0 ? 'nothing detected' : `${(mm / 1000).toFixed(2)} m`),
+    note: 'A VENDOR-area vector property — one sensor per element.',
+  },
+
+  // ---- Energy detail -------------------------------------------------------
+  {
+    key: 'chargeTimeRemaining',
+    property: 'EV_CHARGE_TIME_REMAINING',
+    label: 'Charge time remaining',
+    kind: 'range',
+    group: 'Electric',
+    affects: 'Counts down on the cluster while charging.',
+    reported: true,
+    min: 0,
+    max: 7200,
+    step: 60,
+    unit: 's',
+    format: (s) => `${Math.round(s / 60)} min`,
+  },
+  {
+    key: 'chargeRate',
+    property: 'EV_BATTERY_INSTANTANEOUS_CHARGE_RATE',
+    label: 'Charge rate',
+    kind: 'range',
+    group: 'Electric',
+    affects: 'Speeds up the pulse travelling along the cable.',
+    reported: true,
+    min: 0,
+    max: 150000,
+    step: 5000,
+    unit: 'mW',
+    format: (mw) => `${(mw / 1000).toFixed(0)} W`,
+  },
+  {
+    key: 'batteryTemp',
+    property: 'EV_BATTERY_AVERAGE_TEMPERATURE',
+    label: 'Battery temperature',
+    kind: 'range',
+    group: 'Electric',
+    affects: 'Above 45 °C the cluster warns.',
+    reported: true,
+    min: -20,
+    max: 60,
+    step: 1,
+    unit: '°C',
+  },
+  {
+    key: 'chargeCurrentLimit',
+    property: 'EV_CHARGE_CURRENT_DRAW_LIMIT',
+    label: 'Charge current limit',
+    kind: 'range',
+    group: 'Electric',
+    affects: 'Caps the draw — shown next to the charge rate.',
+    min: 6,
+    max: 64,
+    step: 1,
+    unit: 'A',
+  },
+
+  // ---- Misc ----------------------------------------------------------------
+  {
+    key: 'odometer',
+    property: 'PERF_ODOMETER',
+    label: 'Odometer',
+    kind: 'range',
+    group: 'Engine & chassis',
+    affects: 'Reads out on the cluster.',
+    reported: true,
+    min: 0,
+    max: 250000,
+    step: 500,
+    unit: 'km',
+  },
+  {
+    key: 'idleAutoStop',
+    property: 'ENGINE_IDLE_AUTO_STOP_ENABLED',
+    label: 'Idle auto stop',
+    kind: 'toggle',
+    group: 'Engine & chassis',
+    affects: 'Shows the auto-stop indicator when stationary.',
+  },
+  {
+    key: 'impact',
+    property: 'IMPACT_DETECTED',
+    label: 'Impact detected',
+    kind: 'enum',
+    group: 'Engine & chassis',
+    affects: 'Flashes the struck side of the car and lights a cluster warning.',
+    reported: true,
+    note: 'Bit flags — a real impact can register on more than one sensor.',
+    options: [
+      { value: 0, label: 'none' },
+      { value: 0x1, label: 'FRONT' },
+      { value: 0x2, label: 'REAR' },
+      { value: 0x4, label: 'LEFT' },
+      { value: 0x8, label: 'RIGHT' },
+    ],
+  },
+  {
+    key: 'windowLock',
+    property: 'WINDOW_LOCK',
+    label: 'Window lock',
+    kind: 'toggle',
+    group: 'Body',
+    affects: 'Freezes the rear windows — a lock marker appears.',
+  },
+  {
+    key: 'childLock',
+    property: 'DOOR_CHILD_LOCK_ENABLED',
+    label: 'Child lock',
+    kind: 'toggle',
+    group: 'Body',
+    affects: 'Rear doors cannot be opened from inside.',
   },
 ]
 

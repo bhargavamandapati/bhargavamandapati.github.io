@@ -278,6 +278,13 @@ export function createExteriorScene(
       new THREE.MeshStandardMaterial({ color: 0xd8c3a5, roughness: 0.8 }),
     )
     g.add(head)
+    const headrest = new THREE.Mesh(
+      new THREE.BoxGeometry(0.26, 0.06, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.8 }),
+    )
+    headrest.position.set(0, 0.02, -0.16)
+    headrest.name = 'headrest'
+    g.add(headrest)
     const shoulders = box(0.42, 0.1, 0.24, 0x334155)
     shoulders.position.z = -0.22
     g.add(shoulders)
@@ -365,6 +372,77 @@ export function createExteriorScene(
   chargePulse.visible = false
   car.add(chargePulse)
 
+  // Parking sensor arcs.
+  const parkArcs = [1, 2, 3].map((i) => {
+    const m = new THREE.Mesh(
+      new THREE.RingGeometry(2.4 + i * 0.36, 2.5 + i * 0.36, 32, 1, Math.PI * 0.72, Math.PI * 0.56),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0, side: THREE.DoubleSide }),
+    )
+    m.rotation.x = -Math.PI / 2
+    m.position.y = 0.06
+    scene.add(m)
+    return m
+  })
+
+  // Impact flashes on the struck side.
+  const impactPanels = {
+    front: new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0 })),
+    rear: new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0 })),
+    left: new THREE.Mesh(new THREE.PlaneGeometry(0.5, 4.4), new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0 })),
+    right: new THREE.Mesh(new THREE.PlaneGeometry(0.5, 4.4), new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0 })),
+  }
+  impactPanels.front.rotation.x = -Math.PI / 2
+  impactPanels.front.position.set(0, 1.02, 2.4)
+  impactPanels.rear.rotation.x = -Math.PI / 2
+  impactPanels.rear.position.set(0, 1.02, -2.4)
+  impactPanels.left.rotation.x = -Math.PI / 2
+  impactPanels.left.position.set(1.35, 1.02, 0)
+  impactPanels.right.rotation.x = -Math.PI / 2
+  impactPanels.right.position.set(-1.35, 1.02, 0)
+  Object.values(impactPanels).forEach((m) => car.add(m))
+
+  // Footwell glow, and window/child lock markers.
+  const footwells = [0.52, -0.52].map((x) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.44, 0.4),
+      new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0 }),
+    )
+    m.rotation.x = -Math.PI / 2
+    m.position.set(x, 0.96, 0.85)
+    car.add(m)
+    return m
+  })
+  const rearLockMarks = [
+    [0.99, -0.6],
+    [-0.99, -0.6],
+  ].map(([x, z]) => {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.03, 0.09),
+      new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0 }),
+    )
+    m.position.set(x, 1.02, z)
+    car.add(m)
+    return m
+  })
+
+  // Cross-traffic arrows at the four corners.
+  const crossArrows: Record<number, THREE.Mesh> = {}
+  for (const [code, x, z] of [
+    [2, 1.5, 2.0],
+    [3, -1.5, 2.0],
+    [6, 1.5, -2.0],
+    [7, -1.5, -2.0],
+  ] as const) {
+    const m = new THREE.Mesh(
+      new THREE.ConeGeometry(0.2, 0.5, 3),
+      new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0 }),
+    )
+    m.rotation.x = Math.PI / 2
+    m.position.set(x, 0.4, z)
+    scene.add(m)
+    crossArrows[code] = m
+  }
+
   // Lead vehicle for adaptive cruise control.
   const lead = new THREE.Group()
   const leadBody = box(1.8, 0.6, 4.0, 0x3f4b5c)
@@ -392,7 +470,8 @@ export function createExteriorScene(
     const moving = state.gear === 0x0008 || state.gear === 0x0002
     const braked = state.aeb === 2
     const cruising = state.cruiseEnabled ? state.cruiseTarget : state.speed
-    const speed = powered && moving && !state.parkingBrake && !braked ? cruising : 0
+    const pedalScale = 1 - state.brakePedal / 100
+    const speed = powered && moving && !state.parkingBrake && !braked ? cruising * pedalScale : 0
     const forward = state.gear === 0x0002 ? -1 : 1
 
     // The car is fixed and the world moves past it, so the road travels
@@ -419,6 +498,8 @@ export function createExteriorScene(
     flap.rotation.y = THREE.MathUtils.damp(flap.rotation.y, state.chargePortOpen ? 1.5 : 0, 6, delta)
 
     // Lights.
+    // The old FOG_LIGHTS and the newer FRONT_FOG_LIGHTS both light the front pair.
+    const fogLampsOn = powered && (state.fogLights || state.frontFog === 1)
     const headOn = powered && state.headlights
     headlamps.forEach((l) => (l.material as THREE.MeshBasicMaterial).color.setHex(headOn ? 0xfff6dd : 0x4a4f57))
     beamMat.opacity = THREE.MathUtils.damp(beamMat.opacity, headOn ? (state.highBeam ? 0.3 : 0.18) : 0, 6, delta)
@@ -427,8 +508,13 @@ export function createExteriorScene(
       b.position.z = (state.highBeam ? 7 : 5.2)
       b.position.x = (i === 0 ? -0.9 : 0.9)
     })
-    const braking = powered && state.parkingBrake
-    taillamps.forEach((l) => (l.material as THREE.MeshBasicMaterial).color.setHex(braking ? 0xff2d20 : headOn ? 0x8f1a14 : 0x3a1f1e))
+    const braking = powered && (state.parkingBrake || state.brakePedal > 3)
+    const rearFogOn = powered && state.rearFog === 1
+    taillamps.forEach((l) =>
+      (l.material as THREE.MeshBasicMaterial).color.setHex(
+        braking ? 0xff2d20 : rearFogOn ? 0xd92d20 : headOn ? 0x8f1a14 : 0x3a1f1e,
+      ),
+    )
     reverse.forEach((l) => (l.material as THREE.MeshBasicMaterial).color.setHex(powered && state.gear === 0x0002 ? 0xf1f5f9 : 0x4a4f57))
 
     const blink = Math.sin(elapsed * 8) > 0
@@ -464,6 +550,16 @@ export function createExteriorScene(
 
     // Occupants and their seats.
     passengerFigure.visible = state.seatOccupancy === 2
+    driverFigure.position.z = THREE.MathUtils.damp(driverFigure.position.z, 0.2 - state.seatForeAft / 200, 5, delta)
+    for (const figure of [driverFigure, passengerFigure]) {
+      const headrest = figure.getObjectByName('headrest')
+      if (headrest) {
+        headrest.position.z = THREE.MathUtils.damp(headrest.position.z, -0.16 - state.headrestHeight / 600, 5, delta)
+      }
+    }
+    driverFigure.position.y = THREE.MathUtils.damp(driverFigure.position.y, 1.0 + state.seatHeight / 400, 5, delta)
+    seatPads[0].position.z = THREE.MathUtils.damp(seatPads[0].position.z, 0.05 - state.seatForeAft / 200, 5, delta)
+    seatPads[0].scale.x = THREE.MathUtils.damp(seatPads[0].scale.x, 1 - state.seatBolster / 150, 5, delta)
     driverFigure.rotation.x = THREE.MathUtils.damp(driverFigure.rotation.x, (state.backrestAngle / 30) * 0.3, 5, delta)
     seatPads.forEach((pad, i) => {
       const mat = pad.material as THREE.MeshBasicMaterial
@@ -504,10 +600,53 @@ export function createExteriorScene(
       chargePulse.position.set(2.3 - t * 1.4, 0.3, -1.6)
     }
 
-    // Lead vehicle for adaptive cruise control.
-    const leadMetres = state.leadDistance / 1000
+      const leadMetres = state.leadDistance / 1000
     lead.visible = leadMetres > 0.5
     if (lead.visible) lead.position.set(0, 0, 2.2 + Math.min(leadMetres, 9))
+
+    // Rear-wheel steering.
+    for (const w of wheels) {
+      if (!w.steers) w.group.rotation.y = (-state.rearSteering * Math.PI) / 180 / 1.7
+    }
+
+    // Parking sensor arcs — closer means fewer, redder rings.
+    const parkM = state.parkingDistance
+    parkArcs.forEach((arc, i) => {
+      const mat = arc.material as THREE.MeshBasicMaterial
+      const active = parkM > 0 && parkM < 2500 - i * 700
+      mat.color.setHex(parkM > 0 && parkM < 700 ? 0xef4444 : parkM < 1500 ? 0xfbbf24 : 0x22d3ee)
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, active ? 0.55 : 0, 8, delta)
+      // Arcs sit at whichever end the car is heading.
+      arc.rotation.z = state.gear === 0x0002 ? 0 : Math.PI
+    })
+
+    // Impact flashes.
+    const hit = Math.sin(elapsed * 12) > 0 ? 0.7 : 0.15
+    const setImpact = (mesh: THREE.Mesh, on: boolean) => {
+      const mat = mesh.material as THREE.MeshBasicMaterial
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, on ? hit : 0, 10, delta)
+    }
+    setImpact(impactPanels.front, (state.impact & 0x1) !== 0)
+    setImpact(impactPanels.rear, (state.impact & 0x2) !== 0)
+    setImpact(impactPanels.left, (state.impact & 0x4) !== 0)
+    setImpact(impactPanels.right, (state.impact & 0x8) !== 0)
+
+    // Footwell lights and the rear locks.
+    footwells.forEach((f) => {
+      const mat = f.material as THREE.MeshBasicMaterial
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, state.footwellLights === 1 ? 0.4 : 0, 5, delta)
+    })
+    rearLockMarks.forEach((m) => {
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, state.windowLock || state.childLock ? 0.85 : 0, 6, delta)
+    })
+
+    // Cross traffic.
+    for (const [code, arrow] of Object.entries(crossArrows)) {
+      const mat = arrow.material as THREE.MeshBasicMaterial
+      const on = state.crossTrafficEnabled && state.crossTrafficWarning === Number(code) && Math.sin(elapsed * 9) > 0
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, on ? 0.9 : 0, 10, delta)
+    }
 
     // Lane departure warning tints the markings on the side you drift towards.
     const warnLeft = state.laneDeparture === 2
