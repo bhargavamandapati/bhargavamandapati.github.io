@@ -20,9 +20,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -66,10 +66,14 @@ jobs:
           NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.site_url }}
         run: npm run build
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: ./out
+          # v4 began excluding dotfiles from the artifact. public/.nojekyll is
+          # one, and losing it risks Pages running Jekyll over the output,
+          # which would ignore every _next/ directory and take the site down.
+          include-hidden-files: true
 
   deploy:
     needs: build
@@ -79,4 +83,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
