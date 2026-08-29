@@ -39,13 +39,14 @@ export default function VehicleSimulatorPage() {
       <PageHeader
         eyebrow="Learn AAOS · Interactive"
         title="Vehicle property simulator"
-        description="Reading that HVAC_FAN_DIRECTION is a bit field tells you less than watching the airflow change. Move a control and the car responds the way a real one would — and the log shows the property write that did it."
+        description="Reading that HVAC_FAN_DIRECTION is a bit field tells you less than watching the airflow split between the vents. Two views — the driver's seat and a plan view of the car — respond to the same property writes, and the log shows what each one did."
       >
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 font-mono text-xs text-muted">
           <span className="inline-flex items-center gap-2">
             <Gauge aria-hidden className="size-4 text-accent" />
             {propertyCount} properties wired · {controlGroups.length} groups
           </span>
+          <span>inside and outside views</span>
           <span>every control links to its reference page</span>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
@@ -67,6 +68,11 @@ export default function VehicleSimulatorPage() {
             Things worth trying
           </h2>
           <ul className="mt-4 space-y-3 text-[0.95rem] leading-relaxed text-muted">
+            <li>
+              <strong className="font-medium text-fg">Open the driver door.</strong> The plan view
+              shows it swing out on the left. Nothing about it is visible from the driver&rsquo;s
+              seat — which is the reason a cluster carries a door-open telltale at all.
+            </li>
             <li>
               <strong className="font-medium text-fg">Turn the fan up with HVAC power off.</strong>{' '}
               The control moves, the write is logged, and nothing happens — which is exactly what a
@@ -98,11 +104,13 @@ export default function VehicleSimulatorPage() {
             What this is and is not
           </h2>
           <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">
-            It is a teaching model, not an emulator. The {propertyCount} properties here are the
-            ones with a consequence you can see — a simulator cannot usefully show you{' '}
-            <code className="font-mono text-[0.9em] text-fg">INFO_VIN</code>. The physics is
-            approximate, the car is built from primitives rather than a scanned model, and the
-            values are illustrative.
+            It is a teaching model, not an emulator. The {propertyCount} properties driving the 3D
+            views are the ones with a consequence you can see. Static identity properties —{' '}
+            <code className="font-mono text-[0.9em] text-fg">INFO_VIN</code>,{' '}
+            <code className="font-mono text-[0.9em] text-fg">INFO_EV_BATTERY_CAPACITY</code> and the
+            rest — have nothing to animate, so they sit in the panel beside the views instead. The
+            physics is approximate, the car is built from primitives rather than a scanned model,
+            and the values are illustrative.
           </p>
           <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">
             What is exact is the vocabulary: every control names a real property from{' '}

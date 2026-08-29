@@ -10,20 +10,25 @@ import {
   type Control,
   type SimState,
 } from '@/data/simulator'
-import type { CameraPreset, CarScene, Readout } from './scene'
+import type { ExteriorScene } from './exterior-scene'
+import type { InteriorScene, Readout } from './interior-scene'
+import { VehicleInfo } from './vehicle-info'
 import { cn } from '@/lib/utils'
-
-const CAMERAS: { value: CameraPreset; label: string }[] = [
-  { value: 'three-quarter', label: 'Three-quarter' },
-  { value: 'side', label: 'Side' },
-  { value: 'front', label: 'Front' },
-  { value: 'top', label: 'Top' },
-]
 
 const slug = (property: string) => property.toLowerCase().replace(/_/g, '-')
 
+const GEAR: Record<number, string> = { 0x0004: 'P', 0x0002: 'R', 0x0001: 'N', 0x0008: 'D' }
+
 /** One line in the event log, mirroring what a VHAL write looks like. */
-type LogEntry = { id: number; property: string; value: string; time: string; inert: boolean }
+type LogEntry = {
+  id: number
+  property: string
+  value: string
+  time: string
+  inert: boolean
+  /** What the write does to the car — the other half of the loop. */
+  effect: string
+}
 
 function formatValue(control: Control, value: SimState[keyof SimState]): string {
   if (typeof value === 'boolean') return String(value)
@@ -35,15 +40,18 @@ function formatValue(control: Control, value: SimState[keyof SimState]): string 
 }
 
 export function CarSimulator() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<CarScene | null>(null)
+  const insideCanvas = useRef<HTMLCanvasElement>(null)
+  const insideWrap = useRef<HTMLDivElement>(null)
+  const outsideCanvas = useRef<HTMLCanvasElement>(null)
+  const outsideWrap = useRef<HTMLDivElement>(null)
+  const interior = useRef<InteriorScene | null>(null)
+  const exterior = useRef<ExteriorScene | null>(null)
+  const readoutRef = useRef<Readout>({ effectiveSpeed: 0, cabinTemp: 21, lowTyres: 0 })
   const stateRef = useRef<SimState>({ ...initialState })
   const rafRef = useRef<number>(0)
 
   const [state, setState] = useState<SimState>({ ...initialState })
-  const [readout, setReadout] = useState<Readout>({ effectiveSpeed: 0, cabinTemp: 21, lowTyres: [] })
-  const [camera, setCamera] = useState<CameraPreset>('three-quarter')
+  const [readout, setReadout] = useState<Readout>({ effectiveSpeed: 0, cabinTemp: 21, lowTyres: 0 })
   // Start paused for anyone who has asked for reduced motion — the scene is
   // continuous animation, and Play is right there.
   const [running, setRunning] = useState(true)
@@ -72,6 +80,7 @@ export function CarSimulator() {
           value: formatValue(control, value),
           time: new Date().toLocaleTimeString('en-GB', { hour12: false }),
           inert,
+          effect: control.affects,
         }
         return [entry, ...entries].slice(0, 40)
       })
@@ -79,49 +88,53 @@ export function CarSimulator() {
     [],
   )
 
-  // Build the scene once, on the client, after the module is dynamically loaded.
+  // Build both scenes once, on the client, after the modules load.
   useEffect(() => {
     let cancelled = false
-    const canvas = canvasRef.current
-    const wrap = wrapRef.current
-    if (!canvas || !wrap) return
+    const inWrap = insideWrap.current
+    const outWrap = outsideWrap.current
+    const inCanvas = insideCanvas.current
+    const outCanvas = outsideCanvas.current
+    if (!inWrap || !outWrap || !inCanvas || !outCanvas) return
 
-    import('./scene')
-      .then(({ createCarScene }) => {
+    Promise.all([import('./interior-scene'), import('./exterior-scene')])
+      .then(([inMod, outMod]) => {
         if (cancelled) return
-        const { width, height } = wrap.getBoundingClientRect()
-        sceneRef.current = createCarScene(canvas, width, height)
-        sceneRef.current.setCameraPreset(camera)
+        const a = inWrap.getBoundingClientRect()
+        const b = outWrap.getBoundingClientRect()
+        interior.current = inMod.createInteriorScene(inCanvas, a.width, a.height)
+        exterior.current = outMod.createExteriorScene(outCanvas, b.width, b.height)
         setReady(true)
       })
       .catch(() => {
-        // WebGL unavailable or the chunk failed — the panel still works.
         if (!cancelled) setFailed(true)
       })
 
     return () => {
       cancelled = true
-      sceneRef.current?.dispose()
-      sceneRef.current = null
+      interior.current?.dispose()
+      exterior.current?.dispose()
+      interior.current = null
+      exterior.current = null
     }
-    // Built once; camera changes are pushed through their own effect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Resize with the containers rather than the window.
   useEffect(() => {
-    sceneRef.current?.setCameraPreset(camera)
-  }, [camera])
-
-  // Resize with the container rather than the window.
-  useEffect(() => {
-    const wrap = wrapRef.current
-    if (!wrap) return
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect
-      if (width > 0 && height > 0) sceneRef.current?.resize(width, height)
-    })
-    observer.observe(wrap)
-    return () => observer.disconnect()
+    const observers: ResizeObserver[] = []
+    for (const [wrap, get] of [
+      [insideWrap.current, () => interior.current],
+      [outsideWrap.current, () => exterior.current],
+    ] as const) {
+      if (!wrap) continue
+      const o = new ResizeObserver(([entry]) => {
+        const { width, height } = entry.contentRect
+        if (width > 0 && height > 0) get()?.resize(width, height)
+      })
+      o.observe(wrap)
+      observers.push(o)
+    }
+    return () => observers.forEach((o) => o.disconnect())
   }, [])
 
   // The animation loop. Readouts are pushed to React at ~6fps, not 60, so the
@@ -139,11 +152,22 @@ export function CarSimulator() {
       if (!running) return
       elapsed += delta
       sincePublish += delta
-      const next = sceneRef.current?.update(stateRef.current, delta, elapsed)
-      sceneRef.current?.render()
-      if (next && sincePublish > 0.16) {
+      const state = stateRef.current
+      const powered = state.ignition >= 3
+      const moving = state.gear === 0x0008 || state.gear === 0x0002
+      const r = readoutRef.current
+      r.effectiveSpeed = powered && moving && !state.parkingBrake ? state.speed : 0
+      r.lowTyres = [state.tyreFrontLeft, state.tyreFrontRight, state.tyreRearLeft, state.tyreRearRight]
+        .filter((kpa) => kpa < 180).length
+
+      interior.current?.update(state, r, delta, elapsed)
+      exterior.current?.update(state, delta, elapsed)
+      interior.current?.render()
+      exterior.current?.render()
+
+      if (sincePublish > 0.16) {
         sincePublish = 0
-        setReadout(next)
+        setReadout({ ...r })
       }
     }
     rafRef.current = requestAnimationFrame(frame)
@@ -166,101 +190,120 @@ export function CarSimulator() {
   }
 
   const kmh = Math.round(readout.effectiveSpeed * 3.6)
+  const openDoors = [
+    state.doorFrontLeft,
+    state.doorFrontRight,
+    state.doorRearLeft,
+    state.doorRearRight,
+  ].filter(Boolean).length
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
       <div className="min-w-0">
-        {/* ---- Scene ---- */}
-        <div
-          ref={wrapRef}
-          className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-line bg-bg-subtle"
-        >
-          <canvas
-            ref={canvasRef}
-            className="size-full"
-            role="img"
-            aria-label={`3D car. Speed ${kmh} kilometres per hour, cabin ${readout.cabinTemp.toFixed(1)} degrees. The dashboard below states the full vehicle state in text.`}
-          />
-          {!ready && !failed && (
-            <p className="absolute inset-0 grid place-items-center font-mono text-xs text-muted">
-              Loading the scene…
-            </p>
-          )}
-          {failed && (
-            <p className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted">
-              The 3D view could not start — WebGL may be unavailable. The controls and the
-              dashboard below still work.
-            </p>
-          )}
-
-          <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-            {CAMERAS.map((c) => (
-              <button
-                key={c.value}
-                type="button"
-                onClick={() => setCamera(c.value)}
-                aria-pressed={camera === c.value}
-                className={cn(
-                  'chip cursor-pointer backdrop-blur transition-colors',
-                  camera === c.value
-                    ? 'border-accent/60 bg-accent text-accent-fg'
-                    : 'bg-surface/80 hover:text-fg',
-                )}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="absolute right-3 top-3 flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => setRunning((r) => !r)}
-              className="chip cursor-pointer bg-surface/80 backdrop-blur hover:text-fg"
-              aria-label={running ? 'Pause the simulation' : 'Resume the simulation'}
+        {/* ---- Inside the car ---- */}
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.85fr)]">
+          <figure className="min-w-0">
+            <div
+              ref={insideWrap}
+              className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-line bg-[#070a0f]"
             >
-              {running ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
-              {running ? 'Pause' : 'Play'}
-            </button>
-            <button
-              type="button"
-              onClick={reset}
-              className="chip cursor-pointer bg-surface/80 backdrop-blur hover:text-fg"
+              <canvas
+                ref={insideCanvas}
+                className="size-full"
+                role="img"
+                aria-label={`Driver's view. Speed ${kmh} kilometres per hour, gear ${GEAR[state.gear] ?? 'unknown'}, cabin ${readout.cabinTemp.toFixed(1)} degrees. The cluster panel below states everything in text.`}
+              />
+              {!ready && !failed && (
+                <p className="absolute inset-0 grid place-items-center font-mono text-xs text-muted">
+                  Loading the cabin…
+                </p>
+              )}
+              {failed && (
+                <p className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted">
+                  The 3D view could not start — WebGL may be unavailable. Every control and readout
+                  below still works.
+                </p>
+              )}
+              <span className="pointer-events-none absolute left-3 top-3 chip bg-surface/80 backdrop-blur">
+                Inside · driver
+              </span>
+              <div className="absolute right-3 top-3 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setRunning((r) => !r)}
+                  className="chip cursor-pointer bg-surface/80 backdrop-blur hover:text-fg"
+                  aria-label={running ? 'Pause the simulation' : 'Resume the simulation'}
+                >
+                  {running ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+                  {running ? 'Pause' : 'Play'}
+                </button>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="chip cursor-pointer bg-surface/80 backdrop-blur hover:text-fg"
+                >
+                  <RotateCcw className="size-3.5" />
+                  Reset
+                </button>
+              </div>
+            </div>
+            <figcaption className="mt-2 text-xs leading-relaxed text-muted">
+              Cluster, centre screen, steering wheel and its controls, gear selector and the vents.
+              The screens are drawn live from the property values.
+            </figcaption>
+          </figure>
+
+          {/* ---- Outside the car ---- */}
+          <figure className="min-w-0">
+            <div
+              ref={outsideWrap}
+              className="relative aspect-[3/4] w-full overflow-hidden rounded-xl border border-line bg-[#070a0f]"
             >
-              <RotateCcw className="size-3.5" />
-              Reset
-            </button>
-          </div>
+              <canvas
+                ref={outsideCanvas}
+                className="size-full"
+                role="img"
+                aria-label={`Top view of the car. ${openDoors === 0 ? 'All doors closed' : `${openDoors} door${openDoors > 1 ? 's' : ''} open`}, boot ${state.bootOpen ? 'open' : 'closed'}, ${readout.lowTyres} tyres low.`}
+              />
+              <span className="pointer-events-none absolute left-3 top-3 chip bg-surface/80 backdrop-blur">
+                Outside · top view
+              </span>
+            </div>
+            <figcaption className="mt-2 text-xs leading-relaxed text-muted">
+              Doors, boot, charge flap, lights, steering and tyre warnings — the state you cannot
+              see from the driver&rsquo;s seat.
+            </figcaption>
+          </figure>
         </div>
 
         {/* ---- Cluster readout ---- */}
         <div className="card mt-4 p-5">
           <h2 className="font-mono text-xs uppercase tracking-wider text-subtle">
-            Instrument cluster
+            Vehicle state, in text
           </h2>
           <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Readouts label="Speed" value={`${kmh}`} unit="km/h" />
+            <Readouts label="Gear" value={GEAR[state.gear] ?? '—'} unit="" />
             <Readouts label="Cabin" value={readout.cabinTemp.toFixed(1)} unit="°C" />
             <Readouts label="Battery" value={`${state.batteryLevel}`} unit="%" />
-            <Readouts
-              label="Range"
-              value={`${Math.round((state.batteryLevel / 100) * 420)}`}
-              unit="km"
-            />
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5" aria-live="polite">
+            {state.ignition < 3 && <Telltale tone="muted">IGNITION OFF</Telltale>}
             {state.parkingBrake && <Telltale tone="warn">PARKING BRAKE</Telltale>}
-            {readout.lowTyres.length > 0 && (
-              <Telltale tone="warn">TYRE PRESSURE · {readout.lowTyres.length} low</Telltale>
+            {readout.lowTyres > 0 && (
+              <Telltale tone="warn">TYRE PRESSURE · {readout.lowTyres} low</Telltale>
             )}
+            {openDoors > 0 && <Telltale tone="warn">{openDoors} DOOR OPEN</Telltale>}
+            {state.bootOpen && <Telltale tone="warn">BOOT OPEN</Telltale>}
             {state.chargePortConnected && state.chargePortOpen && (
               <Telltale tone="ok">CHARGING</Telltale>
             )}
-            {state.headlights && <Telltale tone="ok">{state.highBeam ? 'MAIN BEAM' : 'LIGHTS'}</Telltale>}
+            {state.headlights && (
+              <Telltale tone="ok">{state.highBeam ? 'MAIN BEAM' : 'LIGHTS'}</Telltale>
+            )}
             {state.cruiseEnabled && <Telltale tone="ok">CRUISE</Telltale>}
             {state.laneKeepEnabled && <Telltale tone="ok">LANE KEEP</Telltale>}
             {state.hvacPower && state.hvacAc && <Telltale tone="ok">A/C</Telltale>}
-            {state.ignition < 3 && <Telltale tone="muted">IGNITION OFF</Telltale>}
           </div>
         </div>
 
@@ -270,26 +313,33 @@ export function CarSimulator() {
             Property writes
           </h2>
           <p className="mt-1.5 text-sm text-muted">
-            Every control below is a real vehicle property. This is what your changes would look
-            like arriving at the VHAL.
+            Every control is a real vehicle property. This is the write arriving at the VHAL, and
+            what it does to the car.
           </p>
           <ul className="mt-3 max-h-56 overflow-y-auto font-mono text-xs">
             {log.length === 0 && (
               <li className="py-2 text-subtle">Change something to see the writes.</li>
             )}
             {log.map((entry) => (
-              <li key={entry.id} className="flex flex-wrap gap-x-3 border-b border-line py-1.5 last:border-b-0">
-                <span className="text-subtle">{entry.time}</span>
-                <Link
-                  href={`/learn/vehicle-properties/${slug(entry.property)}/`}
-                  className="text-accent hover:underline"
+              <li key={entry.id} className="border-b border-line py-2 last:border-b-0">
+                <div className="flex flex-wrap gap-x-3">
+                  <span className="text-subtle">{entry.time}</span>
+                  <Link
+                    href={`/learn/vehicle-properties/${slug(entry.property)}/`}
+                    className="text-accent hover:underline"
+                  >
+                    {entry.property}
+                  </Link>
+                  <span className="text-muted [overflow-wrap:anywhere]">= {entry.value}</span>
+                </div>
+                <p
+                  className={cn(
+                    'mt-1 font-sans text-[0.72rem] leading-relaxed',
+                    entry.inert ? 'text-difficulty-advanced' : 'text-subtle',
+                  )}
                 >
-                  {entry.property}
-                </Link>
-                <span className="text-muted [overflow-wrap:anywhere]">= {entry.value}</span>
-                {entry.inert && (
-                  <span className="text-difficulty-advanced">accepted · no effect</span>
-                )}
+                  {entry.inert ? 'Accepted, and nothing happened — its dependency is off.' : entry.effect}
+                </p>
               </li>
             ))}
           </ul>
@@ -298,6 +348,9 @@ export function CarSimulator() {
 
       {/* ---- Controls ---- */}
       <div className="min-w-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
+        <div className="mb-5">
+          <VehicleInfo />
+        </div>
         {grouped.map(({ group, items }) => (
           <fieldset key={group} className="mb-5">
             <legend className="mb-2 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
