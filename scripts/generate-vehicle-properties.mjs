@@ -22,6 +22,7 @@ const CAR = 'https://android.googlesource.com/platform/packages/services/Car/+/r
 const AIDL_DIR = 'automotive/vehicle/aidl_property/android/hardware/automotive/vehicle'
 const AIDL_PATH = `${AIDL_DIR}/VehicleProperty.aidl`
 const JAVA_PATH = 'car-lib/src/android/car/VehiclePropertyIds.java'
+const CAR_PATH = 'car-lib/src/android/car/Car.java'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -432,10 +433,41 @@ function deriveEnumImports(javaSrc) {
   }
 }
 
-const [aidlSrc, javaSrc] = await Promise.all([
+
+/**
+ * The manifest string and protection level behind each Car permission constant.
+ *
+ * The string is NOT derivable from the constant name — Car.PERMISSION_MILEAGE is
+ * "android.car.permission.CAR_MILEAGE" but Car.PERMISSION_READ_CAR_HORN is
+ * "android.car.permission.READ_CAR_HORN". It has to be read from Car.java.
+ *
+ * Protection levels come from VehiclePropertyIds' own javadoc, which states them
+ * per property ("Dangerous permission ...", "Signature|Privileged permission
+ * ..."). That distinction decides whether an app can request the permission at
+ * runtime or needs to be a platform-signed, allowlisted privileged app.
+ */
+function derivePermissions(carSrc, idsSrc) {
+  const out = {}
+  for (const [, name, value] of carSrc.matchAll(
+    /public static final String (PERMISSION_\w+)\s*=\s*"([^"]+)"/g,
+  )) {
+    out[name] = { name, value, protection: undefined }
+  }
+  for (const [, level, name] of idsSrc.matchAll(
+    /(Dangerous|Signature\|Privileged|Signature|Normal|System)\s+permission\s+\{@link Car#(PERMISSION_\w+)\}/g,
+  )) {
+    if (out[name] && !out[name].protection) out[name].protection = level
+  }
+  return out
+}
+
+const [aidlSrc, javaSrc, carSrc] = await Promise.all([
   fetchText(HW, AIDL_PATH),
   fetchText(CAR, JAVA_PATH),
+  fetchText(CAR, CAR_PATH),
 ])
+
+const permissions = derivePermissions(carSrc, javaSrc)
 
 const props = parseAidl(aidlSrc)
 const java = parseJava(javaSrc)
@@ -446,8 +478,8 @@ for (const p of props) {
   if (j) {
     inJava++
     p.javaLine = j.javaLine
-    p.readPermissions = j.readPermissions
-    p.writePermissions = j.writePermissions
+    p.readPermissions = p.access === 'WRITE' ? [] : j.readPermissions
+    p.writePermissions = p.access === 'READ' ? [] : j.writePermissions
     if (j.id !== p.id) p.javaId = j.id
   }
 }
@@ -563,6 +595,17 @@ export type EnumDefinition = {
   members: EnumMember[]
 }
 
+export type CarPermission = {
+  /** The constant on android.car.Car, e.g. PERMISSION_SPEED. */
+  name: string
+  /** The string used in a manifest, e.g. android.car.permission.CAR_SPEED. */
+  value: string
+  /** Undefined when VehiclePropertyIds never states one. */
+  protection?: 'Dangerous' | 'Signature|Privileged' | 'Signature' | 'Normal' | 'System'
+}
+
+export const carPermissions: Record<string, CarPermission> = ${JSON.stringify(permissions, null, 2)}
+
 export const valueEnums: Record<string, EnumDefinition> = ${JSON.stringify(Object.fromEntries(enums), null, 2)}
 
 export const propertyByName = new Map(vehicleProperties.map((p) => [p.name, p]))
@@ -580,6 +623,8 @@ console.log(`empty description : ${props.filter((p) => !p.description.trim()).le
 const withRel = props.filter((p) => p.related.length).length
 const relCount = props.reduce((n, p) => n + p.related.length, 0)
 console.log(`with relationships : ${withRel} (${relCount} links)`)
+const known = Object.values(permissions).filter((p) => p.protection).length
+console.log(`car permissions     : ${Object.keys(permissions).length} (${known} with a stated protection level)`)
 console.log(`enum imports mapped: ${props.filter((p) => p.enumImport).length} of ${props.filter((p) => p.dataEnums.length).length} with an enum`)
 console.log(`enum definitions   : ${enums.size} (${[...enums.values()].reduce((n, e) => n + e.members.length, 0)} members)`)
 const missingEnums = [...enumNames].filter((n) => !enums.has(n))

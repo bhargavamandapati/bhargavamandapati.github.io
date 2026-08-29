@@ -92,9 +92,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_IDENTIFICATION"
     ],
-    "writePermissions": [
-      "PERMISSION_IDENTIFICATION"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -119,9 +117,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -146,9 +142,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -174,9 +168,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -202,9 +194,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "FUEL_VOLUME_DISPLAY_UNITS",
@@ -253,9 +243,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "FuelType",
       "importPath": "android.car.FuelType"
@@ -306,9 +294,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "EV_BATTERY_DISPLAY_UNITS",
@@ -357,9 +343,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "EvChargingConnectorType",
       "importPath": "android.car.hardware.property.EvChargingConnectorType"
@@ -391,9 +375,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "INFO_EV_PORT_LOCATION",
@@ -437,9 +419,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "INFO_MULTI_EV_PORT_LOCATIONS",
@@ -483,9 +463,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleAreaSeat",
       "importPath": "android.car.VehicleAreaSeat"
@@ -515,9 +493,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "DISTANCE_DISPLAY_UNITS",
@@ -551,9 +527,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "INFO_EV_PORT_LOCATION",
@@ -681,9 +655,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_SPEED"
     ],
-    "writePermissions": [
-      "PERMISSION_SPEED"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "VEHICLE_SPEED_DISPLAY_UNITS",
@@ -725,9 +697,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_SPEED"
     ],
-    "writePermissions": [
-      "PERMISSION_SPEED"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "VEHICLE_SPEED_DISPLAY_UNITS",
@@ -786,9 +756,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_STEERING_STATE"
     ],
-    "writePermissions": [
-      "PERMISSION_READ_STEERING_STATE"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -911,9 +879,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_ENGINE_DETAILED"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_ENGINE_DETAILED"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
@@ -977,9 +943,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_ENGINE_DETAILED"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_ENGINE_DETAILED"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
@@ -1037,9 +1001,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_SPEED"
     ],
-    "writePermissions": [
-      "PERMISSION_SPEED"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -1065,9 +1027,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": [
-      "PERMISSION_ENERGY"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "FUEL_VOLUME_DISPLAY_UNITS",
@@ -1154,9 +1114,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": [
-      "PERMISSION_ENERGY"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "EV_BATTERY_DISPLAY_UNITS",
@@ -1198,9 +1156,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": [
-      "PERMISSION_ENERGY"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "EV_BATTERY_DISPLAY_UNITS",
@@ -1281,9 +1237,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY_PORTS"
     ],
-    "writePermissions": [
-      "PERMISSION_ENERGY_PORTS"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -1309,9 +1263,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": [
-      "PERMISSION_ENERGY"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -1443,9 +1395,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_TIRES"
     ],
-    "writePermissions": [
-      "PERMISSION_TIRES"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "TIRE_PRESSURE_DISPLAY_UNITS",
@@ -1694,9 +1644,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_POWERTRAIN"
     ],
-    "writePermissions": [
-      "PERMISSION_POWERTRAIN"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleGear",
       "importPath": "android.car.VehicleGear"
@@ -1739,9 +1687,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_POWERTRAIN"
     ],
-    "writePermissions": [
-      "PERMISSION_POWERTRAIN"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleGear",
       "importPath": "android.car.VehicleGear"
@@ -1781,9 +1727,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_POWERTRAIN"
     ],
-    "writePermissions": [
-      "PERMISSION_POWERTRAIN"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "PARKING_BRAKE_AUTO_APPLY",
@@ -1814,9 +1758,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_POWERTRAIN"
     ],
-    "writePermissions": [
-      "PERMISSION_POWERTRAIN"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "PARKING_BRAKE_ON",
@@ -1887,9 +1829,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_ENERGY"
     ],
-    "writePermissions": [
-      "PERMISSION_ENERGY"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -1914,9 +1854,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_ENVIRONMENT"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_ENVIRONMENT"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -1944,9 +1882,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleTurnSignal",
       "importPath": "android.car.hardware.property.VehicleTurnSignal"
@@ -1994,9 +1930,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_POWERTRAIN"
     ],
-    "writePermissions": [
-      "PERMISSION_POWERTRAIN"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -2021,9 +1955,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DYNAMICS_STATE"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_DYNAMICS_STATE"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -2048,9 +1980,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DYNAMICS_STATE"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_DYNAMICS_STATE"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -2378,9 +2308,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
     ],
-    "writePermissions": [
-      "PERMISSION_CONTROL_CAR_CLIMATE"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "HVAC_POWER_ON",
@@ -2871,9 +2799,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
     ],
-    "writePermissions": [
-      "PERMISSION_CONTROL_CAR_CLIMATE"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "HVAC_POWER_ON",
@@ -3016,9 +2942,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CONTROL_CAR_CLIMATE"
     ],
-    "writePermissions": [
-      "PERMISSION_CONTROL_CAR_CLIMATE"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "CarHvacFanDirection",
       "importPath": "android.car.hardware.CarHvacFanDirection"
@@ -3578,9 +3502,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_ENVIRONMENT"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_ENVIRONMENT"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "HVAC_TEMPERATURE_DISPLAY_UNITS",
@@ -3611,9 +3533,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_POWER"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_POWER"
-    ],
+    "writePermissions": [],
     "related": []
   },
   {
@@ -3665,9 +3585,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_POWER"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_POWER"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "VEHICLE_IN_USE",
@@ -4285,9 +4203,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "description": "Seat memory select\n\nThis parameter selects the memory preset to use to select the seat position. The\nmaxInt32Value and minInt32Value in VehicleAreaConfig must be defined. All integers between\nminInt32Value and maxInt32Value must be supported. The minInt32Value is always 0, and the\nmaxInt32Value determines the number of seat preset memory slots available (i.e.\nnumSeatPresets - 1).\n\nFor instance, if the driver's seat has 3 memory presets, the maxInt32Value will be 2. When\nthe user wants to select a preset, the desired preset number (0, 1, or 2) is set.",
     "aidlLine": 2536,
     "javaLine": 3150,
-    "readPermissions": [
-      "PERMISSION_CONTROL_CAR_SEATS"
-    ],
+    "readPermissions": [],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
     ],
@@ -4318,9 +4234,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "description": "Seat memory set\n\nThis setting allows the user to save the current seat position settings into the selected\npreset slot. The maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. The\nminInt32Value must be 0, and the maxInt32Value for each seat position must match the\nmaxInt32Value for SEAT_MEMORY_SELECT.",
     "aidlLine": 2554,
     "javaLine": 3175,
-    "readPermissions": [
-      "PERMISSION_CONTROL_CAR_SEATS"
-    ],
+    "readPermissions": [],
     "writePermissions": [
       "PERMISSION_CONTROL_CAR_SEATS"
     ],
@@ -5109,9 +5023,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_INTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_READ_INTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -6186,9 +6098,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "OBD2_FREEZE_FRAME",
@@ -6219,9 +6129,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "OBD2_FREEZE_FRAME_INFO",
@@ -6262,9 +6170,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_DIAGNOSTIC_READ_ALL"
-    ],
+    "writePermissions": [],
     "related": [
       {
         "name": "OBD2_FREEZE_FRAME",
@@ -6302,9 +6208,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "description": "OBD2 Freeze Frame Clear\n\nThis property allows deletion of any of the freeze frames stored in\nvehicle memory, as described by OBD2_FREEZE_FRAME_INFO.\n\nThe configArray is set as follows:\n configArray[0] = 1 if the implementation is able to clear individual freeze frames\n                  by timestamp, 0 otherwise\n\nIVehicle#set of this property is to be interpreted as follows:\n  if int64Values contains no elements, then all frames stored must be cleared;\n  if int64Values contains one or more elements, then frames at the timestamps\n  stored in int64Values must be cleared, and the others not cleared. Should the\n  vehicle not support selective clearing of freeze frames, this latter mode must\n  return NOT_AVAILABLE.",
     "aidlLine": 4211,
     "javaLine": 5136,
-    "readPermissions": [
-      "PERMISSION_CAR_DIAGNOSTIC_CLEAR"
-    ],
+    "readPermissions": [],
     "writePermissions": [
       "PERMISSION_CAR_DIAGNOSTIC_CLEAR"
     ],
@@ -6341,9 +6245,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -6375,9 +6277,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -6409,9 +6309,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -6464,9 +6362,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -6659,9 +6555,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_INTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_READ_INTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -6760,9 +6654,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_READ_INTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_READ_INTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -7457,9 +7349,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleElectronicTollCollectionCardType",
       "importPath": "android.car.hardware.property.VehicleElectronicTollCollectionCardType"
@@ -7497,9 +7387,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_CAR_INFO"
     ],
-    "writePermissions": [
-      "PERMISSION_CAR_INFO"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleElectronicTollCollectionCardStatus",
       "importPath": "android.car.hardware.property.VehicleElectronicTollCollectionCardStatus"
@@ -7537,9 +7425,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -7628,9 +7514,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "readPermissions": [
       "PERMISSION_EXTERIOR_LIGHTS"
     ],
-    "writePermissions": [
-      "PERMISSION_EXTERIOR_LIGHTS"
-    ],
+    "writePermissions": [],
     "enumImport": {
       "javaName": "VehicleLightState",
       "importPath": "android.car.hardware.property.VehicleLightState"
@@ -9990,6 +9874,550 @@ export type EnumDefinition = {
   members: EnumMember[]
 }
 
+export type CarPermission = {
+  /** The constant on android.car.Car, e.g. PERMISSION_SPEED. */
+  name: string
+  /** The string used in a manifest, e.g. android.car.permission.CAR_SPEED. */
+  value: string
+  /** Undefined when VehiclePropertyIds never states one. */
+  protection?: 'Dangerous' | 'Signature|Privileged' | 'Signature' | 'Normal' | 'System'
+}
+
+export const carPermissions: Record<string, CarPermission> = {
+  "PERMISSION_READ_DRIVER_MONITORING_SETTINGS": {
+    "name": "PERMISSION_READ_DRIVER_MONITORING_SETTINGS",
+    "value": "android.car.permission.READ_DRIVER_MONITORING_SETTINGS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_DRIVER_MONITORING_SETTINGS": {
+    "name": "PERMISSION_CONTROL_DRIVER_MONITORING_SETTINGS",
+    "value": "android.car.permission.CONTROL_DRIVER_MONITORING_SETTINGS"
+  },
+  "PERMISSION_READ_DRIVER_MONITORING_STATES": {
+    "name": "PERMISSION_READ_DRIVER_MONITORING_STATES",
+    "value": "android.car.permission.READ_DRIVER_MONITORING_STATES",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_MILEAGE": {
+    "name": "PERMISSION_MILEAGE",
+    "value": "android.car.permission.CAR_MILEAGE"
+  },
+  "PERMISSION_MILEAGE_3P": {
+    "name": "PERMISSION_MILEAGE_3P",
+    "value": "android.car.permission.CAR_MILEAGE_3P",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_ENERGY": {
+    "name": "PERMISSION_ENERGY",
+    "value": "android.car.permission.CAR_ENERGY",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_CONTROL_CAR_ENERGY": {
+    "name": "PERMISSION_CONTROL_CAR_ENERGY",
+    "value": "android.car.permission.CONTROL_CAR_ENERGY",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_ADJUST_RANGE_REMAINING": {
+    "name": "PERMISSION_ADJUST_RANGE_REMAINING",
+    "value": "android.car.permission.ADJUST_RANGE_REMAINING",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_IDENTIFICATION": {
+    "name": "PERMISSION_IDENTIFICATION",
+    "value": "android.car.permission.CAR_IDENTIFICATION",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_SPEED": {
+    "name": "PERMISSION_SPEED",
+    "value": "android.car.permission.CAR_SPEED",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_CAR_DYNAMICS_STATE": {
+    "name": "PERMISSION_CAR_DYNAMICS_STATE",
+    "value": "android.car.permission.CAR_DYNAMICS_STATE",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_CAR_DYNAMICS_STATE": {
+    "name": "PERMISSION_CONTROL_CAR_DYNAMICS_STATE",
+    "value": "android.car.permission.CONTROL_CAR_DYNAMICS_STATE",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_ENERGY_PORTS": {
+    "name": "PERMISSION_ENERGY_PORTS",
+    "value": "android.car.permission.CAR_ENERGY_PORTS",
+    "protection": "Normal"
+  },
+  "PERMISSION_CONTROL_ENERGY_PORTS": {
+    "name": "PERMISSION_CONTROL_ENERGY_PORTS",
+    "value": "android.car.permission.CONTROL_CAR_ENERGY_PORTS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_EXTERIOR_LIGHTS": {
+    "name": "PERMISSION_EXTERIOR_LIGHTS",
+    "value": "android.car.permission.CAR_EXTERIOR_LIGHTS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_EXTERIOR_LIGHTS": {
+    "name": "PERMISSION_READ_EXTERIOR_LIGHTS",
+    "value": "android.car.permission.READ_CAR_EXTERIOR_LIGHTS",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_READ_INTERIOR_LIGHTS": {
+    "name": "PERMISSION_READ_INTERIOR_LIGHTS",
+    "value": "android.car.permission.READ_CAR_INTERIOR_LIGHTS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_EXTERIOR_LIGHTS": {
+    "name": "PERMISSION_CONTROL_EXTERIOR_LIGHTS",
+    "value": "android.car.permission.CONTROL_CAR_EXTERIOR_LIGHTS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_CAR_HORN": {
+    "name": "PERMISSION_READ_CAR_HORN",
+    "value": "android.car.permission.READ_CAR_HORN",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_CONTROL_CAR_HORN": {
+    "name": "PERMISSION_CONTROL_CAR_HORN",
+    "value": "android.car.permission.CONTROL_CAR_HORN",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_READ_CAR_PEDALS": {
+    "name": "PERMISSION_READ_CAR_PEDALS",
+    "value": "android.car.permission.READ_CAR_PEDALS",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_READ_BRAKE_INFO": {
+    "name": "PERMISSION_READ_BRAKE_INFO",
+    "value": "android.car.permission.READ_BRAKE_INFO",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_CONTROL_INTERIOR_LIGHTS": {
+    "name": "PERMISSION_CONTROL_INTERIOR_LIGHTS",
+    "value": "android.car.permission.CONTROL_CAR_INTERIOR_LIGHTS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_POWERTRAIN": {
+    "name": "PERMISSION_POWERTRAIN",
+    "value": "android.car.permission.CAR_POWERTRAIN",
+    "protection": "Normal"
+  },
+  "PERMISSION_CONTROL_POWERTRAIN": {
+    "name": "PERMISSION_CONTROL_POWERTRAIN",
+    "value": "android.car.permission.CONTROL_CAR_POWERTRAIN",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CAR_CONTROL_AUDIO_VOLUME": {
+    "name": "PERMISSION_CAR_CONTROL_AUDIO_VOLUME",
+    "value": "android.car.permission.CAR_CONTROL_AUDIO_VOLUME"
+  },
+  "PERMISSION_CAR_CONTROL_AUDIO_SETTINGS": {
+    "name": "PERMISSION_CAR_CONTROL_AUDIO_SETTINGS",
+    "value": "android.car.permission.CAR_CONTROL_AUDIO_SETTINGS"
+  },
+  "PERMISSION_RECEIVE_CAR_AUDIO_DUCKING_EVENTS": {
+    "name": "PERMISSION_RECEIVE_CAR_AUDIO_DUCKING_EVENTS",
+    "value": "android.car.permission.RECEIVE_CAR_AUDIO_DUCKING_EVENTS"
+  },
+  "PERMISSION_CAR_NAVIGATION_MANAGER": {
+    "name": "PERMISSION_CAR_NAVIGATION_MANAGER",
+    "value": "android.car.permission.CAR_NAVIGATION_MANAGER"
+  },
+  "PERMISSION_CAR_INSTRUMENT_CLUSTER_CONTROL": {
+    "name": "PERMISSION_CAR_INSTRUMENT_CLUSTER_CONTROL",
+    "value": "android.car.permission.CAR_INSTRUMENT_CLUSTER_CONTROL"
+  },
+  "PERMISSION_CAR_MONITOR_CLUSTER_NAVIGATION_STATE": {
+    "name": "PERMISSION_CAR_MONITOR_CLUSTER_NAVIGATION_STATE",
+    "value": "android.car.permission.CAR_MONITOR_CLUSTER_NAVIGATION_STATE"
+  },
+  "PERMISSION_CAR_DISPLAY_IN_CLUSTER": {
+    "name": "PERMISSION_CAR_DISPLAY_IN_CLUSTER",
+    "value": "android.car.permission.CAR_DISPLAY_IN_CLUSTER"
+  },
+  "PERMISSION_CAR_INFO": {
+    "name": "PERMISSION_CAR_INFO",
+    "value": "android.car.permission.CAR_INFO",
+    "protection": "Normal"
+  },
+  "PERMISSION_PRIVILEGED_CAR_INFO": {
+    "name": "PERMISSION_PRIVILEGED_CAR_INFO",
+    "value": "android.car.permission.PRIVILEGED_CAR_INFO",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_CAR_VENDOR_PERMISSION_INFO": {
+    "name": "PERMISSION_READ_CAR_VENDOR_PERMISSION_INFO",
+    "value": "android.car.permission.READ_CAR_VENDOR_PERMISSION_INFO"
+  },
+  "PERMISSION_EXTERIOR_ENVIRONMENT": {
+    "name": "PERMISSION_EXTERIOR_ENVIRONMENT",
+    "value": "android.car.permission.CAR_EXTERIOR_ENVIRONMENT",
+    "protection": "Normal"
+  },
+  "PERMISSION_VENDOR_EXTENSION": {
+    "name": "PERMISSION_VENDOR_EXTENSION",
+    "value": "android.car.permission.CAR_VENDOR_EXTENSION"
+  },
+  "PERMISSION_CONTROL_APP_BLOCKING": {
+    "name": "PERMISSION_CONTROL_APP_BLOCKING",
+    "value": "android.car.permission.CONTROL_APP_BLOCKING"
+  },
+  "PERMISSION_CAR_ENGINE_DETAILED": {
+    "name": "PERMISSION_CAR_ENGINE_DETAILED",
+    "value": "android.car.permission.CAR_ENGINE_DETAILED",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CAR_ENGINE_DETAILED_3P": {
+    "name": "PERMISSION_CAR_ENGINE_DETAILED_3P",
+    "value": "android.car.permission.CAR_ENGINE_DETAILED_3P",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_TIRES": {
+    "name": "PERMISSION_TIRES",
+    "value": "android.car.permission.CAR_TIRES",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_TIRES_3P": {
+    "name": "PERMISSION_TIRES_3P",
+    "value": "android.car.permission.CAR_TIRES_3P",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_CAR_EPOCH_TIME": {
+    "name": "PERMISSION_CAR_EPOCH_TIME",
+    "value": "android.car.permission.CAR_EPOCH_TIME",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_STEERING_STATE": {
+    "name": "PERMISSION_READ_STEERING_STATE",
+    "value": "android.car.permission.READ_CAR_STEERING",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_STEERING_STATE_3P": {
+    "name": "PERMISSION_READ_STEERING_STATE_3P",
+    "value": "android.car.permission.READ_CAR_STEERING_3P",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_READ_DISPLAY_UNITS": {
+    "name": "PERMISSION_READ_DISPLAY_UNITS",
+    "value": "android.car.permission.READ_CAR_DISPLAY_UNITS",
+    "protection": "Normal"
+  },
+  "PERMISSION_CONTROL_DISPLAY_UNITS": {
+    "name": "PERMISSION_CONTROL_DISPLAY_UNITS",
+    "value": "android.car.permission.CONTROL_CAR_DISPLAY_UNITS",
+    "protection": "Normal"
+  },
+  "PERMISSION_CONTROL_CAR_DOORS": {
+    "name": "PERMISSION_CONTROL_CAR_DOORS",
+    "value": "android.car.permission.CONTROL_CAR_DOORS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_CAR_WINDOWS": {
+    "name": "PERMISSION_CONTROL_CAR_WINDOWS",
+    "value": "android.car.permission.CONTROL_CAR_WINDOWS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_GLOVE_BOX": {
+    "name": "PERMISSION_CONTROL_GLOVE_BOX",
+    "value": "android.car.permission.CONTROL_GLOVE_BOX",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_CAR_SEATS": {
+    "name": "PERMISSION_READ_CAR_SEATS",
+    "value": "android.car.permission.READ_CAR_SEATS",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_CONTROL_CAR_SEATS": {
+    "name": "PERMISSION_CONTROL_CAR_SEATS",
+    "value": "android.car.permission.CONTROL_CAR_SEATS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_CAR_MIRRORS": {
+    "name": "PERMISSION_CONTROL_CAR_MIRRORS",
+    "value": "android.car.permission.CONTROL_CAR_MIRRORS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_CAR_CLIMATE": {
+    "name": "PERMISSION_CONTROL_CAR_CLIMATE",
+    "value": "android.car.permission.CONTROL_CAR_CLIMATE",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_CAR_AIRBAGS": {
+    "name": "PERMISSION_CONTROL_CAR_AIRBAGS",
+    "value": "android.car.permission.CONTROL_CAR_AIRBAGS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CAR_POWER": {
+    "name": "PERMISSION_CAR_POWER",
+    "value": "android.car.permission.CAR_POWER"
+  },
+  "PERMISSION_READ_CAR_POWER_POLICY": {
+    "name": "PERMISSION_READ_CAR_POWER_POLICY",
+    "value": "android.car.permission.READ_CAR_POWER_POLICY"
+  },
+  "PERMISSION_CONTROL_CAR_POWER_POLICY": {
+    "name": "PERMISSION_CONTROL_CAR_POWER_POLICY",
+    "value": "android.car.permission.CONTROL_CAR_POWER_POLICY"
+  },
+  "PERMISSION_CONTROL_SHUTDOWN_PROCESS": {
+    "name": "PERMISSION_CONTROL_SHUTDOWN_PROCESS",
+    "value": "android.car.permission.CONTROL_SHUTDOWN_PROCESS"
+  },
+  "PERMISSION_CAR_PROJECTION": {
+    "name": "PERMISSION_CAR_PROJECTION",
+    "value": "android.car.permission.CAR_PROJECTION"
+  },
+  "PERMISSION_CAR_PROJECTION_STATUS": {
+    "name": "PERMISSION_CAR_PROJECTION_STATUS",
+    "value": "android.car.permission.ACCESS_CAR_PROJECTION_STATUS"
+  },
+  "PERMISSION_MOCK_VEHICLE_HAL": {
+    "name": "PERMISSION_MOCK_VEHICLE_HAL",
+    "value": "android.car.permission.CAR_MOCK_VEHICLE_HAL"
+  },
+  "PERMISSION_CAR_TEST_SERVICE": {
+    "name": "PERMISSION_CAR_TEST_SERVICE",
+    "value": "android.car.permission.CAR_TEST_SERVICE"
+  },
+  "PERMISSION_CAR_DRIVING_STATE": {
+    "name": "PERMISSION_CAR_DRIVING_STATE",
+    "value": "android.car.permission.CAR_DRIVING_STATE"
+  },
+  "PERMISSION_CAR_DRIVING_STATE_3P": {
+    "name": "PERMISSION_CAR_DRIVING_STATE_3P",
+    "value": "android.car.permission.CAR_DRIVING_STATE_3P",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_BIND_VMS_CLIENT": {
+    "name": "PERMISSION_BIND_VMS_CLIENT",
+    "value": "android.car.permission.BIND_VMS_CLIENT"
+  },
+  "PERMISSION_VMS_PUBLISHER": {
+    "name": "PERMISSION_VMS_PUBLISHER",
+    "value": "android.car.permission.VMS_PUBLISHER"
+  },
+  "PERMISSION_VMS_SUBSCRIBER": {
+    "name": "PERMISSION_VMS_SUBSCRIBER",
+    "value": "android.car.permission.VMS_SUBSCRIBER"
+  },
+  "PERMISSION_READ_ULTRASONICS_SENSOR_DATA": {
+    "name": "PERMISSION_READ_ULTRASONICS_SENSOR_DATA",
+    "value": "android.car.permission.READ_ULTRASONICS_SENSOR_DATA",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CAR_DIAGNOSTIC_READ_ALL": {
+    "name": "PERMISSION_CAR_DIAGNOSTIC_READ_ALL",
+    "value": "android.car.permission.CAR_DIAGNOSTICS"
+  },
+  "PERMISSION_CAR_DIAGNOSTIC_CLEAR": {
+    "name": "PERMISSION_CAR_DIAGNOSTIC_CLEAR",
+    "value": "android.car.permission.CLEAR_CAR_DIAGNOSTICS"
+  },
+  "PERMISSION_CAR_UX_RESTRICTIONS_CONFIGURATION": {
+    "name": "PERMISSION_CAR_UX_RESTRICTIONS_CONFIGURATION",
+    "value": "android.car.permission.CAR_UX_RESTRICTIONS_CONFIGURATION"
+  },
+  "PERMISSION_READ_CAR_OCCUPANT_AWARENESS_STATE": {
+    "name": "PERMISSION_READ_CAR_OCCUPANT_AWARENESS_STATE",
+    "value": "android.car.permission.READ_CAR_OCCUPANT_AWARENESS_STATE"
+  },
+  "PERMISSION_CONTROL_CAR_OCCUPANT_AWARENESS_SYSTEM": {
+    "name": "PERMISSION_CONTROL_CAR_OCCUPANT_AWARENESS_SYSTEM",
+    "value": "android.car.permission.CONTROL_CAR_OCCUPANT_AWARENESS_SYSTEM"
+  },
+  "PERMISSION_STORAGE_MONITORING": {
+    "name": "PERMISSION_STORAGE_MONITORING",
+    "value": "android.car.permission.STORAGE_MONITORING"
+  },
+  "PERMISSION_CONTROL_CAR_FEATURES": {
+    "name": "PERMISSION_CONTROL_CAR_FEATURES",
+    "value": "android.car.permission.CONTROL_CAR_FEATURES"
+  },
+  "PERMISSION_USE_CAR_WATCHDOG": {
+    "name": "PERMISSION_USE_CAR_WATCHDOG",
+    "value": "android.car.permission.USE_CAR_WATCHDOG"
+  },
+  "PERMISSION_CAR_MONITOR_INPUT": {
+    "name": "PERMISSION_CAR_MONITOR_INPUT",
+    "value": "android.car.permission.CAR_MONITOR_INPUT"
+  },
+  "PERMISSION_REQUEST_CAR_EVS_ACTIVITY": {
+    "name": "PERMISSION_REQUEST_CAR_EVS_ACTIVITY",
+    "value": "android.car.permission.REQUEST_CAR_EVS_ACTIVITY"
+  },
+  "PERMISSION_CONTROL_CAR_EVS_ACTIVITY": {
+    "name": "PERMISSION_CONTROL_CAR_EVS_ACTIVITY",
+    "value": "android.car.permission.CONTROL_CAR_EVS_ACTIVITY"
+  },
+  "PERMISSION_USE_CAR_EVS_CAMERA": {
+    "name": "PERMISSION_USE_CAR_EVS_CAMERA",
+    "value": "android.car.permission.USE_CAR_EVS_CAMERA"
+  },
+  "PERMISSION_MONITOR_CAR_EVS_STATUS": {
+    "name": "PERMISSION_MONITOR_CAR_EVS_STATUS",
+    "value": "android.car.permission.MONITOR_CAR_EVS_STATUS"
+  },
+  "PERMISSION_USE_CAR_TELEMETRY_SERVICE": {
+    "name": "PERMISSION_USE_CAR_TELEMETRY_SERVICE",
+    "value": "android.car.permission.USE_CAR_TELEMETRY_SERVICE"
+  },
+  "PERMISSION_TEMPLATE_RENDERER": {
+    "name": "PERMISSION_TEMPLATE_RENDERER",
+    "value": "android.car.permission.TEMPLATE_RENDERER"
+  },
+  "PERMISSION_CONTROL_CAR_WATCHDOG_CONFIG": {
+    "name": "PERMISSION_CONTROL_CAR_WATCHDOG_CONFIG",
+    "value": "android.car.permission.CONTROL_CAR_WATCHDOG_CONFIG"
+  },
+  "PERMISSION_COLLECT_CAR_WATCHDOG_METRICS": {
+    "name": "PERMISSION_COLLECT_CAR_WATCHDOG_METRICS",
+    "value": "android.car.permission.COLLECT_CAR_WATCHDOG_METRICS"
+  },
+  "PERMISSION_COLLECT_CAR_CPU_INFO": {
+    "name": "PERMISSION_COLLECT_CAR_CPU_INFO",
+    "value": "android.car.permission.COLLECT_CAR_CPU_INFO"
+  },
+  "PERMISSION_CONTROL_CAR_APP_LAUNCH": {
+    "name": "PERMISSION_CONTROL_CAR_APP_LAUNCH",
+    "value": "android.car.permission.CONTROL_CAR_APP_LAUNCH"
+  },
+  "PERMISSION_MANAGE_THREAD_PRIORITY": {
+    "name": "PERMISSION_MANAGE_THREAD_PRIORITY",
+    "value": "android.car.permission.MANAGE_THREAD_PRIORITY"
+  },
+  "PERMISSION_MANAGE_OCCUPANT_ZONE": {
+    "name": "PERMISSION_MANAGE_OCCUPANT_ZONE",
+    "value": "android.car.permission.MANAGE_OCCUPANT_ZONE"
+  },
+  "PERMISSION_USE_REMOTE_ACCESS": {
+    "name": "PERMISSION_USE_REMOTE_ACCESS",
+    "value": "android.car.permission.USE_REMOTE_ACCESS"
+  },
+  "PERMISSION_CONTROL_REMOTE_ACCESS": {
+    "name": "PERMISSION_CONTROL_REMOTE_ACCESS",
+    "value": "android.car.permission.CONTROL_REMOTE_ACCESS"
+  },
+  "PERMISSION_CONTROL_STEERING_WHEEL": {
+    "name": "PERMISSION_CONTROL_STEERING_WHEEL",
+    "value": "android.car.permission.CONTROL_STEERING_WHEEL",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_ADAS_SETTINGS": {
+    "name": "PERMISSION_READ_ADAS_SETTINGS",
+    "value": "android.car.permission.READ_ADAS_SETTINGS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_ADAS_SETTINGS": {
+    "name": "PERMISSION_CONTROL_ADAS_SETTINGS",
+    "value": "android.car.permission.CONTROL_ADAS_SETTINGS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_ADAS_STATES": {
+    "name": "PERMISSION_READ_ADAS_STATES",
+    "value": "android.car.permission.READ_ADAS_STATES",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_ADAS_STATES": {
+    "name": "PERMISSION_CONTROL_ADAS_STATES",
+    "value": "android.car.permission.CONTROL_ADAS_STATES",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_MANAGE_REMOTE_DEVICE": {
+    "name": "PERMISSION_MANAGE_REMOTE_DEVICE",
+    "value": "android.car.permission.MANAGE_REMOTE_DEVICE"
+  },
+  "PERMISSION_MANAGE_OCCUPANT_CONNECTION": {
+    "name": "PERMISSION_MANAGE_OCCUPANT_CONNECTION",
+    "value": "android.car.permission.MANAGE_OCCUPANT_CONNECTION"
+  },
+  "PERMISSION_ACCESS_MIRRORRED_SURFACE": {
+    "name": "PERMISSION_ACCESS_MIRRORRED_SURFACE",
+    "value": "android.car.permission.ACCESS_MIRRORED_SURFACE"
+  },
+  "PERMISSION_MIRROR_DISPLAY": {
+    "name": "PERMISSION_MIRROR_DISPLAY",
+    "value": "android.car.permission.MIRROR_DISPLAY"
+  },
+  "PERMISSION_READ_WINDSHIELD_WIPERS": {
+    "name": "PERMISSION_READ_WINDSHIELD_WIPERS",
+    "value": "android.car.permission.READ_WINDSHIELD_WIPERS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_WINDSHIELD_WIPERS_3P": {
+    "name": "PERMISSION_READ_WINDSHIELD_WIPERS_3P",
+    "value": "android.car.permission.READ_WINDSHIELD_WIPERS_3P",
+    "protection": "Dangerous"
+  },
+  "PERMISSION_CONTROL_WINDSHIELD_WIPERS": {
+    "name": "PERMISSION_CONTROL_WINDSHIELD_WIPERS",
+    "value": "android.car.permission.CONTROL_WINDSHIELD_WIPERS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_REGISTER_CAR_SYSTEM_UI_PROXY": {
+    "name": "PERMISSION_REGISTER_CAR_SYSTEM_UI_PROXY",
+    "value": "android.car.permission.REGISTER_CAR_SYSTEM_UI_PROXY"
+  },
+  "PERMISSION_MANAGE_CAR_SYSTEM_UI": {
+    "name": "PERMISSION_MANAGE_CAR_SYSTEM_UI",
+    "value": "android.car.permission.MANAGE_CAR_SYSTEM_UI"
+  },
+  "PERMISSION_MANAGE_DISPLAY_COMPATIBILITY": {
+    "name": "PERMISSION_MANAGE_DISPLAY_COMPATIBILITY",
+    "value": "android.car.permission.MANAGE_DISPLAY_COMPATIBILITY"
+  },
+  "PERMISSION_READ_CAR_AIRBAGS": {
+    "name": "PERMISSION_READ_CAR_AIRBAGS",
+    "value": "android.car.permission.READ_CAR_AIRBAGS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_CAR_SEAT_BELTS": {
+    "name": "PERMISSION_READ_CAR_SEAT_BELTS",
+    "value": "android.car.permission.READ_CAR_SEAT_BELTS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_IMPACT_SENSORS": {
+    "name": "PERMISSION_READ_IMPACT_SENSORS",
+    "value": "android.car.permission.READ_IMPACT_SENSORS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_VALET_MODE": {
+    "name": "PERMISSION_READ_VALET_MODE",
+    "value": "android.car.permission.READ_VALET_MODE",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_VALET_MODE": {
+    "name": "PERMISSION_CONTROL_VALET_MODE",
+    "value": "android.car.permission.CONTROL_VALET_MODE",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_HEAD_UP_DISPLAY_STATUS": {
+    "name": "PERMISSION_READ_HEAD_UP_DISPLAY_STATUS",
+    "value": "android.car.permission.READ_HEAD_UP_DISPLAY_STATUS",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_CONTROL_HEAD_UP_DISPLAY": {
+    "name": "PERMISSION_CONTROL_HEAD_UP_DISPLAY",
+    "value": "android.car.permission.CONTROL_HEAD_UP_DISPLAY",
+    "protection": "Signature|Privileged"
+  },
+  "PERMISSION_READ_PERSIST_TETHERING_SETTINGS": {
+    "name": "PERMISSION_READ_PERSIST_TETHERING_SETTINGS",
+    "value": "android.car.permission.READ_PERSIST_TETHERING_SETTINGS"
+  },
+  "PERMISSION_BIND_APP_CARD_PROVIDER": {
+    "name": "PERMISSION_BIND_APP_CARD_PROVIDER",
+    "value": "android.car.permission.BIND_APP_CARD_PROVIDER"
+  },
+  "PERMISSION_RECORD_VEHICLE_PROPERTIES": {
+    "name": "PERMISSION_RECORD_VEHICLE_PROPERTIES",
+    "value": "android.car.permission.RECORD_VEHICLE_PROPERTIES"
+  },
+  "PERMISSION_INJECT_VEHICLE_PROPERTIES": {
+    "name": "PERMISSION_INJECT_VEHICLE_PROPERTIES",
+    "value": "android.car.permission.INJECT_VEHICLE_PROPERTIES"
+  }
+}
+
 export const valueEnums: Record<string, EnumDefinition> = {
   "PortLocationType": {
     "name": "PortLocationType",
@@ -10184,34 +10612,100 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "VehicleOilLevel": {
-    "name": "VehicleOilLevel",
-    "description": "Used to enumerate the current level of VehicleProperty#ENGINE_OIL_LEVEL.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "VehicleAreaSeat": {
+    "name": "VehicleAreaSeat",
+    "description": "Various Seats in the car.",
     "members": [
       {
-        "name": "CRITICALLY_LOW",
-        "value": "0",
-        "description": "The oil level of the engine is critically low, so the vehicle may be unsafe to drive."
+        "name": "UNKNOWN",
+        "value": "0x0000",
+        "description": ""
       },
       {
-        "name": "LOW",
-        "value": "1",
-        "description": "The oil level of the engine is low and needs to be replaced."
+        "name": "ROW_1_LEFT",
+        "value": "0x0001",
+        "description": ""
       },
       {
-        "name": "NORMAL",
-        "value": "2",
-        "description": "The oil level of the engine is normal for the vehicle."
+        "name": "ROW_1_CENTER",
+        "value": "0x0002",
+        "description": ""
       },
       {
-        "name": "HIGH",
-        "value": "3",
-        "description": "The oil level of the engine is high, so the vehicle may be unsafe to drive."
+        "name": "ROW_1_RIGHT",
+        "value": "0x0004",
+        "description": ""
       },
       {
-        "name": "ERROR",
-        "value": "4",
-        "description": "This value represents an error when retrieving the oil level of the engine."
+        "name": "ROW_2_LEFT",
+        "value": "0x0010",
+        "description": ""
+      },
+      {
+        "name": "ROW_2_CENTER",
+        "value": "0x0020",
+        "description": ""
+      },
+      {
+        "name": "ROW_2_RIGHT",
+        "value": "0x0040",
+        "description": ""
+      },
+      {
+        "name": "ROW_3_LEFT",
+        "value": "0x0100",
+        "description": ""
+      },
+      {
+        "name": "ROW_3_CENTER",
+        "value": "0x0200",
+        "description": ""
+      },
+      {
+        "name": "ROW_3_RIGHT",
+        "value": "0x0400",
+        "description": ""
+      }
+    ]
+  },
+  "ImpactSensorLocation": {
+    "name": "ImpactSensorLocation",
+    "description": "Used to enumerate the various impact sensor locations on the car.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0x01",
+        "description": "Other impact sensor location. Ideally this should never be used."
+      },
+      {
+        "name": "FRONT",
+        "value": "0x02",
+        "description": "Frontal impact sensor. Used for the sensor that detects head-on impact."
+      },
+      {
+        "name": "FRONT_LEFT_DOOR_SIDE",
+        "value": "0x04",
+        "description": "Front-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-left door."
+      },
+      {
+        "name": "FRONT_RIGHT_DOOR_SIDE",
+        "value": "0x08",
+        "description": "Front-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-right door."
+      },
+      {
+        "name": "REAR_LEFT_DOOR_SIDE",
+        "value": "0x10",
+        "description": "Rear-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-left door."
+      },
+      {
+        "name": "REAR_RIGHT_DOOR_SIDE",
+        "value": "0x20",
+        "description": "Rear-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-right door."
+      },
+      {
+        "name": "REAR",
+        "value": "0x40",
+        "description": "Rear impact sensor. Used for the sensor that detects collisions from the rear."
       }
     ]
   },
@@ -10396,121 +10890,34 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "VehicleAreaSeat": {
-    "name": "VehicleAreaSeat",
-    "description": "Various Seats in the car.",
+  "VehicleOilLevel": {
+    "name": "VehicleOilLevel",
+    "description": "Used to enumerate the current level of VehicleProperty#ENGINE_OIL_LEVEL.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
-        "name": "UNKNOWN",
-        "value": "0x0000",
-        "description": ""
+        "name": "CRITICALLY_LOW",
+        "value": "0",
+        "description": "The oil level of the engine is critically low, so the vehicle may be unsafe to drive."
       },
       {
-        "name": "ROW_1_LEFT",
-        "value": "0x0001",
-        "description": ""
+        "name": "LOW",
+        "value": "1",
+        "description": "The oil level of the engine is low and needs to be replaced."
       },
       {
-        "name": "ROW_1_CENTER",
-        "value": "0x0002",
-        "description": ""
+        "name": "NORMAL",
+        "value": "2",
+        "description": "The oil level of the engine is normal for the vehicle."
       },
       {
-        "name": "ROW_1_RIGHT",
-        "value": "0x0004",
-        "description": ""
+        "name": "HIGH",
+        "value": "3",
+        "description": "The oil level of the engine is high, so the vehicle may be unsafe to drive."
       },
       {
-        "name": "ROW_2_LEFT",
-        "value": "0x0010",
-        "description": ""
-      },
-      {
-        "name": "ROW_2_CENTER",
-        "value": "0x0020",
-        "description": ""
-      },
-      {
-        "name": "ROW_2_RIGHT",
-        "value": "0x0040",
-        "description": ""
-      },
-      {
-        "name": "ROW_3_LEFT",
-        "value": "0x0100",
-        "description": ""
-      },
-      {
-        "name": "ROW_3_CENTER",
-        "value": "0x0200",
-        "description": ""
-      },
-      {
-        "name": "ROW_3_RIGHT",
-        "value": "0x0400",
-        "description": ""
-      }
-    ]
-  },
-  "ImpactSensorLocation": {
-    "name": "ImpactSensorLocation",
-    "description": "Used to enumerate the various impact sensor locations on the car.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0x01",
-        "description": "Other impact sensor location. Ideally this should never be used."
-      },
-      {
-        "name": "FRONT",
-        "value": "0x02",
-        "description": "Frontal impact sensor. Used for the sensor that detects head-on impact."
-      },
-      {
-        "name": "FRONT_LEFT_DOOR_SIDE",
-        "value": "0x04",
-        "description": "Front-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-left door."
-      },
-      {
-        "name": "FRONT_RIGHT_DOOR_SIDE",
-        "value": "0x08",
-        "description": "Front-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-right door."
-      },
-      {
-        "name": "REAR_LEFT_DOOR_SIDE",
-        "value": "0x10",
-        "description": "Rear-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-left door."
-      },
-      {
-        "name": "REAR_RIGHT_DOOR_SIDE",
-        "value": "0x20",
-        "description": "Rear-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-right door."
-      },
-      {
-        "name": "REAR",
-        "value": "0x40",
-        "description": "Rear impact sensor. Used for the sensor that detects collisions from the rear."
-      }
-    ]
-  },
-  "VehicleTurnSignal": {
-    "name": "VehicleTurnSignal",
-    "description": "Copyright (C) 2021 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n     http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.",
-    "members": [
-      {
-        "name": "NONE",
-        "value": "0x00",
-        "description": ""
-      },
-      {
-        "name": "RIGHT",
-        "value": "0x01",
-        "description": ""
-      },
-      {
-        "name": "LEFT",
-        "value": "0x02",
-        "description": ""
+        "name": "ERROR",
+        "value": "4",
+        "description": "This value represents an error when retrieving the oil level of the engine."
       }
     ]
   },
@@ -10590,6 +10997,27 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "VehicleTurnSignal": {
+    "name": "VehicleTurnSignal",
+    "description": "Copyright (C) 2021 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n     http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.",
+    "members": [
+      {
+        "name": "NONE",
+        "value": "0x00",
+        "description": ""
+      },
+      {
+        "name": "RIGHT",
+        "value": "0x01",
+        "description": ""
+      },
+      {
+        "name": "LEFT",
+        "value": "0x02",
+        "description": ""
+      }
+    ]
+  },
   "VehicleIgnitionState": {
     "name": "VehicleIgnitionState",
     "description": "Used to enumerate the different states the ignition of the vehicle can be in.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -10603,27 +11031,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "LOCK",
         "value": "1",
         "description": "Steering wheel is locked"
-      }
-    ]
-  },
-  "ElectronicStabilityControlState": {
-    "name": "ElectronicStabilityControlState",
-    "description": "Used to enumerate the state of Electronic Stability Control (ESC).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative to any ElectronicStabilityControlState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#ELECTRONIC_STABILITY_CONTROL_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ElectronicStabilityControlState is\nextended to include additional states."
-      },
-      {
-        "name": "ENABLED",
-        "value": "1",
-        "description": "ESC is enabled and monitoring safety, but is not actively controlling the tires to prevent\nthe car from skidding."
-      },
-      {
-        "name": "ACTIVATED",
-        "value": "2",
-        "description": "ESC is enabled and is actively controlling the tires to prevent the car from skidding."
       }
     ]
   },
@@ -10653,39 +11060,24 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "ErrorState": {
-    "name": "ErrorState",
-    "description": "Used to enumerate the possible error states. For version 2 of this interface, ErrorState is used\nby ADAS STATE properties, but its use may be expanded in future releases.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "ElectronicStabilityControlState": {
+    "name": "ElectronicStabilityControlState",
+    "description": "Used to enumerate the state of Electronic Stability Control (ESC).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
-        "name": "OTHER_ERROR_STATE",
-        "value": "-1",
-        "description": "This state is used as an alternative to any ErrorState value that is not defined in the\nplatform. Ideally, implementations of vehicle properties should not use this state. The\nframework can use this field to remain backwards compatible if this enum is extended to\ninclude additional states."
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any ElectronicStabilityControlState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#ELECTRONIC_STABILITY_CONTROL_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ElectronicStabilityControlState is\nextended to include additional states."
       },
       {
-        "name": "NOT_AVAILABLE_DISABLED",
-        "value": "-2",
-        "description": "Vehicle property is not available because the feature is disabled."
+        "name": "ENABLED",
+        "value": "1",
+        "description": "ESC is enabled and monitoring safety, but is not actively controlling the tires to prevent\nthe car from skidding."
       },
       {
-        "name": "NOT_AVAILABLE_SPEED_LOW",
-        "value": "-3",
-        "description": "Vehicle property is not available because the vehicle speed is too low to use this feature."
-      },
-      {
-        "name": "NOT_AVAILABLE_SPEED_HIGH",
-        "value": "-4",
-        "description": "Vehicle property is not available because the vehicle speed is too high to use this feature."
-      },
-      {
-        "name": "NOT_AVAILABLE_POOR_VISIBILITY",
-        "value": "-5",
-        "description": "Vehicle property is not available because sensor or camera visibility is insufficient to use\nthis feature. For example, this can be caused by bird poop blocking the camera, poor weather\nconditions such as snow or fog, or by any object obstructing the required sensors."
-      },
-      {
-        "name": "NOT_AVAILABLE_SAFETY",
-        "value": "-6",
-        "description": "Vehicle property is not available because there is a safety risk that makes this feature\nunavailable to use presently. For example, this can be caused by someone blocking the trunk\ndoor while it is closing, or by the system being in a faulty state."
+        "name": "ACTIVATED",
+        "value": "2",
+        "description": "ESC is enabled and is actively controlling the tires to prevent the car from skidding."
       }
     ]
   },
@@ -10722,6 +11114,42 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "DEFROST_AND_FLOOR",
         "value": "0x06",
         "description": "DEFROST_AND_FLOOR = DEFROST | FLOOR"
+      }
+    ]
+  },
+  "ErrorState": {
+    "name": "ErrorState",
+    "description": "Used to enumerate the possible error states. For version 2 of this interface, ErrorState is used\nby ADAS STATE properties, but its use may be expanded in future releases.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER_ERROR_STATE",
+        "value": "-1",
+        "description": "This state is used as an alternative to any ErrorState value that is not defined in the\nplatform. Ideally, implementations of vehicle properties should not use this state. The\nframework can use this field to remain backwards compatible if this enum is extended to\ninclude additional states."
+      },
+      {
+        "name": "NOT_AVAILABLE_DISABLED",
+        "value": "-2",
+        "description": "Vehicle property is not available because the feature is disabled."
+      },
+      {
+        "name": "NOT_AVAILABLE_SPEED_LOW",
+        "value": "-3",
+        "description": "Vehicle property is not available because the vehicle speed is too low to use this feature."
+      },
+      {
+        "name": "NOT_AVAILABLE_SPEED_HIGH",
+        "value": "-4",
+        "description": "Vehicle property is not available because the vehicle speed is too high to use this feature."
+      },
+      {
+        "name": "NOT_AVAILABLE_POOR_VISIBILITY",
+        "value": "-5",
+        "description": "Vehicle property is not available because sensor or camera visibility is insufficient to use\nthis feature. For example, this can be caused by bird poop blocking the camera, poor weather\nconditions such as snow or fog, or by any object obstructing the required sensors."
+      },
+      {
+        "name": "NOT_AVAILABLE_SAFETY",
+        "value": "-6",
+        "description": "Vehicle property is not available because there is a safety risk that makes this feature\nunavailable to use presently. For example, this can be caused by someone blocking the trunk\ndoor while it is closing, or by the system being in a faulty state."
       }
     ]
   },
@@ -10901,19 +11329,24 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "RotaryInputType": {
-    "name": "RotaryInputType",
-    "description": "A rotary control which can rotate without limits. These controls use HW_ROTARY_INPUT to report\nrelative clockwise or counterclockwise motion. They have no absolute position.",
+  "VehicleLightState": {
+    "name": "VehicleLightState",
+    "description": "Used by lights state properties to enumerate the current state of the lights.\n\nMost XXX_LIGHTS_STATE properties will only report ON and OFF states.  Only\nthe HEADLIGHTS_STATE property will report DAYTIME_RUNNING.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
-        "name": "ROTARY_INPUT_TYPE_SYSTEM_NAVIGATION",
+        "name": "OFF",
         "value": "0",
-        "description": "Main rotary control, typically in the center console, used to navigate the user interface."
+        "description": ""
       },
       {
-        "name": "ROTARY_INPUT_TYPE_AUDIO_VOLUME",
+        "name": "ON",
         "value": "1",
-        "description": "Volume control for adjusting audio volume."
+        "description": ""
+      },
+      {
+        "name": "DAYTIME_RUNNING",
+        "value": "2",
+        "description": ""
       }
     ]
   },
@@ -10973,60 +11406,19 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "VehicleLightState": {
-    "name": "VehicleLightState",
-    "description": "Used by lights state properties to enumerate the current state of the lights.\n\nMost XXX_LIGHTS_STATE properties will only report ON and OFF states.  Only\nthe HEADLIGHTS_STATE property will report DAYTIME_RUNNING.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "RotaryInputType": {
+    "name": "RotaryInputType",
+    "description": "A rotary control which can rotate without limits. These controls use HW_ROTARY_INPUT to report\nrelative clockwise or counterclockwise motion. They have no absolute position.",
     "members": [
       {
-        "name": "OFF",
+        "name": "ROTARY_INPUT_TYPE_SYSTEM_NAVIGATION",
         "value": "0",
-        "description": ""
+        "description": "Main rotary control, typically in the center console, used to navigate the user interface."
       },
       {
-        "name": "ON",
+        "name": "ROTARY_INPUT_TYPE_AUDIO_VOLUME",
         "value": "1",
-        "description": ""
-      },
-      {
-        "name": "DAYTIME_RUNNING",
-        "value": "2",
-        "description": ""
-      }
-    ]
-  },
-  "VehicleAirbagLocation": {
-    "name": "VehicleAirbagLocation",
-    "description": "Used to enumerate the various airbag locations per seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0x01",
-        "description": "This state is used as an alternative to any VehicleAirbagLocation value that is not defined\nin the platform. Ideally, implementations of VehicleProperty::SEAT_AIRBAGS_DEPLOYED should\nnot use this state. The framework can use this field to remain backwards compatible if\nVehicleAirbagLocation is extended to include additional states."
-      },
-      {
-        "name": "FRONT",
-        "value": "0x02",
-        "description": "Front airbags. This enum is for the airbags that protect the seated person from the front,\nparticularly the seated person's torso."
-      },
-      {
-        "name": "KNEE",
-        "value": "0x04",
-        "description": "Knee airbags. This enum is for the airbags that protect the seated person's knees."
-      },
-      {
-        "name": "LEFT_SIDE",
-        "value": "0x08",
-        "description": "Left side airbags. This enum is for the side airbags that protect the left side of the seated\nperson."
-      },
-      {
-        "name": "RIGHT_SIDE",
-        "value": "0x10",
-        "description": "Right side airbags. This enum is for the side airbags that protect the right side of the\nseated person."
-      },
-      {
-        "name": "CURTAIN",
-        "value": "0x20",
-        "description": "Curtain airbags. This enum is for the airbags lined above the windows of the vehicle."
+        "description": "Volume control for adjusting audio volume."
       }
     ]
   },
@@ -11074,6 +11466,42 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "OCCUPIED",
         "value": "2",
         "description": ""
+      }
+    ]
+  },
+  "VehicleAirbagLocation": {
+    "name": "VehicleAirbagLocation",
+    "description": "Used to enumerate the various airbag locations per seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0x01",
+        "description": "This state is used as an alternative to any VehicleAirbagLocation value that is not defined\nin the platform. Ideally, implementations of VehicleProperty::SEAT_AIRBAGS_DEPLOYED should\nnot use this state. The framework can use this field to remain backwards compatible if\nVehicleAirbagLocation is extended to include additional states."
+      },
+      {
+        "name": "FRONT",
+        "value": "0x02",
+        "description": "Front airbags. This enum is for the airbags that protect the seated person from the front,\nparticularly the seated person's torso."
+      },
+      {
+        "name": "KNEE",
+        "value": "0x04",
+        "description": "Knee airbags. This enum is for the airbags that protect the seated person's knees."
+      },
+      {
+        "name": "LEFT_SIDE",
+        "value": "0x08",
+        "description": "Left side airbags. This enum is for the side airbags that protect the left side of the seated\nperson."
+      },
+      {
+        "name": "RIGHT_SIDE",
+        "value": "0x10",
+        "description": "Right side airbags. This enum is for the side airbags that protect the right side of the\nseated person."
+      },
+      {
+        "name": "CURTAIN",
+        "value": "0x20",
+        "description": "Curtain airbags. This enum is for the airbags lined above the windows of the vehicle."
       }
     ]
   },
@@ -11184,27 +11612,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "ElectronicTollCollectionCardType": {
-    "name": "ElectronicTollCollectionCardType",
-    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_TYPE.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "UNKNOWN",
-        "value": "0",
-        "description": ""
-      },
-      {
-        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD",
-        "value": "1",
-        "description": ""
-      },
-      {
-        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD_V2",
-        "value": "2",
-        "description": ""
-      }
-    ]
-  },
   "EvChargeState": {
     "name": "EvChargeState",
     "description": "Used by EV charging properties to enumerate the current state of the battery charging.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11262,6 +11669,32 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "TrailerState": {
+    "name": "TrailerState",
+    "description": "Used to enumerate the current state of VehicleProperty#TRAILER_PRESENT.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": "This state is used as an alternative for any TrailerState value that is not defined in the\nplatform. Ideally, implementations of VehicleProperty#TRAILER_PRESENT should not use this\nstate. The framework can use this field to remain backwards compatible if TrailerState is\nextended to include additional states."
+      },
+      {
+        "name": "NOT_PRESENT",
+        "value": "1",
+        "description": "A trailer is not attached to the vehicle."
+      },
+      {
+        "name": "PRESENT",
+        "value": "2",
+        "description": "A trailer is attached to the vehicle."
+      },
+      {
+        "name": "ERROR",
+        "value": "3",
+        "description": "The state of the trailer is not available due to an error."
+      }
+    ]
+  },
   "EvRegenerativeBrakingState": {
     "name": "EvRegenerativeBrakingState",
     "description": "Used by the regenerative braking property to enumerate the current state\nof the regenerative braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11288,29 +11721,24 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "TrailerState": {
-    "name": "TrailerState",
-    "description": "Used to enumerate the current state of VehicleProperty#TRAILER_PRESENT.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "ElectronicTollCollectionCardType": {
+    "name": "ElectronicTollCollectionCardType",
+    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_TYPE.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
         "name": "UNKNOWN",
         "value": "0",
-        "description": "This state is used as an alternative for any TrailerState value that is not defined in the\nplatform. Ideally, implementations of VehicleProperty#TRAILER_PRESENT should not use this\nstate. The framework can use this field to remain backwards compatible if TrailerState is\nextended to include additional states."
+        "description": ""
       },
       {
-        "name": "NOT_PRESENT",
+        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD",
         "value": "1",
-        "description": "A trailer is not attached to the vehicle."
+        "description": ""
       },
       {
-        "name": "PRESENT",
+        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD_V2",
         "value": "2",
-        "description": "A trailer is attached to the vehicle."
-      },
-      {
-        "name": "ERROR",
-        "value": "3",
-        "description": "The state of the trailer is not available due to an error."
+        "description": ""
       }
     ]
   },
@@ -11433,6 +11861,27 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "ForwardCollisionWarningState": {
+    "name": "ForwardCollisionWarningState",
+    "description": "Used to enumerate the state of Forward Collision Warning State (FCW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any ForwardCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#FORWARD_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ForwardCollisionWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "FCW is enabled and monitoring safety, but no potential collision is detected."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "FCW is enabled, detects a potential collision, and is actively warning the user."
+      }
+    ]
+  },
   "AutomaticEmergencyBrakingState": {
     "name": "AutomaticEmergencyBrakingState",
     "description": "Used to enumerate the state of Automatic Emergency Braking (AEB).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11456,6 +11905,27 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "USER_OVERRIDE",
         "value": "3",
         "description": "Many AEB implementations allow the driver to override AEB. This means that the car has\ndetermined it should brake, but a user decides to take over and do something else. This is\noften done for safety reasons and to ensure that the driver can always take control of the\nvehicle. This state should be set when the user is actively overriding the AEB system."
+      }
+    ]
+  },
+  "BlindSpotWarningState": {
+    "name": "BlindSpotWarningState",
+    "description": "Used to enumerate the state of Blind Spot Warning State (BSW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any BlindSpotWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#BLIND_SPOT_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if BlindSpotWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "BSW is enabled and monitoring safety, but no vehicle or object detected in the vehicle's\nblind spot."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "BSW is enabled, detects a vehicle or object in the vehicle's blind spot, and is actively\nwarning the user."
       }
     ]
   },
@@ -11485,45 +11955,19 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "BlindSpotWarningState": {
-    "name": "BlindSpotWarningState",
-    "description": "Used to enumerate the state of Blind Spot Warning State (BSW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "LaneCenteringAssistCommand": {
+    "name": "LaneCenteringAssistCommand",
+    "description": "Used by Lane Centering Assist (LCA) to enumerate commands.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative to any BlindSpotWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#BLIND_SPOT_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if BlindSpotWarningState is\nextended to include additional states."
-      },
-      {
-        "name": "NO_WARNING",
+        "name": "ACTIVATE",
         "value": "1",
-        "description": "BSW is enabled and monitoring safety, but no vehicle or object detected in the vehicle's\nblind spot."
+        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE = LaneCenteringAssistState#ENABLED, this\ncommand sends a request to activate steering control that keeps the vehicle centered in its\nlane. While waiting for the LCA System to take control of the vehicle,\nVehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATION_REQUESTED state. Once the vehicle takes control of\nsteering, then VehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATED state. Otherwise, an error can be communicated through an\nErrorState value."
       },
       {
-        "name": "WARNING",
+        "name": "DEACTIVATE",
         "value": "2",
-        "description": "BSW is enabled, detects a vehicle or object in the vehicle's blind spot, and is actively\nwarning the user."
-      }
-    ]
-  },
-  "ForwardCollisionWarningState": {
-    "name": "ForwardCollisionWarningState",
-    "description": "Used to enumerate the state of Forward Collision Warning State (FCW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative to any ForwardCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#FORWARD_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ForwardCollisionWarningState is\nextended to include additional states."
-      },
-      {
-        "name": "NO_WARNING",
-        "value": "1",
-        "description": "FCW is enabled and monitoring safety, but no potential collision is detected."
-      },
-      {
-        "name": "WARNING",
-        "value": "2",
-        "description": "FCW is enabled, detects a potential collision, and is actively warning the user."
+        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE is set to\nLaneCenteringAssistState#ACTIVATION_REQUESTED or LaneCenteringAssistState#ACTIVATED, this\ncommand deactivates steering control and the driver should take full control of the vehicle.\nIf this command succeeds, VehicleProperty#LANE_CENTERING_ASSIST_STATE must be updated to\nLaneCenteringAssistState#ENABLED."
       }
     ]
   },
@@ -11555,58 +11999,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "USER_OVERRIDE",
         "value": "4",
         "description": "Many LKA implementations allow the driver to override LKA. This means that the car has\ndetermined it should take some action, but a user decides to take over and do something else.\nThis is often done for safety reasons and to ensure that the driver can always take control\nof the vehicle. This state should be set when the user is actively overriding the LKA system."
-      }
-    ]
-  },
-  "LaneCenteringAssistCommand": {
-    "name": "LaneCenteringAssistCommand",
-    "description": "Used by Lane Centering Assist (LCA) to enumerate commands.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "ACTIVATE",
-        "value": "1",
-        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE = LaneCenteringAssistState#ENABLED, this\ncommand sends a request to activate steering control that keeps the vehicle centered in its\nlane. While waiting for the LCA System to take control of the vehicle,\nVehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATION_REQUESTED state. Once the vehicle takes control of\nsteering, then VehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATED state. Otherwise, an error can be communicated through an\nErrorState value."
-      },
-      {
-        "name": "DEACTIVATE",
-        "value": "2",
-        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE is set to\nLaneCenteringAssistState#ACTIVATION_REQUESTED or LaneCenteringAssistState#ACTIVATED, this\ncommand deactivates steering control and the driver should take full control of the vehicle.\nIf this command succeeds, VehicleProperty#LANE_CENTERING_ASSIST_STATE must be updated to\nLaneCenteringAssistState#ENABLED."
-      }
-    ]
-  },
-  "LaneCenteringAssistState": {
-    "name": "LaneCenteringAssistState",
-    "description": "Used to enumerate the state of Lane Centering Assist (LCA).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any LaneCenteringAssistState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_CENTERING_ASSIST_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneCenteringAssistState is\nextended to include additional states."
-      },
-      {
-        "name": "ENABLED",
-        "value": "1",
-        "description": "LCA is enabled but the ADAS system has not received an activation signal from the driver.\nTherefore, LCA is not steering the car and waits for the driver to send a\nLaneCenteringAssistCommand#ACTIVATE command."
-      },
-      {
-        "name": "ACTIVATION_REQUESTED",
-        "value": "2",
-        "description": "LCA is enabled and the driver has sent an activation command to the LCA system, but the\nsystem has not started actively steering the vehicle. This may happen when LCA needs time to\ndetect valid lane lines. The activation command can be sent through the\nVehicleProperty#LANE_CENTERING_ASSIST_COMMAND vehicle property or through a system external\nto Android. Once LCA is actively steering the vehicle, the state must be updated to\nACTIVATED. If the feature is not able to activate, then the cause can be communicated through\nthe ErrorState values and then return to the ENABLED state."
-      },
-      {
-        "name": "ACTIVATED",
-        "value": "3",
-        "description": "LCA is enabled and actively steering the car to keep it centered in its lane."
-      },
-      {
-        "name": "USER_OVERRIDE",
-        "value": "4",
-        "description": "Many LCA implementations allow the driver to override LCA. This means that the car has\ndetermined it should go a certain direction to keep the car centered in the lane, but a user\ndecides to take over and do something else. This is often done for safety reasons and to\nensure that the driver can always take control of the vehicle. This state should be set when\nthe user is actively overriding the LCA system."
-      },
-      {
-        "name": "FORCED_DEACTIVATION_WARNING",
-        "value": "5",
-        "description": "When LCA is in the ACTIVATED state but it will potentially need to deactivate because of\nexternal conditions (e.g. roads curvature is too extreme, the driver does not have their\nhands on the steering wheel for a long period of time, or the driver is not paying\nattention), then the ADAS system will notify the driver of a potential need to deactivate and\ngive control back to the driver."
       }
     ]
   },
@@ -11648,32 +12040,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "USER_OVERRIDE",
         "value": "6",
         "description": "Many safety feature implementations allow the driver to override said feature. This means\nthat the car has determined it should take some action, but a user decides to take over and\ndo something else. This is often done for safety reasons and to ensure that the driver can\nalways take control of the vehicle. This state should be set when the user is currently\noverriding ELKA."
-      }
-    ]
-  },
-  "CruiseControlType": {
-    "name": "CruiseControlType",
-    "description": "Used to enumerate the current type of Cruise Control (CC).\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any CruiseControlType value that is not defined in\nthe platform. Ideally, implementations of VehicleProperty#CRUISE_CONTROL_TYPE should not use\nthis state. The framework can use this field to remain backwards compatible if\nCruiseControlType is extended to include additional types."
-      },
-      {
-        "name": "STANDARD",
-        "value": "1",
-        "description": "Standard cruise control is when a system in the vehicle automatically maintains a set speed\nwithout the driver having to keep their foot on the accelerator. This version of cruise\ncontrol does not include automatic acceleration and deceleration to maintain a set time gap\nfrom a vehicle ahead."
-      },
-      {
-        "name": "ADAPTIVE",
-        "value": "2",
-        "description": "Adaptive cruise control is when a system in the vehicle automatically accelerates and\ndecelerates to maintain a set speed and/or a set time gap from a vehicle ahead."
-      },
-      {
-        "name": "PREDICTIVE",
-        "value": "3",
-        "description": "Predictive cruise control is a version of adaptive cruise control that also considers road\ntopography, road curvature, speed limit and traffic signs, etc. to actively adjust braking,\nacceleration, gear shifting, etc. for the vehicle. This feature is often used to optimize\nfuel consumption."
       }
     ]
   },
@@ -11770,6 +12136,68 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
+  "LaneCenteringAssistState": {
+    "name": "LaneCenteringAssistState",
+    "description": "Used to enumerate the state of Lane Centering Assist (LCA).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any LaneCenteringAssistState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_CENTERING_ASSIST_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneCenteringAssistState is\nextended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "LCA is enabled but the ADAS system has not received an activation signal from the driver.\nTherefore, LCA is not steering the car and waits for the driver to send a\nLaneCenteringAssistCommand#ACTIVATE command."
+      },
+      {
+        "name": "ACTIVATION_REQUESTED",
+        "value": "2",
+        "description": "LCA is enabled and the driver has sent an activation command to the LCA system, but the\nsystem has not started actively steering the vehicle. This may happen when LCA needs time to\ndetect valid lane lines. The activation command can be sent through the\nVehicleProperty#LANE_CENTERING_ASSIST_COMMAND vehicle property or through a system external\nto Android. Once LCA is actively steering the vehicle, the state must be updated to\nACTIVATED. If the feature is not able to activate, then the cause can be communicated through\nthe ErrorState values and then return to the ENABLED state."
+      },
+      {
+        "name": "ACTIVATED",
+        "value": "3",
+        "description": "LCA is enabled and actively steering the car to keep it centered in its lane."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "4",
+        "description": "Many LCA implementations allow the driver to override LCA. This means that the car has\ndetermined it should go a certain direction to keep the car centered in the lane, but a user\ndecides to take over and do something else. This is often done for safety reasons and to\nensure that the driver can always take control of the vehicle. This state should be set when\nthe user is actively overriding the LCA system."
+      },
+      {
+        "name": "FORCED_DEACTIVATION_WARNING",
+        "value": "5",
+        "description": "When LCA is in the ACTIVATED state but it will potentially need to deactivate because of\nexternal conditions (e.g. roads curvature is too extreme, the driver does not have their\nhands on the steering wheel for a long period of time, or the driver is not paying\nattention), then the ADAS system will notify the driver of a potential need to deactivate and\ngive control back to the driver."
+      }
+    ]
+  },
+  "CruiseControlType": {
+    "name": "CruiseControlType",
+    "description": "Used to enumerate the current type of Cruise Control (CC).\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any CruiseControlType value that is not defined in\nthe platform. Ideally, implementations of VehicleProperty#CRUISE_CONTROL_TYPE should not use\nthis state. The framework can use this field to remain backwards compatible if\nCruiseControlType is extended to include additional types."
+      },
+      {
+        "name": "STANDARD",
+        "value": "1",
+        "description": "Standard cruise control is when a system in the vehicle automatically maintains a set speed\nwithout the driver having to keep their foot on the accelerator. This version of cruise\ncontrol does not include automatic acceleration and deceleration to maintain a set time gap\nfrom a vehicle ahead."
+      },
+      {
+        "name": "ADAPTIVE",
+        "value": "2",
+        "description": "Adaptive cruise control is when a system in the vehicle automatically accelerates and\ndecelerates to maintain a set speed and/or a set time gap from a vehicle ahead."
+      },
+      {
+        "name": "PREDICTIVE",
+        "value": "3",
+        "description": "Predictive cruise control is a version of adaptive cruise control that also considers road\ntopography, road curvature, speed limit and traffic signs, etc. to actively adjust braking,\nacceleration, gear shifting, etc. for the vehicle. This feature is often used to optimize\nfuel consumption."
+      }
+    ]
+  },
   "DriverDrowsinessAttentionWarning": {
     "name": "DriverDrowsinessAttentionWarning",
     "description": "Used to enumerate the current warning state of the driver drowsiness and attention monitoring\nsystem.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
@@ -11788,62 +12216,6 @@ export const valueEnums: Record<string, EnumDefinition> = {
         "name": "WARNING",
         "value": "2",
         "description": "When the driver drowsiness and attention warning is enabled, and the system is warning the\ndriver based on its assessment of the driver's current drowsiness and attention level."
-      }
-    ]
-  },
-  "DriverDrowsinessAttentionState": {
-    "name": "DriverDrowsinessAttentionState",
-    "description": "Used to enumerate the current state of driver drowsiness and attention monitoring.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
-    "members": [
-      {
-        "name": "OTHER",
-        "value": "0",
-        "description": "This state is used as an alternative for any DriverDrowsinessAttentionState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionState is\nextended to include additional states."
-      },
-      {
-        "name": "KSS_RATING_1_EXTREMELY_ALERT",
-        "value": "1",
-        "description": "Karolinska Sleepiness Scale Rating 1 described as extermely alert."
-      },
-      {
-        "name": "KSS_RATING_2_VERY_ALERT",
-        "value": "2",
-        "description": "Karolinska Sleepiness Scale Rating 2 described as very alert."
-      },
-      {
-        "name": "KSS_RATING_3_ALERT",
-        "value": "3",
-        "description": "Karolinska Sleepiness Scale Rating 3 described as alert."
-      },
-      {
-        "name": "KSS_RATING_4_RATHER_ALERT",
-        "value": "4",
-        "description": "Karolinska Sleepiness Scale Rating 4 described as rather alert."
-      },
-      {
-        "name": "KSS_RATING_5_NEITHER_ALERT_NOR_SLEEPY",
-        "value": "5",
-        "description": "Karolinska Sleepiness Scale Rating 5 described as neither alert nor sleepy."
-      },
-      {
-        "name": "KSS_RATING_6_SOME_SLEEPINESS",
-        "value": "6",
-        "description": "Karolinska Sleepiness Scale Rating 6 described as some signs of sleepiness."
-      },
-      {
-        "name": "KSS_RATING_7_SLEEPY_NO_EFFORT",
-        "value": "7",
-        "description": "Karolinska Sleepiness Scale Rating 7 described as sleepy with no effort to\nkeep awake."
-      },
-      {
-        "name": "KSS_RATING_8_SLEEPY_SOME_EFFORT",
-        "value": "8",
-        "description": "Karolinska Sleepiness Scale Rating 8 described as sleepy with some effort to\nkeep awake."
-      },
-      {
-        "name": "KSS_RATING_9_VERY_SLEEPY",
-        "value": "9",
-        "description": "Karolinska Sleepiness Scale Rating 9 described as very sleepy, with great\neffort to keep away, and fighthing sleep."
       }
     ]
   },
@@ -11910,29 +12282,24 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "LowSpeedAutomaticEmergencyBrakingState": {
-    "name": "LowSpeedAutomaticEmergencyBrakingState",
-    "description": "Used to enumerate the state of Low Speed Automatic Emergency Braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "LowSpeedCollisionWarningState": {
+    "name": "LowSpeedCollisionWarningState",
+    "description": "Used to enumerate the state of Low Speed Collision Warning State.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
         "name": "OTHER",
         "value": "0",
-        "description": "This state is used as an alternative to any LowSpeedAutomaticEmergencyBrakingState value that\nis not defined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE should not use this state. The\nframework can use this field to remain backwards compatible if\nLowSpeedAutomaticEmergencyBrakingState is extended to include additional states."
+        "description": "This state is used as an alternative to any LowSpeedCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LowSpeedCollisionWarningState is\nextended to include additional states."
       },
       {
-        "name": "ENABLED",
+        "name": "NO_WARNING",
         "value": "1",
-        "description": "Low Speed Automatic Emergency Braking is enabled and monitoring safety, but brakes are not\nactivated."
+        "description": "Low Speed Collision Warning is enabled and monitoring for potential collision, but no\npotential collision is detected."
       },
       {
-        "name": "ACTIVATED",
+        "name": "WARNING",
         "value": "2",
-        "description": "Low Speed Automatic Emergency Braking is enabled and currently has the brakes applied for the\nvehicle."
-      },
-      {
-        "name": "USER_OVERRIDE",
-        "value": "3",
-        "description": "Many Low Speed Automatic Emergency Braking implementations allow the driver to override Low\nSpeed Automatic Emergency Braking. This means that the car has determined it should brake,\nbut a user decides to take over and do something else. This is often done for safety reasons\nand to ensure that the driver can always take control of the vehicle. This state should be\nset when the user is actively overriding the low speed automatic emergency braking system."
+        "description": "Low Speed Collision Warning is enabled, detects a potential collision, and is actively\nwarning the user."
       }
     ]
   },
@@ -11982,24 +12349,85 @@ export const valueEnums: Record<string, EnumDefinition> = {
       }
     ]
   },
-  "LowSpeedCollisionWarningState": {
-    "name": "LowSpeedCollisionWarningState",
-    "description": "Used to enumerate the state of Low Speed Collision Warning State.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+  "LowSpeedAutomaticEmergencyBrakingState": {
+    "name": "LowSpeedAutomaticEmergencyBrakingState",
+    "description": "Used to enumerate the state of Low Speed Automatic Emergency Braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
     "members": [
       {
         "name": "OTHER",
         "value": "0",
-        "description": "This state is used as an alternative to any LowSpeedCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LowSpeedCollisionWarningState is\nextended to include additional states."
+        "description": "This state is used as an alternative to any LowSpeedAutomaticEmergencyBrakingState value that\nis not defined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE should not use this state. The\nframework can use this field to remain backwards compatible if\nLowSpeedAutomaticEmergencyBrakingState is extended to include additional states."
       },
       {
-        "name": "NO_WARNING",
+        "name": "ENABLED",
         "value": "1",
-        "description": "Low Speed Collision Warning is enabled and monitoring for potential collision, but no\npotential collision is detected."
+        "description": "Low Speed Automatic Emergency Braking is enabled and monitoring safety, but brakes are not\nactivated."
       },
       {
-        "name": "WARNING",
+        "name": "ACTIVATED",
         "value": "2",
-        "description": "Low Speed Collision Warning is enabled, detects a potential collision, and is actively\nwarning the user."
+        "description": "Low Speed Automatic Emergency Braking is enabled and currently has the brakes applied for the\nvehicle."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "3",
+        "description": "Many Low Speed Automatic Emergency Braking implementations allow the driver to override Low\nSpeed Automatic Emergency Braking. This means that the car has determined it should brake,\nbut a user decides to take over and do something else. This is often done for safety reasons\nand to ensure that the driver can always take control of the vehicle. This state should be\nset when the user is actively overriding the low speed automatic emergency braking system."
+      }
+    ]
+  },
+  "DriverDrowsinessAttentionState": {
+    "name": "DriverDrowsinessAttentionState",
+    "description": "Used to enumerate the current state of driver drowsiness and attention monitoring.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any DriverDrowsinessAttentionState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionState is\nextended to include additional states."
+      },
+      {
+        "name": "KSS_RATING_1_EXTREMELY_ALERT",
+        "value": "1",
+        "description": "Karolinska Sleepiness Scale Rating 1 described as extermely alert."
+      },
+      {
+        "name": "KSS_RATING_2_VERY_ALERT",
+        "value": "2",
+        "description": "Karolinska Sleepiness Scale Rating 2 described as very alert."
+      },
+      {
+        "name": "KSS_RATING_3_ALERT",
+        "value": "3",
+        "description": "Karolinska Sleepiness Scale Rating 3 described as alert."
+      },
+      {
+        "name": "KSS_RATING_4_RATHER_ALERT",
+        "value": "4",
+        "description": "Karolinska Sleepiness Scale Rating 4 described as rather alert."
+      },
+      {
+        "name": "KSS_RATING_5_NEITHER_ALERT_NOR_SLEEPY",
+        "value": "5",
+        "description": "Karolinska Sleepiness Scale Rating 5 described as neither alert nor sleepy."
+      },
+      {
+        "name": "KSS_RATING_6_SOME_SLEEPINESS",
+        "value": "6",
+        "description": "Karolinska Sleepiness Scale Rating 6 described as some signs of sleepiness."
+      },
+      {
+        "name": "KSS_RATING_7_SLEEPY_NO_EFFORT",
+        "value": "7",
+        "description": "Karolinska Sleepiness Scale Rating 7 described as sleepy with no effort to\nkeep awake."
+      },
+      {
+        "name": "KSS_RATING_8_SLEEPY_SOME_EFFORT",
+        "value": "8",
+        "description": "Karolinska Sleepiness Scale Rating 8 described as sleepy with some effort to\nkeep awake."
+      },
+      {
+        "name": "KSS_RATING_9_VERY_SLEEPY",
+        "value": "9",
+        "description": "Karolinska Sleepiness Scale Rating 9 described as very sleepy, with great\neffort to keep away, and fighthing sleep."
       }
     ]
   }

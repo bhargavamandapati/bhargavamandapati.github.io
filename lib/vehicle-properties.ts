@@ -7,7 +7,9 @@ import {
   type PropertyRelation,
   type RelationKind,
   type VehicleProperty,
+  type CarPermission,
   valueEnums,
+  carPermissions,
 } from '@/data/vehicle-properties'
 import { csFile, csSearch } from '@/lib/aosp'
 
@@ -15,10 +17,12 @@ export {
   vehicleProperties,
   propertyByName,
   valueEnums,
+  carPermissions,
   type VehicleProperty,
   type PropertyRelation,
   type RelationKind,
   type EnumDefinition,
+  type CarPermission,
 }
 
 /**
