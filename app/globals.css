@@ -426,6 +426,14 @@
   background: var(--shiki-dark-bg);
 }
 
+/* Same chrome for blocks rendered outside prose, e.g. the property reference. */
+.code-window:not(.prose-bm .code-window) {
+  background: var(--shiki-light-bg);
+}
+.dark .code-window:not(.prose-bm .code-window) {
+  background: var(--shiki-dark-bg);
+}
+
 .code-window__bar {
   display: flex;
   align-items: center;

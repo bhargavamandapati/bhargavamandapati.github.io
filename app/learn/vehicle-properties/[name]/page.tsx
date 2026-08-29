@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { ArrowLeft, ArrowRight, Code2, ExternalLink, Search } from 'lucide-react'
 import { DiagramFrame } from '@/components/diagrams/primitives'
 import { PropertyRelationMap } from '@/components/diagrams/property-relations'
+import { CodeSample } from '@/components/properties/code-sample'
 import {
   aidlUrl,
   categoryOf,
@@ -123,6 +124,7 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
   const enums = enumsFor(property)
   const example = valueExample(property)
   const rules = valueRules(property)
+  const samples = codeSamples(property)
   const dependencies = groups.filter((g) => g.strength === 'dependency')
 
   // Split the diagram by direction: what this needs, versus what needs this.
@@ -415,8 +417,11 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
             </>
           )}
 
-          <h2 className="mt-10 text-sm font-semibold uppercase tracking-wider text-subtle">
-            Reading it from an app
+          <h2
+            id="using-it"
+            className="mt-10 scroll-mt-24 text-sm font-semibold uppercase tracking-wider text-subtle"
+          >
+            Using it from an app
           </h2>
           {property.javaLine === undefined ? (
             <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -428,21 +433,32 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
             </p>
           ) : (
             <>
-              <pre className="mt-3 overflow-x-auto rounded-lg border border-line bg-surface p-4 font-mono text-[0.8rem] leading-relaxed">
-                <code>{codeSample(property)}</code>
-              </pre>
               <p className="mt-3 text-sm leading-relaxed text-muted">
                 {property.access === 'READ'
                   ? 'This property is read-only — writes are rejected.'
                   : property.access === 'WRITE'
                     ? 'This property is write-only — it cannot be read back.'
-                    : 'This property can be read and written, though an OEM may implement it as read-only.'}{' '}
+                    : 'This property can be read and written, though an OEM may implement it as read-only, so handle a rejected write.'}{' '}
                 {property.changeMode === 'CONTINUOUS'
                   ? 'It changes continuously, so subscribe at a sample rate rather than polling.'
                   : property.changeMode === 'STATIC'
                     ? 'It is static for the life of the vehicle, so read it once and cache it.'
                     : 'It fires a callback whenever the value changes.'}
+                {property.area !== 'GLOBAL' &&
+                  ` Values are per ${property.area.toLowerCase()}, so every call takes an area ID.`}
               </p>
+              {samples.map((snippet) => (
+                <CodeSample key={snippet.title} code={snippet.code} title={snippet.title} />
+              ))}
+              {dependencies.length > 0 && (
+                <p className="mt-4 rounded-lg border border-l-2 border-line border-l-difficulty-advanced/60 bg-surface p-4 text-sm leading-relaxed text-muted">
+                  These snippets assume the property is usable. It has a{' '}
+                  <Link href="#related" className="link-underline text-accent">
+                    dependency
+                  </Link>{' '}
+                  that must be satisfied first — otherwise the calls above succeed and do nothing.
+                </p>
+              )}
             </>
           )}
         </div>
@@ -571,39 +587,28 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
   )
 }
 
-/** A minimal, correct CarPropertyManager snippet for this property's shape. */
-function codeSample(property: VehicleProperty): string {
-  const java = `VehiclePropertyIds.${property.name}`
-  const areaArg = property.area === 'GLOBAL' ? '0' : `areaId`
-  const getter =
-    property.type === 'BOOLEAN'
-      ? 'getBooleanProperty'
-      : property.type === 'FLOAT'
-        ? 'getFloatProperty'
-        : property.type === 'INT32'
-          ? 'getIntProperty'
-          : 'getProperty'
-
-  if (property.changeMode === 'CONTINUOUS') {
-    return `CarPropertyManager mgr = (CarPropertyManager)
-        car.getCarManager(Car.PROPERTY_SERVICE);
-
-mgr.registerCallback(callback,
-        ${java},
-        CarPropertyManager.SENSOR_RATE_ONCHANGE);`
-  }
-  if (property.access === 'WRITE') {
-    return `CarPropertyManager mgr = (CarPropertyManager)
-        car.getCarManager(Car.PROPERTY_SERVICE);
-
-mgr.setProperty(${valueClass(property)}.class,
-        ${java}, ${areaArg}, value);`
-  }
-  return `CarPropertyManager mgr = (CarPropertyManager)
-        car.getCarManager(Car.PROPERTY_SERVICE);
-
-${resultType(property, getter)} value =
-        mgr.${getter}(${java}, ${areaArg});`
+/** Area constants as car-lib names them — verified against the car-lib source. */
+const AREA_EXAMPLE: Record<string, { expr: string; importPath: string }> = {
+  SEAT: {
+    expr: 'VehicleAreaSeat.SEAT_ROW_1_LEFT',
+    importPath: 'android.car.VehicleAreaSeat',
+  },
+  DOOR: {
+    expr: 'VehicleAreaDoor.DOOR_ROW_1_LEFT',
+    importPath: 'android.car.VehicleAreaDoor',
+  },
+  WINDOW: {
+    expr: 'VehicleAreaWindow.WINDOW_ROW_1_LEFT',
+    importPath: 'android.car.VehicleAreaWindow',
+  },
+  MIRROR: {
+    expr: 'VehicleAreaMirror.MIRROR_DRIVER_LEFT',
+    importPath: 'android.car.VehicleAreaMirror',
+  },
+  WHEEL: {
+    expr: 'VehicleAreaWheel.WHEEL_LEFT_FRONT',
+    importPath: 'android.car.VehicleAreaWheel',
+  },
 }
 
 function valueClass(property: VehicleProperty): string {
@@ -626,9 +631,155 @@ function valueClass(property: VehicleProperty): string {
   }
 }
 
-function resultType(property: VehicleProperty, getter: string): string {
-  if (getter === 'getBooleanProperty') return 'boolean'
-  if (getter === 'getFloatProperty') return 'float'
-  if (getter === 'getIntProperty') return 'int'
-  return `CarPropertyValue<${valueClass(property)}>`
+/** The typed accessor pair CarPropertyManager offers for this value type. */
+function accessors(property: VehicleProperty) {
+  switch (property.type) {
+    case 'BOOLEAN':
+      return { get: 'getBooleanProperty', set: 'setBooleanProperty', primitive: 'boolean' }
+    case 'FLOAT':
+      return { get: 'getFloatProperty', set: 'setFloatProperty', primitive: 'float' }
+    case 'INT32':
+      return { get: 'getIntProperty', set: 'setIntProperty', primitive: 'int' }
+    default:
+      return { get: 'getProperty', set: 'setProperty', primitive: undefined }
+  }
+}
+
+/** A value literal suitable for a setProperty call. */
+function writeLiteral(property: VehicleProperty): string {
+  const enums = enumsFor(property)
+  const primary = enums.find((e) => e.name !== 'ErrorState')
+  if (primary && property.enumImport) {
+    const skip = /^(UNKNOWN|OTHER|SHOULD_NOT_USE|.*_UNKNOWN|OTHER_.*)$/
+    const member = primary.members.find((m) => !skip.test(m.name)) ?? primary.members[0]
+    if (member) return `${property.enumImport.javaName}.${member.name}`
+  }
+  switch (property.type) {
+    case 'BOOLEAN':
+      return 'true'
+    case 'FLOAT':
+      return property.unit === 'CELSIUS' ? '21.5f' : '0.0f'
+    case 'INT32':
+      return '1'
+    case 'INT64':
+      return '1L'
+    case 'STRING':
+      return '"value"'
+    default:
+      return 'value'
+  }
+}
+
+export type Snippet = { title: string; code: string }
+
+/**
+ * Runnable snippets for this property, shaped to its own type, access and
+ * change mode — so a read-only property never shows a write, and a continuous
+ * one leads with a subscription rather than a poll.
+ *
+ * The property and area IDs are bound to locals in the setup snippet so the
+ * later lines stay readable; a fully-qualified constant inside every call
+ * pushes each line well past a comfortable width.
+ */
+function codeSamples(property: VehicleProperty): Snippet[] {
+  const area = AREA_EXAMPLE[property.area]
+  const { get, set, primitive } = accessors(property)
+  const boxed = valueClass(property)
+  const canRead = property.access !== 'WRITE'
+  const canWrite = property.access === 'READ_WRITE' || property.access === 'WRITE'
+  const continuous = property.changeMode === 'CONTINUOUS'
+
+  const imports = [
+    'android.car.Car',
+    'android.car.VehiclePropertyIds',
+    'android.car.hardware.property.CarPropertyManager',
+  ]
+  if (!primitive) imports.push('android.car.hardware.CarPropertyValue')
+  if (canRead) imports.push('android.car.hardware.CarPropertyValue')
+  if (area) imports.push(area.importPath)
+  if (property.enumImport) imports.push(property.enumImport.importPath)
+
+  const areaLine = area
+    ? `int areaId = ${area.expr};`
+    : 'int areaId = 0;   // global property — one value for the whole vehicle'
+
+  const snippets: Snippet[] = [
+    {
+      title: 'Imports',
+      code: [...new Set(imports)]
+        .sort()
+        .map((i) => `import ${i};`)
+        .join('\n'),
+    },
+    {
+      title: 'Set up',
+      code: `// Car.createCar returns null until the car service is ready.
+Car car = Car.createCar(context);
+CarPropertyManager mgr =
+        (CarPropertyManager) car.getCarManager(Car.PROPERTY_SERVICE);
+
+int propertyId = VehiclePropertyIds.${property.name};
+${areaLine}`,
+    },
+  ]
+
+  if (canRead) {
+    const read = primitive
+      ? `${primitive} value = mgr.${get}(propertyId, areaId);`
+      : `CarPropertyValue<${boxed}> result =
+            mgr.getProperty(propertyId, areaId);
+    ${boxed} value = result.getValue();`
+    snippets.push({
+      title: 'Read the current value',
+      code: `// Availability is per area and can change while you are running,
+// so check rather than relying on an exception.
+if (mgr.isPropertyAvailable(propertyId, areaId)) {
+    ${read}
+}`,
+    })
+
+    snippets.push({
+      title: continuous ? 'Subscribe — this property changes continuously' : 'Subscribe to changes',
+      code: `CarPropertyManager.CarPropertyEventCallback callback =
+        new CarPropertyManager.CarPropertyEventCallback() {
+    @Override
+    public void onChangeEvent(CarPropertyValue value) {
+        // Check value.getAreaId() — this fires for whichever area changed.
+    }
+
+    @Override
+    public void onErrorEvent(int propertyId, int areaId) {
+        // The vehicle rejected the request or cannot serve the property.
+    }
+};
+
+${
+  continuous
+    ? `// Ask for no more than you can render. The rate you request raises the
+// HAL subscription for every other app on the system, not just yours.
+mgr.registerCallback(callback, propertyId, 10f);`
+    : `mgr.registerCallback(callback, propertyId,
+        CarPropertyManager.SENSOR_RATE_ONCHANGE);`
+}
+
+// Unregister in onStop, or the callback outlives your screen.
+mgr.unregisterCallback(callback, propertyId);`,
+    })
+  }
+
+  if (canWrite) {
+    const value = writeLiteral(property)
+    const write = primitive
+      ? `mgr.${set}(propertyId, areaId, ${value});`
+      : `mgr.setProperty(${boxed}.class, propertyId, areaId, ${value});`
+    snippets.push({
+      title: 'Write a value',
+      code: `// setProperty returns once the request is sent. It does NOT mean the
+// vehicle accepted it — failures arrive on onErrorEvent, and a read
+// straight afterwards may still return the old value.
+${write}`,
+    })
+  }
+
+  return snippets
 }

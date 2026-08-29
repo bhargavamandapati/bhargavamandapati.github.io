@@ -397,6 +397,41 @@ async function fetchEnums(names) {
   return out
 }
 
+
+/**
+ * Where each value enum lives in the public Car API.
+ *
+ * Derived from VehiclePropertyIds.java's own imports rather than guessed,
+ * because car-lib renames several of the AIDL enums — the AIDL's
+ * VehicleHvacFanDirection is CarHvacFanDirection in car-lib, EvConnectorType is
+ * EvChargingConnectorType, and the toll-collection pair gain a Vehicle prefix.
+ * Enums in the android.car package itself are referenced without an import.
+ */
+function deriveEnumImports(javaSrc) {
+  const imports = new Map()
+  for (const [, fqn] of javaSrc.matchAll(/^import\s+(android\.car\.[\w.]+);/gm)) {
+    imports.set(fqn.split('.').pop(), fqn)
+  }
+  // Referenced via {@link X#...} but not imported => same package as the file.
+  for (const [, name] of javaSrc.matchAll(/\{@link\s+([A-Z]\w+)#/g)) {
+    if (!imports.has(name)) imports.set(name, `android.car.${name}`)
+  }
+
+  // AIDL name -> car-lib name, where they differ.
+  const RENAMED = {
+    VehicleHvacFanDirection: 'CarHvacFanDirection',
+    EvConnectorType: 'EvChargingConnectorType',
+    ElectronicTollCollectionCardStatus: 'VehicleElectronicTollCollectionCardStatus',
+    ElectronicTollCollectionCardType: 'VehicleElectronicTollCollectionCardType',
+  }
+
+  return (aidlName) => {
+    const javaName = RENAMED[aidlName] ?? aidlName
+    const fqn = imports.get(javaName)
+    return fqn ? { javaName, importPath: fqn } : undefined
+  }
+}
+
 const [aidlSrc, javaSrc] = await Promise.all([
   fetchText(HW, AIDL_PATH),
   fetchText(CAR, JAVA_PATH),
@@ -422,6 +457,13 @@ const divergent = props.filter((p) => p.javaId !== undefined)
 const enumNames = new Set(props.flatMap((p) => p.dataEnums))
 enumNames.add('ErrorState')
 const enums = await fetchEnums(enumNames)
+
+// Attach the car-lib import for each property's primary value enum.
+const lookupEnumImport = deriveEnumImports(javaSrc)
+for (const p of props) {
+  const primary = p.dataEnums.find((n) => n !== 'ErrorState') ?? p.dataEnums[0]
+  if (primary) p.enumImport = lookupEnumImport(primary)
+}
 
 const relations = deriveRelations(props)
 for (const p of props) {
@@ -484,6 +526,8 @@ export type VehicleProperty = {
   javaId?: number
   /** Derived relationships to other properties. */
   related: PropertyRelation[]
+  /** Where the primary value enum lives in car-lib, when it is exposed there. */
+  enumImport?: { javaName: string; importPath: string }
 }
 
 export type RelationKind =
@@ -536,6 +580,7 @@ console.log(`empty description : ${props.filter((p) => !p.description.trim()).le
 const withRel = props.filter((p) => p.related.length).length
 const relCount = props.reduce((n, p) => n + p.related.length, 0)
 console.log(`with relationships : ${withRel} (${relCount} links)`)
+console.log(`enum imports mapped: ${props.filter((p) => p.enumImport).length} of ${props.filter((p) => p.dataEnums.length).length} with an enum`)
 console.log(`enum definitions   : ${enums.size} (${[...enums.values()].reduce((n, e) => n + e.members.length, 0)} members)`)
 const missingEnums = [...enumNames].filter((n) => !enums.has(n))
 if (missingEnums.length) console.log(`  NOT FOUND: ${missingEnums.join(', ')}`)
