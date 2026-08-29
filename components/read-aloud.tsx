@@ -191,6 +191,15 @@ export function ReadAloud({ targetId, className }: { targetId: string; className
     if (!root) return [] as Chunk[]
     const out: Chunk[] = []
     let blockIndex = 0
+
+    // Open with the topic's own headline. It sits in the page header above the
+    // article rather than inside it, so it has to be picked up separately —
+    // and starting mid-sentence with no idea what you are listening to is
+    // disorienting, especially when the audio is playing in the background.
+    const heading = document.querySelector<HTMLElement>('h1')
+    const title = (heading?.innerText || '').replace(/\s+/g, ' ').trim()
+    if (heading && title) out.push({ el: heading, text: title, block: blockIndex++ })
+
     for (const el of root.querySelectorAll<HTMLElement>(READABLE)) {
       if (el.tagName === 'PRE') {
         out.push({ el, text: 'Code sample.', block: blockIndex++ })
