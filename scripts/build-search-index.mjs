@@ -100,6 +100,7 @@ for (const p of vehicleProperties) {
 
 // ---- Standalone pages -----------------------------------------------------
 for (const page of [
+  { t: 'Start here', d: 'Guided routes through the AAOS and SDV curriculum.', u: '/learn/start/', k: 'Page' },
   { t: 'Vehicle property reference', d: 'Every Android Automotive vehicle property, searchable and source-linked.', u: '/learn/vehicle-properties/', k: 'Page' },
   { t: 'Vehicle property simulator', d: 'Change a property and watch what it does to the car, in 3D.', u: '/learn/vehicle-simulator/', k: 'Page' },
   { t: 'Cockpit zones and displays', d: 'Occupant zones, multi-display and UX restrictions, live.', u: '/learn/cockpit-displays/', k: 'Page' },

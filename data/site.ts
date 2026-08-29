@@ -52,6 +52,11 @@ export const site = {
       href: '/learn/',
       children: [
         {
+          label: 'Start here',
+          href: '/learn/start/',
+          description: 'Guided routes through the curriculum for where you are starting from.',
+        },
+        {
           label: 'Learn AAOS',
           href: '/learn/',
           description: 'The structured curriculum, from VHAL to homologation.',

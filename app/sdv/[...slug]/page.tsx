@@ -5,6 +5,7 @@ import { MDXRemote } from 'next-mdx-remote/rsc'
 import { ArrowLeft, ArrowRight, Clock } from 'lucide-react'
 import { SdvSidebar } from '@/components/sdv/sidebar'
 import { SdvModuleIcon } from '@/components/sdv/module-icon'
+import { MarkRead } from '@/components/paths/mark-read'
 import { SourceList } from '@/components/learn/source'
 import { TableOfContents } from '@/components/table-of-contents'
 import { mdxComponents } from '@/components/mdx-components'
@@ -145,6 +146,17 @@ export default async function SdvTopicPage({ params }: { params: Promise<Params>
           </article>
 
           <SourceList sources={topic.sources} />
+
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <MarkRead href={`/sdv/${topic.slug}/`} />
+            <span className="text-xs text-subtle">
+              Kept on this device, to drive the{' '}
+              <Link href="/learn/start/" className="link-underline text-accent">
+                learning paths
+              </Link>
+              .
+            </span>
+          </div>
 
           {(previous || next) && (
             <nav aria-label="Curriculum navigation" className="mt-12 grid gap-4 border-t border-line pt-8 sm:grid-cols-2">
