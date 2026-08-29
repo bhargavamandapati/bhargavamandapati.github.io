@@ -30,6 +30,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${site.url}/licence/`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
       url: `${site.url}/learn/`,
       lastModified: new Date(),
       changeFrequency: 'weekly',

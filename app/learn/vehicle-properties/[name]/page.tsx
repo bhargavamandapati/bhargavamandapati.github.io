@@ -738,6 +738,30 @@ export default async function PropertyPage({
             </Link>
           )}
         </nav>
+
+        {/* The descriptions above are reproduced from AOSP under Apache 2.0.
+            The obligation to say so attaches to distribution, so it belongs on
+            the page that does the distributing, not only in the repository. */}
+        <p className="mt-8 border-t border-line pt-6 text-xs leading-relaxed text-subtle">
+          Property descriptions on this page are reproduced from{" "}
+          <code className="font-mono">VehicleProperty.aidl</code> and{" "}
+          <code className="font-mono">VehiclePropertyIds.java</code> in the Android Open
+          Source Project. Copyright &copy; The Android Open Source Project, licensed under
+          the{" "}
+          <a
+            href="https://www.apache.org/licenses/LICENSE-2.0"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link-underline"
+          >
+            Apache License 2.0
+          </a>
+          . Reformatted and annotated for this site &mdash;{" "}
+          <Link href="/licence/" className="link-underline">
+            licence and attribution
+          </Link>
+          .
+        </p>
       </div>
     </CodeLanguageProvider>
   );

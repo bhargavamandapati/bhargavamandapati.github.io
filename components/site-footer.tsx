@@ -42,7 +42,12 @@ export function SiteFooter() {
 
         <div className="mt-12 flex flex-col gap-3 border-t border-line pt-6 text-xs text-subtle sm:flex-row sm:items-center sm:justify-between">
           <p>
-            © {new Date().getFullYear()} {site.name}. All rights reserved.
+            © {new Date().getFullYear()} {site.name}. Code under MIT, writing under
+            CC BY-NC-ND 4.0.{' '}
+            <Link href="/licence/" className="underline transition-colors hover:text-accent">
+              Licence and attribution
+            </Link>
+            .
           </p>
           <p className="font-mono">Built with Next.js · Deployed on GitHub Pages</p>
         </div>
