@@ -23,10 +23,39 @@ const AIDL_DIR = 'automotive/vehicle/aidl_property/android/hardware/automotive/v
 const AIDL_PATH = `${AIDL_DIR}/VehicleProperty.aidl`
 const JAVA_PATH = 'car-lib/src/android/car/VehiclePropertyIds.java'
 
-async function fetchText(base, path) {
-  const res = await fetch(`${base}/${path}?format=TEXT`)
-  if (!res.ok) throw new Error(`${res.status} fetching ${path}`)
-  return Buffer.from(await res.text(), 'base64').toString('utf8')
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+async function fetchText(base, path, attempts = 6) {
+  let lastError
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(`${base}/${path}?format=TEXT`)
+      if (res.status === 429) throw new Error('HTTP 429 (rate limited)')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return Buffer.from(await res.text(), 'base64').toString('utf8')
+    } catch (error) {
+      lastError = error
+      // googlesource rate-limits bursts hard; exponential backoff from 1s.
+      if (attempt < attempts) await sleep(1000 * 2 ** (attempt - 1))
+    }
+  }
+  throw new Error(`fetching ${path}: ${lastError?.message}`)
+}
+
+/** Runs tasks with bounded concurrency, so a burst is not throttled away. */
+async function mapLimit(items, limit, fn) {
+  const results = []
+  const queue = [...items]
+  await Promise.all(
+    Array.from({ length: Math.min(limit, queue.length) }, async () => {
+      while (queue.length) {
+        const item = queue.shift()
+        results.push(await fn(item))
+        await sleep(120)
+      }
+    }),
+  )
+  return results
 }
 
 /** Bitfield masks, from VehiclePropertyGroup / VehicleArea / VehiclePropertyType. */
@@ -83,8 +112,13 @@ function parseDoc(raw) {
     }
     prose.push(line)
   }
-  // Collapse the blank lines the gutter leaves behind into paragraph breaks.
-  const text = prose.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  // Collapse the blank lines the gutter leaves behind into paragraph breaks,
+  // and unwrap javadoc inline tags so {@code true} reads as `true`.
+  const text = prose
+    .join('\n')
+    .replace(/\{@(?:code|link|linkplain|literal)\s+([^}]*)\}/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
   return { text, ann }
 }
 
@@ -150,6 +184,7 @@ function parseAidl(src) {
       accessModes: allOf(ann.access),
       unit: short(first1(ann.unit)),
       dataEnum: short(first1(ann.data_enum)),
+      dataEnums: allOf(ann.data_enum),
       version: ann.version ? Number(first1(ann.version)) : undefined,
       deprecated: Boolean(ann.deprecated) || /\bdeprecated\b/i.test(text.slice(0, 200)),
       description: text,
@@ -302,6 +337,66 @@ function deriveRelations(props) {
   return out
 }
 
+
+/**
+ * Loads the enum definitions a property's values are drawn from.
+ *
+ * Without these a reader is told "the value is a LaneCenteringAssistState" and
+ * has to go and find out what that means. With them the page can list the
+ * actual values and what each one signifies.
+ */
+async function fetchEnums(names) {
+  const out = new Map()
+  const failed = []
+  await mapLimit([...names], 3, async (name) => {
+      let src
+      try {
+        src = await fetchText(HW, `${AIDL_DIR}/${name}.aidl`)
+      } catch (error) {
+        failed.push(`${name} (${error.message})`)
+        return
+      }
+      const lines = src.split('\n')
+      const members = []
+      let doc = null
+      let header = null
+      for (let i = 0; i < lines.length; i++) {
+        if (/^\s*\/\*/.test(lines[i])) {
+          const buf = []
+          while (i < lines.length) {
+            buf.push(lines[i])
+            if (/\*\//.test(lines[i])) break
+            i++
+          }
+          doc = buf.join('\n')
+          continue
+        }
+        // The doc block immediately before `enum X {` describes the enum itself.
+        if (/^\s*(@[\w]+\s+)?enum\s+\w+/.test(lines[i])) {
+          if (doc) header = parseDoc(doc).text
+          doc = null
+          continue
+        }
+        const m = lines[i].match(/^\s{4}([A-Z][A-Z0-9_]*)\s*=\s*([^,]+),/)
+        if (!m) continue
+        const [, member, rawValue] = m
+        members.push({
+          name: member,
+          value: rawValue.trim(),
+          description: doc ? parseDoc(doc).text : '',
+        })
+        doc = null
+      }
+      if (members.length) out.set(name, { name, description: header ?? '', members })
+  })
+  // Silently omitting an enum would ship a page telling the reader a value is a
+  // LaneKeepAssistState without saying what that can be. Fail instead.
+  if (failed.length) {
+    throw new Error(`could not fetch ${failed.length} enum(s):\n  ${failed.join('\n  ')}`)
+  }
+  return out
+}
+
 const [aidlSrc, javaSrc] = await Promise.all([
   fetchText(HW, AIDL_PATH),
   fetchText(CAR, JAVA_PATH),
@@ -322,6 +417,11 @@ for (const p of props) {
   }
 }
 const divergent = props.filter((p) => p.javaId !== undefined)
+
+// ErrorState is declared alongside many state enums and must be handled too.
+const enumNames = new Set(props.flatMap((p) => p.dataEnums))
+enumNames.add('ErrorState')
+const enums = await fetchEnums(enumNames)
 
 const relations = deriveRelations(props)
 for (const p of props) {
@@ -366,6 +466,8 @@ export type VehicleProperty = {
   unit?: string
   /** Name of the enum that constrains this property's values, if any. */
   dataEnum?: string
+  /** Every declared enum. State properties often declare their own plus ErrorState. */
+  dataEnums: string[]
   /** Minimum HAL version that defines this property. */
   version?: number
   deprecated: boolean
@@ -404,6 +506,21 @@ export const JAVA_PATH = '${JAVA_PATH}'
 
 export const vehicleProperties: VehicleProperty[] = ${JSON.stringify(props, null, 2)}
 
+export type EnumMember = {
+  name: string
+  /** The literal from the AIDL — often a bit flag or an explicit ordinal. */
+  value: string
+  description: string
+}
+
+export type EnumDefinition = {
+  name: string
+  description: string
+  members: EnumMember[]
+}
+
+export const valueEnums: Record<string, EnumDefinition> = ${JSON.stringify(Object.fromEntries(enums), null, 2)}
+
 export const propertyByName = new Map(vehicleProperties.map((p) => [p.name, p]))
 `
 
@@ -419,6 +536,9 @@ console.log(`empty description : ${props.filter((p) => !p.description.trim()).le
 const withRel = props.filter((p) => p.related.length).length
 const relCount = props.reduce((n, p) => n + p.related.length, 0)
 console.log(`with relationships : ${withRel} (${relCount} links)`)
+console.log(`enum definitions   : ${enums.size} (${[...enums.values()].reduce((n, e) => n + e.members.length, 0)} members)`)
+const missingEnums = [...enumNames].filter((n) => !enums.has(n))
+if (missingEnums.length) console.log(`  NOT FOUND: ${missingEnums.join(', ')}`)
 console.log(
   `AIDL/car-lib ID divergence: ${divergent.length}` +
     (divergent.length ? ' -> ' + divergent.map((p) => p.name).join(', ') : ''),

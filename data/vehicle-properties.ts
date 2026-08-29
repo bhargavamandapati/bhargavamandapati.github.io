@@ -29,6 +29,8 @@ export type VehicleProperty = {
   unit?: string
   /** Name of the enum that constrains this property's values, if any. */
   dataEnum?: string
+  /** Every declared enum. State properties often declare their own plus ErrorState. */
+  dataEnums: string[]
   /** Minimum HAL version that defines this property. */
   version?: number
   deprecated: boolean
@@ -79,6 +81,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "VIN of vehicle",
@@ -105,6 +108,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Manufacturer of vehicle\n\nThis property must communicate the vehicle's public brand name.",
@@ -131,6 +135,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Model of vehicle\n\nThis property must communicate the vehicle's public model name.",
@@ -158,6 +163,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "YEAR",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Model year of vehicle in YYYY format based on the Gregorian calendar.",
@@ -185,6 +191,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLILITER",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Fuel capacity of the vehicle in milliliters\n\nThis property must communicate the maximum amount of the fuel that can be stored in the\nvehicle in milliliters. This property does not apply to electric vehicles. That is, if\nINFO_FUEL_TYPE only contains FuelType::FUEL_TYPE_ELECTRIC, this property must not be\nimplemented. For EVs, implement INFO_EV_BATTERY_CAPACITY.",
@@ -233,6 +240,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "FuelType",
+    "dataEnums": [
+      "FuelType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "List of fuels the vehicle may use.\n\nFuelType::FUEL_TYPE_ELECTRIC must only be included if the vehicle is plug in rechargeable.\nFor example:\n  An FHEV (Fully Hybrid Electric Vehicle) must not include FuelType::FUEL_TYPE_ELECTRIC in\n  INFO_FUEL_TYPE's INT32_VEC value. So INFO_FUEL_TYPE can be populated as such:\n    int32Values = { FuelType::FUEL_TYPE_UNLEADED }\n  On the other hand, a PHEV (Plug-in Hybrid Electric Vehicle) is plug in rechargeable, and\n  hence should include FuelType::FUEL_TYPE_ELECTRIC in INFO_FUEL_TYPE's INT32_VEC value. So\n  INFO_FUEL_TYPE can be populated as such:\n    int32Values = { FuelType::FUEL_TYPE_UNLEADED, FuelType::FUEL_TYPE_ELECTRIC }",
@@ -281,6 +291,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "WATT_HOUR",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Nominal usable battery capacity for EV or hybrid vehicle\n\nReturns the nominal battery capacity, if EV or hybrid. This is the total usable battery\ncapacity when the vehicle is new. This value might be different from\nEV_CURRENT_BATTERY_CAPACITY because EV_CURRENT_BATTERY_CAPACITY returns the real-time usable\nbattery capacity taking into account factors such as battery aging and temperature\ndependency.",
@@ -329,6 +340,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "EvConnectorType",
+    "dataEnums": [
+      "EvConnectorType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "List of connectors this EV may use\n\nIf the vehicle has multiple charging ports, this property must return all possible connector\ntypes that can be used by at least one charging port on the vehicle.",
@@ -356,6 +370,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "PortLocationType",
+    "dataEnums": [
+      "PortLocationType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Fuel door location\n\nThis property must communicate the location of the fuel door on the vehicle. This property\ndoes not apply to electric vehicles. That is, if INFO_FUEL_TYPE only contains\nFuelType::FUEL_TYPE_ELECTRIC, this property must not be implemented. For EVs, implement\nINFO_EV_PORT_LOCATION or INFO_MULTI_EV_PORT_LOCATIONS.",
@@ -399,6 +416,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "PortLocationType",
+    "dataEnums": [
+      "PortLocationType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "EV port location\n\nThis property must communicate the location of the charging port on the EV using the\nPortLocationType enum. If there are multiple ports available on the vehicle, this property\nmust return the port that allows the fastest charging. To communicate all port locations,\nuse INFO_MULTI_EV_PORT_LOCATIONS.",
@@ -442,6 +462,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleAreaSeat",
+    "dataEnums": [
+      "VehicleAreaSeat"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Driver's seat location\nVHAL implementations must ignore the areaId. Use VehicleArea:GLOBAL.",
@@ -469,6 +492,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLIMETER",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Exterior dimensions of vehicle.\n\n int32Values[0] = height\n int32Values[1] = length\n int32Values[2] = width\n int32Values[3] = width including mirrors\n int32Values[4] = wheel base\n int32Values[5] = track width front\n int32Values[6] = track width rear\n int32Values[7] = curb to curb turning diameter",
@@ -502,6 +526,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "PortLocationType",
+    "dataEnums": [
+      "PortLocationType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Multiple EV port locations\n\nImplement this property if the vehicle has multiple EV ports.\nPort locations are defined in PortLocationType.\nFor example, a car has one port in front left and one port in rear left:\n  int32Values[0] = PortLocationType::FRONT_LEFT\n  int32Values[1] = PortLocationType::REAR_LEFT\n\nIf only one port exists on the vehicle, this property's value should list just one element.\nSee INFO_EV_PORT_LOCATION for describing just one port location.",
@@ -544,6 +571,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Public trim name of the vehicle.\n\nThis property must communicate the vehicle's public trim name.\n\nFor example, say an OEM manufactures two different versions of a vehicle model:\n  \"makeName modelName\" and\n  \"makeName modelName Sport\"\nThis property must be empty for the first vehicle (i.e. base model), and set to \"Sport\" for\nthe second vehicle.",
@@ -569,6 +597,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleSizeClass",
+    "dataEnums": [
+      "VehicleSizeClass"
+    ],
     "version": 4,
     "deprecated": false,
     "description": "Vehicle Size Class.\n\nThis property must communicate an integer array that contains the size classifications\nfollowed by the vehicle as enumerated in VehicleSizeClass.aidl. If the vehicle follows a\nsingle standard, then the array size of the property's value should be 1. If the vehicle\nfollows multiple standards that the OEM wants to communicate, this may be communicated as\nadditional values in the array.\n\nFor example, suppose a vehicle model follows the VehicleSizeClass.EU_A_SEGMENT standard in\nthe EU and the VehicleSizeClass.JPN_KEI standard in Japan. In this scenario this property\nmust return an intArray = [VehicleSizeClass.EU_A_SEGMENT, VehicleSizeClass.JPN_KEI]. If this\nvehicle only followed the VehicleSizeClass.EU_A_SEGMENT standard, then we expect intArray =\n[VehicleSizeClass.EU_A_SEGMENT].",
@@ -594,6 +625,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "KILOMETER",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Current odometer value of the vehicle",
@@ -626,6 +658,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "METER_PER_SEC",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Speed of the vehicle\n\nThe value must be positive when the vehicle is moving forward and negative when\nthe vehicle is moving backward. This value is independent of gear value\n(CURRENT_GEAR or GEAR_SELECTION), for example, if GEAR_SELECTION is GEAR_NEUTRAL,\nPERF_VEHICLE_SPEED is positive when the vehicle is moving forward, negative when moving\nbackward, and zero when not moving.",
@@ -669,6 +702,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "METER_PER_SEC",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Speed of the vehicle for displays\n\nSome cars display a slightly slower speed than the actual speed.  This is\nusually displayed on the speedometer.",
@@ -702,6 +736,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "DEGREES",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Front bicycle model steering angle for vehicle\n\nAngle is in degrees.  Left is negative.\n\nThis property is independent of the angle of the steering wheel. This property must\ncommunicate the angle of the front wheels with respect to the vehicle, not the angle of the\nsteering wheel.",
@@ -728,6 +763,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "DEGREES",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Rear bicycle model steering angle for vehicle\n\nAngle is in degrees.  Left is negative.\n\nThis property is independent of the angle of the steering wheel. This property must\ncommunicate the angle of the rear wheels with respect to the vehicle, not the angle of the\nsteering wheel.",
@@ -754,6 +790,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Instantaneous Fuel Economy in L/100km.\n\nThis property must communicate the instantaneous fuel economy of the vehicle in units of\nL/100km. The property's value is independent of DISTANCE_DISPLAY_UNITS,\nFUEL_VOLUME_DISPLAY_UNITS, and FUEL_CONSUMPTION_UNITS_DISTANCE_OVER_VOLUME property i.e. this\nproperty must always communicate the value in L/100km.\n\nFor the EV version of this property, see INSTANTANEOUS_EV_EFFICIENCY.",
@@ -804,6 +841,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Instantaneous EV efficiency in km/kWh.\n\nThis property must communicate the instantaneous EV battery efficiency of the vehicle in\nunits of km/kWh. The property's value is independent of the DISTANCE_DISPLAY_UNITS and\nEV_BATTERY_DISPLAY_UNITS properties i.e. this property must always communicate the value in\nkm/kWh.\n\nFor the fuel version of this property, see INSTANTANEOUS_FUEL_ECONOMY.",
@@ -850,6 +888,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "CELSIUS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Temperature of engine coolant",
@@ -883,6 +922,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleOilLevel",
+    "dataEnums": [
+      "VehicleOilLevel"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Engine oil level",
@@ -908,6 +950,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "CELSIUS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Temperature of engine oil",
@@ -941,6 +984,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "RPM",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Engine rpm",
@@ -966,6 +1010,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Reports wheel ticks\n\nThe first element in the vector is a reset count.  A reset indicates\nprevious tick counts are not comparable with this and future ones.  Some\nsort of discontinuity in tick counting has occurred.\n\nThe next four elements represent ticks for individual wheels in the\nfollowing order: front left, front right, rear right, rear left.  All\ntick counts are cumulative.  Tick counts increment when the vehicle\nmoves forward, and decrement when vehicles moves in reverse.  The ticks\nshould be reset to 0 when the vehicle is started by the user.\n\n int64Values[0] = reset count\n int64Values[1] = front left ticks\n int64Values[2] = front right ticks\n int64Values[3] = rear right ticks\n int64Values[4] = rear left ticks\n\nconfigArray is used to indicate the micrometers-per-wheel-tick value and\nwhich wheels are supported.  configArray is set as follows:\n\n configArray[0], bits [0:3] = supported wheels. Uses enum Wheel. For example, if all wheels\n   are supported, then configArray[0] = VehicleAreaWheel::LEFT_FRONT\n   | VehicleAreaWheel::RIGHT_FRONT | VehicleAreaWheel::LEFT_REAR\n   | VehicleAreaWheel::RIGHT_REAR\n configArray[1] = micrometers per front left wheel tick\n configArray[2] = micrometers per front right wheel tick\n configArray[3] = micrometers per rear right wheel tick\n configArray[4] = micrometers per rear left wheel tick\n\nNOTE:  If a wheel is not supported, its value shall always be set to 0.\n\nVehiclePropValue.timestamp must be correctly filled in.",
@@ -993,6 +1038,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLILITER",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Fuel level in milliliters\n\nThis property must communicate the current amount of fuel remaining in the vehicle in\nmilliliters. This property does not apply to electric vehicles. That is, if INFO_FUEL_TYPE\nonly contains FuelType::FUEL_TYPE_ELECTRIC, this property must not be implemented. For EVs,\nimplement EV_BATTERY_LEVEL.\n\nValue may not exceed INFO_FUEL_CAPACITY.",
@@ -1041,6 +1087,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Fuel door open\n\nThis property must communicate whether the fuel door on the vehicle is open or not. This\nproperty does not apply to electric vehicles. That is, if INFO_FUEL_TYPE only contains\nFuelType::FUEL_TYPE_ELECTRIC, this property must not be implemented. For EVs, implement\nEV_CHARGE_PORT_OPEN.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -1080,6 +1127,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "WATT_HOUR",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Battery level for EV or hybrid vehicle\n\nReturns the current battery level, if EV or hybrid. This value will not exceed\nEV_CURRENT_BATTERY_CAPACITY. To calculate the battery percentage, use:\n(EV_BATTERY_LEVEL/EV_CURRENT_BATTERY_CAPACITY)*100.",
@@ -1123,6 +1171,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "WATT_HOUR",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Current usable battery capacity for EV or hybrid vehicle\n\nReturns the actual value of battery capacity, if EV or hybrid. This property captures the\nreal-time usable battery capacity taking into account factors such as battery aging and\ntemperature dependency. Therefore, this value might be different from\nINFO_EV_BATTERY_CAPACITY because INFO_EV_BATTERY_CAPACITY returns the nominal battery\ncapacity from when the vehicle was new.",
@@ -1171,6 +1220,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "EV charge port open\n\nIf the vehicle has multiple charging ports, this property must return true if any of the\ncharge ports are open.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -1204,6 +1254,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "EV charge port connected\n\nIf the vehicle has multiple charging ports, this property must return true if any of the\ncharge ports are connected.",
@@ -1231,6 +1282,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLIWATTS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "EV instantaneous charge rate in milliwatts\n\nPositive value indicates battery is being charged.\nNegative value indicates battery being discharged.",
@@ -1259,6 +1311,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "METER",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Range remaining\n\nMeters remaining of fuel and charge.  Range remaining shall account for\nall energy sources in a vehicle.  For example, a hybrid car's range will\nbe the sum of the ranges based on fuel and battery.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE because a navigation app could\nupdate the range if it has a more accurate estimate based on the upcoming route. However,\nthis property can be implemented as VehiclePropertyAccess.READ only at the OEM's discretion.",
@@ -1293,6 +1346,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "CELSIUS",
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "EV battery average temperature\n\nExposes the temperature of the battery in an EV. If multiple batteries exist in the EV, or\nmultiple temperature sensors exist, this property should be set to the mean or a meaningful\nweighted average that best represents the overall temperature of the battery system.",
@@ -1324,9 +1378,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "KILOPASCAL",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
-    "description": "Tire pressure\n\n{@code HasSupportedValueInfo.hasMinSupportedValue} and\n{@code HasSupportedValueInfo.hasMaxSupportedValue} must be {@code true} for all areas.\n\n{@code MinMaxSupportedValueResult.minSupportedValue} represents the lower bound of the\nrecommended tire pressure for the tire at the specified area ID.\n\n{@code MinMaxSupportedValueResult.maxSupportedValue} represents the upper bound of the\nrecommended tire pressure for the tire at the specified area ID.\n\nFor example, if the recommended tire pressure of left_front tire is from 200.0 KILOPASCAL to\n240.0 KILOPASCAL, {@code getMinMaxSupportedValue} for\n[propId=TIRE_PRESSURE, areaId=VehicleAreaWheel::LEFT_FRONT] must return a\n{@code MinMaxSupportedValueResult} with OK status, 200.0 as minSupportedValue, 240.0 as\nmaxSupportedValue.\n\nFor backward compatibility, minFloatValue and maxFloatValue in {@code VehicleAreaConfig}\nmust be set to the same as minSupportedValue and maxSupportedValue at boot time.\n\nEach tire is identified by its areaConfig.areaId config.\n\nFor example:\n.areaConfigs = {\n     VehicleAreaConfig {\n         .areaId = VehicleAreaWheel::LEFT_FRONT,\n         .minFloatValue = 200.0,\n         .maxFloatValue = 240.0,\n     }\n},",
+    "description": "Tire pressure\n\nHasSupportedValueInfo.hasMinSupportedValue and\nHasSupportedValueInfo.hasMaxSupportedValue must be true for all areas.\n\nMinMaxSupportedValueResult.minSupportedValue represents the lower bound of the\nrecommended tire pressure for the tire at the specified area ID.\n\nMinMaxSupportedValueResult.maxSupportedValue represents the upper bound of the\nrecommended tire pressure for the tire at the specified area ID.\n\nFor example, if the recommended tire pressure of left_front tire is from 200.0 KILOPASCAL to\n240.0 KILOPASCAL, getMinMaxSupportedValue for\n[propId=TIRE_PRESSURE, areaId=VehicleAreaWheel::LEFT_FRONT] must return a\nMinMaxSupportedValueResult with OK status, 200.0 as minSupportedValue, 240.0 as\nmaxSupportedValue.\n\nFor backward compatibility, minFloatValue and maxFloatValue in VehicleAreaConfig\nmust be set to the same as minSupportedValue and maxSupportedValue at boot time.\n\nEach tire is identified by its areaConfig.areaId config.\n\nFor example:\n.areaConfigs = {\n     VehicleAreaConfig {\n         .areaId = VehicleAreaWheel::LEFT_FRONT,\n         .minFloatValue = 200.0,\n         .maxFloatValue = 240.0,\n     }\n},",
     "aidlLine": 596,
     "javaLine": 1101,
     "readPermissions": [
@@ -1361,6 +1416,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "KILOPASCAL",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Critically low tire pressure\n\nThis property indicates the critically low pressure threshold for each tire.\nIt indicates when it is time for tires to be replaced or fixed. The value\nmust be less than or equal to minFloatValue in TIRE_PRESSURE.\nMinimum and maximum property values (that is, minFloatValue, maxFloatValue)\nare not applicable to this property.",
@@ -1398,6 +1454,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Accelerator pedal compression percentage.\n\nThis property must communicate the percentage that the physical accelerator pedal in the\nvehicle is compressed. This property must return a float value from 0 to 100.\n\n0 indicates the pedal is not compressed.\n100 indicates the pedal is maximally compressed.",
@@ -1422,6 +1479,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Brake pedal compression percentage.\n\nThis property must communicate the percentage that the physical brake pedal in the vehicle is\ncompressed. This property must return a float value from 0 to 100.\n\n0 indicates the pedal is not compressed.\n100 indicates the pedal is maximally compressed.",
@@ -1446,6 +1504,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Brake pad wear percentage.\n\nThis property must communicate the amount of brake pad wear accumulated by the vehicle as a\npercentage. This property return a float value from 0 to 100.\n\n0 indicates the brake pad has no wear.\n100 indicates the brake pad is maximally worn.",
@@ -1470,6 +1529,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Brake fluid low.\n\nThis property must communicate that the brake fluid level in the vehicle is low according to\nthe OEM. This property must match the vehicle's brake fluid level status as displayed on the\ninstrument cluster. If the brake fluid level is low, this property must be set to true. If\nnot, it must be set to false.",
@@ -1494,6 +1554,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Vehicle Passive Suspension Height in mm.\n\nThis property must communicate the real-time suspension displacement of the vehicle relative\nto its neutral position, given in mm. In other words, the displacement of the suspension at\nany given point in time relative to the suspension's position when the vehicle is on a flat\nsurface with no passengers or cargo. When the suspension is compressed in comparison to the\nneutral position, the value should be negative. When the suspension is decompressed in\ncomparison to the neutral position, the value should be positive.\n\nExamples for further clarity:\n  1) Suppose the user is driving on a smooth flat surface, and all wheels are currently\n  compressed by 2 cm in comparison to the default suspension height. In this scenario, this\n  property must be set to -20 for all wheels.\n  2) Suppose the user drives over a pothole. While the front left wheel is over the pothole,\n  it's decompressed by 3 cm in comparison to the rest of the wheels, or 1 cm in comparison to\n  the default suspension height. All the others are still compressed by 2 cm. In this\n  scenario, this property must be set to -20 for all wheels except for the front left, which\n  must be set to 10.\n\nHasSupportedValueInfo.hasMinSupportedValue and HasSupportedValueInfo.hasMaxSupportedValue\nmust be true for all areas.\n\nMinMaxSupportedValueResult.minSupportedValue represents the lower bound of the suspension\nheight for the wheel at the specified area ID.\n\nMinMaxSupportedValueResult.maxSupportedValue represents the upper bound of the suspension\nheight for the wheel at the specified area ID.",
@@ -1519,6 +1580,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents feature for engine idle automatic stop.\n\nIf true, the vehicle may automatically shut off the engine when it is not needed and then\nautomatically restart it when needed.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -1546,9 +1608,12 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "ImpactSensorLocation",
+    "dataEnums": [
+      "ImpactSensorLocation"
+    ],
     "version": 3,
     "deprecated": false,
-    "description": "Impact detected.\n\nBit flag property to relay information on whether an impact has occurred on a particular side\nof the vehicle as described through the ImpactSensorLocation enum. As a bit flag property,\nthis property can be set to multiple ORed together values of the enum when necessary.\n\nFor the global area ID (0), {@code getSupportedValuesList}\nmust return a {@code SupportedValuesListResult} that contains supported values unless all bit\nflags of ImpactSensorLocation are supported.\n\nFor backward compatibility, if {@code SupportedValuesListResult} is defined,\n{@code VehicleAreaConfig#supportedEnumValues} must be set to the same values.",
+    "description": "Impact detected.\n\nBit flag property to relay information on whether an impact has occurred on a particular side\nof the vehicle as described through the ImpactSensorLocation enum. As a bit flag property,\nthis property can be set to multiple ORed together values of the enum when necessary.\n\nFor the global area ID (0), getSupportedValuesList\nmust return a SupportedValuesListResult that contains supported values unless all bit\nflags of ImpactSensorLocation are supported.\n\nFor backward compatibility, if SupportedValuesListResult is defined,\nVehicleAreaConfig#supportedEnumValues must be set to the same values.",
     "aidlLine": 762,
     "javaLine": 758,
     "readPermissions": [
@@ -1571,6 +1636,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 4,
     "deprecated": false,
     "description": "Vehicle horn engaged.\n\nThis property must communicate if the vehicle's horn is currently engaged or not. If true,\nthe horn is engaged. If false, the horn is disengaged.",
@@ -1599,9 +1665,12 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleGear",
+    "dataEnums": [
+      "VehicleGear"
+    ],
     "version": 2,
     "deprecated": false,
-    "description": "Currently selected gear\n\nThis is the gear selected by the user.\n\n{@code VehicleAreaConfig.HasSupportedValueInfo.hasSupportedValuesList} for the global area ID\n(0) must be {@code true}.\n\n{@code getSupportedValuesList} for [GEAR_SELECTION, areaId=0] must return a\n{@code SupportedValuesListResult} that contains non-null {@code supportedValuesList}.\n\nThe supportedValues must represent the list of supported gears for this vehicle. For example,\nfor an automatic transmission, the list can be {GEAR_NEUTRAL, GEAR_REVERSE, GEAR_PARK,\nGEAR_DRIVE, GEAR_1, GEAR_2,...} and for manual transmission it can be {GEAR_NEUTRAL,\nGEAR_REVERSE, GEAR_1, GEAR_2,...}.\n\nIn the case of an automatic transmission vehicle that allows the driver to select specific\ngears on demand (i.e. \"manual mode\"), GEAR_SELECTION's value must be set to the specific gear\nselected by the driver instead of simply GEAR_DRIVE.\n\nFor backward compatibility, config array for this property must be a list of values\nsame as the supported values at boot-time.",
+    "description": "Currently selected gear\n\nThis is the gear selected by the user.\n\nVehicleAreaConfig.HasSupportedValueInfo.hasSupportedValuesList for the global area ID\n(0) must be true.\n\ngetSupportedValuesList for [GEAR_SELECTION, areaId=0] must return a\nSupportedValuesListResult that contains non-null supportedValuesList.\n\nThe supportedValues must represent the list of supported gears for this vehicle. For example,\nfor an automatic transmission, the list can be {GEAR_NEUTRAL, GEAR_REVERSE, GEAR_PARK,\nGEAR_DRIVE, GEAR_1, GEAR_2,...} and for manual transmission it can be {GEAR_NEUTRAL,\nGEAR_REVERSE, GEAR_1, GEAR_2,...}.\n\nIn the case of an automatic transmission vehicle that allows the driver to select specific\ngears on demand (i.e. \"manual mode\"), GEAR_SELECTION's value must be set to the specific gear\nselected by the driver instead of simply GEAR_DRIVE.\n\nFor backward compatibility, config array for this property must be a list of values\nsame as the supported values at boot-time.",
     "aidlLine": 796,
     "javaLine": 1308,
     "readPermissions": [
@@ -1637,9 +1706,12 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleGear",
+    "dataEnums": [
+      "VehicleGear"
+    ],
     "version": 2,
     "deprecated": false,
-    "description": "Current gear. In non-manual case, selected gear may not\nmatch the current gear. For example, if the selected gear is GEAR_DRIVE,\nthe current gear will be one of GEAR_1, GEAR_2 etc, which reflects\nthe actual gear the transmission is currently running in.\n\n{@code VehicleAreaConfig.HasSupportedValueInfo.hasSupportedValuesList} for the global area ID\n(0) must be {@code true}.\n\n{@code getSupportedValuesList} for [GEAR_SELECTION, areaId=0] must return a\n{@code SupportedValuesListResult} that contains non-null {@code supportedValuesList}.\n\nThe supported values list must represent the list of supported gears\nfor this vehicle.  For example, for an automatic transmission, this list can be\n{GEAR_NEUTRAL, GEAR_REVERSE, GEAR_PARK, GEAR_1, GEAR_2,...}\nand for manual transmission the list can be\n{GEAR_NEUTRAL, GEAR_REVERSE, GEAR_1, GEAR_2,...}. This list need not be the\nsame as that of the supported gears reported in GEAR_SELECTION.\n\nFor backward compatibility, config array for this property must be a list of values\nsame as the supported values at boot-time.",
+    "description": "Current gear. In non-manual case, selected gear may not\nmatch the current gear. For example, if the selected gear is GEAR_DRIVE,\nthe current gear will be one of GEAR_1, GEAR_2 etc, which reflects\nthe actual gear the transmission is currently running in.\n\nVehicleAreaConfig.HasSupportedValueInfo.hasSupportedValuesList for the global area ID\n(0) must be true.\n\ngetSupportedValuesList for [GEAR_SELECTION, areaId=0] must return a\nSupportedValuesListResult that contains non-null supportedValuesList.\n\nThe supported values list must represent the list of supported gears\nfor this vehicle.  For example, for an automatic transmission, this list can be\n{GEAR_NEUTRAL, GEAR_REVERSE, GEAR_PARK, GEAR_1, GEAR_2,...}\nand for manual transmission the list can be\n{GEAR_NEUTRAL, GEAR_REVERSE, GEAR_1, GEAR_2,...}. This list need not be the\nsame as that of the supported gears reported in GEAR_SELECTION.\n\nFor backward compatibility, config array for this property must be a list of values\nsame as the supported values at boot-time.",
     "aidlLine": 828,
     "javaLine": 1362,
     "readPermissions": [
@@ -1674,6 +1746,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Parking brake state.\n\nThis property is true indicates that the car's parking brake is currently engaged. False\nimplies that the car's parking brake is currently disengaged.",
@@ -1706,6 +1779,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Auto-apply parking brake.\n\nThis property is true indicates that the car's automatic parking brake feature is currently\nenabled. False indicates that the car's automatic parking brake feature is currently\ndisabled.\n\nThis property is often confused with PARKING_BRAKE_ON. The difference is that\nPARKING_BRAKE_ON describes whether the actual parking brake is currently on/off, whereas\nPARKING_BRAKE_AUTO_APPLY describes whether the feature of automatic parking brake is enabled/\ndisabled, and does not describe the current state of the actual parking brake.",
@@ -1739,9 +1813,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
-    "description": "Regenerative braking level of a electronic vehicle\n\n{@code HasSupportedValueInfo.hasMinSupportedValue} and\n{@code HasSupportedValueInfo.hasMaxSupportedValue} must be {@code true} for global area ID(0)\n\n{@code MinMaxSupportedValueResult.minSupportedValue} must be 0.\n\n{@code MinMaxSupportedValueResult.maxSupportedValue} indicates the setting for the maximum\namount of energy regenerated from braking. The minSupportedValue indicates the setting for no\nregenerative braking.\n\nAll values between min and max supported value must be supported.\n\nFor backward compatibility, minInt32Value and maxInt32Value in {@code VehicleAreaConfig}\nmust be set to the same as minSupportedValue and maxSupportedValue at boot time.\n\nThis property is a more granular form of EV_REGENERATIVE_BRAKING_STATE. It allows the user to\nset a more specific level of regenerative braking if the states in EvRegenerativeBrakingState\nare not granular enough for the OEM.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
+    "description": "Regenerative braking level of a electronic vehicle\n\nHasSupportedValueInfo.hasMinSupportedValue and\nHasSupportedValueInfo.hasMaxSupportedValue must be true for global area ID(0)\n\nMinMaxSupportedValueResult.minSupportedValue must be 0.\n\nMinMaxSupportedValueResult.maxSupportedValue indicates the setting for the maximum\namount of energy regenerated from braking. The minSupportedValue indicates the setting for no\nregenerative braking.\n\nAll values between min and max supported value must be supported.\n\nFor backward compatibility, minInt32Value and maxInt32Value in VehicleAreaConfig\nmust be set to the same as minSupportedValue and maxSupportedValue at boot time.\n\nThis property is a more granular form of EV_REGENERATIVE_BRAKING_STATE. It allows the user to\nset a more specific level of regenerative braking if the states in EvRegenerativeBrakingState\nare not granular enough for the OEM.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
     "aidlLine": 889,
     "javaLine": 1471,
     "readPermissions": [
@@ -1777,6 +1852,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Warning for fuel low level.\n\nThis property corresponds to the low fuel warning on the dashboard.\nOnce FUEL_LEVEL_LOW is set, it should not be cleared until more fuel is\nadded to the vehicle.  This property may take into account all fuel\nsources for a vehicle - for example:\n\n  For a gas powered vehicle, this property is based soley on gas level.\n  For a battery powered vehicle, this property is based solely on battery level.\n  For a hybrid vehicle, this property may be based on the combination of gas and battery\n     levels, at the OEM's discretion.",
@@ -1803,6 +1879,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Night mode\n\nTrue indicates that the night mode sensor has detected that the car cabin environment has\nlow light. The platform could use this, for example, to enable appropriate UI for\nbetter viewing in dark or low light environments.",
@@ -1830,6 +1907,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleTurnSignal",
+    "dataEnums": [
+      "VehicleTurnSignal"
+    ],
     "version": 2,
     "deprecated": true,
     "description": "(Deprecated) State of the vehicles turn signals\n\nThis property has been deprecated as it ambiguously defines the state of the vehicle turn\nsignals without making clear if it means the state of the turn signal lights or the state of\nthe turn signal switch. The introduction of TURN_SIGNAL_LIGHT_STATE and TURN_SIGNAL_SWITCH\nrectifies this problem.",
@@ -1873,6 +1953,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleIgnitionState",
+    "dataEnums": [
+      "VehicleIgnitionState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Represents ignition state",
@@ -1899,6 +1982,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "ABS is active\n\nSet to true when ABS is active.  Reset to false when ABS is off.  This\nproperty may be intermittently set (pulsing) based on the real-time\nstate of the ABS system.",
@@ -1925,6 +2009,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Traction Control is active\n\nSet to true when traction control (TC) is active.  Reset to false when\nTC is off.  This property may be intermittently set (pulsing) based on\nthe real-time state of the TC system.",
@@ -1953,9 +2038,12 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "EvStoppingMode",
+    "dataEnums": [
+      "EvStoppingMode"
+    ],
     "version": 2,
     "deprecated": false,
-    "description": "Represents property for the current stopping mode of the vehicle.\n\nFor the global area ID (0), {@code getSupportedValuesList}\nmust return a {@code SupportedValuesListResult} that contains supported values unless all\nenum values of EvStoppingMode are supported.\n\nFor backward compatibility, if {@code SupportedValuesListResult} is defined,\n{@code VehicleAreaConfig#supportedEnumValues} must be set to the same values.\n\nThe EvStoppingMode enum may be extended to include more states in the future.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
+    "description": "Represents property for the current stopping mode of the vehicle.\n\nFor the global area ID (0), getSupportedValuesList\nmust return a SupportedValuesListResult that contains supported values unless all\nenum values of EvStoppingMode are supported.\n\nFor backward compatibility, if SupportedValuesListResult is defined,\nVehicleAreaConfig#supportedEnumValues must be set to the same values.\n\nThe EvStoppingMode enum may be extended to include more states in the future.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
     "aidlLine": 1004,
     "javaLine": 1501,
     "readPermissions": [
@@ -1981,6 +2069,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable Electronic Stability Control (ESC).\n\nSet true to enable ESC and false to disable ESC. When ESC is enabled, a system in the vehicle\nshould be controlling the tires during instances with high risk of skidding to actively\nprevent the same from happening.\n\nIn general, ELECTRONIC_STABILITY_CONTROL_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, such as the vehicle speed being too\nhigh, that information must be conveyed through the ErrorState values in the\nELECTRONIC_STABILITY_CONTROL_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2020,9 +2109,13 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "ElectronicStabilityControlState",
+    "dataEnums": [
+      "ElectronicStabilityControlState",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
-    "description": "Electronic Stability Control (ESC) state.\n\nReturns the current state of ESC. This property must always return a valid state defined in\nElectronicStabilityControlState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead.\n\nFor the global area ID (0), {@code getSupportedValuesList}\nmust return a {@code SupportedValuesListResult} that contains supported values unless all\nstates of both ElectronicStabilityControlState (including OTHER, which is not\nrecommended) and ErrorState are supported.\n\nFor backward compatibility, if {@code SupportedValuesListResult} is defined,\n{@code VehicleAreaConfig#supportedEnumValues} must be set to the same values.",
+    "description": "Electronic Stability Control (ESC) state.\n\nReturns the current state of ESC. This property must always return a valid state defined in\nElectronicStabilityControlState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead.\n\nFor the global area ID (0), getSupportedValuesList\nmust return a SupportedValuesListResult that contains supported values unless all\nstates of both ElectronicStabilityControlState (including OTHER, which is not\nrecommended) and ErrorState are supported.\n\nFor backward compatibility, if SupportedValuesListResult is defined,\nVehicleAreaConfig#supportedEnumValues must be set to the same values.",
     "aidlLine": 1049,
     "javaLine": 1710,
     "readPermissions": [
@@ -2056,6 +2149,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleTurnSignal",
+    "dataEnums": [
+      "VehicleTurnSignal"
+    ],
     "version": 4,
     "deprecated": false,
     "description": "Turn signal light state.\n\nThis property must communicate the actual state of the turn signal lights.\n\nExamples:\n  1) Left turn signal light is currently pulsing, right turn signal light is currently off.\n  This property must return VehicleTurnSignal.LEFT while the light is on during the pulse,\n  and VehicleTurnSignal.NONE when it is off during the pulse.\n  2) Right turn signal light is currently pulsing, left turn signal light is currently off.\n  This property must return VehicleTurnSignal.RIGHT while the light is on during the pulse,\n  and VehicleTurnSignal.NONE when it is off during the pulse.\n  3) Both turn signal lights are currently pulsing (e.g. when hazard lights switch is on).\n  This property must return VehicleTurnSignal.LEFT | VehicleTurnSignal.RIGHT while the lights\n  are on during the pulse, and VehicleTurnSignal.NONE when they are off during the pulse.\n\nNote that this property uses VehicleTurnSignal as a bit flag, unlike TURN_SIGNAL_SWITCH,\nwhich uses it like a regular enum. This means this property can support ORed together values\nin VehicleTurnSignal.\n\nThis is different from the function of TURN_SIGNAL_SWITCH, which must communicate the state\nof the turn signal lever/switch.\n\nThis property is a replacement to the TURN_SIGNAL_STATE property, which is now deprecated.",
@@ -2104,6 +2200,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleTurnSignal",
+    "dataEnums": [
+      "VehicleTurnSignal"
+    ],
     "version": 4,
     "deprecated": false,
     "description": "Turn signal switch.\n\nThis property must communicate the state of the turn signal lever/switch. This is different\nfrom the function of TURN_SIGNAL_LIGHT_STATE, which must communicate the actual state of the\nturn signal lights.\n\nNote that this property uses VehicleTurnSignal as a regular enum, unlike\nTURN_SIGNAL_LIGHT_STATE, which uses it like a bit flag. This means this property cannot\nsupport ORed together values in VehicleTurnSignal.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2148,6 +2247,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Fan speed setting\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the lowest fan speed.\nThe maxInt32Value indicates the highest fan speed.\n\nThis property is not in any particular unit but in a specified range of relative speeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2182,9 +2282,12 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleHvacFanDirection",
+    "dataEnums": [
+      "VehicleHvacFanDirection"
+    ],
     "version": 2,
     "deprecated": false,
-    "description": "Fan direction setting\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.\n\nThe supported hvac fan direction is exposed through {@code HVAC_FAN_DIRECTION_AVAILABLE}\nproperty. Caller should not call {@code getSupportedValuesList}, or use\n{@code VehicleAreaConfig#supportedEnumValues}.",
+    "description": "Fan direction setting\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.\n\nThe supported hvac fan direction is exposed through HVAC_FAN_DIRECTION_AVAILABLE\nproperty. Caller should not call getSupportedValuesList, or use\nVehicleAreaConfig#supportedEnumValues.",
     "aidlLine": 1193,
     "javaLine": 1850,
     "readPermissions": [
@@ -2220,6 +2323,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "CELSIUS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "HVAC current temperature.",
@@ -2259,6 +2363,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "CELSIUS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "HVAC target temperature set in Celsius.\n\nThe minFloatValue and maxFloatValue in VehicleAreaConfig must be defined.\n\nThe minFloatValue indicates the minimum temperature setting in Celsius.\nThe maxFloatValue indicates the maximum temperature setting in Celsius.\n\nIf all the values between minFloatValue and maxFloatValue are not supported, the configArray\ncan be used to list the valid temperature values that can be set. It also describes a lookup\ntable to convert the temperature from Celsius to Fahrenheit and vice versa for this vehicle.\nThe configArray must be defined if standard unit conversion is not supported on this vehicle.\n\nThe configArray is set as follows:\n     configArray[0] = [the lower bound of the supported temperature in Celsius] * 10.\n     configArray[1] = [the upper bound of the supported temperature in Celsius] * 10.\n     configArray[2] = [the increment in Celsius] * 10.\n     configArray[3] = [the lower bound of the supported temperature in Fahrenheit] * 10.\n     configArray[4] = [the upper bound of the supported temperature in Fahrenheit] * 10.\n     configArray[5] = [the increment in Fahrenheit] * 10.\n\nThe minFloatValue and maxFloatValue in VehicleAreaConfig must be equal to configArray[0] and\nconfigArray[1] respectively.\n\nFor example, if the vehicle supports temperature values as:\n     [16.0, 16.5, 17.0 ,..., 28.0] in Celsius\n     [60.5, 61.5, 62.5 ,..., 84.5] in Fahrenheit\nThe configArray should be configArray = {160, 280, 5, 605, 845, 10}.\n\nIdeally, the ratio of the Celsius increment to the Fahrenheit increment should be as close to\nthe actual ratio of 1 degree Celsius to 1.8 degrees Fahrenheit.\n\nThere must be a one to one mapping of all Celsius values to Fahrenheit values defined by the\nconfigArray. The configArray will be used by clients to convert this property's temperature\nfrom Celsius to Fahrenheit. Also, it will let clients know what Celsius value to set the\nproperty to achieve their desired Fahreneheit value for the system. If the ECU does not have\na one to one mapping of all Celsius values to Fahrenheit values, then the config array should\nonly define the list of Celsius and Fahrenheit values that do have a one to one mapping.\n\nFor example, if the ECU supports Celsius values from 16 to 28 and Fahrenheit values from 60\nto 85 both with an increment of 1, then one possible configArray would be {160, 280, 10, 600,\n840, 20}. In this case, 85 would not be a supported temperature.\n\nAny value set in between a valid value should be rounded to the closest valid value.\n\nIt is highly recommended that the OEM also implement the HVAC_TEMPERATURE_VALUE_SUGGESTION\nvehicle property because it provides applications a simple method for determining temperature\nvalues that can be set for this vehicle and for converting values between Celsius and\nFahrenheit.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2312,6 +2417,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Fan-based defrost for designated window.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2345,6 +2451,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "On/off AC for designated areaId\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2378,6 +2485,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "On/off max AC\n\nWhen MAX AC is on, the ECU may adjust the vent position, fan speed,\ntemperature, etc as necessary to cool the vehicle as quickly as possible.\nAny parameters modified as a side effect of turning on/off the MAX AC\nparameter shall generate onPropertyEvent() callbacks to the VHAL.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2411,6 +2519,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "On/off max defrost\n\nWhen MAX DEFROST is on, the ECU may adjust the vent position, fan speed,\ntemperature, etc as necessary to defrost the windows as quickly as\npossible.  Any parameters modified as a side effect of turning on/off\nthe MAX DEFROST parameter shall generate onPropertyEvent() callbacks to\nthe VHAL.\nThe AreaIDs for HVAC_MAX_DEFROST_ON indicate MAX DEFROST can be controlled\nin the area.\nFor example:\nareaConfig.areaId = {ROW_1_LEFT | ROW_1_RIGHT} indicates HVAC_MAX_DEFROST_ON\nonly can be controlled for the front rows.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2444,6 +2553,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Recirculation on/off\n\nControls the supply of exterior air to the cabin.  Recirc “on” means the\nmajority of the airflow into the cabin is originating in the cabin.\nRecirc “off” means the majority of the airflow into the cabin is coming\nfrom outside the car.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2477,6 +2587,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable temperature coupling between areas.\n\nThe AreaIDs for HVAC_DUAL_ON property shall contain a combination of\nHVAC_TEMPERATURE_SET AreaIDs that can be coupled together. If\nHVAC_TEMPERATURE_SET is mapped to AreaIDs [a_1, a_2, ..., a_n], and if\nHVAC_DUAL_ON can be enabled to couple a_i and a_j, then HVAC_DUAL_ON\nproperty must be mapped to [a_i | a_j]. Further, if a_k and a_l can also\nbe coupled together separately then HVAC_DUAL_ON must be mapped to\n[a_i | a_j, a_k | a_l].\n\nExample: A car has two front seats (ROW_1_LEFT, ROW_1_RIGHT) and three\n back seats (ROW_2_LEFT, ROW_2_CENTER, ROW_2_RIGHT). There are two\n temperature control units -- driver side and passenger side -- which can\n be optionally synchronized. This may be expressed in the AreaIDs this way:\n - HVAC_TEMPERATURE_SET->[ROW_1_LEFT | ROW_2_LEFT, ROW_1_RIGHT | ROW_2_CENTER | ROW_2_RIGHT]\n - HVAC_DUAL_ON->[ROW_1_LEFT | ROW_2_LEFT | ROW_1_RIGHT | ROW_2_CENTER | ROW_2_RIGHT]\n\nWhen the property is enabled, the ECU must synchronize the temperature\nfor the affected areas. Any parameters modified as a side effect\nof turning on/off the DUAL_ON parameter shall generate\nonPropertyEvent() callbacks to the VHAL. In addition, if setting\na temperature (i.e. driver's temperature) changes another temperature\n(i.e. front passenger's temperature), then the appropriate\nonPropertyEvent() callbacks must be generated.  If a user changes a\ntemperature that breaks the coupling (e.g. setting the passenger\ntemperature independently) then the VHAL must send the appropriate\nonPropertyEvent() callbacks (i.e. HVAC_DUAL_ON = false,\nHVAC_TEMPERATURE_SET[AreaID] = xxx, etc).\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2515,6 +2626,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "On/off automatic climate control.\n\nIf true, automatic climate control is on. If false, automatic climate control is off.\n\nIf the vehicle does not support directly turning off automatic climate control, then OEMs\nshould add logic in their VHAL implementation so that setting HVAC_AUTO_ON to false would\nchange the necessary HVAC settings to indirectly turn off HVAC_AUTO_ON. Ideally, this should\nnot be disruptive to the user, so OEMs should change back to the previous state any settings\nthat were modified once automatic climate control is off. That way the only outcome should be\nthat HVAC_AUTO_ON is off. If restoring the HVAC settings to its previous settings is not\npossible, then the OEM should choose the least disruptive change and implement that.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2548,6 +2660,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat heating/cooling\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the maximum seat temperature heating setting.\nThe minInt32Value must be 0, unless the vehicle supports seat cooling as well. In this case,\nminInt32Value indicates the maximum seat temperature cooling setting.\n\nThis property is not in any particular unit, but in a specified range of relative temperature\nsettings.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2581,6 +2694,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Side Mirror Heat\n\nIncreasing values denote higher heating levels for side mirrors.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value in the config data represents the maximum heating level.\nThe minInt32Value in the config data MUST be zero and indicates no heating.\n\nThis property is not in any particular unit but in a specified range of relative heating\nsettings.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2608,6 +2722,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering Wheel Heating/Cooling\n\nSets the amount of heating/cooling for the steering wheel.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the maximum steering wheel heating setting.\nThe minInt32Value should be 0, unless the vehicle supports steering wheel cooling as well. In\nsuch a case, the minInt32Value indicates the maximum steering wheel cooling setting.\n\nThis property is not in any particular unit but in a specified range of heating settings.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2636,6 +2751,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleUnit",
+    "dataEnums": [
+      "VehicleUnit"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Temperature units for display\n\nIndicates whether the vehicle is displaying temperature to the user as\nCelsius or Fahrenheit.\nVehiclePropConfig.configArray is used to indicate the supported temperature display units.\nFor example: configArray[0] = CELSIUS\n             configArray[1] = FAHRENHEIT\n\nThis parameter MAY be used for displaying any HVAC temperature in the system.\nValues must be one of VehicleUnit.CELSIUS or VehicleUnit.FAHRENHEIT\nNote that internally, all temperatures are represented in floating point Celsius.\n\nIf updating HVAC_TEMPERATURE_DISPLAY_UNITS affects the values of other *_DISPLAY_UNITS\nproperties, then their values must be updated and communicated to the AAOS framework as well.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2694,6 +2812,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Actual fan speed",
@@ -2727,6 +2846,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents global power state for HVAC. Setting this property to false\nMAY mark some properties that control individual HVAC features/subsystems\nto UNAVAILABLE state. Setting this property to true MAY mark some\nproperties that control individual HVAC features/subsystems to AVAILABLE\nstate (unless any/all of them are UNAVAILABLE on their own individual\nmerits).\n\n[Definition] HvacPower_DependentProperties: Properties that need HVAC to be\n  powered on in order to enable their functionality. For example, in some cars,\n  in order to turn on the AC, HVAC must be powered on first.\n\nHvacPower_DependentProperties list must be set in the\nVehiclePropConfig.configArray. HvacPower_DependentProperties must only contain\nproperties that are associated with VehicleArea:SEAT. Properties that are not\nassociated with VehicleArea:SEAT, for example, HVAC_DEFROSTER, must never\ndepend on HVAC_POWER_ON property and must never be part of\nHvacPower_DependentProperties list.\n\nAreaID mapping for HVAC_POWER_ON property must contain all AreaIDs that\nHvacPower_DependentProperties are mapped to.\n\nExample 1: A car has two front seats (ROW_1_LEFT, ROW_1_RIGHT) and three back\n seats (ROW_2_LEFT, ROW_2_CENTER, ROW_2_RIGHT). If the HVAC features (AC,\n Temperature etc.) throughout the car are dependent on a single HVAC power\n controller then HVAC_POWER_ON must be mapped to\n [ROW_1_LEFT | ROW_1_RIGHT | ROW_2_LEFT | ROW_2_CENTER | ROW_2_RIGHT].\n\nExample 2: A car has two seats in the front row (ROW_1_LEFT, ROW_1_RIGHT) and\n  three seats in the second (ROW_2_LEFT, ROW_2_CENTER, ROW_2_RIGHT) and third\n  rows (ROW_3_LEFT, ROW_3_CENTER, ROW_3_RIGHT). If the car has temperature\n  controllers in the front row which can operate entirely independently of\n  temperature controllers in the back of the vehicle, then HVAC_POWER_ON\n  must be mapped to a two element array:\n  - ROW_1_LEFT | ROW_1_RIGHT\n  - ROW_2_LEFT | ROW_2_CENTER | ROW_2_RIGHT | ROW_3_LEFT | ROW_3_CENTER | ROW_3_RIGHT\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2835,6 +2955,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleHvacFanDirection",
+    "dataEnums": [
+      "VehicleHvacFanDirection"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Fan Positions Available\n\nThis is a bit mask of fan positions available for the zone.  Each\navailable fan direction is denoted by a separate entry in the vector.  A\nfan direction may have multiple bits from vehicle_hvac_fan_direction set.\nFor instance, a typical car may have the following fan positions:\n  - FAN_DIRECTION_FACE (0x1)\n  - FAN_DIRECTION_FLOOR (0x2)\n  - FAN_DIRECTION_FACE | FAN_DIRECTION_FLOOR (0x3)\n  - FAN_DIRECTION_DEFROST (0x4)\n  - FAN_DIRECTION_FLOOR | FAN_DIRECTION_DEFROST (0x6)",
@@ -2873,6 +2996,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Automatic recirculation on/off\n\nWhen automatic recirculation is ON, the HVAC system may automatically\nswitch to recirculation mode if the vehicle detects poor incoming air\nquality.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2906,6 +3030,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat ventilation\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value must be 0.\nThe maxInt32Value indicates the maximum ventilation setting available for the seat.\n\nThis property is not in any particular unit but in the specified range of ventilation\nsettings.\n\nUsed by HVAC apps and Assistant to enable, change, or read state of seat\nventilation.  This is different than seating cooling. It can be on at the\nsame time as cooling, or not.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2939,6 +3064,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Electric defrosters' status\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -2965,6 +3091,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Suggested values for setting HVAC temperature.\n\nImplement the property to help applications understand the closest supported temperature\nvalue in Celsius or Fahrenheit.\n\n     floatValues[0] = the requested value that an application wants to set a temperature to.\n     floatValues[1] = the unit for floatValues[0]. It should be one of\n                      {VehicleUnit.CELSIUS, VehicleUnit.FAHRENHEIT}.\n     floatValues[2] = the value OEMs suggested in CELSIUS. This value is not included\n                      in the request.\n     floatValues[3] = the value OEMs suggested in FAHRENHEIT. This value is not included\n                      in the request.\n\nAn application calls set(VehiclePropValue propValue) with the requested value and unit for\nthe value. OEMs need to return the suggested values in floatValues[2] and floatValues[3] by\nonPropertyEvent() callbacks. The suggested values must conform to the values that can be\nderived from the HVAC_TEMPERATURE_SET configArray. In other words, the suggested values and\nthe table of values from the configArray should be the same. It is recommended for the OEM to\nadd custom logic in their VHAL implementation in order to avoid making requests to the HVAC\nECU.\n\nThe logic can be as follows:\nFor converting the temperature from celsius to fahrenheit use the following:\n// Given tempC and the configArray\nfloat minTempC = configArray[0] / 10.0;\nfloat temperatureIncrementCelsius = configArray[2] / 10.0;\nfloat minTempF = configArray[3] / 10.0;\nfloat temperatureIncrementFahrenheit = configArray[5] / 10.0;\n// Round to the closest increment\nint numIncrements = round((tempC - minTempC) / temperatureIncrementCelsius);\ntempF = temperatureIncrementFahrenheit * numIncrements + minTempF;\n\nFor example, when a user uses the voice assistant to set HVAC temperature to 66.2 in\nFahrenheit.\nFirst, an application will set this property with the value\n[66.2, (float)VehicleUnit.FAHRENHEIT,0,0].\nIf OEMs suggest to set 19.0 in Celsius or 66.5 in Fahrenheit for user's request, then VHAL\nmust generate a callback with property value\n[66.2, (float)VehicleUnit.FAHRENHEIT, 19.0, 66.5]. After the voice assistant gets the\ncallback, it will inform the user and set HVAC temperature to the suggested value.\n\nAnother example, an application receives 21 Celsius as the current temperature value by\nquerying HVC_TEMPERATURE_SET. But the application wants to know what value is displayed on\nthe car's UI in Fahrenheit.\nFor this, the application sets the property to [21, (float)VehicleUnit.CELSIUS, 0, 0]. If\nthe suggested value by the OEM for 21 Celsius is 70 Fahrenheit, then VHAL must generate a\ncallback with property value [21, (float)VehicleUnit.CELSIUS, 21.0, 70.0].\nIn this case, the application can know that the value is 70.0 Fahrenheit in the car’s UI.",
@@ -3004,6 +3131,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleUnit",
+    "dataEnums": [
+      "VehicleUnit"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Distance units for display\n\nIndicates which units the car is using to display distances to the user. Eg. Mile, Meter\nKilometer.\n\nDistance units are defined in VehicleUnit.\nVehiclePropConfig.configArray is used to indicate the supported distance display units.\nFor example: configArray[0] = METER\n             configArray[1] = KILOMETER\n             configArray[2] = MILE\n\nIf updating DISTANCE_DISPLAY_UNITS affects the values of other *_DISPLAY_UNITS properties,\nthen their values must be updated and communicated to the AAOS framework as well.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3064,6 +3194,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleUnit",
+    "dataEnums": [
+      "VehicleUnit"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Fuel volume units for display\n\nIndicates which units the car is using to display fuel volume to the user. Eg. Liter or\nGallon.\n\nVehiclePropConfig.configArray is used to indicate the supported fuel volume display units.\nVolume units are defined in VehicleUnit.\nFor example: configArray[0] = LITER\n             configArray[1] = GALLON\n\nIf updating FUEL_VOLUME_DISPLAY_UNITS affects the values of other *_DISPLAY_UNITS properties,\nthen their values must be updated and communicated to the AAOS framework as well.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3109,6 +3242,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleUnit",
+    "dataEnums": [
+      "VehicleUnit"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Tire pressure units for display\n\nIndicates which units the car is using to display tire pressure to the user. Eg. PSI, Bar or\nKilopascal.\n\nVehiclePropConfig.configArray is used to indicate the supported pressure display units.\nPressure units are defined in VehicleUnit.\nFor example: configArray[0] = KILOPASCAL\n             configArray[1] = PSI\n             configArray[2] = BAR\n\nIf updating TIRE_PRESSURE_DISPLAY_UNITS affects the values of other *_DISPLAY_UNITS\nproperties, then their values must be updated and communicated to the AAOS framework as well.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3149,6 +3285,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleUnit",
+    "dataEnums": [
+      "VehicleUnit"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "EV battery units for display\n\nIndicates which units the car is using to display EV battery information to the user. Eg.\nwatt-hours(Wh), kilowatt-hours(kWh) or ampere-hours(Ah).\n\nVehiclePropConfig.configArray is used to indicate the supported electrical energy units.\nElectrical energy units are defined in VehicleUnit.\nFor example: configArray[0] = WATT_HOUR\n             configArray[1] = AMPERE_HOURS\n             configArray[2] = KILOWATT_HOUR\n\nIf updating EV_BATTERY_DISPLAY_UNITS affects the values of other *_DISPLAY_UNITS properties,\nthen their values must be updated and communicated to the AAOS framework as well.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3198,6 +3337,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Fuel consumption units for display\n\nIndicates type of units the car is using to display fuel consumption information to user\nTrue indicates units are distance over volume such as MPG.\nFalse indicates units are volume over distance such as L/100KM.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3233,9 +3373,12 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleUnit",
+    "dataEnums": [
+      "VehicleUnit"
+    ],
     "version": 2,
     "deprecated": false,
-    "description": "Speed units for display\n\nIndicates type of units the car is using to display speed to user. Eg. m/s, km/h, or mph.\n\n{@code VehicleAreaConfig.HasSupportedValueInfo.hasSupportedValuesList} for the global area ID\n(0) must be {@code true}.\n\n{@code getSupportedValuesLists} for [VEHICLE_SPEED_DISPLAY_UNITS, areaId=0] must return a\n{@code SupportedValuesListResult} that contains non-null {@code supportedValuesList},\ne.g. [METER_PER_SEC, MILES_PER_HOUR, KILOMETERS_PER_HOUR].\n\nFor backward compatibility, config array for this property must contain the same values as\nsupported values at boot time.\nFor example: configArray[0] = METER_PER_SEC\n             configArray[1] = MILES_PER_HOUR\n             configArray[2] = KILOMETERS_PER_HOUR\n\nIf updating VEHICLE_SPEED_DISPLAY_UNITS affects the values of other *_DISPLAY_UNITS\nproperties, then their values must be updated and communicated to the AAOS framework as well.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
+    "description": "Speed units for display\n\nIndicates type of units the car is using to display speed to user. Eg. m/s, km/h, or mph.\n\nVehicleAreaConfig.HasSupportedValueInfo.hasSupportedValuesList for the global area ID\n(0) must be true.\n\ngetSupportedValuesLists for [VEHICLE_SPEED_DISPLAY_UNITS, areaId=0] must return a\nSupportedValuesListResult that contains non-null supportedValuesList,\ne.g. [METER_PER_SEC, MILES_PER_HOUR, KILOMETERS_PER_HOUR].\n\nFor backward compatibility, config array for this property must contain the same values as\nsupported values at boot time.\nFor example: configArray[0] = METER_PER_SEC\n             configArray[1] = MILES_PER_HOUR\n             configArray[2] = KILOMETERS_PER_HOUR\n\nIf updating VEHICLE_SPEED_DISPLAY_UNITS affects the values of other *_DISPLAY_UNITS\nproperties, then their values must be updated and communicated to the AAOS framework as well.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
     "aidlLine": 1838,
     "javaLine": 2537,
     "readPermissions": [
@@ -3278,6 +3421,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLI_SECS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Current date and time suggestion for the Car, encoded as Epoch time\n(in milliseconds). This value denotes the number of milliseconds seconds\nthat have elapsed since 1/1/1970 UTC.\n\nThis property signals a change in CarTime to Android. If the property is supported, VHAL\nmust report the most accurate current CarTime when this property is read, and publish a\nchange to this property when the CarTime value has changed. An on-change event for this\nproperty must be published when CarTime changes for any reason other than the natural elapse\nof time (time delta smaller than 500ms should not trigger an on change event). Android will\nread and subscribe to this property to fetch time from VHAL. This can be useful to\nsynchronize Android's time with other vehicle systems (dash clock etc).\n    int64Values[0] = provided Epoch time (in milliseconds)\n\nWhenever a new Value for the property is received, AAOS will create\nand send an \"ExternalTimeSuggestion\" to the \"TimeDetectorService\".\nIf other sources do not have a higher priority, Android will use this\nto set the system time. For information on how to adjust time source\npriorities and how time suggestions are handled (including how Android\nhandles gitter, drift, and minimum resolution) see Time Detector Service\ndocumentation.\n\nNote that the property may take >0 ms to get propagated through the stack\nand, having a timestamped property helps reduce any time drift. So,\nfor all reads to the property, the timestamp can be used to negate this\ndrift:\n    drift = elapsedTime - PropValue.timestamp\n    effectiveTime = PropValue.value.int64Values[0] + drift\n\nIt is strongly recommended that this property must not be used to retrieve\ntime from ECUs using protocols (GNSS, NTP, Telephony etc). Since these\nprotocols are already supported by Android, it is recommended to use\nAndroid’s own systems for them instead of wiring those through the VHAL\nusing this property.\n\nWARNING: The value available through this property should not be dependent\non value written by Android to ANDROID_EPOCH_TIME property in any way.",
@@ -3304,6 +3448,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "WRITE"
     ],
     "unit": "MILLI_SECS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Current date and time, encoded as Epoch time (in milliseconds).\nThis value denotes the number of milliseconds seconds that have\nelapsed since 1/1/1970 UTC.\n\nCarServices will write to this value to give VHAL the Android system's\ntime, if the VHAL supports this property. This can be useful to\nsynchronize other vehicle systems (dash clock etc) with Android's time.\n\nAAOS writes to this property once during boot, and\nwill thereafter write only when some time-source changes are propagated.\nAAOS will fill in VehiclePropValue.timestamp correctly.\nNote that AAOS will not send updates for natural elapse of time.\n    int64Values[0] = provided Unix time (in milliseconds)\n\nNote that the property may take >0 ms to get propagated through the stack\nand, having a timestamped property helps reduce any time drift. So,\nfor all writes to the property, the timestamp can be used to negate this\ndrift:\n    drift = elapsedTime - PropValue.timestamp\n    effectiveTime = PropValue.value.int64Values[0] + drift",
@@ -3329,6 +3474,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "External encryption binding seed.\n\nThis value is mixed with the local key storage encryption key.\nThis property holds 16 bytes, and is expected to be persisted on an ECU separate from\nthe IVI. The property is initially set by AAOS, who generates it using a CSRNG.\nAAOS will then read the property on subsequent boots. The binding seed is expected to be\nreliably persisted. Any loss of the seed results in a factory reset of the IVI.",
@@ -3349,6 +3495,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "CELSIUS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Outside temperature\n\nThis property must communicate the temperature reading of the environment outside the\nvehicle. If there are multiple sensors for measuring the outside temperature, this property\nshould be populated with the mean or a meaningful weighted average of the readings that will\nbest represent the temperature of the outside environment.",
@@ -3381,6 +3528,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to control power state of application processor\n\nIt is assumed that AP's power state is controlled by a separate power\ncontroller.\n\nFor configuration information, VehiclePropConfig.configArray must have bit flag combining\nvalues in VehicleApPowerStateConfigFlag.\n\n  configArray[0] : Bit flag combining values in VehicleApPowerStateConfigFlag,\n                   0x0 if not used,\n                   0x1 for enabling suspend to ram,\n                   0x2 for supporting powering on AP from off state after timeout.\n                   0x4 for enabling suspend to disk,\n\n  int32Values[0] : VehicleApPowerStateReq enum value\n  int32Values[1] : additional parameter relevant for each state,\n                   0 if not used.",
@@ -3407,6 +3555,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to report power state of application processor\n\nIt is assumed that AP's power state is controller by separate power\ncontroller.\n\n  int32Values[0] : VehicleApPowerStateReport enum value\n  int32Values[1] : Time in ms to wake up, if necessary.  Otherwise 0.",
@@ -3433,6 +3582,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to report bootup reason for the current power on. This is a\nstatic property that will not change for the whole duration until power\noff. For example, even if user presses power on button after automatic\npower on with door unlock, bootup reason must stay with\nVehicleApPowerBootupReason#USER_UNLOCK.\n\nint32Values[0] must be VehicleApPowerBootupReason.",
@@ -3466,6 +3616,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to represent brightness of the display.\n\nSome cars have single control for the brightness of all displays and this\nproperty is to share change in that control. In cars which have displays\nwhose brightness is controlled separately, they must use\nPER_DISPLAY_BRIGHTNESS.\n\nOnly one of DISPLAY_BRIGHTNESS and PER_DISPLAY_BRIGHTNESS should be\nimplemented. If both are available, PER_DISPLAY_BRIGHTNESS is used by\nAAOS.\n\nIf this is writable, android side can set this value when user changes\ndisplay brightness from Settings. If this is read only, user may still\nchange display brightness from Settings, but that must not be reflected\nto other displays.\n\nIf this is writable, writing this property must cause an on property\nchange event even if the new display brightness is the same as the\ncurrent value.",
@@ -3503,6 +3654,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to represent brightness of the displays which are controlled separately.\n\nSome cars have one or more displays whose brightness is controlled\nseparately and this property is to inform the brightness of each\npassenger display. In cars where all displays' brightness is controlled\ntogether, they must use DISPLAY_BRIGHTNESS.\n\nOnly one of DISPLAY_BRIGHTNESS and PER_DISPLAY_BRIGHTNESS should be\nimplemented. If both are available, PER_DISPLAY_BRIGHTNESS is used by\nAAOS.\n\nIf this is supported, PER_DISPLAY_MAX_BRIGHTNESS must be supported to represent the max\ndisplay brightness for each display. Otherwise, the max display brightness is by default 1.\nThe VehicleAreaConfig.maxInt32Value must not be used to represent max display brightness,\nbecause maxInt32Value is defined to be the max value for all the elements inside the integer\nvalue, which includes display port and brightness. So it is not meaningful.\n\nThe display port uniquely identifies a physical connector on the device\nfor display output, ranging from 0 to 255.\n\nWriting this property must cause an on property change event that\ncontains the same [display port, brightness] tuple even if the new\ndisplay brightness is the same as the current value.\n\nTo get the display brightness for a specific display port, the\nGetValueRequest must contain a VehiclePropValue, which contains one\nint32Value: displayPort. Getting this property without specifying the\nthe display port is undefined behavior.\n\nint32Values[0] : display port\nint32Values[1] : brightness",
@@ -3551,6 +3703,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Valet mode enabled\n\nThis property allows the user to enable/disable valet mode in their vehicle. Valet mode is\na privacy and security setting that prevents an untrusted driver to access more private areas\nin the vehicle, such as the glove box or the trunk(s).\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3579,6 +3732,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Head up display (HUD) enabled\n\nThis property allows the user to turn on/off the HUD for their seat.\n\nEach HUD in the vehicle should be assigned to the seat that is intended to use it. For\nexample, if there is a single HUD in the vehicle that is used by the driver so that they no\nlonger need to continuously look at the instrument cluster, then this property should be\ndefined with a single area ID equal to the driver's seat area value.",
@@ -3606,6 +3760,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to feed H/W input events to android\n\nint32Values[0] : action defined by VehicleHwKeyInputAction\nint32Values[1] : key code, must use standard android key code\nint32Values[2] : target display defined in VehicleDisplay. Events not\n                 tied to specific display must be sent to\n                 VehicleDisplay#MAIN.\nint32Values[3] : [optional] Number of ticks. The value must be equal or\n                 greater than 1. When omitted, Android will default to 1.",
@@ -3628,6 +3783,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to feed H/W input events to android\n\nint32array[0]: target display defined by VehicleDisplay like VehicleDisplay::MAIN,\n               VehicleDisplay::INSTRUMENT_CLUSTER, VehicleDisplay::AUX\nint32array[1]: key code, must use standard android key code like KEYCODE_HOME, KEYCODE_BACK\nint32array[2]: action defined in VehicleHwKeyInputAction like\n               VehicleHwKeyInputAction::ACTION_UP, VehicleHwKeyInputAction::ACTION_UP\nint32array[3]: repeat count of the event. For key down events, this is the repeat count\n               with the first down starting at 0 and counting up from there. For key up\n               events, this is always equal to 0\n\nint64array[0]: down time, elapsed nanoseconds since boot. Denotes the time of the most\n               recent key down event. For the down event, it will be the event time of the\n               down event itself",
@@ -3647,6 +3803,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property to feed H/W input events to android\n\nint32array[0]: target display defined by VehicleDisplay like VehicleDisplay::MAIN,\n               VehicleDisplay::INSTRUMENT_CLUSTER, VehicleDisplay::AUX\nint32array[1]: input type defined in VehicleHwMotionInputSource like\n               VehicleHwMotionInputSource::SOURCE_KEYBOARD,\n               VehicleHwMotionInputSource::SOURCE_DPAD\nint32array[2]: action code defined in VehicleHwMotionInputAction like\n               VehicleHwMotionInputAction::ACTION_UP, VehicleHwMotionInputAction::ACTION_DOWN\nint32array[3]: button state flag defined in VehicleHwMotionButtonStateFlag like\n               VehicleHwMotionButtonStateFlag::BUTTON_PRIMARY,\n               VehicleHwMotionButtonStateFlag::BUTTON_SECONDARY\nint32array[4]: pointer events count, N. N must be a positive integer\nint32array[5:5+N-1]: pointer id, length N\nint32array[5+N:5+2*N-1] : tool type, length N. As defined in VehicleHwMotionToolType like\n                          VehicleHwMotionToolType::TOOL_TYPE_FINGER,\n                          VehicleHwMotionToolType::TOOL_TYPE_STYLUS\n\nfloatArray[0:N-1] : x data, length N\nfloatArray[N:2*N-1] : y data, length N\nfloatArray[2*N:3*N-1] : pressure data, length N\nfloatArray[3*N:4*N-1] : size data, length N\n\nint64array[0]: down time, elapsed nanoseconds since boot. Denotes the time when the user\n               originally pressed down to start a stream of position events. For the down\n               event, it will be the event time of the down event itself",
@@ -3667,6 +3824,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "RotaryInputType",
+    "dataEnums": [
+      "RotaryInputType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Property to feed H/W rotary events to android\n\nint32Values[0] : RotaryInputType identifying which rotary knob rotated\nint32Values[1] : number of detents (clicks), positive for clockwise,\n                 negative for counterclockwise\nint32Values[2] : target display defined in VehicleDisplay. Events not\n                 tied to specific display must be sent to\n                 VehicleDisplay#MAIN.\nint32values[3 .. 3 + abs(number of detents) - 2]:\n                 nanosecond deltas between pairs of consecutive detents,\n                 if the number of detents is > 1 or < -1\n\nVehiclePropValue.timestamp: when the rotation occurred. If the number of\n                            detents is > 1 or < -1, this is when the\n                            first detent of rotation occurred.",
@@ -3687,6 +3847,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "CustomInputType",
+    "dataEnums": [
+      "CustomInputType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Defines a custom OEM partner input event.\n\nThis input event must be used by OEM partners who wish to propagate events not supported\nby Android. It is composed by an array of int32 values only.\n\nThe Android properties are:\n\nint32Values[0] : Input code identifying the function representing this event. Valid event\n                 types are defined by CustomInputType.CUSTOM_EVENT_F1 up to\n                 CustomInputType.CUSTOM_EVENT_F10. They represent the custom event to be\n                 defined by OEM partners.\nint32Values[1] : target display type defined in VehicleDisplay. Events not tied to specific\n                 display must be sent to VehicleDisplay#MAIN.\nint32Values[2] : repeat counter, if 0 then event is not repeated. Values 1 or above means\n                 how many times this event repeated.",
@@ -3707,6 +3870,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Door position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the door is closed. The minInt32Value must be 0.\nThe maxInt32Value indicates the door is fully open.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nclosed and fully open positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nSome vehicles (minivans) can open the door electronically. Hence, the\nability to write this property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3734,6 +3898,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Door move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the door while opening.\nThe minInt32Value represents the maximum movement speed of the door while closing.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe door reaches the positional limit, the value must reset to 0. If DOOR_MOVE's value is\ncurrently 0, then that means there is no movement currently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3761,6 +3926,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Door lock\n\n'true' indicates door is locked\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3788,6 +3954,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Door child lock feature enabled\n\nReturns true if the door child lock feature is enabled and false if it is disabled.\n\nIf enabled, the door is unable to be opened from the inside.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3815,6 +3982,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Mirror Z Position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the mirror is tilted completely downwards. This must be a\nnon-positive value.\nThe maxInt32Value indicates the mirror is tilted completely upwards. This must be a\nnon-negative value.\n0 indicates the mirror is not tilted in either direction.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nfully downward and fully upwards positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3842,6 +4010,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Mirror Z Move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the mirror while tilting upwards.\nThe minInt32Value represents the maximum movement speed of the mirror while tilting\ndownwards.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe mirror reaches the positional limit, the value must reset to 0. If MIRROR_Z_MOVE's value\nis currently 0, then that means there is no movement currently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3869,6 +4038,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Mirror Y Position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the mirror is tilted completely to the left. This must be a\nnon-positive value.\nThe maxInt32Value indicates the mirror is tilted completely to the right. This must be a\nnon-negative value.\n0 indicates the mirror is not tilted in either direction.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nleft extreme and right extreme positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3896,6 +4066,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Mirror Y Move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the mirror while tilting right.\nThe minInt32Value represents the maximum movement speed of the mirror while tilting left.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe mirror reaches the positional limit, the value must reset to 0. If MIRROR_Y_MOVE's value\nis currently 0, then that means there is no movement currently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3923,6 +4094,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Mirror Lock\n\nTrue indicates mirror positions are locked and not changeable\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3950,6 +4122,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Mirror Fold\n\nTrue indicates mirrors are folded\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -3977,6 +4150,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for Mirror Auto Fold feature.\n\nThis property is true when the feature for automatically folding the vehicle's side mirrors\n(for example, when the mirrors fold inward automatically when one exits and locks the\nvehicle) is enabled.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4004,6 +4178,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for Mirror Auto Tilt feature.\n\nThis property is true when the feature for automatically tilting the vehicle's side mirrors\n(for example, when the mirrors tilt downward automatically when one reverses the vehicle) is\nenabled.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4030,6 +4205,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat memory select\n\nThis parameter selects the memory preset to use to select the seat position. The\nmaxInt32Value and minInt32Value in VehicleAreaConfig must be defined. All integers between\nminInt32Value and maxInt32Value must be supported. The minInt32Value is always 0, and the\nmaxInt32Value determines the number of seat preset memory slots available (i.e.\nnumSeatPresets - 1).\n\nFor instance, if the driver's seat has 3 memory presets, the maxInt32Value will be 2. When\nthe user wants to select a preset, the desired preset number (0, 1, or 2) is set.",
@@ -4062,6 +4238,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat memory set\n\nThis setting allows the user to save the current seat position settings into the selected\npreset slot. The maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. The\nminInt32Value must be 0, and the maxInt32Value for each seat position must match the\nmaxInt32Value for SEAT_MEMORY_SELECT.",
@@ -4095,6 +4272,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seatbelt buckled\n\nTrue indicates belt is buckled.\n\nWrite access indicates automatic seat buckling capabilities.  There are\nno known cars at this time, but you never know...\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4122,6 +4300,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seatbelt height position\n\nAdjusts the shoulder belt anchor point.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the seat belt's shoulder anchor is at its lowest position.\nThe maxInt32Value indicates the seat belt's shoulder anchor is at its highest position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nlowest and highest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4149,6 +4328,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seatbelt height move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat belt's shoulder anchor\nwhile moving upwards.\nThe minInt32Value represents the maximum movement speed of the seat belt's shoulder anchor\nwhile moving downwards.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat belt reaches the positional limit, the value must reset to 0. If\nSEAT_BELT_HEIGHT_MOVE's value is currently 0, then that means there is no movement currently\noccurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4176,6 +4356,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat fore/aft position\n\nSets the seat position forward and backwards.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the seat is at its rearward-most linear position.\nThe maxInt32Value indicates the seat is at its forward-most linear position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nclosest and farthest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4203,6 +4384,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat fore/aft move\n\nThis property moves the entire seat forward/backward in the direction that it is facing.\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat while moving forward.\nThe minInt32Value represents the maximum movement speed of the seat while moving backward.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat reaches the positional limit, the value must reset to 0. If SEAT_FORE_AFT_MOVE's\nvalue is currently 0, then that means there is no movement currently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4230,6 +4412,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat backrest angle 1 position\n\nBackrest angle 1 is the actuator closest to the bottom of the seat.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the seat backrest's full recline position w.r.t the\nactuator at the bottom of the seat.\nThe maxInt32Value indicates the seat backrest's most upright/forward position w.r.t the\nactuator at the bottom of the seat.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nfull recline and upright/forward positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4263,6 +4446,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat backrest angle 1 move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat backrest while angling\nforward.\nThe minInt32Value represents the maximum movement speed of the seat backrest while reclining.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat backrest reaches the positional limit, the value must reset to 0. If\nSEAT_BACKREST_ANGLE_1_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4290,6 +4474,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat backrest angle 2 position\n\nBackrest angle 2 is the next actuator up from the bottom of the seat.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the seat backrest's full recline position w.r.t the next\nactuator in the backrest from the one at the bottom of the seat (see\nSEAT_BACKREST_ANGLE_1_POS for additional details).\nThe maxInt32Value indicates the seat backrest's most upright/forward position w.r.t the\nnext actuator in the backrest from the one at the bottom of the seat(see\nSEAT_BACKREST_ANGLE_1_POS for additional details).\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nfull recline and upright/forward positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4323,6 +4508,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat backrest angle 2 move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat backrest while angling\nforward.\nThe minInt32Value represents the maximum movement speed of the seat backrest while reclining.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat backrest reaches the positional limit, the value must reset to 0. If\nSEAT_BACKREST_ANGLE_2_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4350,6 +4536,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat height position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the seat is in its lowest position.\nThe maxInt32Value indicates the seat is in its highest position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nlowest and highest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4377,6 +4564,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat height move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat while moving upward.\nThe minInt32Value represents the maximum movement speed of the seat while moving downward.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat reaches the positional limit, the value must reset to 0. If SEAT_HEIGHT_MOVE's value\nis currently 0, then that means there is no movement currently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4404,6 +4592,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat depth position\n\nSets the seat depth, distance from back rest to front edge of seat.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the seat is in its shallowest position (i.e. the position with\nthe smallest distance between the front edge of the seat cushion and the rear end of the\nseat).\nThe maxInt32Value indicates the seat is in its deepest position (i.e. the position with the\nlargest distance between the front edge of the seat cushion and the rear end of the seat).\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nshallowest and deepest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4431,6 +4620,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat depth move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat while getting deeper\nThe minInt32Value represents the maximum movement speed of the seat while getting shallower.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat backrest reaches the positional limit, the value must reset to 0. If\nSEAT_DEPTH_MOVE's value is currently 0, then that means there is no movement currently\noccurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4458,6 +4648,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat tilt position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the seat bottom is angled at its lowest angular position. This\ncorresponds to the seat's front edge at its lowest possible position relative to the rear\nend of the seat.\nThe maxInt32Value indicates the seat bottom is angled at its highest angular position. This\ncorresponds to the seat's front edge at its highest possible position relative to the rear\nend of the seat.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nlowest and highest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4485,6 +4676,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Seat tilt move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the front edge of the seat while\nmoving upward.\nThe minInt32Value represents the maximum movement speed of the front edge of the seat while\nmoving downward.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat bottom reaches the positional limit, the value must reset to 0. If SEAT_TILT_MOVE's\nvalue is currently 0, then that means there is no movement currently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4512,6 +4704,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Lumber fore/aft position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the lumbar support is in its rearward most position (i.e. least\nsupportive position).\nThe maxInt32Value indicates the lumbar support is in its forward most position (i.e. most\nsupportive position).\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nforward and rearward positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4539,6 +4732,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Lumbar fore/aft move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat's lumbar support while\nmoving forward.\nThe minInt32Value represents the maximum movement speed of the seat's lumbar support while\nmoving backward.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat's lumbar support reaches the positional limit, the value must reset to 0. If\nSEAT_LUMBAR_FORE_AFT_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4566,6 +4760,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Lumbar side support position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the lumbar side support is in its thinnest position (i.e.\nmost support).\nThe maxInt32Value indicates the lumbar side support is in its widest position (i.e.\nleast support).\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nthinnest and widest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4593,6 +4788,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Lumbar side support move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat's lumbar side support\nwhile getting wider.\nThe minInt32Value represents the maximum movement speed of the seat's lumbar side support\nwhile getting thinner.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat's lumbar side support reaches the positional limit, the value must reset to 0. If\nSEAT_LUMBAR_SIDE_SUPPORT_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4620,6 +4816,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": true,
     "description": "(Deprecated) Headrest height position\n\nThis property is deprecated because it is defined as type VehicleArea:GLOBAL, which means all\nseats use the same value. Use SEAT_HEADREST_HEIGHT_POS_V2 instead which fixes this issue by\nbeing defined as type VehicleArea:SEAT.\n\nSets the headrest height.\nMax value indicates tallest setting.\nMin value indicates shortest setting.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4653,6 +4850,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Headrest height position\n\nSets the headrest height for supported seats. VehiclePropConfig.areaConfigs specifies which\nseats are supported.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the headrest is in its lowest position.\nThe maxInt32Value indicates the headrest is in its highest position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nlowest and highest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4686,6 +4884,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Headrest height move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat's headrest while moving\nup.\nThe minInt32Value represents the maximum movement speed of the seat's headrest while moving\ndown.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat's headrest reaches the positional limit, the value must reset to 0. If\nSEAT_HEADREST_HEIGHT_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4713,6 +4912,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Headrest angle position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the headrest is in its full recline position.\nThe maxInt32Value indicates the headrest is in its most upright/forward position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nfull recline and most upright/forward positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4740,6 +4940,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Headrest angle move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat's headrest while moving\ninto an upright/forward position.\nThe minInt32Value represents the maximum movement speed of the seat's headrest while moving\ninto a shallow position.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat's headrest reaches the positional limit, the value must reset to 0. If\nSEAT_HEADREST_ANGLE_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4767,6 +4968,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Headrest fore/aft position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the headrest is in its rearward-most linear position.\nThe maxInt32Value indicates the headrest is in its forward-most linear position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nforward and rearward positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4794,6 +4996,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Headrest fore/aft move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat's headrest while moving\nforward.\nThe minInt32Value represents the maximum movement speed of the seat's headrest while moving\nbackward.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat's headrest reaches the positional limit, the value must reset to 0. If\nSEAT_HEADREST_FORE_AFT_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4821,6 +5024,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for the seat footwell lights state.\n\nSEAT_FOOTWELL_LIGHTS_STATE reflects the current state of the lights at any point in time.\nThis is different from the function of SEAT_FOOTWELL_LIGHTS_SWITCH which represents the\nposition of the switch controlling the lights. Therefore, SEAT_FOOTWELL_LIGHTS_STATE may not\nmatch the value of SEAT_FOOTWELL_LIGHTS_SWITCH (e.g. SEAT_FOOTWELL_LIGHTS_SWITCH=AUTOMATIC\nand SEAT_FOOTWELL_LIGHTS_STATE=ON).\n\nThis property should only be implemented if SEAT_FOOTWELL_LIGHTS_STATE's value may be\ndifferent from that of CABIN_LIGHTS_STATE.\n\nFor each supported area ID, the VehicleAreaConfig#supportedEnumValues must be defined unless\nall enum values of VehicleLightState are supported.",
@@ -4865,6 +5071,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for the seat footwell lights switch.\n\nSEAT_FOOTWELL_LIGHTS_SWITCH represents the position of the switch controlling the lights.\nThis is different from the function of SEAT_FOOTWELL_LIGHTS_STATE which reflects the current\nstate of the lights at any point in time. Therefore, SEAT_FOOTWELL_LIGHTS_SWITCH may not\nmatch the value of SEAT_FOOTWELL_LIGHTS_STATE (e.g. SEAT_FOOTWELL_LIGHTS_SWITCH=AUTOMATIC and\nSEAT_FOOTWELL_LIGHTS_STATE=ON).\n\nThis property should only be implemented if SEAT_FOOTWELL_LIGHTS_SWITCH's value may be\ndifferent from that of CABIN_LIGHTS_SWITCH.\n\nFor each supported area ID, the VehicleAreaConfig#supportedEnumValues must be defined unless\nall enum values of VehicleLightSwitch are supported.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4908,6 +5117,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for Seat easy access feature.\n\nIf true, the seat will automatically adjust to make it easier for the occupant to enter and\nexit the vehicle. Each area ID must map to the seat that the user is trying to enter/exit\nwith the help of the easy access feature.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4935,6 +5145,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents feature to enable/disable a seat's ability to deploy airbag(s) when triggered\n(e.g. by a crash).\n\nIf true, it means the seat's airbags are enabled, and if triggered (e.g. by a crash), they\nwill deploy. If false, it means the seat's airbags are disabled, and they will not deploy\nunder any circumstance. This property does not indicate if the airbags are deployed or not.\n\nThis property can be set to VehiclePropertyAccess.READ read only for the sake of regulation\nor safety concerns.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -4968,6 +5179,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleAirbagLocation",
+    "dataEnums": [
+      "VehicleAirbagLocation"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Seat airbags deployed\n\nBit flag property to relay information on which airbags have been deployed in the vehicle at\neach seat, vs which ones are currently still armed. If SEAT_AIRBAG_ENABLED is set to false at\na particular areaId, this property should return status code UNAVAILABLE at that areaId.\n\nEnums apply to each seat, not the global vehicle. For example, VehicleAirbagsLocation#CURTAIN\nat the driver seat areaId represents whether the driver side curtain airbag has been\ndeployed. Multiple bit flags can be set to indicate that multiple different airbags have been\ndeployed for the seat.\n\nFor each seat area ID, the VehicleAreaConfig#supportedEnumValues array must be defined unless\nall states of VehicleAirbagLocation are supported (including OTHER, which is not\nrecommended).",
@@ -4999,6 +5213,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for seat’s hipside (bottom cushion’s side) support position.\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the seat cushion side support is in its widest position (i.e.\nleast support).\nThe minInt32Value indicates the seat cushion side support is in its thinnest position (i.e.\nmost support).\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nthinnest and widest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5026,6 +5241,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for movement direction and speed of seat cushion side support.\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value represents the maximum movement speed of the seat cushion side support when\ngrowing wider (i.e. support is decreasing).\nThe minInt32Value represents the maximum movement speed of the seat cushion side support when\ngrowing thinner (i.e. support is increasing).\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat cushion side support reaches the positional limit, the value must reset to 0. If\nSEAT_CUSHION_SIDE_SUPPORT_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5053,6 +5269,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for seat’s lumbar support vertical position.\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the lumbar support's highest position.\nThe minInt32Value indicates the lumbar support's lowest position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nlowest and highest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5080,6 +5297,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property for vertical movement direction and speed of seat lumbar support.\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the lumbar support is moving at the fastest upward speed.\nThe minInt32Value indicates the lumbar support is moving at the fastest downward speed.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe seat cushion side support reaches the positional limit, the value must reset to 0. If\nSEAT_LUMBAR_VERTICAL_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5107,6 +5325,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Represents property that indicates the current walk-in position of the seat.\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the normal seat position. The minInt32Value must be 0.\nThe maxInt32Value indicates the seat is in the full walk-in position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nnormal and walk-in positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThe area ID must match the seat that actually moves when the walk-in feature activates, not\nthe intended seat the passengers will sit in.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5133,6 +5352,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Seat belt pretensioner deployed.\n\nProperty to relay information on whether the seat belt pretensioner has been deployed for a\nparticular seat due to a collision. This is different from the regular seat belt tightening\nsystem that continuously adds tension to the seat belts so that they fit snugly around the\nperson sitting in the seat, nor is it the seat belt retractor system that locks the seat belt\nin place during sudden brakes or when the user jerks the seat belt.\n\nIf this property is dependant on the state of other properties, and those properties are\ncurrently in the state that doesn't support this property, this should return\nStatusCode#NOT_AVAILABLE",
@@ -5158,6 +5378,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleSeatOccupancyState",
+    "dataEnums": [
+      "VehicleSeatOccupancyState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Seat Occupancy\n\nIndicates whether a particular seat is occupied or not, to the best of the car's ability\nto determine. Valid values are from the VehicleSeatOccupancyState enum.",
@@ -5184,6 +5407,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Window Position\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates the window is closed/fully open out of plane. If the window\ncannot open out of plane, then minInt32Value is the position of the window when fully closed\nand must be 0. If the window can open out of plane, the minInt32Value indicates the window\nis fully open in its position out of plane and will be a negative value. See the example\nbelow for a more detailed explanation.\nThe maxInt32Value indicates the window is fully open.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nclosed/fully open out-of-plane and fully open positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nFor example, this is how the property should work for a window that can move out of plane:\n For a window that may open out of plane (i.e. vent mode of sunroof) this\n parameter will work with negative values as follows:\n   Max = sunroof completely open\n   0 = sunroof closed.\n   Min = sunroof vent completely open\n\n   Note that in this mode, 0 indicates the window is closed.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5211,6 +5435,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Window Move\n\nThe maxInt32Value and minInt32Value in each VehicleAreaConfig must be defined. All integers\nbetween minInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the window is opening in plane/closing in the out of plane\ndirection at the fastest speed.\nThe minInt32Value indicates the window is closing in plane/opening in the out of plane\ndirection at the fastest speed.\n\nLarger absolute values, either positive or negative, indicate a faster movement speed. Once\nthe window reaches the positional limit, the value must reset to 0. If WINDOW_MOVE's value is\ncurrently 0, then that means there is no movement currently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nFor a window that may open out of plane (i.e. vent mode of sunroof) this\nparameter will work as follows:\n\nIf sunroof is open:\n  Max = open the sunroof further, automatically stop when fully open.\n  Min = close the sunroof, automatically stop when sunroof is closed.\n\nIf vent is open:\n  Max = close the vent, automatically stop when vent is closed.\n  Min = open the vent further, automatically stop when vent is fully open.\n\nIf sunroof is in the closed position:\n  Max = open the sunroof, automatically stop when sunroof is fully open.\n  Min = open the vent, automatically stop when vent is fully open.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5238,6 +5463,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Window Child Lock\n\nTrue indicates the window is child-locked.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5265,6 +5491,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLI_SECS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Windshield wipers period (milliseconds).\n\nReturns the instantaneous time period for 1 full cycle of the windshield wipers in\nmilliseconds. A full cycle is defined as a wiper moving from and returning to its rest\nposition.\n\nWhen an intermittent wiper setting is selected, this property value must be set to 0 during\nthe \"pause\" period of the intermittent wiping.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. The maxInt32Value\nfor each area ID must specify the longest wiper period. The minInt32Value must be set to 0\nfor each area ID.",
@@ -5296,6 +5523,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "WindshieldWipersState",
+    "dataEnums": [
+      "WindshieldWipersState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Windshield wipers state.\n\nReturns the current state of the windshield wipers. The value of WINDSHIELD_WIPERS_STATE may\nnot match the value of WINDSHIELD_WIPERS_SWITCH. (e.g. WINDSHIELD_WIPERS_STATE = ON and\nWINDSHIELD_WIPERS_SWITCH = WindshieldWipersSwitch#AUTO).\n\nIf WINDSHIELD_WIPERS_STATE = ON and WINDSHIELD_WIPERS_PERIOD is implemented, then\nWINDSHIELD_WIPERS_PERIOD must reflect the time period of 1 full cycle of the wipers.\n\nFor each supported area ID, the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states in WindshieldWipersState are supported (including OTHER, which is not\nrecommended).",
@@ -5339,6 +5569,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "WindshieldWipersSwitch",
+    "dataEnums": [
+      "WindshieldWipersSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Windshield wipers switch.\n\nRepresents the position of the switch controlling the windshield wipers. The value of\nWINDSHIELD_WIPERS_SWITCH may not match the value of WINDSHIELD_WIPERS_STATE (e.g.\nWINDSHIELD_WIPERS_SWITCH = AUTO and WINDSHIELD_WIPERS_STATE = WindshieldWipersState#ON).\n\nFor each supported area ID, the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states in WindshieldWipersSwitch are supported (including OTHER, which is not\nrecommended).\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.\n\nIf this property is implemented as VehiclePropertyAccess.READ_WRITE and the OTHER state is\nlisted in the VehicleAreaConfig#supportedEnumValues array, then OTHER is not a supported\nvalue for writing. It is only a supported value for reading.",
@@ -5378,6 +5611,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel depth position\n\nAll steering wheel properties' unique ids start from 0x0BE0.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. All values between\nminInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the steering wheel position furthest from the driver.\nThe minInt32Value indicates the steering wheel position closest to the driver.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nclosest and furthest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5405,6 +5639,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel depth movement\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. All values between\nminInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the steering wheel moving away from the driver.\nThe minInt32Value indicates the steering wheel moving towards the driver.\n\nLarger integers, either positive or negative, indicate a faster movement speed. Once the\nsteering wheel reaches the positional limit, the value must reset to 0. If\nSTEERING_WHEEL_DEPTH_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5432,6 +5667,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel height position\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. All values between\nminInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the steering wheel being in the highest position.\nThe minInt32Value indicates the steering wheel being in the lowest position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nlowest and highest positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5459,6 +5695,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel height movement\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined. All values between\nminInt32Value and maxInt32Value must be supported.\n\nThe maxInt32Value indicates the steering wheel moving upwards.\nThe minInt32Value indicates the steering wheel moving downwards.\n\nLarger integers, either positive or negative, indicate a faster movement speed. Once the\nsteering wheel reaches the positional limit, the value must reset to 0. If\nSTEERING_WHEEL_HEIGHT_MOVE's value is currently 0, then that means there is no movement\ncurrently occurring.\n\nThis property is not in any particular unit but in a specified range of relative movement\nspeeds.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5486,6 +5723,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel theft lock feature enabled\n\nIf true, the steering wheel will lock automatically to prevent theft in certain\nsituations.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5513,6 +5751,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel locked\n\nIf true, the steering wheel's position is locked and not changeable.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5540,6 +5779,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel easy access feature enabled\n\nIf true, the driver’s steering wheel will automatically adjust to make it easier for the\ndriver to enter and exit the vehicle.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5567,6 +5807,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property that represents the current position of the glove box door.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nAll integers between minInt32Value and maxInt32Value must be supported.\n\nThe minInt32Value indicates that the glove box door is closed. The minInt32Value must be 0.\nThe maxInt32Value indicates that the glove box door is in the fully open position.\n\nValues in between minInt32Value and maxInt32Value indicate a transition state between the\nclosed and fully open positions.\n\nThis property is not in any particular unit but in a specified range of relative positions.\n\nThe area ID must match the seat by which the glove box is intended to be used  (e.g. if the\nfront right dashboard has a glove box embedded in it, then the area ID should be\nSEAT_1_RIGHT).\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5594,6 +5835,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Lock or unlock the glove box.\n\nIf true, the glove box is locked. If false, the glove box is unlocked.\n\nThe area ID must match the seat by which the glove box is intended to be used (e.g. if the\nfront right dashboard has a glove box embedded in it, then the area ID should be\nVehicleAreaSeat#ROW_1_RIGHT).\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -5620,6 +5862,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Vehicle Maps Service (VMS) message\n\nThis property uses MIXED data to communicate vms messages.\n\nIts contents are to be interpreted as follows:\nthe indices defined in VmsMessageIntegerValuesIndex are to be used to\nread from int32Values;\nbytes is a serialized VMS message as defined in the vms protocol\nwhich is opaque to the framework;\n\nIVehicle#get must always return StatusCode::NOT_AVAILABLE.",
@@ -5648,6 +5891,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Characterization of inputs used for computing location.\n\nThis property must indicate what (if any) data and sensor inputs are considered by the system\nwhen computing the vehicle's location that is shared with Android through the GNSS HAL.\n\nThe value must return a collection of bit flags. The bit flags are defined in\nLocationCharacterization. The value must also include exactly one of DEAD_RECKONED or\nRAW_GNSS_ONLY among its collection of bit flags.\n\nWhen this property is not supported, it is assumed that no additional sensor inputs are fused\ninto the GNSS updates provided through the GNSS HAL. That is unless otherwise specified\nthrough the GNSS HAL interfaces.",
@@ -5670,6 +5914,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Static data for the position of each ultrasonic sensor installed on the vehicle.\n\nEach individual sensor is identified by its unique VehicleAreaConfig#areaId and returns the\nsensor's position formatted as [x, y, z] where:\n\n    int32Values[0] = x, the position of the sensor along the x-axis relative to the origin of\n                     the Android Automotive sensor coordinate frame in millimeters\n    int32Values[1] = y, the position of the sensor along the y-axis relative to the origin of\n                     the Android Automotive sensor coordinate frame in millimeters.\n    int32Values[2] = z, the position of the sensor along the z-axis relative to the origin of\n                     the Android Automotive sensor coordinate frame in millimeters.\n\nIf the data is aggregated by another ECU, then OEMs have the option of reporting the same\nreading across all included sensors or reporting a virtual representation of all the included\nsensors as if they were one sensor.",
@@ -5694,6 +5939,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Static data for the orientation of each ultrasonic sensor installed on the vehicle.\n\nEach individual sensor is identified by its VehicleAreaConfig#areaId and returns the sensor's\norientation formatted as [qw, qx, qy, qz] where:\n\n    int32Values[0] = qw, the quaternion coefficient w within the quaterinion (w + xi + yj +\n                     zk) describing the rotation of the sensor relative to the Android\n                     Automotive sensor coordinate frame.\n    int32Values[1] = qx, the quaternion coefficient x within the quaterinion (w + xi + yj +\n                     zk) describing the rotation of the sensor relative to the Android\n                     Automotive sensor coordinate frame.\n    int32Values[2] = qy, the quaternion coefficient y within the quaterinion (w + xi + yj +\n                     zk) describing the rotation of the sensor relative to the Android\n                     Automotive sensor coordinate frame.\n    int32Values[3] = qz, the quaternion coefficient z within the quaterinion (w + xi + yj +\n                     zk) describing the rotation of the sensor relative to the Android\n                     Automotive sensor coordinate frame.\n\nThis assumes each sensor uses the same axes conventions as Android Automotive.\n\nIf the data is aggregated by another ECU, then OEMs have the option of reporting the same\nreading across all included sensors or reporting a virtual representation of all the included\nsensors as if they were one sensor.",
@@ -5718,6 +5964,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Static data for the field of view of each ultrasonic sensor in degrees.\n\nEach individual sensor is identified by its VehicleAreaConfig#areaId and returns the sensor's\nfield of view formatted as [horizontal, vertical] where:\n\n    int32Values[0] = horizontal, the horizontal field of view for the specified ultrasonic\n                     sensor in degrees.\n    int32Values[1] = vertical, the vertical field of view for the associated specified\n                     ultrasonic sensor in degrees.\n\nThis assumes each sensor uses the same axes conventions as Android Automotive.\n\nIf the data is aggregated by another ECU, then OEMs have the option of reporting the same\nreading across all included sensors or reporting a virtual representation of all the included\nsensors as if they were one sensor.",
@@ -5742,6 +5989,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Static data for the detection range of each ultrasonic sensor in millimeters.\n\nEach individual sensor is identified by its VehicleAreaConfig#areaId and returns the sensor's\ndetection range formatted as [minimum, maximum] where:\n\n    int32Values[0] = minimum, the minimum range detectable by the ultrasonic sensor in\n                     millimeters.\n    int32Values[1] = maximum, the maximum range detectable by the ultrasonic sensor in\n                     millimeters.\n\nIf the data is aggregated by another ECU, then OEMs have the option of reporting the same\nreading across all included sensors or reporting a virtual representation of all the included\nsensors as if they were one sensor.",
@@ -5772,6 +6020,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Static data for the supported ranges of each ultrasonic sensor in millimeters.\n\nFor ultrasonic sensors that only support readings within a specific range. For example, if\nan ultrasonic sensor detects an object at 700mm, but can only report that an object has been\ndetected between 500mm and 1000mm.\n\nEach individual sensor is identified by its VehicleAreaConfig#areaId and returns the sensor's\nsupported ranges formatted as [range_min_1, range_max_1, range_min_2, range_max_2, ...]\nwhere:\n\n    int32Values[0] = range_min_1, the minimum of one supported range by the specified sensor\n                     in millimeters, inclusive.\n    int32Values[1] = range_max_1, the maximum of one supported range by the specified sensor\n                     in millimeters, inclusive.\n    int32Values[2] = range_min_2, the minimum of another supported range by the specified\n                     sensor in millimeters, inclusive.\n    int32Values[3] = range_max_2, the maximum of another supported range by the specified\n                            sensor in millimeters, inclusive.\n\nExample:\n    - Ultrasonic sensor supports the following ranges:\n          - 150mm to 499mm\n          - 500mm to 999mm\n          - 1000mm to 1500mm\n    - The associated supported ranges should be formatted as:\n          - int32Values[0] = 150\n          - int32Values[1] = 499\n          - int32Values[2] = 500\n          - int32Values[3] = 999\n          - int32Values[4] = 1000\n          - int32Values[5] = 1500\n\nIf this property is not defined, all the values within the ULTRASONICS_SENSOR_DETECTION_RANGE\nfor the specified sensor are assumed to be supported.\n\nIf the data is aggregated by another ECU, then OEMs have the option of reporting the same\nreading across all included sensors or reporting a virtual representation of all the included\nsensors as if they were one sensor.",
@@ -5807,6 +6056,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "The distance reading of the nearest detected object per sensor in millimeters.\n\nEach individual sensor is identified by its VehicleAreaConfig#areaId and returns the sensor's\nmeasured distance formatted as [distance, distance_error] where:\n\n    int32Values[0] = distance, the measured distance of the nearest object in millimeters.\n                     If only a range is supported, this value must be set to the minimum\n                     supported distance in the detected range as specified in\n                     ULTRASONICS_SENSOR_SUPPORTED_RANGES.\n    int32Values[1] = distance_error, the error of the measured distance value in\n                     millimeters.\n\nIf no object is detected, an empty vector must be returned. If distance_error is not\navailable then an array of only the measured distance must be returned.\n\nIf the data is aggregated by another ECU, then OEMs have the option of reporting the same\nreading across all included sensors or reporting a virtual representation of all the included\nsensors as if they were one sensor.",
@@ -5837,6 +6087,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "OBD2 Live Sensor Data\n\nReports a snapshot of the current (live) values of the OBD2 sensors available.\n\nThe configArray is set as follows:\n  configArray[0] = number of vendor-specific integer-valued sensors\n  configArray[1] = number of vendor-specific float-valued sensors\n\nThe values of this property are to be interpreted as in the following example.\nConsidering a configArray = {2,3}\nint32Values must be a vector containing Obd2IntegerSensorIndex.LAST_SYSTEM_INDEX + 2\nelements (that is, 33 elements);\nfloatValues must be a vector containing Obd2FloatSensorIndex.LAST_SYSTEM_INDEX + 3\nelements (that is, 73 elements);\n\nIt is possible for each frame to contain a different subset of sensor values, both system\nprovided sensors, and vendor-specific ones. In order to support that, the bytes element\nof the property value is used as a bitmask,.\n\nbytes must have a sufficient number of bytes to represent the total number of possible\nsensors (in this case, 14 bytes to represent 106 possible values); it is to be read as\na contiguous bitmask such that each bit indicates the presence or absence of a sensor\nfrom the frame, starting with as many bits as the size of int32Values, immediately\nfollowed by as many bits as the size of floatValues.\n\nFor example, should bytes[0] = 0x4C (0b01001100) it would mean that:\n  int32Values[0 and 1] are not valid sensor values\n  int32Values[2 and 3] are valid sensor values\n  int32Values[4 and 5] are not valid sensor values\n  int32Values[6] is a valid sensor value\n  int32Values[7] is not a valid sensor value\nShould bytes[5] = 0x61 (0b01100001) it would mean that:\n  int32Values[32] is a valid sensor value\n  floatValues[0 thru 3] are not valid sensor values\n  floatValues[4 and 5] are valid sensor values\n  floatValues[6] is not a valid sensor value",
@@ -5869,6 +6120,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "OBD2 Freeze Frame Sensor Data\n\nReports a snapshot of the value of the OBD2 sensors available at the time that a fault\noccurred and was detected.\n\nA configArray must be provided with the same meaning as defined for OBD2_LIVE_FRAME.\n\nThe values of this property are to be interpreted in a similar fashion as those for\nOBD2_LIVE_FRAME, with the exception that the stringValue field may contain a non-empty\ndiagnostic troubleshooting code (DTC).\n\nA IVehicle#get request of this property must provide a value for int64Values[0].\nThis will be interpreted as the timestamp of the freeze frame to retrieve. A list of\ntimestamps can be obtained by a IVehicle#get of OBD2_FREEZE_FRAME_INFO.\n\nShould no freeze frame be available at the given timestamp, a response of NOT_AVAILABLE\nmust be returned by the implementation. Because vehicles may have limited storage for\nfreeze frames, it is possible for a frame request to respond with NOT_AVAILABLE even if\nthe associated timestamp has been recently obtained via OBD2_FREEZE_FRAME_INFO.",
@@ -5911,6 +6163,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "OBD2 Freeze Frame Information\n\nThis property describes the current freeze frames stored in vehicle\nmemory and available for retrieval via OBD2_FREEZE_FRAME.\n\nThe values are to be interpreted as follows:\neach element of int64Values must be the timestamp at which a a fault code\nhas been detected and the corresponding freeze frame stored, and each\nsuch element can be used as the key to OBD2_FREEZE_FRAME to retrieve\nthe corresponding freeze frame.",
@@ -5953,6 +6206,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "OBD2 Freeze Frame Clear\n\nThis property allows deletion of any of the freeze frames stored in\nvehicle memory, as described by OBD2_FREEZE_FRAME_INFO.\n\nThe configArray is set as follows:\n configArray[0] = 1 if the implementation is able to clear individual freeze frames\n                  by timestamp, 0 otherwise\n\nIVehicle#set of this property is to be interpreted as follows:\n  if int64Values contains no elements, then all frames stored must be cleared;\n  if int64Values contains one or more elements, then frames at the timestamps\n  stored in int64Values must be cleared, and the others not cleared. Should the\n  vehicle not support selective clearing of freeze frames, this latter mode must\n  return NOT_AVAILABLE.",
@@ -5986,6 +6240,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Headlights State\n\nReturn the current state of headlights.",
@@ -6013,6 +6270,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "High beam lights state\n\nReturn the current state of high beam lights.",
@@ -6040,6 +6300,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Fog light state\n\nReturn the current state of fog lights.\n\nIf the car has both front and rear fog lights:\n  If front and rear fog lights can only be controlled together: FOG_LIGHTS_STATE must be\n  implemented. FRONT_FOG_LIGHTS_STATE and REAR_FOG_LIGHTS_STATE must not be implemented.\n\n  If the front and rear fog lights can only be controlled independently: FOG_LIGHTS_STATE\n  must not be implemented. FRONT_FOG_LIGHTS_STATE and REAR_FOG_LIGHTS_STATE must be\n  implemented.\n\nIf the car has only front fog lights:\nOnly one of FOG_LIGHTS_STATE or FRONT_FOG_LIGHTS_STATE must be implemented and not both.\nREAR_FOG_LIGHTS_STATE must not be implemented.\n\nIf the car has only rear fog lights:\nOnly one of FOG_LIGHTS_STATE or REAR_FOG_LIGHTS_STATE must be implemented and not both.\nFRONT_FOG_LIGHTS_STATE must not be implemented.",
@@ -6088,6 +6351,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Hazard light status\n\nReturn the current status of hazard lights.",
@@ -6116,6 +6382,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Headlight switch\n\nThe setting that the user wants.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -6144,6 +6413,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "High beam light switch\n\nThe setting that the user wants.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -6172,6 +6444,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Fog light switch\n\nThe setting that the user wants.\n\nIf the car has both front and rear fog lights:\n  If front and rear fog lights can only be controlled together: FOG_LIGHTS_SWITCH must be\n  implemented. FRONT_FOG_LIGHTS_SWITCH and REAR_FOG_LIGHTS_SWITCH must not be implemented.\n\n  If the front and rear fog lights can only be controlled independently: FOG_LIGHTS_SWITCH\n  must not be implemented. FRONT_FOG_LIGHTS_SWITCH and REAR_FOG_LIGHTS_SWITCH must be\n  implemented.\n\nIf the car has only front fog lights:\nOnly one of FOG_LIGHTS_SWITCH or FRONT_FOG_LIGHTS_SWITCH must be implemented and not both.\nREAR_FOG_LIGHTS_SWITCH must not be implemented.\n\nIf the car has only rear fog lights:\nOnly one of FOG_LIGHTS_SWITCH or REAR_FOG_LIGHTS_SWITCH must be implemented and not both.\nFRONT_FOG_LIGHTS_SWITCH must not be implemented.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -6221,6 +6496,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Hazard light switch\n\nThe setting that the user wants.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -6248,6 +6526,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Cabin lights\n\nReturn current status of cabin lights.",
@@ -6292,6 +6573,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Cabin lights switch\n\nThe position of the physical switch which controls the cabin lights.\nThis might be different than the CABIN_LIGHTS_STATE if the lights are on because a door\nis open or because of a voice command.\nFor example, while the switch is in the \"off\" or \"automatic\" position.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -6335,6 +6619,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Reading lights\n\nReturn current status of reading lights.",
@@ -6369,6 +6656,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Reading lights switch\n\nThe position of the physical switch which controls the reading lights.\nThis might be different than the READING_LIGHTS_STATE if the lights are on because a door\nis open or because of a voice command.\nFor example, while the switch is in the \"off\" or \"automatic\" position.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -6402,6 +6692,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel lights state\n\nRepresents the current state of the steering wheel lights. This is different from\nSTEERING_WHEEL_LIGHTS_SWITCH which represents the position of the switch controlling\nthe lights. Therefore, STEERING_WHEEL_LIGHTS_STATE may not match the value of\nSTEERING_WHEEL_LIGHTS_SWITCH (e.g. STEERING_WHEEL_LIGHTS_SWITCH=AUTOMATIC and\nSTEERING_WHEEL_LIGHTS_STATE=ON).\n\nThis property should only be implemented if STEERING_WHEEL_LIGHTS_STATE's value may be\ndifferent from that of CABIN_LIGHTS_STATE.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues must be defined unless\nall enum values of VehicleLightState are supported.",
@@ -6444,6 +6737,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Steering wheel lights switch\n\nRepresents the position of the switch controlling the steering wheel lights. This is\ndifferent from STEERING_WHEEL_LIGHTS_STATE which represents the current state of the steering\nwheel lights. Therefore, STEERING_WHEEL_LIGHTS_SWITCH may not match the value of\nSTEERING_WHEEL_LIGHTS_STATE (e.g. STEERING_WHEEL_LIGHTS_SWITCH=AUTOMATIC and\nSTEERING_WHEEL_LIGHTS_STATE=ON).\n\nThis property should only be implemented if STEERING_WHEEL_LIGHTS_SWITCH's value may be\ndifferent from that of CABIN_LIGHTS_SWITCH.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues must be defined unless\nall enum values of VehicleLightSwitch are supported.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -6486,6 +6782,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Support customize permissions for vendor properties\n\nImplement this property if vehicle hal support customize vendor permissions feature.\nVehiclePropConfig.configArray is used to indicate vendor properties and permissions\nwhich selected for this vendor property. The permission must be one of enum in\nVehicleVendorPermission.\nThe configArray is set as follows:\n     configArray[n] = propId : property ID for the vendor property\n     configArray[n+1] = one of enums in VehicleVendorPermission. It indicates the permission\n     for reading value of the property.\n     configArray[n+2] = one of enums in VehicleVendorPermission. It indicates the permission\n     for writing value of the property.\n\nFor example:\nconfigArray = {\n     vendor_prop_1, PERMISSION_VENDOR_SEAT_READ, PERMISSION_VENDOR_SEAT_WRITE,\n     vendor_prop_2, PERMISSION_VENDOR_INFO, PERMISSION_NOT_ACCESSIBLE,\n}\nIf vendor properties are not in this array, they will have the default vendor permission.\nIf vendor chose PERMISSION_NOT_ACCESSIBLE, android will not have access to the property. In\nthe example, Android can not write value for vendor_prop_2.",
@@ -6505,6 +6802,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Allow disabling optional featurs from vhal.\n\nThis property reports optional features that should be disabled.\nAll allowed optional features for the system is declared in Car service overlay,\nconfig_allowed_optional_car_features.\nThis property allows disabling features defined in the overlay. Without this property,\nall the features declared in the overlay will be enabled.\n\nValue read should include all features disabled with ',' separation.\nex) \"com.android.car.user.CarUserNoticeService,storage_monitoring\"",
@@ -6524,6 +6822,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Defines the initial Android user to be used during initialization.\n\nThis property is called by the Android system when it initializes and it lets the HAL\ndefine which Android user should be started.\n\nThis request is made by setting a VehiclePropValue (defined by InitialUserInfoRequest),\nand the HAL must respond with a property change event (defined by InitialUserInfoResponse).\nIf the HAL doesn't respond after some time (defined by the Android system), the Android\nsystem will proceed as if HAL returned a response of action\nInitialUserInfoResponseAction:DEFAULT.\n\nFor example, on first boot, the request could be:\n\nint32[0]: 42  // request id (arbitrary number set by Android system)\nint32[1]: 1   // InitialUserInfoRequestType::FIRST_BOOT\nint32[2]: 0   // id of current user (usersInfo.currentUser.userId)\nint32[3]: 1   // flag of current user (usersInfo.currentUser.flags = SYSTEM)\nint32[4]: 1   // number of existing users (usersInfo.numberUsers);\nint32[5]: 0   // user #0  (usersInfo.existingUsers[0].userId)\nint32[6]: 1   // flags of user #0  (usersInfo.existingUsers[0].flags)\n\nAnd if the HAL want to respond with the creation of an admin user called \"Owner\", the\nresponse would be:\n\nint32[0]: 42      // must match the request id from the request\nint32[1]:  2      // action = InitialUserInfoResponseAction::CREATE\nint32[2]: -10000  // userToSwitchOrCreate.userId (not used as user will be created)\nint32[3]:  8      // userToSwitchOrCreate.flags = ADMIN\nstring: \"||Owner\" // userLocales + separator + userNameToCreate\n\nNotice the string value represents multiple values, separated by ||. The first value is the\n(optional) system locales for the user to be created (in this case, it's empty, meaning it\nwill use Android's default value), while the second value is the (also optional) name of the\nto user to be created (when the type of response is InitialUserInfoResponseAction:CREATE).\nFor example, to create the same \"Owner\" user with \"en-US\" and \"pt-BR\" locales, the string\nvalue of the response would be \"en-US,pt-BR||Owner\". As such, neither the locale nor the\nname can have || on it, although a single | is fine.\n\nNOTE: if the HAL doesn't support user management, then it should not define this property,\nwhich in turn would disable the other user-related properties (for example, the Android\nsystem would never issue them and user-related requests from the HAL layer would be ignored\nby the Android System). But if it supports user management, then it must support all core\nuser-related properties (INITIAL_USER_INFO, SWITCH_USER, CREATE_USER, and REMOVE_USER).",
@@ -6572,6 +6871,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Defines a request to switch the foreground Android user.\n\nThis property is used primarily by the Android System to inform the HAL that the\ncurrent foreground Android user is switching, but it could also be used by the HAL to request\nthe Android system to switch users - the\n\nWhen the request is made by Android, it sets a VehiclePropValue and the HAL must responde\nwith a property change event; when the HAL is making the request, it must also do it through\na property change event (the main difference is that the request id will be positive in the\nformer case, and negative in the latter; the SwitchUserMessageType will also be different).\n\nThe format of both request is defined by SwitchUserRequest and the format of the response\n(when needed) is defined by SwitchUserResponse. How the HAL (or Android System) should\nproceed depends on the message type (which is defined by the SwitchUserMessageType\nparameter), as defined below.\n\n1.LEGACY_ANDROID_SWITCH\n-----------------------\n\nCalled by the Android System to indicate the Android user is about to change, when the change\nrequest was made in a way that is not integrated with the HAL (for example, through\nadb shell am switch-user).\n\nThe HAL can switch its internal user once it receives this request, but it doesn't need to\nreply back to the Android System. If its internal user cannot be changed for some reason,\nthen it must wait for the SWITCH_USER(type=ANDROID_POST_SWITCH) call to recover\n(for example, it could issue a SWITCH_USER(type=VEHICLE_REQUEST) to switch back to\nthe previous user), but ideally it should never fail (as switching back could result in a\nconfusing experience for the end user).\n\nFor example, if the system have users (0, 10, 11) and it's switching from 0 to 11 (where none\nof them have any special flag), the request would be:\n\nint32[0]:  42  // request id\nint32[1]:  1   // SwitchUserMessageType::LEGACY_ANDROID_SWITCH\nint32[2]:  11  // target user id\nint32[3]:  0   // target user flags (none)\nint32[4]:  10  // current user\nint32[5]:  0   // current user flags (none)\nint32[6]:  3   // number of users\nint32[7]:  0   // user #0 (Android user id 0)\nint32[8]:  0   // flags of user #0 (none)\nint32[9]:  10  // user #1 (Android user id 10)\nint32[10]: 0   // flags of user #1 (none)\nint32[11]: 11  // user #2 (Android user id 11)\nint32[12]: 0   // flags of user #2 (none)\n\n2.ANDROID_SWITCH\n----------------\nCalled by the Android System to indicate the Android user is about to change, but Android\nwill wait for the HAL's response (up to some time) before proceeding.\n\nThe HAL must switch its internal user once it receives this request, then respond back to\nAndroid with a SWITCH_USER(type=VEHICLE_RESPONSE) indicating whether its internal\nuser was switched or not (through the SwitchUserStatus enum).\n\nFor example, if Android has users (0, 10, 11) and it's switching from 10 to 11 (where\nnone of them have any special flag), the request would be:\n\nint32[0]:  42  // request id\nint32[1]:  2   // SwitchUserMessageType::ANDROID_SWITCH\nint32[2]:  11  // target user id\nint32[3]:  0   // target user flags (none)\nint32[4]:  10  // current user\nint32[5]:  0   // current user flags (none)\nint32[6]:  3   // number of users\nint32[7]:  0   // 1st user (user 0)\nint32[8]:  1   // 1st user flags (SYSTEM)\nint32[9]:  10  // 2nd user (user 10)\nint32[10]: 0   // 2nd user flags (none)\nint32[11]: 11  // 3rd user (user 11)\nint32[12]: 0   // 3rd user flags (none)\n\nIf the request succeeded, the HAL must update the property with:\n\nint32[0]: 42  // request id\nint32[1]: 3   // messageType = SwitchUserMessageType::VEHICLE_RESPONSE\nint32[2]: 1   // status = SwitchUserStatus::SUCCESS\n\nBut if it failed, the response would be something like:\n\nint32[0]: 42   // request id\nint32[1]: 3    // messageType = SwitchUserMessageType::VEHICLE_RESPONSE\nint32[2]: 2    // status = SwitchUserStatus::FAILURE\nstring: \"108-D'OH!\" // OEM-specific error message\n\n3.VEHICLE_RESPONSE\n------------------\nCalled by the HAL to indicate whether a request of type ANDROID_SWITCH should proceed or\nabort - see the ANDROID_SWITCH section above for more info.\n\n4.VEHICLE_REQUEST\n------------------\nCalled by the HAL to request that the current foreground Android user is switched.\n\nThis is useful in situations where Android started as one user, but the vehicle identified\nthe driver as another user. For example, user A unlocked the car using the key fob of user B;\nthe INITIAL_USER_INFO request returned user B, but then a face recognition subsubsystem\nidentified the user as A.\n\nThe HAL makes this request by a property change event (passing a negative request id), and\nthe Android system will response by issue an ANDROID_POST_SWITCH call which the same\nrequest id.\n\nFor example, if the current foreground Android user is 10 and the HAL asked it to switch to\n11, the request would be:\n\nint32[0]: -108  // request id\nint32[1]: 4     // messageType = SwitchUserMessageType::VEHICLE_REQUEST\nint32[2]: 11    // Android user id\n\nIf the request succeeded and Android has 3 users (0, 10, 11), the response would be:\n\nint32[0]: -108 // request id\nint32[1]:  5   // messageType = SwitchUserMessageType::ANDROID_POST_SWITCH\nint32[2]:  11  // target user id\nint32[3]:  0   // target user id flags (none)\nint32[4]:  11  // current user\nint32[5]:  0   // current user flags (none)\nint32[6]:  3   // number of users\nint32[7]:  0   // 1st user (user 0)\nint32[8]:  0   // 1st user flags (none)\nint32[9]:  10  // 2nd user (user 10)\nint32[10]: 4   // 2nd user flags (none)\nint32[11]: 11  // 3rd user (user 11)\nint32[12]: 3   // 3rd user flags (none)\n\nNotice that both the current and target user ids are the same - if the request failed, then\nthey would be different (i.e, target user would be 11, but current user would still be 10).\n\n5.ANDROID_POST_SWITCH\n---------------------\nCalled by the Android System after a request to switch a user was made.\n\nThis property is called after switch requests of any type (i.e., LEGACY_ANDROID_SWITCH,\nANDROID_SWITCH, or VEHICLE_REQUEST) and can be used to determine if the request succeeded or\nfailed:\n\n1. When it succeeded, it's called when the Android user is in the unlocked state and the\n   value of the current and target users ids in the response are the same. This would be\n   equivalent to receiving an Intent.ACTION_USER_UNLOCKED in an Android app.\n2. When it failed it's called right away and the value of the current and target users ids\n   in the response are different (as the current user didn't change to the target).\n3. If a new switch request is made before the HAL responded to the previous one or before\n   the user was unlocked, then the ANDROID_POST_SWITCH request is not made. For example,\n   the driver could accidentally switch to the wrong user which has lock credentials, then\n   switch to the right one before entering the credentials.\n\nThe HAL can update its internal state once it receives this request, but it doesn't need to\nreply back to the Android System.\n\nRequest: the first N values as defined by INITIAL_USER_INFO (where the request-specific\nvalue at index 1 is SwitchUserMessageType::ANDROID_POST_SWITCH), then 2 more values for the\ntarget user id (i.e., the Android user id that was requested to be switched to) and its flags\n(as defined by  UserFlags).\n\nResponse: none.\n\nExample: see VEHICLE_REQUEST section above.",
@@ -6605,6 +6905,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Called by the Android System after an Android user was created.\n\nThe HAL can use this property to create its equivalent user.\n\nThis is an async request: Android makes the request by setting a VehiclePropValue, and HAL\nmust respond with a property change indicating whether the request succeeded or failed. If\nit failed, the Android system will remove the user.\n\nThe format of the request is defined by CreateUserRequest and the format of the response by\nCreateUserResponse.\n\nFor example, if system had 2 users (0 and 10) and a 3rd one (which is an ephemeral guest) was\ncreated, the request would be:\n\nint32[0]: 42  // request id\nint32[1]: 11  // Android id of the created user\nint32[2]: 6   // Android flags (ephemeral guest) of the created user\nint32[3]: 10  // current user\nint32[4]: 0   // current user flags (none)\nint32[5]: 3   // number of users\nint32[6]: 0   // 1st user (user 0)\nint32[7]: 0   // 1st user flags (none)\nint32[8]: 10  // 2nd user (user 10)\nint32[9]: 0   // 2nd user flags (none)\nint32[19]: 11 // 3rd user (user 11)\nint32[11]: 6  // 3rd user flags (ephemeral guest)\nstring: \"ElGuesto\" // name of the new user\n\nThen if the request succeeded, the HAL would return:\n\nint32[0]: 42  // request id\nint32[1]: 1   // CreateUserStatus::SUCCESS\n\nBut if it failed:\n\nint32[0]: 42  // request id\nint32[1]: 2   // CreateUserStatus::FAILURE\nstring: \"D'OH!\" // The meaning is a blackbox - it's passed to the caller (like Settings UI),\n                // which in turn can take the proper action.",
@@ -6633,6 +6934,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Called by the Android System after an Android user was removed.\n\nThe HAL can use this property to remove its equivalent user.\n\nThis is write-only call - the Android System is not expecting a reply from the HAL. Hence,\nthis request should not fail - if the equivalent HAL user cannot be removed, then HAL should\nmark it as inactive or recover in some other way.\n\nThe request is made by setting the VehiclePropValue with the contents defined by\nRemoveUserRequest.\n\nFor example, if system had 3 users (0, 10, and 11) and user 11 was removed, the request\nwould be:\n\nint32[0]: 42  // request id\nint32[1]: 11  // (Android user id of the removed user)\nint32[2]: 0   // (Android user flags of the removed user)\nint32[3]: 10  // current user\nint32[4]: 0   // current user flags (none)\nint32[5]: 2   // number of users\nint32[6]: 0   // 1st user (user 0)\nint32[7]: 0   // 1st user flags (none)\nint32[8]: 10  // 2nd user (user 10)\nint32[9]: 0   // 2nd user flags (none)",
@@ -6661,6 +6963,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Property used to associate (or query the association) the current user with vehicle-specific\nidentification mechanisms (such as key FOB).\n\nThis is an optional user management property - the OEM could still support user management\nwithout defining it. In fact, this property could be used without supporting the core\nuser-related functions described on INITIAL_USER_INFO.\n\nTo query the association, the Android system gets the property, passing a VehiclePropValue\ncontaining the types of associations are being queried, as defined by\nUserIdentificationGetRequest. The HAL must return right away, returning a VehiclePropValue\nwith a UserIdentificationResponse. Notice that user identification should have already\nhappened while system is booting up and the VHAL implementation should only return the\nalready identified association (like the key FOB used to unlock the car), instead of starting\na new association from the get call.\n\nTo associate types, the Android system sets the property, passing a VehiclePropValue\ncontaining the types and values of associations being set, as defined by the\nUserIdentificationSetRequest. The HAL will then use a property change event (whose\nVehiclePropValue is defined by UserIdentificationResponse) indicating the current status of\nthe types after the request.\n\nFor example, to query if the current user (10) is associated with the FOB that unlocked the\ncar and a custom mechanism provided by the OEM, the request would be:\n\nint32[0]: 42  // request id\nint32[1]: 10  (Android user id)\nint32[2]: 0   (Android user flags)\nint32[3]: 2   (number of types queried)\nint32[4]: 1   (1st type queried, UserIdentificationAssociationType::KEY_FOB)\nint32[5]: 101 (2nd type queried, UserIdentificationAssociationType::CUSTOM_1)\n\nIf the user is associated with the FOB but not with the custom mechanism, the response would\nbe:\n\nint32[0]: 42  // request id\nint32[1]: 2   (number of associations in the response)\nint32[2]: 1   (1st type: UserIdentificationAssociationType::KEY_FOB)\nint32[3]: 2   (1st value: UserIdentificationAssociationValue::ASSOCIATED_CURRENT_USER)\nint32[4]: 101 (2st type: UserIdentificationAssociationType::CUSTOM_1)\nint32[5]: 4   (2nd value: UserIdentificationAssociationValue::NOT_ASSOCIATED_ANY_USER)\n\nThen to associate the user with the custom mechanism, a set request would be made:\n\nint32[0]: 43  // request id\nint32[1]: 10  (Android user id)\nint32[2]: 0   (Android user flags)\nint32[3]: 1   (number of associations being set)\nint32[4]: 101 (1st type: UserIdentificationAssociationType::CUSTOM_1)\nint32[5]: 1   (1st value: UserIdentificationAssociationSetValue::ASSOCIATE_CURRENT_USER)\n\nIf the request succeeded, the response would be simply:\n\nint32[0]: 43  // request id\nint32[1]: 1   (number of associations in the response)\nint32[2]: 101 (1st type: UserIdentificationAssociationType::CUSTOM_1)\nint32[3]: 1   (1st value: UserIdentificationAssociationValue::ASSOCIATED_CURRENT_USER)\n\nNotice that the set request adds associations, but doesn't remove the existing ones. In the\nexample above, the end state would be 2 associations (FOB and CUSTOM_1). If we wanted to\nassociate the user with just CUSTOM_1 but not FOB, then the request should have been:\n\nint32[0]: 43  // request id\nint32[1]: 10  (Android user id)\nint32[2]: 2   (number of types set)\nint32[3]: 1   (1st type: UserIdentificationAssociationType::KEY_FOB)\nint32[4]: 2   (1st value: UserIdentificationAssociationValue::DISASSOCIATE_CURRENT_USER)\nint32[5]: 101 (2nd type: UserIdentificationAssociationType::CUSTOM_1)\nint32[6]: 1   (2nd value: UserIdentificationAssociationValue::ASSOCIATE_CURRENT_USER)",
@@ -6689,6 +6992,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable/request an EVS service.\n\nThe property provides a generalized way to trigger EVS services.  VHAL\nshould use this property to request Android to start or stop EVS service.\n\n int32Values[0] = a type of the EVS service. The value must be one of enums in\n                  EvsServiceType.\n int32Values[1] = the state of the EVS service. The value must be one of enums in\n                  EvsServiceState.\n\nFor example, to enable rear view EVS service, android side can set the property value as\n[EvsServiceType::REAR_VIEW, EvsServiceState::ON].",
@@ -6708,6 +7012,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Defines a request to apply power policy.\n\nVHAL sets this property to change car power policy. Car power policy service subscribes to\nthis property and actually changes the power policy.\nThe request is made by setting the VehiclePropValue with the ID of a power policy which is\ndefined at /vendor/etc/automotive/power_policy.xml.\nIf the given ID is not defined, car power policy service ignores the request\nand the current power policy is maintained.\n\n  string: \"sample_policy_id\" // power policy ID",
@@ -6730,6 +7035,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Defines a request to set the power polic group used to decide a default power policy per\npower status transition.\n\nVHAL sets this property with the ID of a power policy group in order to set the default power\npolicy applied at power status transition. Power policy groups are defined at\n/vendor/etc/power_policy.xml. If the given ID is not defined, car power policy service\nignores the request.\nCar power policy service subscribes to this property and sets the power policy group.\nThe actual application of power policy takes place when the system power status changes and\nthere is a valid mapped power policy for the new power status.\n\n  string: \"sample_policy_group_id\" // power policy group ID",
@@ -6752,6 +7058,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ_WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Notifies the current power policy to VHAL layer.\n\nCar power policy service sets this property when the current power policy is changed.\n\n  string: \"sample_policy_id\" // power policy ID",
@@ -6774,6 +7081,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Defines an event that car watchdog updates to tell it's alive.\n\nCar watchdog sets this property to system uptime in milliseconds at every 3 second.\nDuring the boot, the update may take longer time.",
@@ -6796,6 +7104,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Defines a process terminated by car watchdog and the reason of termination.\n\n  int32Values[0]: 1         // ProcessTerminationReason showing why a process is terminated.\n  string: \"/system/bin/log\" // Process execution command.",
@@ -6818,6 +7127,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Defines an event that VHAL signals to car watchdog as a heartbeat.\n\nIf VHAL supports this property, VHAL should write system uptime to this property at every 3\nsecond. Car watchdog subscribes to this property and checks if the property is updated at\nevery 3 second. With the buffer time of 3 second, car watchdog waits for a heart beat to be\nsignaled up to 6 seconds from the last heart beat. If it isn’t, car watchdog considers\nVHAL unhealthy and terminates it.\nIf this property is not supported by VHAL, car watchdog doesn't check VHAL health status.",
@@ -6840,6 +7150,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Starts the ClusterUI in cluster display.\n\nint32: the type of ClusterUI to show\n   0 indicates ClusterHome, that is a home screen of cluster display, and provides\n       the default UI and a kind of launcher functionality for cluster display.\n   the other values are followed by OEM's definition.",
@@ -6868,6 +7179,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Changes the state of the cluster display.\n\nBounds: the area to render the cluster Activity.\nInset: the area which Activity should avoid from placing any important\n    information.\n\nint32[0]: on/off: 0 - off, 1 - on, -1 - don't care\nint32[1]: Bounds - left: positive number - left position in pixels\n                                -1 - don't care (should set all Bounds fields)\nint32[2]: Bounds - top:    same format with 'left'\nint32[3]: Bounds - right:  same format with 'left'\nint32[4]: Bounds - bottom: same format with 'left'\nint32[5]: Inset - left: positive number - actual left inset value in pixels\n                               -1 - don't care (should set \"don't care\" all Inset fields)\nint32[6]: Inset - top:    same format with 'left'\nint32[7]: Inset - right:  same format with 'left'\nint32[8]: Inset - bottom: same format with 'left'",
@@ -6901,6 +7213,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Reports the current display state and ClusterUI state.\n\nClusterHome will send this message when it handles CLUSTER_SWITCH_UI, CLUSTER_DISPLAY_STATE.\n\nIn addition, ClusterHome should send this message when it starts for the first time.\nWhen ClusterOS receives this message and if the internal expectation is different with the\nreceived message, then it should send CLUSTER_SWITCH_UI, CLUSTER_DISPLAY_STATE again to\nmatch the state.\n\nint32[0]: on/off: 0 - off, 1 - on\nint32[1]: Bounds - left\nint32[2]: Bounds - top\nint32[3]: Bounds - right\nint32[4]: Bounds - bottom\nint32[5]: Inset - left\nint32[6]: Inset - top\nint32[7]: Inset - right\nint32[8]: Inset - bottom\nint32[9]: the type of ClusterUI in the fullscreen or main screen.\n   0 indicates ClusterHome.\n   the other values are followed by OEM's definition.\nint32[10]: the type of ClusterUI in sub screen if the currently two UIs are shown.\n   -1 indicates the area isn't used any more.\nbytes: the array to represent the availability of ClusterUI.\n    0 indicates non-available and 1 indicates available.\n    For example, let's assume a car supports 3 OEM defined ClusterUI like HOME, MAPS, CALL,\n    and it only supports CALL UI only when the cellular network is available. Then, if the\n    nework is avaibale, it'll send [1 1 1], and if it's out of network, it'll send [1 1 0].",
@@ -6934,6 +7247,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Requests to change the cluster display state to show some ClusterUI.\n\nWhen the current display state is off and ClusterHome sends this message to ClusterOS to\nrequest to turn the display on to show some specific ClusterUI.\nClusterOS should response this with CLUSTER_DISPLAY_STATE.\n\nint32: the type of ClusterUI to show",
@@ -6962,6 +7276,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Informs the current navigation state.\n\nbytes: the serialized message of NavigationStateProto.",
@@ -6985,6 +7300,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "ElectronicTollCollectionCardType",
+    "dataEnums": [
+      "ElectronicTollCollectionCardType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Electronic Toll Collection card type.\n\nThis property indicates the type of ETC card in this vehicle.\nIf the head unit is aware of an ETC card attached to the vehicle, this property should\nreturn the type of card attached; otherwise, this property should be UNAVAILABLE.",
@@ -7018,6 +7336,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "ElectronicTollCollectionCardStatus",
+    "dataEnums": [
+      "ElectronicTollCollectionCardStatus"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Electronic Toll Collection card status.\n\nThis property indicates the status of ETC card in this vehicle.\nIf the head unit is aware of an ETC card attached to the vehicle,\nELECTRONIC_TOLL_COLLECTION_CARD_TYPE gives that status of the card; otherwise,\nthis property should be UNAVAILABLE.",
@@ -7051,6 +7372,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Front fog lights state\n\nReturn the current state of the front fog lights.\nOnly one of FOG_LIGHTS_STATE or FRONT_FOG_LIGHTS_STATE must be implemented. Please refer to\nthe documentation on FOG_LIGHTS_STATE for more information.",
@@ -7090,6 +7414,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Front fog lights switch\n\nThe setting that the user wants.\nOnly one of FOG_LIGHTS_SWITCH or FRONT_FOG_LIGHTS_SWITCH must be implemented. Please refer to\nthe documentation on FOG_LIGHTS_SWITCH for more information.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7128,6 +7455,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightState",
+    "dataEnums": [
+      "VehicleLightState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Rear fog lights state\n\nReturn the current state of the rear fog lights.\nOnly one of FOG_LIGHTS_STATE or REAR_FOG_LIGHTS_STATE must be implemented. Please refer to\nthe documentation on FOG_LIGHTS_STATE for more information.",
@@ -7167,6 +7497,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleLightSwitch",
+    "dataEnums": [
+      "VehicleLightSwitch"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Rear fog lights switch\n\nThe setting that the user wants.\nOnly one of FOG_LIGHTS_SWITCH or REAR_FOG_LIGHTS_SWITCH must be implemented. Please refer to\nthe documentation on FOG_LIGHTS_SWITCH for more information.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7206,6 +7539,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "AMPERE",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Indicates the maximum current draw threshold for charging set by the user\n\nconfigArray[0] is used to specify the max current draw allowed by\nthe vehicle in Amperes.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7234,6 +7568,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Indicates the maximum charge percent threshold set by the user\n\nReturns a float value from 0 to 100.\n\nconfigArray is used to specify the valid values.\n  For example, if the vehicle supports the following charge percent limit values:\n    [20, 40, 60, 80, 100]\n  then the configArray should be {20, 40, 60, 80, 100}\nIf the configArray is empty then all values from 0 to 100 must be valid.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7268,6 +7603,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "EvChargeState",
+    "dataEnums": [
+      "EvChargeState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Charging state of the car\n\nReturns the current charging state of the car.\n\nIf the vehicle has a target charge percentage other than 100, this property must return\nEvChargeState::STATE_FULLY_CHARGED when the battery charge level has reached the target\nlevel. See EV_CHARGE_PERCENT_LIMIT for more context.",
@@ -7299,6 +7637,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Start or stop charging the EV battery\n\nThe setting that the user wants. Setting this property to true starts the battery charging\nand setting to false stops charging.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7327,6 +7666,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "SECS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Estimated charge time remaining in seconds\n\nReturns 0 if the vehicle is not charging.",
@@ -7352,6 +7692,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "EvRegenerativeBrakingState",
+    "dataEnums": [
+      "EvRegenerativeBrakingState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Regenerative braking or one-pedal drive setting of the car\n\nReturns the current setting associated with the regenerative braking setting in the car\n\nIf the OEM requires more setting than those provided in EvRegenerativeBrakingState, the\nEV_BRAKE_REGENERATION_LEVEL property can be used instead, which provides a more granular\nway of providing the same information.",
@@ -7388,6 +7731,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "TrailerState",
+    "dataEnums": [
+      "TrailerState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Indicates if there is a trailer present or not.\n\nReturns the trailer state of the car.",
@@ -7412,6 +7758,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Vehicle’s curb weight in kilograms.\n\nReturns the vehicle's curb weight in kilograms. Curb weight is\nthe total weight of the vehicle with standard equipment and all\nnecessary operating consumables such as motor oil,transmission oil,\nbrake fluid, coolant, air conditioning refrigerant, and weight of\nfuel at nominal tank capacity, while not loaded with either passengers\nor cargo.\n\nconfigArray[0] is used to specify the vehicle’s gross weight in kilograms.\nThe vehicle’s gross weight is the maximum operating weight of the vehicle\nas specified by the manufacturer including the vehicle's chassis, body, engine,\nengine fluids, fuel, accessories, driver, passengers and cargo but excluding\nthat of any trailers.",
@@ -7437,6 +7784,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "GsrComplianceRequirementType",
+    "dataEnums": [
+      "GsrComplianceRequirementType"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "EU's General security regulation compliance requirement.\n\nReturns whether general security regulation compliance is required, if\nso, what type of requirement.",
@@ -7456,6 +7806,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": true,
     "description": "(Deprecated) List of all supported property IDs.\n\nA list of all supported property IDs (including this property). This property is required for\nHIDL VHAL to work with large amount of vehicle prop configs where the getAllPropConfigs\npayload exceeds the binder limitation. This issue is fixed in AIDL version using\nLargeParcelable in getAllPropConfigs, so this property is deprecated.\n\nIn HIDL VHAL implementation, if the amount of data returned in getAllPropConfigs exceeds the\nbinder limitation, vendor must support this property and return all the supported property\nIDs. Car service will divide this list into smaller sub lists and use getPropConfigs([ids])\nto query the sub lists. The results will be merged together in Car Service.\n\nThe config array for this property must contain one int element which is the number of\nconfigs per getPropConfigs request by Car Service. This number must be small enough so that\neach getPropConfigs payload will not exceed binder limitation, however, a smaller number will\ncause more requests, which increase overhead to fetch all the configs.",
@@ -7476,9 +7827,12 @@ export const vehicleProperties: VehicleProperty[] = [
       "WRITE"
     ],
     "dataEnum": "VehicleApPowerStateShutdownParam",
+    "dataEnums": [
+      "VehicleApPowerStateShutdownParam"
+    ],
     "version": 2,
     "deprecated": false,
-    "description": "Request the head unit to be shutdown.\n\n<p>This is required for executing a task when the head unit is powered off (remote task\nfeature). After the head unit is powered-on to execute the task, the head unit should\nbe shutdown. The head unit will send this message once the task is finished.\n\n<p>This is not for the case when a user wants to shutdown the head unit.\n\n<p>This usually involves telling a separate system outside the head unit (e.g. a power\ncontroller) to prepare shutting down the head unit.\n\n<p>Note that the external system must validate whether this request is valid by checking\nwhether the vehicle is currently in use. If a user enters the vehicle after a\nSHUTDOWN_REQUEST is sent, then the system must ignore this request. It\nis recommended to store a VehicleInUse property in the power controller and exposes it\nthrough VEHICLE_IN_USE property. A shutdown request must be ignored if VehicleInUse is true.\n\n<p>If allowed, the external system will start sending a shutdown signal to the head unit,\nwhich will cause VHAL to send SHUTDOWN_PREPARE message to Android. Android will then start\nthe shut down process by handling the message.\n\n<p>This property is only for issuing a request and only supports writing. Every time this\nproperty value is set, the request to shutdown will be issued no matter what the current\nproperty value is. The current property value is meaningless.\n\n<p>Since this property is write-only, subscribing is not allowed and no property change\nevent will be generated.\n\n<p>The value to set indicates the shutdown option, it must be one of\n{@code VehicleApPowerStateShutdownParam}, e.g.,\nVehicleApPowerStateShutdownParam.SLEEP_IMMEDIATELY. This shutdown option might not be honored\nif the system doesn't support such option. In such case, an error will not be returned.\n\n<p>For configuration information, VehiclePropConfig.configArray must have bit flag combining\nvalues in {@code VehicleApPowerStateConfigFlag} to indicate which shutdown options are\nsupported.\n\n<p>Returns error if failed to send the shutdown request to the other system.",
+    "description": "Request the head unit to be shutdown.\n\n<p>This is required for executing a task when the head unit is powered off (remote task\nfeature). After the head unit is powered-on to execute the task, the head unit should\nbe shutdown. The head unit will send this message once the task is finished.\n\n<p>This is not for the case when a user wants to shutdown the head unit.\n\n<p>This usually involves telling a separate system outside the head unit (e.g. a power\ncontroller) to prepare shutting down the head unit.\n\n<p>Note that the external system must validate whether this request is valid by checking\nwhether the vehicle is currently in use. If a user enters the vehicle after a\nSHUTDOWN_REQUEST is sent, then the system must ignore this request. It\nis recommended to store a VehicleInUse property in the power controller and exposes it\nthrough VEHICLE_IN_USE property. A shutdown request must be ignored if VehicleInUse is true.\n\n<p>If allowed, the external system will start sending a shutdown signal to the head unit,\nwhich will cause VHAL to send SHUTDOWN_PREPARE message to Android. Android will then start\nthe shut down process by handling the message.\n\n<p>This property is only for issuing a request and only supports writing. Every time this\nproperty value is set, the request to shutdown will be issued no matter what the current\nproperty value is. The current property value is meaningless.\n\n<p>Since this property is write-only, subscribing is not allowed and no property change\nevent will be generated.\n\n<p>The value to set indicates the shutdown option, it must be one of\nVehicleApPowerStateShutdownParam, e.g.,\nVehicleApPowerStateShutdownParam.SLEEP_IMMEDIATELY. This shutdown option might not be honored\nif the system doesn't support such option. In such case, an error will not be returned.\n\n<p>For configuration information, VehiclePropConfig.configArray must have bit flag combining\nvalues in VehicleApPowerStateConfigFlag to indicate which shutdown options are\nsupported.\n\n<p>Returns error if failed to send the shutdown request to the other system.",
     "aidlLine": 5395,
     "related": [
       {
@@ -7502,6 +7856,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Whether the vehicle is currently in use.\n\n<p>In-use means a human user is present and is intended to use the vehicle. This doesn't\nnecessarily means the human user is in the vehicle. For example, if the human user unlocks\nthe vehicle remotely, the vehicle is considered in use.\n\n<p>If this property is supported:\n\n<p>Each time user powers on the vehicle or the system detects the user is present,\nVEHICLE_IN_USE must be set to true. Each time user powers off the vehicle or the system\ndetects the user is not present, VEHICLE_IN_USE must be set to false.\n\n<p>This property is different than AP_POWER_BOOTUP_REASON in the sense that\nAP_POWER_BOOTUP_REASON is only set once during the system bootup. However, this property\nmight change multiple times during a system bootup cycle.\n\n<p>For example, a device is currently not in use. The system bootup to execute a remote task.\nVEHICLE_IN_USE is false. While the remote task is executing, the user enters the vehicle and\npowers on the vehicle. VEHICLE_IN_USE is set to true. After a driving session, user powers\noff the vehicle, VEHICLE_IN_USE is set to false.\n\n<p>This property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7532,6 +7887,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "WRITE"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Sends the heartbeat signal to ClusterOS.\n\nint64[0]: epochTimeNs\nint64[1]: the visibility of ClusterUI, 0 - invisible, 1 - visible\nbytes: the app specific metadata, this can be empty when ClusterHomeService use the heartbeat\n    to deliver the change of the visibility.",
@@ -7555,6 +7911,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleAutonomousState",
+    "dataEnums": [
+      "VehicleAutonomousState"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Current state of vehicle autonomy.\n\nDefines the level of autonomy currently engaged in the vehicle from the J3016_202104 revision\nof the SAE standard levels 0-5, with 0 representing no autonomy and 5 representing full\ndriving automation.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of VehicleAutonomousState are supported.",
@@ -7587,6 +7946,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "VehicleAutonomousState",
+    "dataEnums": [
+      "VehicleAutonomousState"
+    ],
     "version": 4,
     "deprecated": false,
     "description": "Target state of vehicle autonomy.\n\nDefines the level of autonomy being targeted by the vehicle from the J3016_202104 revision of\nthe SAE standard levels 0-5, with 0 representing no autonomy and 5 representing full driving\nautomation.\n\nFor example, suppose the vehicle is currently in a Level 3 state of automation and wants to\ngive the driver full manual control (i.e. Level 0) as soon as it's safe to do so. In this\nscenario, this property must be set to VehicleAutonomousState.LEVEL_0. Similarly, if the\nvehicle is currently in Level 1 state of automation and wants to go up to Level 2, this\nproperty must be set to VehicleAutonomousState.LEVEL_2. If the vehicle has already reached\nand is currently in the target level of autonomy, this property must be equal to the value of\nVEHICLE_DRIVING_AUTOMATION_CURRENT_LEVEL.\n\nFor the global area ID (0), the SupportedValuesListResult#supportedValuesList array must be\ndefined unless all states of VehicleAutonomousState are supported. These values must match\nthe values in supportedValuesList of VEHICLE_DRIVING_AUTOMATION_CURRENT_LEVEL.\n\nFor the property that communicates the current state of autonomy, see\nVEHICLE_DRIVING_AUTOMATION_CURRENT_LEVEL.",
@@ -7618,6 +7980,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "WRITE"
     ],
     "dataEnum": "CameraServiceState",
+    "dataEnums": [
+      "CameraServiceState"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Reports current state of CarEvsService types.\n\nInforms other components of current state of each CarEvsService service type with values\ndefined in CameraServiceState. CarEvsService will update this property whenever a service\ntype transitions into a new state.\n\nint32[0]: Current state of REARVIEW service type.\nint32[1]: Current state of SURROUNDVIEW service type.\nint32[2]: Current state of FRONTVIEW service type.\nint32[3]: Current state of LEFTVIEW service type.\nint32[4]: Current state of RIGHTVIEW service type.\nint32[5]: Current state of DRIVERVIEW service type.\nint32[6]: Current state of FRONT_PASSENGERVIEW service type.\nint32[7]: Current state of REAR_PASSENGERVIEW service type.",
@@ -7637,6 +8002,7 @@ export const vehicleProperties: VehicleProperty[] = [
     "accessModes": [
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Property to represent max brightness of the displays which are controlled separately.\n\nThis is only used if PER_DISPLAY_BRIGHTNESS is supported.\n\nThe display port uniquely identifies a physical connector on the device\nfor display output, ranging from 0 to 255.\n\nint32Values[0] : display port number\nint32Values[1] : max brightness for display port number specified at int32Values[0]\nint32Values[2] : display port number\nint32Values[3] : max brightness for display port number specified at int32Values[2]\n...",
@@ -7668,6 +8034,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable Automatic Emergency Braking (AEB).\n\nSet true to enable AEB and false to disable AEB. When AEB is enabled, the ADAS system in the\nvehicle should be turned on and monitoring to avoid potential collisions. This property\nshould apply for higher speed applications only. For enabling low speed automatic emergency\nbraking, LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_ENABLED should be used.\n\nIn general, AUTOMATIC_EMERGENCY_BRAKING_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, such as the vehicle speed being too\nlow, that information must be conveyed through the ErrorState values in the\nAUTOMATIC_EMERGENCY_BRAKING_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7717,6 +8084,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "AutomaticEmergencyBrakingState",
+    "dataEnums": [
+      "AutomaticEmergencyBrakingState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Automatic Emergency Braking (AEB) state.\n\nReturns the current state of AEB. This property must always return a valid state defined in\nAutomaticEmergencyBrakingState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead. This property should apply for higher speed\napplications only. For representing the state of the low speed automatic emergency braking\nsystem, LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE should be used.\n\nIf AEB includes forward collision warnings before activating the brakes, those warnings must\nbe surfaced through the Forward Collision Warning (FCW) properties.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both AutomaticEmergencyBrakingState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -7763,6 +8134,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable Forward Collision Warning (FCW).\n\nSet true to enable FCW and false to disable FCW. When FCW is enabled, the ADAS system in the\nvehicle should be turned on and monitoring for potential collisions.\n\nIn general, FORWARD_COLLISION_WARNING_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, such as the vehicle speed being too\nlow, that information must be conveyed through the ErrorState values in the\nFORWARD_COLLISION_WARNING_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7807,6 +8179,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "ForwardCollisionWarningState",
+    "dataEnums": [
+      "ForwardCollisionWarningState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Forward Collision Warning (FCW) state.\n\nReturns the current state of FCW. This property must always return a valid state defined in\nForwardCollisionWarningState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both ForwardCollisionWarningState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -7848,6 +8224,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable and disable Blind Spot Warning (BSW).\n\nSet true to enable BSW and false to disable BSW. When BSW is enabled, the ADAS system in the\nvehicle should be turned on and monitoring for objects in the vehicle’s blind spots.\n\nIn general, BLIND_SPOT_WARNING_ENABLED should always return true or false. If the feature is\nnot available due to some temporary state, such as the vehicle speed being too low, that\ninformation must be conveyed through the ErrorState values in the BLIND_SPOT_WARNING_STATE\nproperty.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7887,6 +8264,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "BlindSpotWarningState",
+    "dataEnums": [
+      "BlindSpotWarningState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Blind Spot Warning (BSW) state.\n\nReturns the current state of BSW. This property must always return a valid state defined in\nBlindSpotWarningState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead.\n\nFor each supported area ID, the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both BlindSpotWarningState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -7923,6 +8304,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable Lane Departure Warning (LDW).\n\nSet true to enable LDW and false to disable LDW. When LDW is enabled, the ADAS system in the\nvehicle should be turned on and monitoring if the vehicle is approaching or crossing lane\nlines, in which case a warning will be given.\n\nIn general, LANE_DEPARTURE_WARNING_ENABLED should always return true or false. If the feature\nis not available due to some temporary state, such as the vehicle speed being too low or too\nhigh, that information must be conveyed through the ErrorState values in the\nLANE_DEPARTURE_WARNING_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -7962,6 +8344,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "LaneDepartureWarningState",
+    "dataEnums": [
+      "LaneDepartureWarningState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Lane Departure Warning (LDW) state.\n\nReturns the current state of LDW. This property must always return a valid state defined in\nLaneDepartureWarningState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both LaneDepartureWarningState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -7998,6 +8384,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable Lane Keep Assist (LKA).\n\nSet true to enable LKA and false to disable LKA. When LKA is enabled, the ADAS system in the\nvehicle should be turned on and monitoring if the driver unintentionally drifts toward or\nover the lane marking. If an unintentional lane departure is detected, the system applies\nsteering control to return the vehicle into the current lane.\n\nThis is different from Lane Centering Assist (LCA) which, when activated, applies continuous\nsteering control to keep the vehicle centered in the current lane.\n\nIn general, LANE_KEEP_ASSIST_ENABLED should always return true or false. If the feature is\nnot available due to some temporary state, such as the vehicle speed being too low or too\nhigh, that information must be conveyed through the ErrorState values in the\nLANE_KEEP_ASSIST_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8037,6 +8424,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "LaneKeepAssistState",
+    "dataEnums": [
+      "LaneKeepAssistState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Lane Keep Assist (LKA) state.\n\nReturns the current state of LKA. This property must always return a valid state defined in\nLaneKeepAssistState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead.\n\nIf LKA includes lane departure warnings before applying steering corrections, those warnings\nmust be surfaced through the Lane Departure Warning (LDW) properties.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both LaneKeepAssistState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -8073,6 +8464,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable Lane Centering Assist (LCA).\n\nSet true to enable LCA and false to disable LCA. When LCA is enabled, the ADAS system in the\nvehicle should be turned on and waiting for an activation signal from the driver. Once the\nfeature is activated, the ADAS system should be steering the vehicle to keep it centered in\nits current lane.\n\nThis is different from Lane Keep Assist (LKA) which monitors if the driver unintentionally\ndrifts toward or over the lane marking. If an unintentional lane departure is detected, the\nsystem applies steering control to return the vehicle into the current lane.\n\nIn general, LANE_CENTERING_ASSIST_ENABLED should always return true or false. If the feature\nis not available due to some temporary state, such as the vehicle speed being too low or too\nhigh, that information must be conveyed through the ErrorState values in the\nLANE_CENTERING_ASSIST_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8117,6 +8509,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "WRITE"
     ],
     "dataEnum": "LaneCenteringAssistCommand",
+    "dataEnums": [
+      "LaneCenteringAssistCommand"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Lane Centering Assist (LCA) commands.\n\nCommands to activate and suspend LCA.\n\nWhen the command ACTIVATE from LaneCenteringAssistCommand is sent,\nLANE_CENTERING_ASSIST_STATE must be set to LaneCenteringAssistState#ACTIVATION_REQUESTED.\nWhen the ACTIVATE command succeeds, LANE_CENTERING_ASSIST_STATE must be set to\nLaneCenteringAssistState#ACTIVATED. When the command DEACTIVATE from\nLaneCenteringAssistCommand succeeds, LANE_CENTERING_ASSIST_STATE must be set to\nLaneCenteringAssistState#ENABLED.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues must be defined unless\nall enum values of LaneCenteringAssistCommand are supported.\n\nWhen this property is not available because LCA is disabled (i.e.\nLANE_CENTERING_ASSIST_ENABLED is false), this property must return\nStatusCode#NOT_AVAILABLE_DISABLED. If LANE_CENTERING_ASSIST_STATE is implemented and the\nstate is set to an ErrorState value, then this property must return a StatusCode that aligns\nwith the ErrorState value. For example, if LANE_CENTERING_ASSIST_STATE is set to\nErrorState#NOT_AVAILABLE_SPEED_LOW, then this property must return\nStatusCode#NOT_AVAILABLE_SPEED_LOW.",
@@ -8158,6 +8553,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "LaneCenteringAssistState",
+    "dataEnums": [
+      "LaneCenteringAssistState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Lane Centering Assist (LCA) state.\n\nReturns the current state of LCA. This property must always return a valid state defined in\nLaneCenteringAssistState or ErrorState. It must not surface errors through StatusCode\nand must use the supported error states instead.\n\nIf LCA includes lane departure warnings, those warnings must be surfaced through the Lane\nDeparture Warning (LDW) properties.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both LaneCenteringAssistState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -8204,6 +8603,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable Emergency Lane Keep Assist (ELKA).\n\nSet true to enable ELKA and false to disable ELKA. When ELKA is enabled, the ADAS system in\nthe vehicle should be on and monitoring for unsafe lane changes by the driver. When an unsafe\nmaneuver is detected, ELKA alerts the driver and applies steering corrections to keep the\nvehicle in its original lane.\n\nIn general, EMERGENCY_LANE_KEEP_ASSIST_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, such as the vehicle speed being too\nlow, that information must be conveyed through the ErrorState values in the\nEMERGENCY_LANE_KEEP_ASSIST_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8243,6 +8643,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "EmergencyLaneKeepAssistState",
+    "dataEnums": [
+      "EmergencyLaneKeepAssistState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Emergency Lane Keep Assist (ELKA) state.\n\nReturns the current state of ELKA. Generally, this property should return a valid state\ndefined in the EmergencyLaneKeepAssistState or ErrorState. For example, if the feature is not\navailable due to some temporary state, that information should be conveyed through\nErrorState.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of EmergencyLaneKeepAssistState (including OTHER, which is not recommended)\nand ErrorState are supported.",
@@ -8279,6 +8683,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable cruise control (CC).\n\nSet true to enable CC and false to disable CC. This property is shared by all forms of\nCruiseControlType(s).\n\nWhen CC is enabled, the ADAS system in the vehicle should be turned on and responding to\ncommands.\n\nIn general, CRUISE_CONTROL_ENABLED should always return true or false. If the feature is not\navailable due to some temporary state, such as the vehicle speed being too low, that\ninformation must be conveyed through the ErrorState values in the CRUISE_CONTROL_STATE\nproperty.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8344,6 +8749,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "CruiseControlType",
+    "dataEnums": [
+      "CruiseControlType",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Current type of Cruise Control (CC).\n\nWhen CRUISE_CONTROL_ENABLED is true, this property returns the type of CC that is currently\nenabled (for example, standard CC, adaptive CC, predictive CC, etc.). Generally, this\nproperty should return a valid state defined in the CruiseControlType or ErrorState. For\nexample, if the feature is not available due to some temporary state, that information should\nbe conveyed through ErrorState.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of CruiseControlType (including OTHER, which is not recommended) and\nErrorState are supported.\n\nTrying to write CruiseControlType#OTHER or an ErrorState to this property will throw an\nIllegalArgumentException.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8378,6 +8787,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "CruiseControlState",
+    "dataEnums": [
+      "CruiseControlState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Current state of Cruise Control (CC).\n\nThis property returns the current state of CC. Generally, this property should return a valid\nstate defined in the CruiseControlState or ErrorState. For example, if the feature is not\navailable due to some temporary state, that information should be conveyed through\nErrorState.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of CruiseControlState (including OTHER, which is not recommended) and\nErrorState are supported.",
@@ -8439,6 +8852,9 @@ export const vehicleProperties: VehicleProperty[] = [
       "WRITE"
     ],
     "dataEnum": "CruiseControlCommand",
+    "dataEnums": [
+      "CruiseControlCommand"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Write Cruise Control (CC) commands.\n\nSee CruiseControlCommand for the details about each supported command.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of CruiseControlState are supported. Any unsupported commands sent through\nthis property must return StatusCode#INVALID_ARG.\n\nWhen this property is not available because CC is disabled (i.e. CRUISE_CONTROL_ENABLED is\nfalse), this property must return StatusCode#NOT_AVAILABLE_DISABLED. If CRUISE_CONTROL_STATE\nis implemented and the state is set to an ErrorState value, then this property must return a\nStatusCode that aligns with the ErrorState value. For example, if CRUISE_CONTROL_STATE is set\nto ErrorState#NOT_AVAILABLE_SPEED_LOW, then this property must return\nStatusCode#NOT_AVAILABLE_SPEED_LOW.",
@@ -8480,6 +8896,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "METER_PER_SEC",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Current target speed for Cruise Control (CC).\n\nOEMs should set the minFloatValue and maxFloatValue values for this property to define the\nmin and max target speed values. These values must be non-negative.\n\nThe maxFloatValue represents the upper bound of the target speed.\nThe minFloatValue represents the lower bound of the target speed.\n\nWhen this property is not available because CC is disabled (i.e. CRUISE_CONTROL_ENABLED is\nfalse), this property must return StatusCode#NOT_AVAILABLE_DISABLED. If CRUISE_CONTROL_STATE\nis implemented and the state is set to an ErrorState value, then this property must return a\nStatusCode that aligns with the ErrorState value. For example, if CRUISE_CONTROL_STATE is set\nto ErrorState#NOT_AVAILABLE_SPEED_LOW, then this property must return\nStatusCode#NOT_AVAILABLE_SPEED_LOW.",
@@ -8522,6 +8939,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLI_SECS",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Current target time gap for Adaptive Cruise Control (ACC) or Predictive Cruise Control in\nmilliseconds.\n\nThis property should specify the target time gap to a leading vehicle. This gap is defined as\nthe time to travel the distance between the leading vehicle's rear-most point to the ACC\nvehicle's front-most point. The actual time gap from a leading vehicle can be above or below\nthis value.\n\nThe possible values to set for the target time gap should be specified in configArray in\nascending order. All values must be positive. If the property is writable, all values must be\nwritable.\n\nWhen this property is not available because CC is disabled (i.e. CRUISE_CONTROL_ENABLED is\nfalse), this property must return StatusCode#NOT_AVAILABLE_DISABLED. If CRUISE_CONTROL_STATE\nis implemented and the state is set to an ErrorState value, then this property must return a\nStatusCode that aligns with the ErrorState value. For example, if CRUISE_CONTROL_STATE is set\nto ErrorState#NOT_AVAILABLE_SPEED_LOW, then this property must return\nStatusCode#NOT_AVAILABLE_SPEED_LOW.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8561,6 +8979,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "unit": "MILLIMETER",
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Measured distance from leading vehicle when using Adaptive Cruise Control (ACC) or\nPredictive Cruise Control.\n\nReturns the measured distance in millimeters between the rear-most point of the leading\nvehicle and the front-most point of the ACC vehicle.\n\nThe maxInt32Value and minInt32Value in VehicleAreaConfig must be defined.\nThe minInt32Value should be 0.\nThe maxInt32Value should be populated with the maximum range the distance sensor can support.\nThis value should be non-negative.\n\nWhen no lead vehicle is detected (that is, when there is no leading vehicle or the leading\nvehicle is too far away for the sensor to detect), this property should return\nStatusCode.NOT_AVAILABLE.\n\nWhen this property is not available because CC is disabled (i.e. CRUISE_CONTROL_ENABLED is\nfalse), this property must return StatusCode#NOT_AVAILABLE_DISABLED. If CRUISE_CONTROL_STATE\nis implemented and the state is set to an ErrorState value, then this property must return a\nStatusCode that aligns with the ErrorState value. For example, if CRUISE_CONTROL_STATE is set\nto ErrorState#NOT_AVAILABLE_SPEED_LOW, then this property must return\nStatusCode#NOT_AVAILABLE_SPEED_LOW.",
@@ -8602,6 +9021,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 2,
     "deprecated": false,
     "description": "Enable or disable Hands On Detection (HOD).\n\nSet true to enable HOD and false to disable HOD. When HOD is enabled, a system inside the\nvehicle should be monitoring the presence of the driver's hands on the steering wheel and\nsend a warning if it detects that the driver's hands are no longer on the steering wheel.\n\nIn general, HANDS_ON_DETECTION_ENABLED should always return true or false. If the feature is\nnot available due to some temporary state, that information must be conveyed through the\nErrorState values in the HANDS_ON_DETECTION_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8636,6 +9056,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "HandsOnDetectionDriverState",
+    "dataEnums": [
+      "HandsOnDetectionDriverState",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Hands On Detection (HOD) driver state.\n\nReturns whether the driver's hands are on the steering wheel. Generally, this property should\nreturn a valid state defined in the HandsOnDetectionDriverState or ErrorState. For example,\nif the feature is not available due to some temporary state, that information should be\nconveyed through ErrorState.\n\nIf the vehicle wants to send a warning to the user because the driver's hands have been off\nthe steering wheel for too long, the warning should be surfaced through\nHANDS_ON_DETECTION_WARNING.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both HandsOnDetectionDriverState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -8667,6 +9091,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "HandsOnDetectionWarning",
+    "dataEnums": [
+      "HandsOnDetectionWarning",
+      "ErrorState"
+    ],
     "version": 2,
     "deprecated": false,
     "description": "Hands On Detection (HOD) warning.\n\nReturns whether a warning is being sent to the driver for having their hands off the wheel\nfor too long a duration.\n\nGenerally, this property should return a valid state defined in HandsOnDetectionWarning or\nErrorState. For example, if the feature is not available due to some temporary state, that\ninformation should be conveyed through an ErrorState.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both HandsOnDetectionWarning (including OTHER, which is not recommended)\nand ErrorState are supported.",
@@ -8703,6 +9131,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable driver drowsiness and attention monitoring.\n\nSet true to enable driver drowsiness and attention monitoring and false to disable driver\ndrowsiness and attention monitoring. When driver drowsiness and attention monitoring is\nenabled, a system inside the vehicle should be monitoring the drowsiness and attention level\nof the driver and warn the driver if needed.\n\nIn general, DRIVER_DROWSINESS_ATTENTION_SYSTEM_ENABLED should always return true or false.\nIf the feature is not available due to some temporary state, that information must be\nconveyed through the ErrorState values in the DRIVER_DROWSINESS_ATTENTION_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8742,9 +9171,13 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "DriverDrowsinessAttentionState",
+    "dataEnums": [
+      "DriverDrowsinessAttentionState",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
-    "description": "Driver drowsiness and attention level state.\n\nReturns the current detected state of driver drowiness and attention level based on the\nKarolinska Sleepiness scale. If alternative measurement methods are used, the value should be\ntranslated to the Karolinska Sleepiness Scale equivalent.\n\nGenerally, this property should return a valid state defined in the\nDriverDrowsinessAttentionState or ErrorState. For example, if the feature is not available\ndue to some temporary state, that information should be conveyed through ErrorState.\n\nIf the vehicle is sending a warning to the user because the driver is too drowsy, the warning\nshould be surfaced through {@link #DRIVER_DROWSINESS_ATTENTION_WARNING}.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both DriverDrowsinessAttentionState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
+    "description": "Driver drowsiness and attention level state.\n\nReturns the current detected state of driver drowiness and attention level based on the\nKarolinska Sleepiness scale. If alternative measurement methods are used, the value should be\ntranslated to the Karolinska Sleepiness Scale equivalent.\n\nGenerally, this property should return a valid state defined in the\nDriverDrowsinessAttentionState or ErrorState. For example, if the feature is not available\ndue to some temporary state, that information should be conveyed through ErrorState.\n\nIf the vehicle is sending a warning to the user because the driver is too drowsy, the warning\nshould be surfaced through #DRIVER_DROWSINESS_ATTENTION_WARNING.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both DriverDrowsinessAttentionState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
     "aidlLine": 6220,
     "javaLine": 7319,
     "readPermissions": [
@@ -8783,6 +9216,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable driver drowsiness and attention warnings.\n\nSet true to enable driver drowsiness and attention warnings and false to disable driver\ndrowsiness and attention warnings.\n\nWhen driver drowsiness and attention warnings are enabled, the driver drowsiness and\nattention monitoring system inside the vehicle should warn the driver when it detects the\ndriver is drowsy or not attentive.\n\nIn general, DRIVER_DROWSINESS_ATTENTION_WARNING_ENABLED should always return true or false.\nIf the feature is not available due to some temporary state, that information must be\nconveyed through the ErrorState values in the DRIVER_DROWSINESS_ATTENTION_WARNING property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8817,6 +9251,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "DriverDrowsinessAttentionWarning",
+    "dataEnums": [
+      "DriverDrowsinessAttentionWarning",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Driver drowsiness and attention warning.\n\nReturns whether a warning is being sent to the driver for being drowsy or not attentive.\n\nGenerally, this property should return a valid state defined in\nDriverDrowsinessAttentionWarning or ErrorState. For example, if the feature is not available\ndue to some temporary state, that information should be conveyed through an ErrorState.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both DriverDrowsinessAttentionWarning (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -8863,6 +9301,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable driver distraction monitoring.\n\nSet true to enable driver distraction monitoring and false to disable driver\ndistraction monitoring. When driver distraction monitoring is enabled, a system\ninside the vehicle should be monitoring the distraction level of the driver and\nwarn the driver if needed.\n\nIn general, DRIVER_DISTRACTION_SYSTEM_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, that information must be conveyed\nthrough the ErrorState values in the DRIVER_DISTRACTION_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8902,9 +9341,13 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "DriverDistractionState",
+    "dataEnums": [
+      "DriverDistractionState",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
-    "description": "Driver distraction state.\n\nReturns the current detected driver distraction state.\n\nGenerally, this property should return a valid state defined in the DriverDistractionState or\nErrorState. For example, if the feature is not available due to some temporary state, that\ninformation should be conveyed through ErrorState.\n\nIf the vehicle is sending a warning to the user because the driver is too distracted, the\nwarning should be surfaced through {@link #DRIVER_DISTRACTION_WARNING}.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both DriverDistractionState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
+    "description": "Driver distraction state.\n\nReturns the current detected driver distraction state.\n\nGenerally, this property should return a valid state defined in the DriverDistractionState or\nErrorState. For example, if the feature is not available due to some temporary state, that\ninformation should be conveyed through ErrorState.\n\nIf the vehicle is sending a warning to the user because the driver is too distracted, the\nwarning should be surfaced through #DRIVER_DISTRACTION_WARNING.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both DriverDistractionState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
     "aidlLine": 6317,
     "javaLine": 7468,
     "readPermissions": [
@@ -8943,6 +9386,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable driver distraction warnings.\n\nSet true to enable driver distraction warnings and false to disable driver distraction\nwarnings.\n\nWhen driver distraction warnings are enabled, the driver distraction monitoring system inside\nthe vehicle should warn the driver when it detects the driver is distracted.\n\nIn general, DRIVER_DISTRACTION_WARNING_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, that information must be conveyed\nthrough the ErrorState values in the DRIVER_DISTRACTION_WARNING property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -8977,6 +9421,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "DriverDistractionWarning",
+    "dataEnums": [
+      "DriverDistractionWarning",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Driver distraction warning.\n\nReturns whether a warning is being sent to the driver for being distracted.\n\nGenerally, this property should return a valid state defined in DriverDistractionWarning or\nErrorState. For example, if the feature is not available due to some temporary state, that\ninformation should be conveyed through an ErrorState.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both DriverDistractionWarning (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -9023,6 +9471,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable Low Speed Collision Warning.\n\nSet true to enable low speed collision warning and false to disable low speed collision\nwarning. When low speed collision warning is enabled, the ADAS system in the vehicle should\nwarn the driver of potential collisions at low speeds. This property is different from the\npre-existing FORWARD_COLLISION_WARNING_ENABLED, which should apply to higher speed\napplications only. If the vehicle doesn't have a separate collision detection system for low\nspeed environments, this property should not be implemented.\n\nIn general, LOW_SPEED_COLLISION_WARNING_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, such as the vehicle speed being too\nhigh, that information must be conveyed through the ErrorState values in the\nLOW_SPEED_COLLISION_WARNING_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -9072,6 +9521,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "LowSpeedCollisionWarningState",
+    "dataEnums": [
+      "LowSpeedCollisionWarningState",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Low Speed Collision Warning state.\n\nReturns the current state of Low Speed Collision Warning. This property must always return a\nvalid state defined in LowSpeedCollisionWarningState or ErrorState. It must not surface\nerrors through StatusCode and must use the supported error states instead. This property is\ndifferent from the pre-existing FORWARD_COLLISION_WARNING_STATE, which should apply to higher\nspeed applications only. If the vehicle doesn't have a separate collision detection system\nfor low speed environments, this property should not be implemented.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both LowSpeedCollisionWarningState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -9118,6 +9571,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable Cross Traffic Monitoring.\n\nSet true to enable Cross Traffic Monitoring and false to disable Cross Traffic Monitoring.\nWhen Cross Traffic Monitoring is enabled, the ADAS system in the vehicle should be turned on\nand monitoring for potential sideways collisions.\n\nIn general, CROSS_TRAFFIC_MONITORING_ENABLED should always return true or false. If the\nfeature is not available due to some temporary state, such as the vehicle speed being too\nhigh, that information must be conveyed through the ErrorState values in the\nCROSS_TRAFFIC_MONITORING_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -9146,6 +9600,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "CrossTrafficMonitoringWarningState",
+    "dataEnums": [
+      "CrossTrafficMonitoringWarningState",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Cross Traffic Monitoring warning state.\n\nReturns the current state of Cross Traffic Monitoring Warning. This property must always\nreturn a valid state defined in CrossTrafficMonitoringWarningState or ErrorState. It must not\nsurface errors through StatusCode and must use the supported error states instead.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both CrossTrafficMonitoringWarningState (including OTHER, which is not\nrecommended) and ErrorState are supported.",
@@ -9171,6 +9629,7 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ_WRITE",
       "READ"
     ],
+    "dataEnums": [],
     "version": 3,
     "deprecated": false,
     "description": "Enable or disable Low Speed Automatic Emergency Braking.\n\nSet true to enable Low Speed Automatic Emergency Braking or false to disable Low Speed\nAutomatic Emergency Braking. When Low Speed Automatic Emergency Braking is enabled, the ADAS\nsystem in the vehicle should be turned on and monitoring to avoid potential collisions in low\nspeed conditions. This property is different from the pre-existing\nAUTOMATIC_EMERGENCY_BRAKING_ENABLED, which should apply to higher speed applications only. If\nthe vehicle doesn't have a separate collision avoidance system for low speed environments,\nthis property should not be implemented.\n\nIn general, LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_ENABLED should always return true or false.\nIf the feature is not available due to some temporary state, such as the vehicle speed being\ntoo low, that information must be conveyed through the ErrorState values in the\nLOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE property.\n\nThis property is defined as VehiclePropertyAccess.READ_WRITE, but OEMs have the option to\nimplement it as VehiclePropertyAccess.READ only.",
@@ -9220,6 +9679,10 @@ export const vehicleProperties: VehicleProperty[] = [
       "READ"
     ],
     "dataEnum": "LowSpeedAutomaticEmergencyBrakingState",
+    "dataEnums": [
+      "LowSpeedAutomaticEmergencyBrakingState",
+      "ErrorState"
+    ],
     "version": 3,
     "deprecated": false,
     "description": "Low Speed Automatic Emergency Braking state.\n\nReturns the current state of Low Speed Automatic Emergency Braking. This property must always\nreturn a valid state defined in LowSpeedAutomaticEmergencyBrakingState or ErrorState. It must\nnot surface errors through StatusCode and must use the supported error states instead. This\nproperty is different from the pre-existing AUTOMATIC_EMERGENCY_BRAKING_STATE, which should\napply to higher speed applications only. If the vehicle doesn't have a separate collision\navoidance system for low speed environments, this property should not be implemented.\n\nIf Low Speed Automatic Emergency Braking includes collision warnings before activating the\nbrakes, those warnings must be surfaced through use of LOW_SPEED_COLLISION_WARNING_ENABLED\nand LOW_SPEED_COLLISION_WARNING_STATE.\n\nFor the global area ID (0), the VehicleAreaConfig#supportedEnumValues array must be defined\nunless all states of both LowSpeedAutomaticEmergencyBrakingState (including OTHER, which is\nnot recommended) and ErrorState are supported.",
@@ -9263,5 +9726,2033 @@ export const vehicleProperties: VehicleProperty[] = [
     ]
   }
 ]
+
+export type EnumMember = {
+  name: string
+  /** The literal from the AIDL — often a bit flag or an explicit ordinal. */
+  value: string
+  description: string
+}
+
+export type EnumDefinition = {
+  name: string
+  description: string
+  members: EnumMember[]
+}
+
+export const valueEnums: Record<string, EnumDefinition> = {
+  "FuelType": {
+    "name": "FuelType",
+    "description": "Used by INFO_FUEL_TYPE to enumerate the type of fuels this vehicle uses.\nConsistent with projection protocol.",
+    "members": [
+      {
+        "name": "FUEL_TYPE_UNKNOWN",
+        "value": "0",
+        "description": "Fuel type to use if the HU does not know on which types of fuel the vehicle\nruns. The use of this value is generally discouraged outside of aftermarket units."
+      },
+      {
+        "name": "FUEL_TYPE_UNLEADED",
+        "value": "1",
+        "description": "Unleaded gasoline"
+      },
+      {
+        "name": "FUEL_TYPE_LEADED",
+        "value": "2",
+        "description": "Leaded gasoline"
+      },
+      {
+        "name": "FUEL_TYPE_DIESEL_1",
+        "value": "3",
+        "description": "Diesel #1"
+      },
+      {
+        "name": "FUEL_TYPE_DIESEL_2",
+        "value": "4",
+        "description": "Diesel #2"
+      },
+      {
+        "name": "FUEL_TYPE_BIODIESEL",
+        "value": "5",
+        "description": "Biodiesel"
+      },
+      {
+        "name": "FUEL_TYPE_E85",
+        "value": "6",
+        "description": "85% ethanol/gasoline blend"
+      },
+      {
+        "name": "FUEL_TYPE_LPG",
+        "value": "7",
+        "description": "Liquified petroleum gas"
+      },
+      {
+        "name": "FUEL_TYPE_CNG",
+        "value": "8",
+        "description": "Compressed natural gas"
+      },
+      {
+        "name": "FUEL_TYPE_LNG",
+        "value": "9",
+        "description": "Liquified natural gas"
+      },
+      {
+        "name": "FUEL_TYPE_ELECTRIC",
+        "value": "10",
+        "description": "Electric"
+      },
+      {
+        "name": "FUEL_TYPE_HYDROGEN",
+        "value": "11",
+        "description": "Hydrogen fuel cell"
+      },
+      {
+        "name": "FUEL_TYPE_OTHER",
+        "value": "12",
+        "description": "Fuel type to use when no other types apply. Before using this value, work with\nGoogle to see if the FuelType enum can be extended with an appropriate value."
+      }
+    ]
+  },
+  "EvConnectorType": {
+    "name": "EvConnectorType",
+    "description": "Used by INFO_EV_CONNECTOR_TYPE to enumerate the type of connectors\navailable to charge the vehicle.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": "Default type if the vehicle does not know or report the EV connector\ntype."
+      },
+      {
+        "name": "IEC_TYPE_1_AC",
+        "value": "1",
+        "description": "IEC 62196 Type 1 connector\n\nAlso known as the \"Yazaki connector\" or \"J1772 connector\"."
+      },
+      {
+        "name": "IEC_TYPE_2_AC",
+        "value": "2",
+        "description": "IEC 62196 Type 2 connector\n\nAlso known as the \"Mennekes connector\"."
+      },
+      {
+        "name": "IEC_TYPE_3_AC",
+        "value": "3",
+        "description": "IEC 62196 Type 3 connector\n\nAlso known as the \"Scame connector\"."
+      },
+      {
+        "name": "IEC_TYPE_4_DC",
+        "value": "4",
+        "description": "IEC 62196 Type AA connector\n\nAlso known as the \"Chademo connector\"."
+      },
+      {
+        "name": "IEC_TYPE_1_CCS_DC",
+        "value": "5",
+        "description": "IEC 62196 Type EE connector\n\nAlso known as the “CCS1 connector” or “Combo1 connector\"."
+      },
+      {
+        "name": "IEC_TYPE_2_CCS_DC",
+        "value": "6",
+        "description": "IEC 62196 Type EE connector\n\nAlso known as the “CCS2 connector” or “Combo2 connector”."
+      },
+      {
+        "name": "TESLA_ROADSTER",
+        "value": "7",
+        "description": "DO NOT USE\n\nConnector of Tesla Roadster."
+      },
+      {
+        "name": "TESLA_HPWC",
+        "value": "8",
+        "description": "DO NOT USE\nUse SAE_J3400_AC instead.\n\nHigh Power Wall Charger of Tesla."
+      },
+      {
+        "name": "TESLA_SUPERCHARGER",
+        "value": "9",
+        "description": "DO NOT USE\nUse SAE_J3400_DC instead.\n\nSAE J3400 connector\n\nAlso known as the \"North American Charging Standard\" (NACS)\nor the \"Tesla charging standard\" connector."
+      },
+      {
+        "name": "GBT_AC",
+        "value": "10",
+        "description": "GBT_AC Fast Charging Standard"
+      },
+      {
+        "name": "GBT_DC",
+        "value": "11",
+        "description": "GBT_DC Fast Charging Standard"
+      },
+      {
+        "name": "SAE_J3400_AC",
+        "value": "8",
+        "description": "SAE J3400 connector - AC Charging.\n\nAlso known as the \"North American Charging Standard\" (NACS).\n\nThis enum must be used if the vehicle specifically supports AC charging. If the vehicle\nsupports both AC and DC, INFO_EV_CONNECTOR_TYPE should be populated with both SAE_J3400_AC\nand SAE_J3400_DC. If the vehicle only supports AC charging, it should only be populated with\nSAE_J3400_AC.\n\nThis is equivalent to TESLA_HPWC enum."
+      },
+      {
+        "name": "SAE_J3400_DC",
+        "value": "9",
+        "description": "SAE J3400 connector - DC Charging.\n\nAlso known as the \"North American Charging Standard\" (NACS).\n\nThis enum must be used if the vehicle specifically supports DC charging. If the vehicle\nsupports both AC and DC, INFO_EV_CONNECTOR_TYPE should be populated with both SAE_J3400_AC\nand SAE_J3400_DC. If the vehicle only supports DC charging, it should only be populated with\nSAE_J3400_DC.\n\nThis is equivalent to TESLA_SUPERCHARGER enum."
+      },
+      {
+        "name": "OTHER",
+        "value": "101",
+        "description": "Connector type to use when no other types apply. Before using this\nvalue, work with Google to see if the EvConnectorType enum can be\nextended with an appropriate value."
+      }
+    ]
+  },
+  "PortLocationType": {
+    "name": "PortLocationType",
+    "description": "Used by INFO_FUEL_DOOR_LOCATION/INFO_CHARGE_PORT_LOCATION to enumerate fuel door or\nev port location.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": "Default type if the vehicle does not know or report the Fuel door\nand ev port location."
+      },
+      {
+        "name": "FRONT_LEFT",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "FRONT_RIGHT",
+        "value": "2",
+        "description": ""
+      },
+      {
+        "name": "REAR_RIGHT",
+        "value": "3",
+        "description": ""
+      },
+      {
+        "name": "REAR_LEFT",
+        "value": "4",
+        "description": ""
+      },
+      {
+        "name": "FRONT",
+        "value": "5",
+        "description": ""
+      },
+      {
+        "name": "REAR",
+        "value": "6",
+        "description": ""
+      }
+    ]
+  },
+  "VehicleAreaSeat": {
+    "name": "VehicleAreaSeat",
+    "description": "Various Seats in the car.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0x0000",
+        "description": ""
+      },
+      {
+        "name": "ROW_1_LEFT",
+        "value": "0x0001",
+        "description": ""
+      },
+      {
+        "name": "ROW_1_CENTER",
+        "value": "0x0002",
+        "description": ""
+      },
+      {
+        "name": "ROW_1_RIGHT",
+        "value": "0x0004",
+        "description": ""
+      },
+      {
+        "name": "ROW_2_LEFT",
+        "value": "0x0010",
+        "description": ""
+      },
+      {
+        "name": "ROW_2_CENTER",
+        "value": "0x0020",
+        "description": ""
+      },
+      {
+        "name": "ROW_2_RIGHT",
+        "value": "0x0040",
+        "description": ""
+      },
+      {
+        "name": "ROW_3_LEFT",
+        "value": "0x0100",
+        "description": ""
+      },
+      {
+        "name": "ROW_3_CENTER",
+        "value": "0x0200",
+        "description": ""
+      },
+      {
+        "name": "ROW_3_RIGHT",
+        "value": "0x0400",
+        "description": ""
+      }
+    ]
+  },
+  "ImpactSensorLocation": {
+    "name": "ImpactSensorLocation",
+    "description": "Used to enumerate the various impact sensor locations on the car.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0x01",
+        "description": "Other impact sensor location. Ideally this should never be used."
+      },
+      {
+        "name": "FRONT",
+        "value": "0x02",
+        "description": "Frontal impact sensor. Used for the sensor that detects head-on impact."
+      },
+      {
+        "name": "FRONT_LEFT_DOOR_SIDE",
+        "value": "0x04",
+        "description": "Front-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-left door."
+      },
+      {
+        "name": "FRONT_RIGHT_DOOR_SIDE",
+        "value": "0x08",
+        "description": "Front-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the front-right door."
+      },
+      {
+        "name": "REAR_LEFT_DOOR_SIDE",
+        "value": "0x10",
+        "description": "Rear-left door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-left door."
+      },
+      {
+        "name": "REAR_RIGHT_DOOR_SIDE",
+        "value": "0x20",
+        "description": "Rear-right door side impact sensor. Used for the sensor that detects collisions from the\nside, in particular on the rear-right door."
+      },
+      {
+        "name": "REAR",
+        "value": "0x40",
+        "description": "Rear impact sensor. Used for the sensor that detects collisions from the rear."
+      }
+    ]
+  },
+  "VehicleSizeClass": {
+    "name": "VehicleSizeClass",
+    "description": "Used to enumerate the various size classes of vehicles.\n\nThis enum can be extended in future releases to include additional values.",
+    "members": [
+      {
+        "name": "EPA_TWO_SEATER",
+        "value": "0x100",
+        "description": "Represents two-seaters as defined by the EPA standard of size classes for vehicles in the\nUnited States.\n\nThe current implementation of EPA-standard enums follows the classification defined in\nFederal Regulation, Title 40—Protection of Environment, Section 600.315-08 \"Classes of\ncomparable automobiles\"."
+      },
+      {
+        "name": "EPA_MINICOMPACT",
+        "value": "0x101",
+        "description": "Represents minicompact cars as defined by the EPA standard of size classes for vehicles in\nthe United States."
+      },
+      {
+        "name": "EPA_SUBCOMPACT",
+        "value": "0x102",
+        "description": "Represents subcompact cars as defined by the EPA standard of size classes for vehicles in the\nUnited States."
+      },
+      {
+        "name": "EPA_COMPACT",
+        "value": "0x103",
+        "description": "Represents compact cars as defined by the EPA standard of size classes for vehicles in the\nUnited States."
+      },
+      {
+        "name": "EPA_MIDSIZE",
+        "value": "0x104",
+        "description": "Represents midsize cars as defined by the EPA standard of size classes for vehicles in the\nUnited States."
+      },
+      {
+        "name": "EPA_LARGE",
+        "value": "0x105",
+        "description": "Represents large cars as defined by the EPA standard of size classes for vehicles in the\nUnited States."
+      },
+      {
+        "name": "EPA_SMALL_STATION_WAGON",
+        "value": "0x106",
+        "description": "Represents small station wagons as defined by the EPA standard of size classes for vehicles\nin the United States."
+      },
+      {
+        "name": "EPA_MIDSIZE_STATION_WAGON",
+        "value": "0x107",
+        "description": "Represents midsize station wagons as defined by the EPA standard of size classes for vehicles\nin the United States."
+      },
+      {
+        "name": "EPA_LARGE_STATION_WAGON",
+        "value": "0x108",
+        "description": "Represents large station wagons as defined by the EPA standard of size classes for vehicles\nin the United States."
+      },
+      {
+        "name": "EPA_SMALL_PICKUP_TRUCK",
+        "value": "0x109",
+        "description": "Represents small pickup trucks as defined by the EPA standard of size classes for vehicles\nin the United States."
+      },
+      {
+        "name": "EPA_STANDARD_PICKUP_TRUCK",
+        "value": "0x10A",
+        "description": "Represents standard pickup trucks as defined by the EPA standard of size classes for vehicles\nin the United States."
+      },
+      {
+        "name": "EPA_VAN",
+        "value": "0x10B",
+        "description": "Represents vans as defined by the EPA standard of size classes for vehicles in the United\nStates."
+      },
+      {
+        "name": "EPA_MINIVAN",
+        "value": "0x10C",
+        "description": "Represents minivans as defined by the EPA standard of size classes for vehicles in the United\nStates."
+      },
+      {
+        "name": "EPA_SMALL_SUV",
+        "value": "0x10D",
+        "description": "Represents small sport utility vehicles (SUVs) as defined by the EPA standard of size classes\nfor vehicles in the United States."
+      },
+      {
+        "name": "EPA_STANDARD_SUV",
+        "value": "0x10E",
+        "description": "Represents standard sport utility vehicles (SUVs) as defined by the EPA standard of size\nclasses for vehicles in the United States."
+      },
+      {
+        "name": "EU_A_SEGMENT",
+        "value": "0x200",
+        "description": "Represents A-segment vehicle size class, commonly called \"mini\" cars or \"city\" cars, as\nclassified in the EU.\n\nThe current implementation of the EU Car Segment enums follows the classification first\ndescribed in Case No COMP/M.1406 Hyundai / Kia Regulation (EEC) No 4064/89 Merger Procedure."
+      },
+      {
+        "name": "EU_B_SEGMENT",
+        "value": "0x201",
+        "description": "Represents B-segment vehicle size class, commonly called \"small\" cars, as classified in the\nEU."
+      },
+      {
+        "name": "EU_C_SEGMENT",
+        "value": "0x202",
+        "description": "Represents C-segment vehicle size class, commonly called \"medium\" cars, as classified in the\nEU."
+      },
+      {
+        "name": "EU_D_SEGMENT",
+        "value": "0x203",
+        "description": "Represents D-segment vehicle size class, commonly called \"large\" cars, as classified in the\nEU."
+      },
+      {
+        "name": "EU_E_SEGMENT",
+        "value": "0x204",
+        "description": "Represents E-segment vehicle size class, commonly called \"executive\" cars, as classified in\nthe EU."
+      },
+      {
+        "name": "EU_F_SEGMENT",
+        "value": "0x205",
+        "description": "Represents F-segment vehicle size class, commonly called \"luxury\" cars, as classified in the\nEU."
+      },
+      {
+        "name": "EU_J_SEGMENT",
+        "value": "0x206",
+        "description": "Represents J-segment vehicle size class, commonly associated with SUVs and off-road vehicles,\nas classified in the EU."
+      },
+      {
+        "name": "EU_M_SEGMENT",
+        "value": "0x207",
+        "description": "Represents M-segment vehicle size class, commonly called \"multi-purpose\" cars, as classified\nin the EU."
+      },
+      {
+        "name": "EU_S_SEGMENT",
+        "value": "0x208",
+        "description": "Represents S-segment vehicle size class, commonly called \"sports\" cars, as classified in the\nEU."
+      },
+      {
+        "name": "JPN_KEI",
+        "value": "0x300",
+        "description": "Represents keijidosha or \"kei\" cars as defined by the Japanese standard of size classes for\nvehicles.\n\nThe current implementation of Japan-standard enums follows the classification defined in the\nJapanese Government's Road Vehicle Act of 1951."
+      },
+      {
+        "name": "JPN_SMALL_SIZE",
+        "value": "0x301",
+        "description": "Represents small-size passenger vehicles as defined by the Japanese standard of size classes\nfor vehicles."
+      },
+      {
+        "name": "JPN_NORMAL_SIZE",
+        "value": "0x302",
+        "description": "Represents normal-size passenger vehicles as defined by the Japanese standard of size classes\nfor vehicles."
+      },
+      {
+        "name": "US_GVWR_CLASS_1_CV",
+        "value": "0x400",
+        "description": "Represents Class 1 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Light duty\" vehicles by the US Federal Highway Association."
+      },
+      {
+        "name": "US_GVWR_CLASS_2_CV",
+        "value": "0x401",
+        "description": "Represents Class 2 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Light duty\" vehicles by the US Federal Highway Association."
+      },
+      {
+        "name": "US_GVWR_CLASS_3_CV",
+        "value": "0x402",
+        "description": "Represents Class 3 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Medium duty\" vehicles by the US Federal Highway Association."
+      },
+      {
+        "name": "US_GVWR_CLASS_4_CV",
+        "value": "0x403",
+        "description": "Represents Class 4 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Medium duty\" vehicles by the US Federal Highway Association."
+      },
+      {
+        "name": "US_GVWR_CLASS_5_CV",
+        "value": "0x404",
+        "description": "Represents Class 5 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Medium duty\" vehicles by the US Federal Highway Association."
+      },
+      {
+        "name": "US_GVWR_CLASS_6_CV",
+        "value": "0x405",
+        "description": "Represents Class 6 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Medium duty\" vehicles by the US Federal Highway Association."
+      },
+      {
+        "name": "US_GVWR_CLASS_7_CV",
+        "value": "0x406",
+        "description": "Represents Class 7 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Heavy duty\" vehicles by the US Federal Highway Association."
+      },
+      {
+        "name": "US_GVWR_CLASS_8_CV",
+        "value": "0x407",
+        "description": "Represents Class 8 trucks following the US GVWR classification of commercial vehicles. This\nis classified under \"Heavy duty\" vehicles by the US Federal Highway Association."
+      }
+    ]
+  },
+  "VehicleOilLevel": {
+    "name": "VehicleOilLevel",
+    "description": "Used to enumerate the current level of VehicleProperty#ENGINE_OIL_LEVEL.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "CRITICALLY_LOW",
+        "value": "0",
+        "description": "The oil level of the engine is critically low, so the vehicle may be unsafe to drive."
+      },
+      {
+        "name": "LOW",
+        "value": "1",
+        "description": "The oil level of the engine is low and needs to be replaced."
+      },
+      {
+        "name": "NORMAL",
+        "value": "2",
+        "description": "The oil level of the engine is normal for the vehicle."
+      },
+      {
+        "name": "HIGH",
+        "value": "3",
+        "description": "The oil level of the engine is high, so the vehicle may be unsafe to drive."
+      },
+      {
+        "name": "ERROR",
+        "value": "4",
+        "description": "This value represents an error when retrieving the oil level of the engine."
+      }
+    ]
+  },
+  "VehicleGear": {
+    "name": "VehicleGear",
+    "description": "Various gears which can be selected by user and chosen in system.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "GEAR_UNKNOWN",
+        "value": "0x0000",
+        "description": ""
+      },
+      {
+        "name": "GEAR_NEUTRAL",
+        "value": "0x0001",
+        "description": ""
+      },
+      {
+        "name": "GEAR_REVERSE",
+        "value": "0x0002",
+        "description": ""
+      },
+      {
+        "name": "GEAR_PARK",
+        "value": "0x0004",
+        "description": ""
+      },
+      {
+        "name": "GEAR_DRIVE",
+        "value": "0x0008",
+        "description": ""
+      },
+      {
+        "name": "GEAR_1",
+        "value": "0x0010",
+        "description": ""
+      },
+      {
+        "name": "GEAR_2",
+        "value": "0x0020",
+        "description": ""
+      },
+      {
+        "name": "GEAR_3",
+        "value": "0x0040",
+        "description": ""
+      },
+      {
+        "name": "GEAR_4",
+        "value": "0x0080",
+        "description": ""
+      },
+      {
+        "name": "GEAR_5",
+        "value": "0x0100",
+        "description": ""
+      },
+      {
+        "name": "GEAR_6",
+        "value": "0x0200",
+        "description": ""
+      },
+      {
+        "name": "GEAR_7",
+        "value": "0x0400",
+        "description": ""
+      },
+      {
+        "name": "GEAR_8",
+        "value": "0x0800",
+        "description": ""
+      },
+      {
+        "name": "GEAR_9",
+        "value": "0x1000",
+        "description": ""
+      }
+    ]
+  },
+  "VehicleIgnitionState": {
+    "name": "VehicleIgnitionState",
+    "description": "Used to enumerate the different states the ignition of the vehicle can be in.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNDEFINED",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "LOCK",
+        "value": "1",
+        "description": "Steering wheel is locked"
+      }
+    ]
+  },
+  "EvStoppingMode": {
+    "name": "EvStoppingMode",
+    "description": "Used by EV_STOPPING_MODE to enumerate the current state of the stopping mode.\n\nThis enum may be extended to include more states in the future.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "Other EV stopping mode. Ideally, this should never be used."
+      },
+      {
+        "name": "CREEP",
+        "value": "1",
+        "description": "Vehicle slowly moves forward when the brake pedal is released."
+      },
+      {
+        "name": "ROLL",
+        "value": "2",
+        "description": "Vehicle rolls freely when the brake pedal is released (similar to neutral gear)."
+      },
+      {
+        "name": "HOLD",
+        "value": "3",
+        "description": "Vehicle stops and holds its position when the brake pedal is released."
+      }
+    ]
+  },
+  "ElectronicStabilityControlState": {
+    "name": "ElectronicStabilityControlState",
+    "description": "Used to enumerate the state of Electronic Stability Control (ESC).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any ElectronicStabilityControlState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#ELECTRONIC_STABILITY_CONTROL_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ElectronicStabilityControlState is\nextended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "ESC is enabled and monitoring safety, but is not actively controlling the tires to prevent\nthe car from skidding."
+      },
+      {
+        "name": "ACTIVATED",
+        "value": "2",
+        "description": "ESC is enabled and is actively controlling the tires to prevent the car from skidding."
+      }
+    ]
+  },
+  "VehicleHvacFanDirection": {
+    "name": "VehicleHvacFanDirection",
+    "description": "Bit flags for fan direction\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0x0",
+        "description": ""
+      },
+      {
+        "name": "FACE",
+        "value": "0x1",
+        "description": ""
+      },
+      {
+        "name": "FLOOR",
+        "value": "0x2",
+        "description": ""
+      },
+      {
+        "name": "FACE_AND_FLOOR",
+        "value": "0x3",
+        "description": "FACE_AND_FLOOR = FACE | FLOOR"
+      },
+      {
+        "name": "DEFROST",
+        "value": "0x4",
+        "description": "DEFROST may also be described as the windshield fan direction."
+      },
+      {
+        "name": "DEFROST_AND_FLOOR",
+        "value": "0x06",
+        "description": "DEFROST_AND_FLOOR = DEFROST | FLOOR"
+      }
+    ]
+  },
+  "VehicleUnit": {
+    "name": "VehicleUnit",
+    "description": "Units used for int or float type with no attached enum types.",
+    "members": [
+      {
+        "name": "SHOULD_NOT_USE",
+        "value": "0x000",
+        "description": ""
+      },
+      {
+        "name": "METER_PER_SEC",
+        "value": "0x01",
+        "description": ""
+      },
+      {
+        "name": "RPM",
+        "value": "0x02",
+        "description": ""
+      },
+      {
+        "name": "HERTZ",
+        "value": "0x03",
+        "description": ""
+      },
+      {
+        "name": "PERCENTILE",
+        "value": "0x10",
+        "description": ""
+      },
+      {
+        "name": "MILLIMETER",
+        "value": "0x20",
+        "description": ""
+      },
+      {
+        "name": "METER",
+        "value": "0x21",
+        "description": ""
+      },
+      {
+        "name": "KILOMETER",
+        "value": "0x23",
+        "description": ""
+      },
+      {
+        "name": "MILE",
+        "value": "0x24",
+        "description": ""
+      },
+      {
+        "name": "CELSIUS",
+        "value": "0x30",
+        "description": ""
+      },
+      {
+        "name": "FAHRENHEIT",
+        "value": "0x31",
+        "description": ""
+      },
+      {
+        "name": "KELVIN",
+        "value": "0x32",
+        "description": ""
+      },
+      {
+        "name": "MILLILITER",
+        "value": "0x40",
+        "description": ""
+      },
+      {
+        "name": "LITER",
+        "value": "0x41",
+        "description": ""
+      },
+      {
+        "name": "GALLON",
+        "value": "0x42",
+        "description": "deprecated. Use US_GALLON instead."
+      },
+      {
+        "name": "US_GALLON",
+        "value": "0x42",
+        "description": ""
+      },
+      {
+        "name": "IMPERIAL_GALLON",
+        "value": "0x43",
+        "description": ""
+      },
+      {
+        "name": "NANO_SECS",
+        "value": "0x50",
+        "description": ""
+      },
+      {
+        "name": "MILLI_SECS",
+        "value": "0x51",
+        "description": ""
+      },
+      {
+        "name": "SECS",
+        "value": "0x53",
+        "description": ""
+      },
+      {
+        "name": "YEAR",
+        "value": "0x59",
+        "description": ""
+      },
+      {
+        "name": "WATT_HOUR",
+        "value": "0x60",
+        "description": ""
+      },
+      {
+        "name": "MILLIAMPERE",
+        "value": "0x61",
+        "description": ""
+      },
+      {
+        "name": "MILLIVOLT",
+        "value": "0x62",
+        "description": ""
+      },
+      {
+        "name": "MILLIWATTS",
+        "value": "0x63",
+        "description": ""
+      },
+      {
+        "name": "AMPERE_HOURS",
+        "value": "0x64",
+        "description": ""
+      },
+      {
+        "name": "KILOWATT_HOUR",
+        "value": "0x65",
+        "description": ""
+      },
+      {
+        "name": "AMPERE",
+        "value": "0x66",
+        "description": ""
+      },
+      {
+        "name": "KILOPASCAL",
+        "value": "0x70",
+        "description": ""
+      },
+      {
+        "name": "PSI",
+        "value": "0x71",
+        "description": ""
+      },
+      {
+        "name": "BAR",
+        "value": "0x72",
+        "description": ""
+      },
+      {
+        "name": "DEGREES",
+        "value": "0x80",
+        "description": ""
+      },
+      {
+        "name": "MILES_PER_HOUR",
+        "value": "0x90",
+        "description": ""
+      },
+      {
+        "name": "KILOMETERS_PER_HOUR",
+        "value": "0x91",
+        "description": ""
+      }
+    ]
+  },
+  "VehicleTurnSignal": {
+    "name": "VehicleTurnSignal",
+    "description": "Copyright (C) 2021 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n     http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.",
+    "members": [
+      {
+        "name": "NONE",
+        "value": "0x00",
+        "description": ""
+      },
+      {
+        "name": "RIGHT",
+        "value": "0x01",
+        "description": ""
+      },
+      {
+        "name": "LEFT",
+        "value": "0x02",
+        "description": ""
+      }
+    ]
+  },
+  "ErrorState": {
+    "name": "ErrorState",
+    "description": "Used to enumerate the possible error states. For version 2 of this interface, ErrorState is used\nby ADAS STATE properties, but its use may be expanded in future releases.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER_ERROR_STATE",
+        "value": "-1",
+        "description": "This state is used as an alternative to any ErrorState value that is not defined in the\nplatform. Ideally, implementations of vehicle properties should not use this state. The\nframework can use this field to remain backwards compatible if this enum is extended to\ninclude additional states."
+      },
+      {
+        "name": "NOT_AVAILABLE_DISABLED",
+        "value": "-2",
+        "description": "Vehicle property is not available because the feature is disabled."
+      },
+      {
+        "name": "NOT_AVAILABLE_SPEED_LOW",
+        "value": "-3",
+        "description": "Vehicle property is not available because the vehicle speed is too low to use this feature."
+      },
+      {
+        "name": "NOT_AVAILABLE_SPEED_HIGH",
+        "value": "-4",
+        "description": "Vehicle property is not available because the vehicle speed is too high to use this feature."
+      },
+      {
+        "name": "NOT_AVAILABLE_POOR_VISIBILITY",
+        "value": "-5",
+        "description": "Vehicle property is not available because sensor or camera visibility is insufficient to use\nthis feature. For example, this can be caused by bird poop blocking the camera, poor weather\nconditions such as snow or fog, or by any object obstructing the required sensors."
+      },
+      {
+        "name": "NOT_AVAILABLE_SAFETY",
+        "value": "-6",
+        "description": "Vehicle property is not available because there is a safety risk that makes this feature\nunavailable to use presently. For example, this can be caused by someone blocking the trunk\ndoor while it is closing, or by the system being in a faulty state."
+      }
+    ]
+  },
+  "VehicleLightState": {
+    "name": "VehicleLightState",
+    "description": "Used by lights state properties to enumerate the current state of the lights.\n\nMost XXX_LIGHTS_STATE properties will only report ON and OFF states.  Only\nthe HEADLIGHTS_STATE property will report DAYTIME_RUNNING.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OFF",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "ON",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "DAYTIME_RUNNING",
+        "value": "2",
+        "description": ""
+      }
+    ]
+  },
+  "RotaryInputType": {
+    "name": "RotaryInputType",
+    "description": "A rotary control which can rotate without limits. These controls use HW_ROTARY_INPUT to report\nrelative clockwise or counterclockwise motion. They have no absolute position.",
+    "members": [
+      {
+        "name": "ROTARY_INPUT_TYPE_SYSTEM_NAVIGATION",
+        "value": "0",
+        "description": "Main rotary control, typically in the center console, used to navigate the user interface."
+      },
+      {
+        "name": "ROTARY_INPUT_TYPE_AUDIO_VOLUME",
+        "value": "1",
+        "description": "Volume control for adjusting audio volume."
+      }
+    ]
+  },
+  "VehicleLightSwitch": {
+    "name": "VehicleLightSwitch",
+    "description": "Used by lights switch properties to enumerate user selected switch setting.\n\nXXX_LIGHTS_SWITCH properties report the switch settings that the user\nselects.  The switch setting may be decoupled from the state reported if the\nuser selects AUTOMATIC.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OFF",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "ON",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "DAYTIME_RUNNING",
+        "value": "2",
+        "description": "Daytime running lights mode.  Most cars automatically use DRL but some\ncars allow the user to activate them manually."
+      },
+      {
+        "name": "AUTOMATIC",
+        "value": "0x100",
+        "description": "Allows the vehicle ECU to set the lights automatically"
+      }
+    ]
+  },
+  "CustomInputType": {
+    "name": "CustomInputType",
+    "description": "Input code values for HW_CUSTOM_INPUT.",
+    "members": [
+      {
+        "name": "CUSTOM_EVENT_F1",
+        "value": "1001",
+        "description": "Ten optional functions to be used in case OEM don't need more than 10 input code values.\n\nOEMs are free to use any signed 32 bits number to represent the input code value.\nThe following function keys are only for convenience and any other integer values are\nalso allowed."
+      },
+      {
+        "name": "CUSTOM_EVENT_F2",
+        "value": "1002",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F3",
+        "value": "1003",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F4",
+        "value": "1004",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F5",
+        "value": "1005",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F6",
+        "value": "1006",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F7",
+        "value": "1007",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F8",
+        "value": "1008",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F9",
+        "value": "1009",
+        "description": ""
+      },
+      {
+        "name": "CUSTOM_EVENT_F10",
+        "value": "1010",
+        "description": ""
+      }
+    ]
+  },
+  "VehicleAirbagLocation": {
+    "name": "VehicleAirbagLocation",
+    "description": "Used to enumerate the various airbag locations per seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0x01",
+        "description": "This state is used as an alternative to any VehicleAirbagLocation value that is not defined\nin the platform. Ideally, implementations of VehicleProperty::SEAT_AIRBAGS_DEPLOYED should\nnot use this state. The framework can use this field to remain backwards compatible if\nVehicleAirbagLocation is extended to include additional states."
+      },
+      {
+        "name": "FRONT",
+        "value": "0x02",
+        "description": "Front airbags. This enum is for the airbags that protect the seated person from the front,\nparticularly the seated person's torso."
+      },
+      {
+        "name": "KNEE",
+        "value": "0x04",
+        "description": "Knee airbags. This enum is for the airbags that protect the seated person's knees."
+      },
+      {
+        "name": "LEFT_SIDE",
+        "value": "0x08",
+        "description": "Left side airbags. This enum is for the side airbags that protect the left side of the seated\nperson."
+      },
+      {
+        "name": "RIGHT_SIDE",
+        "value": "0x10",
+        "description": "Right side airbags. This enum is for the side airbags that protect the right side of the\nseated person."
+      },
+      {
+        "name": "CURTAIN",
+        "value": "0x20",
+        "description": "Curtain airbags. This enum is for the airbags lined above the windows of the vehicle."
+      }
+    ]
+  },
+  "VehicleSeatOccupancyState": {
+    "name": "VehicleSeatOccupancyState",
+    "description": "Used by seat occupancy to enumerate the current occupancy state of the seat.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "VACANT",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "OCCUPIED",
+        "value": "2",
+        "description": ""
+      }
+    ]
+  },
+  "WindshieldWipersState": {
+    "name": "WindshieldWipersState",
+    "description": "Used to enumerate the current state of VehicleProperty#WINDSHIELD_WIPERS_STATE.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any WindshieldWipersState value that is not defined\nin the platform. Ideally, implementations of VehicleProperty#WINDSHIELD_WIPERS_STATE should\nnot use this state. The framework can use this field to remain backwards compatible if\nWindshieldWipersState is extended to include additional states."
+      },
+      {
+        "name": "OFF",
+        "value": "1",
+        "description": "This state indicates the windshield wipers are currently off. If\nVehicleProperty#WINDSHIELD_WIPERS_SWITCH is implemented, then it may be set to any of the\nfollowing modes: OFF or AUTO."
+      },
+      {
+        "name": "ON",
+        "value": "2",
+        "description": "This state indicates the windshield wipers are currently on. If\nVehicleProperty#WINDSHIELD_WIPERS_SWITCH is implemented, then it may be set to any of the\nfollowing modes: MIST, INTERMITTENT_LEVEL_*, CONTINUOUS_LEVEL_*, or AUTO."
+      },
+      {
+        "name": "SERVICE",
+        "value": "3",
+        "description": "Windshield wipers are in the service mode."
+      }
+    ]
+  },
+  "ElectronicTollCollectionCardType": {
+    "name": "ElectronicTollCollectionCardType",
+    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_TYPE.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "JP_ELECTRONIC_TOLL_COLLECTION_CARD_V2",
+        "value": "2",
+        "description": ""
+      }
+    ]
+  },
+  "WindshieldWipersSwitch": {
+    "name": "WindshieldWipersSwitch",
+    "description": "Used to enumerate the current position of VehicleProperty#WINDSHIELD_WIPERS_SWITCH.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This value is used as an alternative for any WindshieldWipersSwitch value that is not defined\nin the platform. Ideally, implementations of VehicleProperty#WINDSHIELD_WIPERS_SWITCH should\nnot use this value. The framework can use this field to remain backwards compatible if\nWindshieldWipersSwitch is extended to include additional values."
+      },
+      {
+        "name": "OFF",
+        "value": "1",
+        "description": "The windshield wipers switch is set to the off position."
+      },
+      {
+        "name": "MIST",
+        "value": "2",
+        "description": "MIST mode performs a single wipe, and then returns to the OFF position."
+      },
+      {
+        "name": "INTERMITTENT_LEVEL_1",
+        "value": "3",
+        "description": "INTERMITTENT_LEVEL_* modes performs intermittent wiping. As the level increases, the\nintermittent time period decreases."
+      },
+      {
+        "name": "INTERMITTENT_LEVEL_2",
+        "value": "4",
+        "description": ""
+      },
+      {
+        "name": "INTERMITTENT_LEVEL_3",
+        "value": "5",
+        "description": ""
+      },
+      {
+        "name": "INTERMITTENT_LEVEL_4",
+        "value": "6",
+        "description": ""
+      },
+      {
+        "name": "INTERMITTENT_LEVEL_5",
+        "value": "7",
+        "description": ""
+      },
+      {
+        "name": "CONTINUOUS_LEVEL_1",
+        "value": "8",
+        "description": "CONTINUOUS_LEVEL_* modes performs continuous wiping. As the level increases the speed of the\nwiping increases as well."
+      },
+      {
+        "name": "CONTINUOUS_LEVEL_2",
+        "value": "9",
+        "description": ""
+      },
+      {
+        "name": "CONTINUOUS_LEVEL_3",
+        "value": "10",
+        "description": ""
+      },
+      {
+        "name": "CONTINUOUS_LEVEL_4",
+        "value": "11",
+        "description": ""
+      },
+      {
+        "name": "CONTINUOUS_LEVEL_5",
+        "value": "12",
+        "description": ""
+      },
+      {
+        "name": "AUTO",
+        "value": "13",
+        "description": "AUTO allows the vehicle to decide the required wiping level based on the exterior weather\nconditions."
+      },
+      {
+        "name": "SERVICE",
+        "value": "14",
+        "description": "Windshield wipers are set to the service mode."
+      }
+    ]
+  },
+  "ElectronicTollCollectionCardStatus": {
+    "name": "ElectronicTollCollectionCardStatus",
+    "description": "Used by ELECTRONIC_TOLL_COLLECTION_CARD_STATUS.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_VALID",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_INVALID",
+        "value": "2",
+        "description": ""
+      },
+      {
+        "name": "ELECTRONIC_TOLL_COLLECTION_CARD_NOT_INSERTED",
+        "value": "3",
+        "description": ""
+      }
+    ]
+  },
+  "TrailerState": {
+    "name": "TrailerState",
+    "description": "Used to enumerate the current state of VehicleProperty#TRAILER_PRESENT.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": "This state is used as an alternative for any TrailerState value that is not defined in the\nplatform. Ideally, implementations of VehicleProperty#TRAILER_PRESENT should not use this\nstate. The framework can use this field to remain backwards compatible if TrailerState is\nextended to include additional states."
+      },
+      {
+        "name": "NOT_PRESENT",
+        "value": "1",
+        "description": "A trailer is not attached to the vehicle."
+      },
+      {
+        "name": "PRESENT",
+        "value": "2",
+        "description": "A trailer is attached to the vehicle."
+      },
+      {
+        "name": "ERROR",
+        "value": "3",
+        "description": "The state of the trailer is not available due to an error."
+      }
+    ]
+  },
+  "GsrComplianceRequirementType": {
+    "name": "GsrComplianceRequirementType",
+    "description": "Used by GENERAL_SAFETY_REGULATION_COMPLIANCE_REQUIREMENT to indicate what\nkind of general safety regulation compliance requirement is enforced.",
+    "members": [
+      {
+        "name": "GSR_COMPLIANCE_NOT_REQUIRED",
+        "value": "0",
+        "description": "GSR compliance is not required."
+      },
+      {
+        "name": "GSR_COMPLIANCE_REQUIRED_V1",
+        "value": "1",
+        "description": "GSR compliance is required and the requirement solution version is 1."
+      }
+    ]
+  },
+  "VehicleApPowerStateShutdownParam": {
+    "name": "VehicleApPowerStateShutdownParam",
+    "description": "Copyright (C) 2021 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n     http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.",
+    "members": [
+      {
+        "name": "SHUTDOWN_IMMEDIATELY",
+        "value": "1",
+        "description": "AP must shutdown without Garage mode.\nIf AP need to shutdown as soon as possible, EMERGENCY_SHUTDOWN shall be used."
+      },
+      {
+        "name": "CAN_SLEEP",
+        "value": "2",
+        "description": "AP can enter deep sleep instead of shutting down completely.\nAP can postpone entering deep sleep to run Garage mode."
+      },
+      {
+        "name": "SHUTDOWN_ONLY",
+        "value": "3",
+        "description": "AP can only shutdown.\nAP can postpone shutdown to run Garage mode."
+      },
+      {
+        "name": "SLEEP_IMMEDIATELY",
+        "value": "4",
+        "description": "AP can enter deep sleep, without Garage mode.\nDepending on the actual implementation, it may shut down immediately"
+      },
+      {
+        "name": "HIBERNATE_IMMEDIATELY",
+        "value": "5",
+        "description": "AP can hibernate (suspend to disk) without Garage mode.\nDepending on the actual implementation, it may shut down immediately."
+      },
+      {
+        "name": "CAN_HIBERNATE",
+        "value": "6",
+        "description": "AP can enter hibernation (suspend to disk) instead of shutting down completely.\nAP can postpone hibernation to run Garage mode."
+      },
+      {
+        "name": "EMERGENCY_SHUTDOWN",
+        "value": "7",
+        "description": "AP must shutdown (gracefully) without a delay. AP cannot run Garage mode.\nThis type must be used only in critical situations when AP must shutdown as soon as possible.\nCarService will only notify listeners, but will not wait for completion reports."
+      }
+    ]
+  },
+  "VehicleAutonomousState": {
+    "name": "VehicleAutonomousState",
+    "description": "Used to enumerate the various level of automation that can be expressed by the\nVEHICLE_DRIVING_AUTOMATION_CURRENT_LEVEL property.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "LEVEL_0",
+        "value": "0",
+        "description": "No automation. ADAS systems are limited to providing warnings and momentary assistance. The\ndriver is in constant supervision of all driving tasks and must steer, brake or accelerate as\nneeded to maintain safety, and is still responsible for driving while the ADAS systems are\nengaged. Usage should be in accordance to Level 0 definition in J3016_202104 version of\nvehicle autonomy levels defined by SAE."
+      },
+      {
+        "name": "LEVEL_1",
+        "value": "1",
+        "description": "Driver assistance. ADAS systems can provide steering or brake/acceleration support to the\ndriver. The driver is in constant supervision of all driving tasks and must steer, brake or\naccelerate as needed to maintain safety, and is still responsible for driving while the ADAS\nsystems are engaged. Usage should be in accordance to Level 1 definition in J3016_202104\nversion of vehicle autonomy levels defined by SAE."
+      },
+      {
+        "name": "LEVEL_2",
+        "value": "2",
+        "description": "Partial automation. ADAS systems can provide both steering and brake/acceleration support to\nthe driver at the same time. The driver is in constant supervision of all driving tasks and\nmust steer, brake or accelerate as needed to maintain safety, and is still responsible for\ndriving while the ADAS systems are engaged. Usage should be in accordance to Level 2\ndefinition in J3016_202104 version of vehicle autonomy levels defined by SAE."
+      },
+      {
+        "name": "LEVEL_3",
+        "value": "3",
+        "description": "Conditional automation. ADAS systems can drive the vehicle under limited conditions and will\nnot operate unless all required conditions are met. The driver is required to take over\ncontrol of the vehicle when requested to do so by the ADAS systems, however is not\nresponsible for driving while the ADAS systems are engaged. Usage should be in accordance to\nLevel 3 definition in J3016_202104 version of vehicle autonomy levels defined by SAE."
+      },
+      {
+        "name": "LEVEL_4",
+        "value": "4",
+        "description": "High automation. ADAS systems can drive the vehicle under limited conditions and will not\noperate unless all required conditions are met. The driver is not required to take over\ncontrol of the vehicle and is not responsible for driving while the ADAS systems are engaged.\nUsage should be in accordance to Level 4 definition in J3016_202104 version of vehicle\nautonomy levels defined by SAE."
+      },
+      {
+        "name": "LEVEL_5",
+        "value": "5",
+        "description": "Full automation. ADAS systems can drive the vehicle under all conditions. The driver is not\nrequired to take over control of the vehicle and is not responsible for driving while the\nADAS systems are engaged. Usage should be in accordance to Level 5 definition in J3016_202104\nversion of vehicle autonomy levels defined by SAE."
+      }
+    ]
+  },
+  "CameraServiceState": {
+    "name": "CameraServiceState",
+    "description": "Used by CAMERA_SERVICE_CURRENT_STATE to describe current state of CarEvsService types.\n\nThis is consistent with CarEvsManager.SERVICE_STATE_* constants.",
+    "members": [
+      {
+        "name": "UNAVAILABLE",
+        "value": "0",
+        "description": "State that a corresponding service type is not available."
+      },
+      {
+        "name": "INACTIVE",
+        "value": "1",
+        "description": "State that a corresponding service type is inactive; it's available but not used\nby any clients yet."
+      },
+      {
+        "name": "REQUESTED",
+        "value": "2",
+        "description": "State that CarEvsService requested launching a registered activity; the service is waiting\nfor a video request from it."
+      },
+      {
+        "name": "ACTIVE",
+        "value": "3",
+        "description": "State that a corresponding service type is actively being used."
+      }
+    ]
+  },
+  "AutomaticEmergencyBrakingState": {
+    "name": "AutomaticEmergencyBrakingState",
+    "description": "Used to enumerate the state of Automatic Emergency Braking (AEB).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any AutomaticEmergencyBrakingState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#AUTOMATIC_EMERGENCY_BRAKING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if AutomaticEmergencyBrakingState is\nextended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "AEB is enabled and monitoring safety, but brakes are not activated."
+      },
+      {
+        "name": "ACTIVATED",
+        "value": "2",
+        "description": "AEB is enabled and currently has the brakes applied for the vehicle."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "3",
+        "description": "Many AEB implementations allow the driver to override AEB. This means that the car has\ndetermined it should brake, but a user decides to take over and do something else. This is\noften done for safety reasons and to ensure that the driver can always take control of the\nvehicle. This state should be set when the user is actively overriding the AEB system."
+      }
+    ]
+  },
+  "ForwardCollisionWarningState": {
+    "name": "ForwardCollisionWarningState",
+    "description": "Used to enumerate the state of Forward Collision Warning State (FCW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any ForwardCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#FORWARD_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if ForwardCollisionWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "FCW is enabled and monitoring safety, but no potential collision is detected."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "FCW is enabled, detects a potential collision, and is actively warning the user."
+      }
+    ]
+  },
+  "BlindSpotWarningState": {
+    "name": "BlindSpotWarningState",
+    "description": "Used to enumerate the state of Blind Spot Warning State (BSW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any BlindSpotWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#BLIND_SPOT_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if BlindSpotWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "BSW is enabled and monitoring safety, but no vehicle or object detected in the vehicle's\nblind spot."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "BSW is enabled, detects a vehicle or object in the vehicle's blind spot, and is actively\nwarning the user."
+      }
+    ]
+  },
+  "LaneDepartureWarningState": {
+    "name": "LaneDepartureWarningState",
+    "description": "Used to enumerate the state of Lane Departure Warning (LDW).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any LaneDepartureWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_DEPARTURE_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneDepartureWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "LDW is enabled and monitoring, but the vehicle is centered in the lane."
+      },
+      {
+        "name": "WARNING_LEFT",
+        "value": "2",
+        "description": "LDW is enabled, detects the vehicle is approaching or crossing lane lines on the left side\nof the vehicle, and is currently warning the user."
+      },
+      {
+        "name": "WARNING_RIGHT",
+        "value": "3",
+        "description": "LDW is enabled, detects the vehicle is approaching or crossing lane lines on the right side\nof the vehicle, and is currently warning the user."
+      }
+    ]
+  },
+  "LaneKeepAssistState": {
+    "name": "LaneKeepAssistState",
+    "description": "Used to enumerate the state of Lane Keep Assist (LKA).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any LaneKeepAssistState value that is not defined in\nthe platform. Ideally, implementations of VehicleProperty#LANE_KEEP_ASSIST_STATE should not\nuse this state. The framework can use this field to remain backwards compatible if\nLaneKeepAssistState is extended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "LKA is enabled and monitoring, but steering assist is not activated."
+      },
+      {
+        "name": "ACTIVATED_STEER_LEFT",
+        "value": "2",
+        "description": "LKA is enabled and currently has steering assist applied for the vehicle. Steering assist is\nsteering toward the left direction, which generally means the steering wheel turns counter\nclockwise. This is usually in response to the vehicle drifting to the right. Once steering\nassist is completed, LKA must return to the ENABLED state."
+      },
+      {
+        "name": "ACTIVATED_STEER_RIGHT",
+        "value": "3",
+        "description": "LKA is enabled and currently has steering assist applied for the vehicle. Steering assist is\nsteering toward the right direction, which generally means the steering wheel turns\nclockwise. This is usually in response to the vehicle drifting to the left. Once steering\nassist is completed, LKA must return to the ENABLED state."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "4",
+        "description": "Many LKA implementations allow the driver to override LKA. This means that the car has\ndetermined it should take some action, but a user decides to take over and do something else.\nThis is often done for safety reasons and to ensure that the driver can always take control\nof the vehicle. This state should be set when the user is actively overriding the LKA system."
+      }
+    ]
+  },
+  "LaneCenteringAssistCommand": {
+    "name": "LaneCenteringAssistCommand",
+    "description": "Used by Lane Centering Assist (LCA) to enumerate commands.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "ACTIVATE",
+        "value": "1",
+        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE = LaneCenteringAssistState#ENABLED, this\ncommand sends a request to activate steering control that keeps the vehicle centered in its\nlane. While waiting for the LCA System to take control of the vehicle,\nVehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATION_REQUESTED state. Once the vehicle takes control of\nsteering, then VehicleProperty#LANE_CENTERING_ASSIST_STATE must be in the\nLaneCenteringAssistState#ACTIVATED state. Otherwise, an error can be communicated through an\nErrorState value."
+      },
+      {
+        "name": "DEACTIVATE",
+        "value": "2",
+        "description": "When VehicleProperty#LANE_CENTERING_ASSIST_STATE is set to\nLaneCenteringAssistState#ACTIVATION_REQUESTED or LaneCenteringAssistState#ACTIVATED, this\ncommand deactivates steering control and the driver should take full control of the vehicle.\nIf this command succeeds, VehicleProperty#LANE_CENTERING_ASSIST_STATE must be updated to\nLaneCenteringAssistState#ENABLED."
+      }
+    ]
+  },
+  "LaneCenteringAssistState": {
+    "name": "LaneCenteringAssistState",
+    "description": "Used to enumerate the state of Lane Centering Assist (LCA).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any LaneCenteringAssistState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LANE_CENTERING_ASSIST_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LaneCenteringAssistState is\nextended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "LCA is enabled but the ADAS system has not received an activation signal from the driver.\nTherefore, LCA is not steering the car and waits for the driver to send a\nLaneCenteringAssistCommand#ACTIVATE command."
+      },
+      {
+        "name": "ACTIVATION_REQUESTED",
+        "value": "2",
+        "description": "LCA is enabled and the driver has sent an activation command to the LCA system, but the\nsystem has not started actively steering the vehicle. This may happen when LCA needs time to\ndetect valid lane lines. The activation command can be sent through the\nVehicleProperty#LANE_CENTERING_ASSIST_COMMAND vehicle property or through a system external\nto Android. Once LCA is actively steering the vehicle, the state must be updated to\nACTIVATED. If the feature is not able to activate, then the cause can be communicated through\nthe ErrorState values and then return to the ENABLED state."
+      },
+      {
+        "name": "ACTIVATED",
+        "value": "3",
+        "description": "LCA is enabled and actively steering the car to keep it centered in its lane."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "4",
+        "description": "Many LCA implementations allow the driver to override LCA. This means that the car has\ndetermined it should go a certain direction to keep the car centered in the lane, but a user\ndecides to take over and do something else. This is often done for safety reasons and to\nensure that the driver can always take control of the vehicle. This state should be set when\nthe user is actively overriding the LCA system."
+      },
+      {
+        "name": "FORCED_DEACTIVATION_WARNING",
+        "value": "5",
+        "description": "When LCA is in the ACTIVATED state but it will potentially need to deactivate because of\nexternal conditions (e.g. roads curvature is too extreme, the driver does not have their\nhands on the steering wheel for a long period of time, or the driver is not paying\nattention), then the ADAS system will notify the driver of a potential need to deactivate and\ngive control back to the driver."
+      }
+    ]
+  },
+  "EvChargeState": {
+    "name": "EvChargeState",
+    "description": "Used by EV charging properties to enumerate the current state of the battery charging.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "CHARGING",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "FULLY_CHARGED",
+        "value": "2",
+        "description": ""
+      },
+      {
+        "name": "NOT_CHARGING",
+        "value": "3",
+        "description": ""
+      },
+      {
+        "name": "ERROR",
+        "value": "4",
+        "description": "Vehicle not charging due to an error"
+      }
+    ]
+  },
+  "EmergencyLaneKeepAssistState": {
+    "name": "EmergencyLaneKeepAssistState",
+    "description": "Used by emergency lane keep assist to enumerate state.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any EmergencyLaneKeepAssistState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#EMERGENCY_LANE_KEEP_ASSIST_STATE should not use this state. The framework can\nuse this field to remain backwards compatible if EmergencyLaneKeepAssistState is extended to\ninclude additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "ELKA is enabled and monitoring safety, but no safety event is detected and steering assist is\nnot activated."
+      },
+      {
+        "name": "WARNING_LEFT",
+        "value": "2",
+        "description": "ELKA is enabled and a safety event is detected. Vehicle is sending out a warning to the\ndriver indicating that there is a dangerous maneuver on the left side of the vehicle."
+      },
+      {
+        "name": "WARNING_RIGHT",
+        "value": "3",
+        "description": "ELKA is enabled and a safety event is detected. Vehicle is sending out a warning to the\ndriver indicating that there is a dangerous maneuver on the right side of the vehicle."
+      },
+      {
+        "name": "ACTIVATED_STEER_LEFT",
+        "value": "4",
+        "description": "ELKA is enabled and currently has steering assist applied to the vehicle. Steering assist\nnudges the vehicle towards the left, which generally means the steering wheel turns counter\nclockwise. This is usually in response to the driver making an unsafe right lane change."
+      },
+      {
+        "name": "ACTIVATED_STEER_RIGHT",
+        "value": "5",
+        "description": "ELKA is enabled and currently has steering assist applied to the vehicle. Steering assist\nnudges the vehicle towards the right, which generally means the steering wheel turns\nclockwise. This is usually in response to the driver making an unsafe left lane change."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "6",
+        "description": "Many safety feature implementations allow the driver to override said feature. This means\nthat the car has determined it should take some action, but a user decides to take over and\ndo something else. This is often done for safety reasons and to ensure that the driver can\nalways take control of the vehicle. This state should be set when the user is currently\noverriding ELKA."
+      }
+    ]
+  },
+  "CruiseControlState": {
+    "name": "CruiseControlState",
+    "description": "Used to enumerate the current state of Cruise Control (CC).\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any CruiseControlState value that is not defined in\nthe platform. Ideally, implementations of VehicleProperty#CRUISE_CONTROL_STATE should not use\nthis state. The framework can use this field to remain backwards compatible if\nCruiseControlState is extended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "CC is enabled but the ADAS system is not actively controlling the vehicle's speed."
+      },
+      {
+        "name": "ACTIVATED",
+        "value": "2",
+        "description": "CC is enabled and activated, so the ADAS system is actively controlling the vehicle's speed."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "3",
+        "description": "Most CC implementations allow the driver to override CC. This means that the car has\ndetermined it should maintain a certain speed and/or maintain a certain distance from a\nleading vehicle, but the driver decides to take over and do something else. This is often\ndone for safety reasons and to ensure that the driver can always take control of the vehicle.\nThis state should be set when the user is actively overriding the CC system."
+      },
+      {
+        "name": "SUSPENDED",
+        "value": "4",
+        "description": "Suspended state indicates CC is enabled and was activated, but now is suspended. This could\nbe caused by the user tapping the brakes while CC is ACTIVATED or the user using the\nVehicleProperty#CRUISE_CONTROL_COMMAND to suspend CC. Once CC is suspended, the CC system\ngives control of the vehicle back to the driver, but saves the target speed and/or target\ntime gap settings in case CC is resumed. This state can also be used when adaptive/predictive\nCC slows to a stop and needs a user signal to start again."
+      },
+      {
+        "name": "FORCED_DEACTIVATION_WARNING",
+        "value": "5",
+        "description": "When CC is in the ACTIVATED state but may potentially need to deactivate because of external\nconditions (e.g. roads curvature is too extreme, the driver does not have their hands on the\nsteering wheel for a long period of time, or the driver is not paying attention), then the\nADAS system will notify the driver of a potential need to deactivate and give control back to\nthe driver."
+      }
+    ]
+  },
+  "CruiseControlType": {
+    "name": "CruiseControlType",
+    "description": "Used to enumerate the current type of Cruise Control (CC).\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any CruiseControlType value that is not defined in\nthe platform. Ideally, implementations of VehicleProperty#CRUISE_CONTROL_TYPE should not use\nthis state. The framework can use this field to remain backwards compatible if\nCruiseControlType is extended to include additional types."
+      },
+      {
+        "name": "STANDARD",
+        "value": "1",
+        "description": "Standard cruise control is when a system in the vehicle automatically maintains a set speed\nwithout the driver having to keep their foot on the accelerator. This version of cruise\ncontrol does not include automatic acceleration and deceleration to maintain a set time gap\nfrom a vehicle ahead."
+      },
+      {
+        "name": "ADAPTIVE",
+        "value": "2",
+        "description": "Adaptive cruise control is when a system in the vehicle automatically accelerates and\ndecelerates to maintain a set speed and/or a set time gap from a vehicle ahead."
+      },
+      {
+        "name": "PREDICTIVE",
+        "value": "3",
+        "description": "Predictive cruise control is a version of adaptive cruise control that also considers road\ntopography, road curvature, speed limit and traffic signs, etc. to actively adjust braking,\nacceleration, gear shifting, etc. for the vehicle. This feature is often used to optimize\nfuel consumption."
+      }
+    ]
+  },
+  "CruiseControlCommand": {
+    "name": "CruiseControlCommand",
+    "description": "Used to enumerate the Cruise Control (CC) commands.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "ACTIVATE",
+        "value": "1",
+        "description": "Activate cruise control, which means CC takes control of maintaining the vehicle's target\nspeed without the driver having to keep their foot on the accelerator. The target speed for\nCC is generally set to the vehicle's speed at the time of activation."
+      },
+      {
+        "name": "SUSPEND",
+        "value": "2",
+        "description": "Suspend cruise control, but still keep it enabled. Once CC is activated again, the\ntarget speed should resume to the previous setting."
+      },
+      {
+        "name": "INCREASE_TARGET_SPEED",
+        "value": "3",
+        "description": "Increase the target speed when CC is activated. The increment value should be decided by the\nOEM. The updated value can be read from CRUISE_CONTROL_TARGET_SPEED."
+      },
+      {
+        "name": "DECREASE_TARGET_SPEED",
+        "value": "4",
+        "description": "Decrease the target speed when CC is activated. The decrement value should be decided by the\nOEM. The updated value can be read from CRUISE_CONTROL_TARGET_SPEED."
+      },
+      {
+        "name": "INCREASE_TARGET_TIME_GAP",
+        "value": "5",
+        "description": "Increase the target time gap or distance from the vehicle ahead when adaptive/predictive CC\nis activated. The increment value should be decided by the OEM. The updated value can be read\nfrom ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP. Setting this command on a standard CC vehicle\nshould return StatusCode.NOT_AVAILABLE."
+      },
+      {
+        "name": "DECREASE_TARGET_TIME_GAP",
+        "value": "6",
+        "description": "Decrease the target time gap or distance from the vehicle ahead when adaptive/predictive CC\nis activated. The decrement value should be decided by the 0EM. The updated value can be read\nfrom ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP. Setting this command on a standard CC vehicle\nshould return StatusCode.NOT_AVAILABLE."
+      }
+    ]
+  },
+  "HandsOnDetectionDriverState": {
+    "name": "HandsOnDetectionDriverState",
+    "description": "Used to enumerate the current driver state of Hands On Detection (HOD).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any HandsOnDetectionDriverState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#HANDS_ON_DETECTION_DRIVER_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if HandsOnDetectionDriverState is\nextended to include additional states."
+      },
+      {
+        "name": "HANDS_ON",
+        "value": "1",
+        "description": "The system detects that the driver has their hands on the steering wheel."
+      },
+      {
+        "name": "HANDS_OFF",
+        "value": "2",
+        "description": "The system detects that the driver has their hands off the steering wheel."
+      }
+    ]
+  },
+  "HandsOnDetectionWarning": {
+    "name": "HandsOnDetectionWarning",
+    "description": "Used to enumerate the current warning state of Hands On Detection (HOD).\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any HandsOnDetectionWarning value that is\ndefined in the platform. Ideally, implementations of\nVehicleProperty#HANDS_ON_DETECTION_WARNING should not use this state. The framework\ncan use this field to remain backwards compatible if HandsOnDetectionWarning is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "HOD is enabled and the driver's current safety does not warrant sending a warning. This\nstate is independent of whether the driver actually has their hands on or off the wheel."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "HOD is enabled and the driver's hands have been off the wheel for too long a duration,\nand the vehicle is sending a warning to the driver as a consequence of this."
+      }
+    ]
+  },
+  "DriverDrowsinessAttentionState": {
+    "name": "DriverDrowsinessAttentionState",
+    "description": "Used to enumerate the current state of driver drowsiness and attention monitoring.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any DriverDrowsinessAttentionState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionState is\nextended to include additional states."
+      },
+      {
+        "name": "KSS_RATING_1_EXTREMELY_ALERT",
+        "value": "1",
+        "description": "Karolinska Sleepiness Scale Rating 1 described as extermely alert."
+      },
+      {
+        "name": "KSS_RATING_2_VERY_ALERT",
+        "value": "2",
+        "description": "Karolinska Sleepiness Scale Rating 2 described as very alert."
+      },
+      {
+        "name": "KSS_RATING_3_ALERT",
+        "value": "3",
+        "description": "Karolinska Sleepiness Scale Rating 3 described as alert."
+      },
+      {
+        "name": "KSS_RATING_4_RATHER_ALERT",
+        "value": "4",
+        "description": "Karolinska Sleepiness Scale Rating 4 described as rather alert."
+      },
+      {
+        "name": "KSS_RATING_5_NEITHER_ALERT_NOR_SLEEPY",
+        "value": "5",
+        "description": "Karolinska Sleepiness Scale Rating 5 described as neither alert nor sleepy."
+      },
+      {
+        "name": "KSS_RATING_6_SOME_SLEEPINESS",
+        "value": "6",
+        "description": "Karolinska Sleepiness Scale Rating 6 described as some signs of sleepiness."
+      },
+      {
+        "name": "KSS_RATING_7_SLEEPY_NO_EFFORT",
+        "value": "7",
+        "description": "Karolinska Sleepiness Scale Rating 7 described as sleepy with no effort to\nkeep awake."
+      },
+      {
+        "name": "KSS_RATING_8_SLEEPY_SOME_EFFORT",
+        "value": "8",
+        "description": "Karolinska Sleepiness Scale Rating 8 described as sleepy with some effort to\nkeep awake."
+      },
+      {
+        "name": "KSS_RATING_9_VERY_SLEEPY",
+        "value": "9",
+        "description": "Karolinska Sleepiness Scale Rating 9 described as very sleepy, with great\neffort to keep away, and fighthing sleep."
+      }
+    ]
+  },
+  "DriverDrowsinessAttentionWarning": {
+    "name": "DriverDrowsinessAttentionWarning",
+    "description": "Used to enumerate the current warning state of the driver drowsiness and attention monitoring\nsystem.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any DriverDrowsinessAttentionWarning value that is\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DROWSINESS_ATTENTION_WARNING should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDrowsinessAttentionWarning is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "When the driver drowsiness and attention warning is enabled, and the driver's current\ndrowsiness and attention level does not warrant the system to send a warning."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "When the driver drowsiness and attention warning is enabled, and the system is warning the\ndriver based on its assessment of the driver's current drowsiness and attention level."
+      }
+    ]
+  },
+  "DriverDistractionState": {
+    "name": "DriverDistractionState",
+    "description": "Used to enumerate the current state of driver distraction monitoring.\n\nThis enum could be extended in future releases to include additional feature states.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any DriverDistractionState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DISTRACTION_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDistractionState is\nextended to include additional states."
+      },
+      {
+        "name": "NOT_DISTRACTED",
+        "value": "1",
+        "description": "The system detects that the driver is attentive / not distracted."
+      },
+      {
+        "name": "DISTRACTED",
+        "value": "2",
+        "description": "The system detects that the driver is distracted, which can be anything that reduces the\ndriver's foucs on the primary task of driving/controlling the vehicle."
+      }
+    ]
+  },
+  "DriverDistractionWarning": {
+    "name": "DriverDistractionWarning",
+    "description": "Used to enumerate the current warning state of the driver distraction monitoring system.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative for any DriverDistractionWarning value that is\ndefined in the platform. Ideally, implementations of\nVehicleProperty#DRIVER_DISTRACTION_WARNING should not use this state. The framework\ncan use this field to remain backwards compatible if DriverDistractionWarning is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "When the driver distraction warning is enabled and the driver's current distraction level\ndoes not warrant the system to send a warning."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "When the driver distraction warning is enabled and the system is warning the driver based on\nits assessment of the driver's current distraction level."
+      }
+    ]
+  },
+  "LowSpeedCollisionWarningState": {
+    "name": "LowSpeedCollisionWarningState",
+    "description": "Used to enumerate the state of Low Speed Collision Warning State.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any LowSpeedCollisionWarningState value that is not\ndefined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_COLLISION_WARNING_STATE should not use this state. The framework\ncan use this field to remain backwards compatible if LowSpeedCollisionWarningState is\nextended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "Low Speed Collision Warning is enabled and monitoring for potential collision, but no\npotential collision is detected."
+      },
+      {
+        "name": "WARNING",
+        "value": "2",
+        "description": "Low Speed Collision Warning is enabled, detects a potential collision, and is actively\nwarning the user."
+      }
+    ]
+  },
+  "LowSpeedAutomaticEmergencyBrakingState": {
+    "name": "LowSpeedAutomaticEmergencyBrakingState",
+    "description": "Used to enumerate the state of Low Speed Automatic Emergency Braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any LowSpeedAutomaticEmergencyBrakingState value that\nis not defined in the platform. Ideally, implementations of\nVehicleProperty#LOW_SPEED_AUTOMATIC_EMERGENCY_BRAKING_STATE should not use this state. The\nframework can use this field to remain backwards compatible if\nLowSpeedAutomaticEmergencyBrakingState is extended to include additional states."
+      },
+      {
+        "name": "ENABLED",
+        "value": "1",
+        "description": "Low Speed Automatic Emergency Braking is enabled and monitoring safety, but brakes are not\nactivated."
+      },
+      {
+        "name": "ACTIVATED",
+        "value": "2",
+        "description": "Low Speed Automatic Emergency Braking is enabled and currently has the brakes applied for the\nvehicle."
+      },
+      {
+        "name": "USER_OVERRIDE",
+        "value": "3",
+        "description": "Many Low Speed Automatic Emergency Braking implementations allow the driver to override Low\nSpeed Automatic Emergency Braking. This means that the car has determined it should brake,\nbut a user decides to take over and do something else. This is often done for safety reasons\nand to ensure that the driver can always take control of the vehicle. This state should be\nset when the user is actively overriding the low speed automatic emergency braking system."
+      }
+    ]
+  },
+  "EvRegenerativeBrakingState": {
+    "name": "EvRegenerativeBrakingState",
+    "description": "Used by the regenerative braking property to enumerate the current state\nof the regenerative braking.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "UNKNOWN",
+        "value": "0",
+        "description": ""
+      },
+      {
+        "name": "DISABLED",
+        "value": "1",
+        "description": ""
+      },
+      {
+        "name": "PARTIALLY_ENABLED",
+        "value": "2",
+        "description": ""
+      },
+      {
+        "name": "FULLY_ENABLED",
+        "value": "3",
+        "description": ""
+      }
+    ]
+  },
+  "CrossTrafficMonitoringWarningState": {
+    "name": "CrossTrafficMonitoringWarningState",
+    "description": "Used to enumerate the state of Cross Traffic Monitoring Warning system.\n\nThrough the use of VehicleAreaConfig#supportedEnumValues, OEMs may specify they only support a\nsubset of the enums that are defined here.",
+    "members": [
+      {
+        "name": "OTHER",
+        "value": "0",
+        "description": "This state is used as an alternative to any CrossTrafficMonitoringWarningState value that is\nnot defined in the platform. Ideally, implementations of\nVehicleProperty#CROSS_TRAFFIC_MONITORING_WARNING_STATE should not use this state. The\nframework can use this field to remain backwards compatible if\nCrossTrafficMonitoringWarningState is extended to include additional states."
+      },
+      {
+        "name": "NO_WARNING",
+        "value": "1",
+        "description": "Cross Traffic Monitoring Warning is enabled and monitoring safety, but no potential collision\nis detected."
+      },
+      {
+        "name": "WARNING_FRONT_LEFT",
+        "value": "2",
+        "description": "Cross Traffic Monitoring Warning is enabled and is actively warning the user of incoming\nmoving objects coming from the driver's left side in front of the vehicle."
+      },
+      {
+        "name": "WARNING_FRONT_RIGHT",
+        "value": "3",
+        "description": "Cross Traffic Monitoring Warning is enabled and is actively warning the user of incoming\nmoving objects coming from the driver's right side in front of the vehicle."
+      },
+      {
+        "name": "WARNING_FRONT_BOTH",
+        "value": "4",
+        "description": "Cross Traffic Monitoring Warning is enabled and is actively warning the user of incoming\nmoving objects coming from both the driver's left side and the driver's right side in front\nof the vehicle."
+      },
+      {
+        "name": "WARNING_REAR_LEFT",
+        "value": "5",
+        "description": "Cross Traffic Monitoring Warning is enabled and is actively warning the user of incoming\nmoving objects coming from the driver's left side behind the vehicle."
+      },
+      {
+        "name": "WARNING_REAR_RIGHT",
+        "value": "6",
+        "description": "Cross Traffic Monitoring Warning is enabled and is actively warning the user of incoming\nmoving objects coming from the driver's right side behind the vehicle."
+      },
+      {
+        "name": "WARNING_REAR_BOTH",
+        "value": "7",
+        "description": "Cross Traffic Monitoring Warning is enabled and is actively warning the user of incoming\nmoving objects coming from the driver's left side and the driver's right side behind the\nvehicle."
+      }
+    ]
+  }
+}
 
 export const propertyByName = new Map(vehicleProperties.map((p) => [p.name, p]))

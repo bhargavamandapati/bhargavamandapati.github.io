@@ -3,18 +3,181 @@ import {
   JAVA_PATH,
   vehicleProperties,
   propertyByName,
+  type EnumDefinition,
   type PropertyRelation,
   type RelationKind,
   type VehicleProperty,
+  valueEnums,
 } from '@/data/vehicle-properties'
 import { csFile, csSearch } from '@/lib/aosp'
 
 export {
   vehicleProperties,
   propertyByName,
+  valueEnums,
   type VehicleProperty,
   type PropertyRelation,
   type RelationKind,
+  type EnumDefinition,
+}
+
+/**
+ * Enum definitions a property's value is drawn from.
+ *
+ * State properties usually declare two: their own enum and ErrorState, because
+ * the VHAL reports "why this is unavailable" through the value rather than
+ * through an exception. A consumer that only handles the first will treat an
+ * error code as a real state.
+ */
+export function enumsFor(property: VehicleProperty): EnumDefinition[] {
+  return property.dataEnums.map((n) => valueEnums[n]).filter(Boolean)
+}
+
+/** True when members combine with bitwise OR rather than being exclusive. */
+export function isBitFlags(definition: EnumDefinition): boolean {
+  return /\bbit flags?\b/i.test(definition.description)
+}
+
+export type ValueExample = {
+  /** What a getter would actually hand back. */
+  literal: string
+  /** What that value means. */
+  meaning: string
+  /** Conversion or context worth stating alongside it. */
+  note?: string
+}
+
+/**
+ * Plausible magnitudes per unit.
+ *
+ * These are illustrative, not values read from a vehicle — the point is to show
+ * the shape and scale a caller should expect, since the unit alone does not
+ * tell you whether a range is reported in metres or kilometres.
+ */
+const UNIT_EXAMPLES: Record<string, { value: string; note: string }> = {
+  METER_PER_SEC: { value: '27.8', note: 'metres per second — about 100 km/h or 62 mph' },
+  RPM: { value: '1850.0', note: 'revolutions per minute' },
+  HERTZ: { value: '50.0', note: 'hertz' },
+  PERCENT: { value: '62.5', note: 'per cent' },
+  MILLIMETER: { value: '4500.0', note: 'millimetres — 4.5 metres' },
+  METER: { value: '187000.0', note: 'metres — about 187 km' },
+  KILOMETER: { value: '42350.5', note: 'kilometres' },
+  MILE: { value: '26315.0', note: 'miles' },
+  CELSIUS: { value: '21.5', note: 'degrees Celsius — always Celsius on the wire' },
+  FAHRENHEIT: { value: '70.7', note: 'degrees Fahrenheit' },
+  DEGREES: { value: '-12.5', note: 'degrees' },
+  MILLILITER: { value: '45000.0', note: 'millilitres — 45 litres' },
+  LITER: { value: '45.0', note: 'litres' },
+  US_GALLON: { value: '11.9', note: 'US gallons' },
+  IMPERIAL_GALLON: { value: '9.9', note: 'imperial gallons' },
+  NANO_SECS: { value: '250000000', note: 'nanoseconds' },
+  MILLI_SECS: { value: '1800000', note: 'milliseconds — 30 minutes' },
+  SECS: { value: '1800', note: 'seconds — 30 minutes' },
+  YEAR: { value: '2026', note: 'calendar year' },
+  MILLIWATTS: { value: '11000.0', note: 'milliwatts — 11 watts' },
+  WATT_HOUR: { value: '58000.0', note: 'watt-hours — a 58 kWh pack' },
+  AMPERE_HOURS: { value: '160.0', note: 'ampere-hours' },
+  KILOWATT_HOUR: { value: '58.0', note: 'kilowatt-hours' },
+  AMPERE: { value: '32.0', note: 'amperes' },
+  MILLIAMPERE: { value: '32000.0', note: 'milliamperes' },
+  VOLT: { value: '400.0', note: 'volts' },
+  MILLIVOLT: { value: '400000.0', note: 'millivolts' },
+  KILOPASCAL: { value: '240.0', note: 'kilopascals — about 35 psi' },
+  PSI: { value: '35.0', note: 'pounds per square inch' },
+  BAR: { value: '2.4', note: 'bar' },
+}
+
+/** Picks the enum member a real vehicle is most likely to report. */
+function representativeMember(definition: EnumDefinition) {
+  const skip = /^(UNKNOWN|OTHER|SHOULD_NOT_USE|.*_UNKNOWN|OTHER_.*)$/
+  return definition.members.find((m) => !skip.test(m.name)) ?? definition.members[0]
+}
+
+/** A concrete example of what this property returns, with what it means. */
+export function valueExample(property: VehicleProperty): ValueExample | undefined {
+  const enums = enumsFor(property)
+  const primary = enums[0]
+
+  if (primary && primary.name !== 'ErrorState') {
+    const member = representativeMember(primary)
+    if (member) {
+      return {
+        literal: member.value,
+        meaning: `${primary.name}.${member.name}`,
+        note: isBitFlags(primary)
+          ? 'These are bit flags — a real value may combine several with bitwise OR.'
+          : member.description.split('\n')[0] || undefined,
+      }
+    }
+  }
+
+  if (property.type === 'BOOLEAN') {
+    return { literal: 'true', meaning: 'the feature is on or the condition holds' }
+  }
+
+  if (property.type === 'STRING') {
+    if (property.name === 'INFO_VIN') {
+      return { literal: '"1HGCM82633A004352"', meaning: 'a 17-character VIN' }
+    }
+    return { literal: '"…"', meaning: 'a free-form string; see the description for the expected format' }
+  }
+
+  if (/PERCENT/.test(property.name)) {
+    return {
+      literal: '62.5',
+      meaning: 'a percentage',
+      note: 'Reported on a 0 to 100 scale, not 0 to 1.',
+    }
+  }
+
+  const unit = property.unit ? UNIT_EXAMPLES[property.unit] : undefined
+  if (unit) {
+    const isVec = property.type.endsWith('_VEC')
+    return {
+      literal: isVec ? `[${unit.value}, …]` : unit.value,
+      meaning: isVec ? `several values, each in ${property.unit}` : `a value in ${property.unit}`,
+      note: unit.note,
+    }
+  }
+
+  if (property.type === 'INT32' || property.type === 'INT64') {
+    return { literal: '0', meaning: 'an integer; the description defines what it counts' }
+  }
+  if (property.type === 'FLOAT') {
+    return { literal: '0.0', meaning: 'a float; the description defines what it measures' }
+  }
+  if (property.type.endsWith('_VEC')) {
+    return { literal: '[…]', meaning: 'an array; the description defines the element order' }
+  }
+  if (property.type === 'MIXED') {
+    return {
+      literal: '{ int32Values, floatValues, stringValue }',
+      meaning: 'a mixture of types',
+      note: 'The configArray declares how many values of each type and in what order.',
+    }
+  }
+  if (property.type === 'BYTES') {
+    return { literal: 'byte[]', meaning: 'raw bytes; the description defines the encoding' }
+  }
+  return undefined
+}
+
+/**
+ * Sentences from the AIDL that constrain what a value may be.
+ *
+ * Pulled from the property's own documentation rather than paraphrased, so the
+ * rule shown is the rule as written.
+ */
+export function valueRules(property: VehicleProperty): string[] {
+  const CONSTRAINT =
+    /(configArray|min(Float|Int32|Int64)Value|max(Float|Int32|Int64)Value|supportedEnumValues|HasSupportedValueInfo|hasSupportedValuesList|hasMinSupportedValue|must (be|return|communicate|not|always)|0 to 100|UNAVAILABLE|ErrorState)/
+
+  return property.description
+    .split(/\n\s*\n/)
+    .flatMap((para) => para.replace(/\s+/g, ' ').split(/(?<=\.)\s+(?=[A-Z])/))
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 30 && sentence.length < 320 && CONSTRAINT.test(sentence))
+    .slice(0, 6)
 }
 
 /**

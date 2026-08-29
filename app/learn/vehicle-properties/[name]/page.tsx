@@ -15,6 +15,10 @@ import {
   propertyBySlug,
   propertySlug,
   relationGroups,
+  enumsFor,
+  isBitFlags,
+  valueExample,
+  valueRules,
   summarise,
   diagramRelations,
   vehicleProperties,
@@ -116,6 +120,9 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
   const java = javaUrl(property)
   const enumUrl = dataEnumUrl(property)
   const groups = relationGroups(property)
+  const enums = enumsFor(property)
+  const example = valueExample(property)
+  const rules = valueRules(property)
   const dependencies = groups.filter((g) => g.strength === 'dependency')
 
   // Split the diagram by direction: what this needs, versus what needs this.
@@ -190,6 +197,155 @@ export default async function PropertyPage({ params }: { params: Promise<Params>
               </tbody>
             </table>
           </div>
+
+          <h2
+            id="values"
+            className="mt-10 scroll-mt-24 text-sm font-semibold uppercase tracking-wider text-subtle"
+          >
+            What the value looks like
+          </h2>
+
+          {example && (
+            <div className="card mt-3 p-5">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <code className="font-mono text-base font-semibold text-accent [overflow-wrap:anywhere]">
+                  {example.literal}
+                </code>
+                <span className="text-sm text-muted">{example.meaning}</span>
+              </div>
+              {example.note && (
+                <p className="mt-2 text-sm leading-relaxed text-muted">{example.note}</p>
+              )}
+              <p className="mt-3 border-t border-line pt-3 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
+                Illustrative — the shape and scale, not a reading from a vehicle
+              </p>
+            </div>
+          )}
+
+          <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <div>
+              <dt className="font-mono text-xs uppercase tracking-wider text-subtle">Type</dt>
+              <dd className="mt-0.5 text-sm text-fg">
+                {property.type}
+                {property.type.endsWith('_VEC') && ' — an array, not a single value'}
+                {property.type === 'MIXED' && ' — several types in one value'}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-mono text-xs uppercase tracking-wider text-subtle">
+                Reported per
+              </dt>
+              <dd className="mt-0.5 text-sm text-fg">
+                {property.area === 'GLOBAL'
+                  ? 'the whole vehicle — one value'
+                  : `${property.area.toLowerCase()} — one value per area, and they can differ`}
+              </dd>
+            </div>
+            {property.unit && (
+              <div>
+                <dt className="font-mono text-xs uppercase tracking-wider text-subtle">
+                  Always reported in
+                </dt>
+                <dd className="mt-0.5 text-sm text-fg">
+                  {property.unit}
+                  <span className="text-muted"> — convert for display, never assume</span>
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt className="font-mono text-xs uppercase tracking-wider text-subtle">
+                Can be unavailable
+              </dt>
+              <dd className="mt-0.5 text-sm text-fg">
+                {enums.some((e) => e.name === 'ErrorState')
+                  ? 'Yes — reported as an ErrorState value, not an exception'
+                  : 'Yes — handle a missing value rather than assuming one'}
+              </dd>
+            </div>
+          </dl>
+
+          {enums.length > 0 && (
+            <>
+              <h3 className="mt-8 text-sm font-semibold text-fg">
+                {enums.length > 1 ? 'Values it can take' : `Values from ${enums[0].name}`}
+              </h3>
+              {enums.some((e) => e.name === 'ErrorState') && (
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  This property declares <strong className="font-medium text-fg">two</strong> value
+                  sets. A reading is either a real state, or an{' '}
+                  <code className="font-mono text-[0.85em] text-fg">ErrorState</code> explaining why
+                  there is no real state. Handle only the first and an error code will be treated as
+                  a genuine reading.
+                </p>
+              )}
+              <div className="mt-4 space-y-6">
+                {enums.map((definition) => (
+                  <section key={definition.name}>
+                    <div className="flex flex-wrap items-baseline gap-x-3">
+                      {enums.length > 1 && (
+                        <h4 className="font-mono text-sm font-semibold text-fg">
+                          {definition.name}
+                        </h4>
+                      )}
+                      {isBitFlags(definition) && (
+                        <span className="chip">bit flags — combine with OR</span>
+                      )}
+                      {definition.name === 'ErrorState' && (
+                        <span className="chip border-difficulty-advanced/40 text-difficulty-advanced">
+                          error values
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="w-full min-w-[34rem] border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b border-line text-left font-mono text-xs uppercase tracking-wider text-subtle">
+                            <th className="py-2 pr-4 font-medium">Value</th>
+                            <th className="py-2 pr-4 font-medium">Name</th>
+                            <th className="py-2 font-medium">Means</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {definition.members.map((member) => (
+                            <tr key={member.name} className="border-b border-line last:border-b-0 align-top">
+                              <td className="py-2 pr-4 font-mono text-xs text-subtle">
+                                {member.value}
+                              </td>
+                              <td className="whitespace-nowrap py-2 pr-4 font-mono text-xs text-fg">
+                                {member.name}
+                              </td>
+                              <td className="py-2 text-[0.85rem] leading-relaxed text-muted">
+                                {member.description.split('\n\n')[0] || '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </>
+          )}
+
+          {rules.length > 0 && (
+            <>
+              <h3 className="mt-8 text-sm font-semibold text-fg">Rules the value must follow</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">
+                Quoted from the AIDL, so the rule shown is the rule as written.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {rules.map((rule, i) => (
+                  <li
+                    key={i}
+                    className="border-l-2 border-line pl-3 text-[0.9rem] leading-relaxed text-muted [overflow-wrap:anywhere]"
+                  >
+                    {rule}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           {groups.length > 0 && (
             <>
