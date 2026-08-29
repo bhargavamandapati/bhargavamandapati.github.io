@@ -1,0 +1,171 @@
+---
+title: "Containers and software deployment"
+description: "Packaging vehicle software so it can be updated independently — what containers buy you in a car, what they cost, and where they are genuinely inappropriate."
+order: 4
+difficulty: "Advanced"
+tags: ["Containers", "Deployment", "Orchestration"]
+sources:
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+  - label: "Android Virtualization Framework"
+    href: "https://source.android.com/docs/core/virtualization"
+  - label: "OCI image specification"
+    href: "https://github.com/opencontainers/image-spec"
+---
+
+Once several functions share one computer, an obvious question follows: how are
+they packaged, updated and isolated from each other?
+
+The cloud world answered this with containers. Vehicles are borrowing the idea —
+carefully, and not everywhere.
+
+## The problem
+
+<Plain>
+A central computer runs forty pieces of software from a dozen teams. They have
+different dependencies, different release cadences, and different owners.
+
+Without packaging, you have one enormous image where updating anything means
+rebuilding and shipping everything. One team's dependency bump becomes a
+whole-vehicle release.
+
+That is precisely the coupling SDV was supposed to remove.
+</Plain>
+
+## What a container gives you
+
+A container bundles an application with its dependencies into an image that runs
+in an isolated namespace on a shared kernel.
+
+| Property | Why a vehicle wants it |
+| --- | --- |
+| Dependency isolation | Two services can need different library versions |
+| Independent update | Ship one service without rebuilding the image |
+| Resource limits | Cap CPU and memory so one service cannot starve others |
+| Reproducible builds | The same image runs on the bench and in the vehicle |
+| Clear ownership | One team, one image, one release cadence |
+
+<Analogy title="Like a hypervisor, but much lighter">
+A <T>hypervisor</T> gives each guest its own complete operating system — heavy,
+strongly isolated, certifiable.
+
+A container shares the operating system and isolates only the application —
+light, fast to start, and far weaker isolation.
+
+Vehicles use both, for different things. Hypervisors separate safety domains.
+Containers separate applications within one domain.
+</Analogy>
+
+## Where they fit, and where they do not
+
+**Good fit:**
+
+- Connectivity and cloud services
+- Data collection and telemetry
+- Non-safety vehicle services — comfort, convenience, charging management
+- Anything you want to update independently and often
+
+**Poor fit:**
+
+- Safety-rated functions. Container isolation is not accepted as
+  <T>freedom from interference</T> for a rated function; that needs a hypervisor
+  or separate hardware.
+- Hard real-time control. Shared-kernel scheduling makes timing harder to bound.
+- Very constrained hardware. The runtime overhead is small but not zero.
+
+<Plain>
+The distinction that matters: **containers isolate for maintainability, not for
+safety.** They stop one team's dependency breaking another team's build. They do
+not stop a runaway process from disturbing a safety function — the kernel is
+shared, and a shared kernel is a shared failure mode.
+
+Using a container to satisfy a safety isolation requirement is a finding.
+</Plain>
+
+## What changes versus cloud practice
+
+Vehicle containers look superficially like cloud containers and differ in ways
+that matter.
+
+**No image registry pull at runtime.** A vehicle may be offline for weeks.
+Images arrive as part of a signed update package, not fetched on demand.
+
+**Everything is signed and verified.** The <T>verified boot</T> chain extends to
+container images. An unsigned image does not run.
+
+**Storage is precious.** Layer bloat costs flash lifetime. Images are kept small
+deliberately, and old layers are pruned aggressively.
+
+**Startup time is a budget.** Boot deadlines are real. Containers that must be up
+early are pre-warmed or started before the general orchestration.
+
+**Orchestration is minimal.** Nothing resembling a cluster scheduler. Usually a
+simple supervisor that starts declared workloads, restarts failures with backoff,
+and enforces resource limits.
+
+```yaml title="A vehicle workload declaration, conceptually"
+workloads:
+  - name: charging-service
+    image: oem/charging:2.4.1          # verified against a signature
+    restart: on-failure
+    backoff: exponential
+    resources:
+      cpu_shares: 512
+      memory_max: 128Mi
+      io_write_max: 5Mi/day            # flash wear matters
+    start_after: vehicle-abstraction
+    health:
+      probe: grpc://localhost:50051/health
+      timeout: 3s
+```
+
+<Plain>
+Note `io_write_max`. That constraint does not exist in cloud orchestration and is
+essential here, for the reasons in the storage topic: flash has a write budget
+that must last fifteen years.
+</Plain>
+
+## Update granularity, and the honest limit
+
+<Scenario title="Independent updates that were not independent">
+A programme containerises twelve services so each can be updated independently.
+
+Six months in, they discover that in practice they never ship one container
+alone. Services call each other, and a change to one usually requires a
+compatible change in another, so releases go out as coordinated sets.
+
+The containerisation was not wasted — dependency isolation and resource limits
+were real wins. But the promised independent deployment did not materialise,
+because the **interfaces between services** were not versioned carefully enough
+to allow it.
+
+**Containers give you the mechanism for independent updates. Interface discipline
+is what makes them actually independent.** Without the second, you have packaging
+overhead and coordinated releases.
+</Scenario>
+
+## What to check on a real programme
+
+- **Is anything safety-rated inside a container?** It should not be.
+- **Are images signed and verified as part of the boot chain?**
+- **Are there write limits, not just CPU and memory limits?**
+- **Can a single container genuinely ship alone?** If not, why not — and is the
+  reason interface versioning?
+- **What happens offline?** Nothing should require a registry.
+- **What is the startup cost against the boot budget?**
+
+<Recap>
+- Containers package an application with its dependencies so it can be **updated
+  and owned independently**.
+- They isolate for **maintainability, not safety** — a shared kernel is a shared
+  failure mode. Safety isolation needs a hypervisor.
+- Vehicle containers differ from cloud ones: **no runtime registry, everything
+  signed, storage and boot time are budgets, orchestration is minimal**.
+- **Write limits matter** as much as CPU and memory, because of flash wear.
+- Containers provide the mechanism for independent deployment; **interface
+  versioning is what makes it real**.
+</Recap>
+
+## Next
+
+The communication module — how these services actually talk.

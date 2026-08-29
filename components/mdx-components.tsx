@@ -30,6 +30,21 @@ import {
   UserModel,
   VhalDataFlow,
 } from '@/components/diagrams'
+import {
+  CockpitConvergence,
+  DataBrokerFlow,
+  EeArchitectureEvolution,
+  FeatureOnDemand,
+  MixedCriticality,
+  SdvCiPipeline,
+  SdvStack,
+  SignalVsService,
+  SomeIpFlow,
+  VehicleDataPipeline,
+  VirtualEcuPipeline,
+  VssTree,
+  ZonalArchitecture,
+} from '@/components/diagrams/sdv'
 
 type CalloutKind = 'note' | 'tip' | 'warning'
 
@@ -134,4 +149,19 @@ export const mdxComponents: MDXComponents = {
   BootSequence,
   BinderTransaction,
   SignalPathFull,
+
+  // SDV diagrams
+  EeArchitectureEvolution,
+  ZonalArchitecture,
+  SignalVsService,
+  SomeIpFlow,
+  MixedCriticality,
+  VssTree,
+  DataBrokerFlow,
+  VirtualEcuPipeline,
+  CockpitConvergence,
+  SdvCiPipeline,
+  FeatureOnDemand,
+  VehicleDataPipeline,
+  SdvStack,
 }

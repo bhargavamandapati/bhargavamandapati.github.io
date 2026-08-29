@@ -1,0 +1,260 @@
+---
+title: "OTA updates in a software-defined vehicle"
+description: "How software actually reaches a sold vehicle — the difference between updating a head unit and updating a car, the preconditions nobody mentions, and what goes wrong."
+order: 4
+difficulty: "Intermediate"
+tags: ["OTA", "Delivery", "Regulation"]
+sources:
+  - label: "Android — A/B system updates"
+    href: "https://source.android.com/docs/core/ota/ab"
+  - label: "UNECE R156 — software update management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update"
+  - label: "Uptane — automotive software update security"
+    href: "https://uptane.org/"
+  - label: "Android SDV — update manager"
+    href: "https://source.android.com/docs/automotive/sdv/core-areas/sdv-update-manager"
+---
+
+<T>OTA</T> is the mechanism the whole software-defined vehicle idea rests on. If
+you cannot change software after the sale, nothing else in this section matters.
+
+You already know Android's update mechanism. What is worth understanding is
+everything around it, because updating a head unit and updating a vehicle are
+different problems.
+
+## Three scopes, increasing in difficulty
+
+<Plain>
+**Infotainment-only.** Apps and the head-unit stack. Roughly the phone problem:
+familiar tooling, contained blast radius, and if it fails the driver loses media
+rather than transport.
+
+**Cockpit including the cluster.** Now a failed update can leave a car without a
+speedometer. Regulated content is involved. The bar rises sharply.
+
+**Full vehicle.** Powertrain, braking, ADAS, body controllers, zone controllers.
+A bad update here can immobilise a vehicle or make it unsafe. This is where the
+process becomes genuinely heavy, and rightly so.
+
+Most programmes start at the first and work outward over several model years.
+When someone says "we do OTA", ask which scope.
+</Plain>
+
+<Analogy title="Updating a phone versus rewiring a house">
+Updating an app is routine. Worst case, uninstall it.
+
+Updating the firmware of the house's consumer unit while people are inside is a
+different activity. You would want the power off, someone qualified present, a
+tested rollback, and a way to know it worked before anyone flips a switch.
+
+Vehicle OTA is closer to the second, which is why the preconditions are so
+strict.
+</Analogy>
+
+## The preconditions nobody mentions
+
+An update does not simply arrive. A long list of conditions must hold first, and
+most real-world OTA frustration comes from these rather than from the download.
+
+| Condition | Why |
+|---|---|
+| **Parked** | You cannot reboot an ECU at 100 km/h |
+| **Not about to be driven** | An interrupted install is the worst case |
+| **Sufficient battery** | A flash that browns out mid-write can brick an ECU |
+| **Charging, for large updates** | On an EV, a big flash is a real energy draw |
+| **Connectivity** | Cellular data costs money and coverage is uneven |
+| **User consent** | Legally required in most markets, and expected everywhere |
+| **Compatible configuration** | This hardware revision, these dependent versions |
+| **No pending fault** | Do not update a car that is already unhappy |
+
+<Scenario title="Why the update did not install">
+A customer complains they have been prompted for weeks and it never happens.
+
+The trace shows: the vehicle is parked at an office for eight hours a day with
+poor cellular signal indoors, driven home, parked on a street with no charging,
+and the state of charge is usually below the 40% threshold by evening. Consent
+was given weeks ago.
+
+Nothing is broken. The preconditions simply never coincided.
+
+The fixes are product decisions, not code: allow download over the owner's
+home Wi-Fi, separate the download threshold from the install threshold, and let
+the customer schedule an install window explicitly.
+
+Most "OTA is unreliable" complaints look like this on inspection.
+</Scenario>
+
+## The A/B pattern, and its limits
+
+Android's <T>A/B partitions</T> approach is the right mental model, and the wider
+vehicle uses the same idea where it can.
+
+```
+   ┌─────────── slot A (running) ───────────┐
+   │  system, vendor, product               │   ← in use, untouched
+   └────────────────────────────────────────┘
+   ┌─────────── slot B (idle) ──────────────┐
+   │  new image written here while driving  │   ← written in the background
+   └────────────────────────────────────────┘
+                    │
+              reboot into B
+                    │
+        ┌───────────┴────────────┐
+        │ boots and marks good?  │
+        └───────┬────────────┬───┘
+              yes            no
+               │              │
+         B becomes active   fall back to A automatically
+```
+
+<Plain>
+The property that matters is that **the running system is never modified**. A
+failure at any point before the switch leaves the vehicle exactly as it was.
+
+That is why <T>Garage Mode</T> and background installs are safe to do while the
+vehicle is in use: nothing the customer depends on is being touched.
+</Plain>
+
+<Gotcha>
+A/B costs storage — roughly double for the partitions it covers. On a
+cost-sensitive programme this is a real argument, and some ECUs deep in the
+vehicle do **not** get A/B for that reason.
+
+Those are the ones where a failed update is unrecoverable without a workshop
+visit, and they are exactly why full-vehicle OTA is treated so much more
+cautiously than infotainment OTA.
+</Gotcha>
+
+## Orchestration across many ECUs
+
+A vehicle update is rarely one image. It is a campaign across components with
+dependencies between them.
+
+<Plain>
+A typical campaign has to answer:
+
+- **Order.** The gateway may need updating before the ECUs behind it.
+- **Atomicity.** If ECU 4 of 7 fails, what state is the vehicle in? Can it be
+  driven? Is there a defined partial-success state, or must everything roll
+  back?
+- **Compatibility.** Version 5 of the cluster may require version 3 or later of
+  the body controller. The campaign must know this and refuse mismatches.
+- **Time budget.** The whole sequence must fit in a window the customer accepts.
+  Forty minutes is tolerable. Three hours is not.
+- **Interruption.** Someone will get in and try to drive. The system must handle
+  that safely at every point.
+
+This orchestration logic — not the download, not the flash — is where most of the
+engineering effort in vehicle OTA actually goes.
+</Plain>
+
+<Scenario title="A campaign that had to be designed backwards">
+A programme wants to ship a new charging feature. It touches the charge
+controller, the gateway's routing rules, and the cluster UI.
+
+First attempt: update all three in one campaign. During dry runs, a failure on
+the charge controller left a vehicle whose gateway expected the new message
+format and whose controller sent the old one. The vehicle could drive but could
+not charge — the worst possible outcome for a charging feature.
+
+The redesign: make the gateway accept **both** message formats, ship that first
+as its own campaign, and only then update the controller and the cluster.
+
+The lesson generalises. **Make the receiving side tolerant before you change the
+sending side.** It is the same discipline as a backwards-compatible schema
+migration, with a much less forgiving rollback.
+</Scenario>
+
+## Security is not optional here
+
+An update channel is a way to put code on a vehicle. Anyone who compromises it
+owns the fleet.
+
+<Plain>
+The baseline expectations:
+
+- **Signed images**, verified by the vehicle before installation, with keys in
+  hardware where possible.
+- **Verified boot** so a tampered image does not run even if it is written.
+- **Rollback protection** so an attacker cannot install an older image with a
+  known vulnerability.
+- **Authenticated servers**, so a vehicle cannot be pointed at an attacker's
+  update endpoint.
+- **Uptane** or equivalent — a framework designed specifically for this threat
+  model, with separate roles and keys so compromising one server is not enough.
+
+<T>UNECE R155</T> and R156 make much of this a type-approval requirement rather
+than a recommendation. A vehicle without a certified update management system
+cannot be sold in the markets that have adopted them.
+</Plain>
+
+## Staged rollout, and why it is different here
+
+<Plain>
+The web pattern — deploy to 1%, watch the dashboards, ramp up — applies, with two
+adjustments.
+
+**The observation window is longer.** Vehicles are driven intermittently. A fault
+that appears on the third cold start after an update takes days to surface, not
+minutes. Ramping on a one-hour signal will mislead you.
+
+**Stopping the rollout does not recall it.** Halting the campaign prevents *new*
+vehicles from updating. Vehicles already updated stay updated until another
+campaign reaches them, and some of those will be offline for weeks.
+
+So the ramp is deliberately slow: internal fleet, then employees, then a small
+customer cohort in one market, then wider, over weeks. And the criteria for
+proceeding must include signals that take days to appear — not just install
+success rate.
+</Plain>
+
+<Gotcha>
+Install success rate is a seductive and insufficient metric. An update can
+install perfectly and still be a failure: battery drain, a fault light, a feature
+that no longer works in cold weather.
+
+Rollout gates should include fault-code rates, customer contact volume, and
+feature-level telemetry — not just "did the flash complete".
+</Gotcha>
+
+## What this means for your Android work
+
+**Assume your code will be replaced.** Design for it. Persistent state must
+survive an update, and must tolerate being read by a newer version.
+
+**Assume the versions around you will differ.** During a staged rollout, your app
+may run against an older VHAL or an older vehicle service. Handle absent
+properties and unknown values rather than assuming a matched set.
+
+**Keep the update path small.** Anything that shrinks the image — shared
+libraries, avoiding duplicated assets, delta-friendly layouts — is cellular data
+the customer does not pay for and install time they do not wait through.
+
+**Never assume connectivity.** Features that break without a network will break,
+and in a car that is a common state rather than an edge case.
+
+**Test the upgrade, not just the install.** The interesting bugs are in migration
+from the previous version with real accumulated state — not in a clean flash.
+
+<Recap>
+- OTA is what makes the SDV possible; scope matters — **infotainment, cockpit,
+  or full vehicle** are three very different problems.
+- Most OTA frustration comes from **preconditions** (parked, charged, connected,
+  consented, compatible) rather than from the update itself.
+- **A/B partitions** work because the running system is never modified, so any
+  failure before the switch is harmless — but they cost storage, and not every
+  ECU gets them.
+- The real engineering is **campaign orchestration**: order, atomicity,
+  compatibility, time budget, interruption.
+- Make the **receiving side tolerant before changing the sending side**.
+- Security is a type-approval requirement: signed images, verified boot, rollback
+  protection, authenticated servers, Uptane, R155/R156.
+- **Staged rollout is slower here** — the observation window is days, and stopping
+  a campaign does not recall what already shipped.
+- For your code: expect replacement, expect version skew, keep images small,
+  never assume connectivity, and test the **upgrade** path.
+</Recap>
+
+## Next
+
+What OTA enables commercially — feature on demand.

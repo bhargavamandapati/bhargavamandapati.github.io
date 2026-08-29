@@ -1,0 +1,236 @@
+---
+title: "VSS — the shared vocabulary"
+description: "A standard naming scheme for vehicle data, and why the boring problem it solves — three teams disagreeing about what a signal means — is the one that actually costs programmes months."
+order: 4
+difficulty: "Intermediate"
+tags: ["VSS", "COVESA", "Standards"]
+sources:
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "VSS on GitHub"
+    href: "https://github.com/COVESA/vehicle_signal_specification"
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+---
+
+<T>VSS</T> — the Vehicle Signal Specification — is the least glamorous thing in
+this curriculum and one of the most useful. It is a naming scheme.
+
+That sounds trivial until you have watched three teams spend a month discovering
+they meant different things by "speed".
+
+## The problem
+
+<Scenario title="Three definitions of one word">
+A programme has three teams.
+
+The **ECU team** works from an AUTOSAR description where the signal is
+`VehSpdLgtA`, in units of 0.01 km/h, valid range 0–65534, with 65535 meaning
+invalid.
+
+The **platform team** exposes it as a vehicle property in metres per second,
+because that is what the Android framework expects.
+
+The **HMI team** displays it in km/h or mph depending on a user setting, rounded
+down.
+
+Three names, three units, three notions of invalid. Every conversation between
+these teams requires a translation, and every translation is a place for a
+mistake.
+
+Then a fourth team joins for a new feature and has to learn all three.
+</Scenario>
+
+<Plain>
+Nothing here is anybody's fault. Each representation is reasonable in its own
+context. The cost is the **absence of a shared reference** that all three can
+point at.
+
+That is what VSS provides. Not a protocol, not a piece of software — an agreed
+tree of names, types and units.
+</Plain>
+
+## What it looks like
+
+<DiagramFrame
+  title="The VSS tree"
+  caption="Branches organise, leaves carry data. Every leaf declares its type, its unit, and whether it can be written."
+>
+  <VssTree />
+</DiagramFrame>
+
+```yaml title="A leaf definition"
+Vehicle.Speed:
+  datatype: float
+  type: sensor
+  unit: km/h
+  min: 0
+  max: 400
+  description: Vehicle speed.
+```
+
+<Plain>
+Four things are pinned down here, and each one is a conversation that no longer
+has to happen:
+
+- **The name** — `Vehicle.Speed`, not `VehSpdLgtA` or `PERF_VEHICLE_SPEED`
+- **The type** — a float
+- **The unit** — km/h, explicitly, so nobody assumes m/s
+- **Whether it is writable** — `sensor` means read-only; `actuator` means it can
+  be commanded
+</Plain>
+
+## Node types
+
+| Type | Meaning |
+| --- | --- |
+| `branch` | A grouping node, holds no value |
+| `sensor` | Observed, read-only |
+| `actuator` | Can be commanded |
+| `attribute` | Static configuration, set at build time |
+
+<Plain>
+The `sensor` / `actuator` distinction maps directly onto access control. It is
+also the first thing to check when someone asks why they cannot write a value:
+frequently the signal is genuinely read-only and the request is based on a
+misunderstanding of what the vehicle can do.
+</Plain>
+
+## Instances — how repeated things are expressed
+
+Cars have four doors and several seats. VSS handles that with instances rather
+than four separate definitions.
+
+```yaml title="One definition, many instances"
+Vehicle.Cabin.Seat:
+  type: branch
+  instances:
+    - Row[1,2]
+    - ["DriverSide", "Middle", "PassengerSide"]
+
+Vehicle.Cabin.Seat.Heating:
+  datatype: int8
+  type: actuator
+  unit: percent
+  min: 0
+  max: 100
+```
+
+That expands to `Vehicle.Cabin.Seat.Row1.DriverSide.Heating` and so on — six
+seats from one definition.
+
+<Plain>
+Note the difference from the Android property model, where areas are a bitmask on
+a single property. VSS makes each instance a distinct path.
+
+Neither is wrong; they solve the same problem differently. The mapping between
+them is exactly the kind of thing a generator should handle rather than a human.
+</Plain>
+
+## Overlays — where your vehicle differs
+
+The standard tree will not match any real vehicle exactly. Overlays extend or
+adjust it without forking.
+
+```yaml title="An overlay for vehicle-specific additions"
+Vehicle.Cabin.Seat.Massage:
+  datatype: uint8
+  type: actuator
+  unit: percent
+  min: 0
+  max: 100
+  description: Massage intensity, OEM-specific feature.
+
+Vehicle.Speed:
+  max: 250        # this vehicle's actual limit
+```
+
+<Plain>
+Overlays are how you stay compatible while being specific. A consumer that only
+knows standard VSS still understands `Vehicle.Speed`; one that knows your overlay
+also understands the massage signal.
+
+Forking the tree instead — which teams do — loses the compatibility that was the
+entire point.
+</Plain>
+
+## What VSS deliberately does not define
+
+This is where expectations need managing.
+
+**No transport.** VSS says what a signal is called and what it means. It says
+nothing about how it moves — that is SOME/IP, DDS, gRPC or anything else.
+
+**No sampling rate.** Whether speed is published at 1 Hz or 50 Hz is a product
+decision the specification does not express.
+
+**No permissions.** Who may read or write a signal is not part of VSS.
+
+<Plain>
+These omissions are correct — they are genuinely per-programme decisions — but
+they mean VSS alone is not sufficient. It is the vocabulary layer. You still need
+an overlay for rates and permissions, and a transport underneath.
+
+Teams that expect VSS to be a complete solution are disappointed. Teams that
+expect it to end arguments about naming and units get exactly that.
+</Plain>
+
+## Generating rather than translating
+
+The real value appears when VSS becomes the source that other artefacts are
+generated from.
+
+```text title="One definition, several outputs"
+  ARXML (from the ECU team)
+        │  generate
+        ▼
+  VSS tree  +  reviewed overlay (rates, permissions, area mappings)
+        │  generate
+        ├──> vehicle HAL / property configuration
+        ├──> service interface definitions
+        ├──> data broker configuration
+        └──> client libraries for app teams
+```
+
+<Plain>
+The discipline that makes this work is refusing to hand-edit generated output.
+
+The moment someone patches a generated file to fix one signal, the generator
+stops being the source of truth and the mapping begins to rot. Regenerate in CI
+and fail the build if committed output differs — that one rule is what keeps it
+alive across a multi-year programme.
+</Plain>
+
+## The part that is not technical
+
+<Plain>
+VSS pays off because three teams get a shared vocabulary. It fails when only one
+adopts it.
+
+If the ECU team keeps shipping ARXML and the HMI team keeps a private mapping,
+you have added a format rather than removed one — and now there are four
+representations instead of three.
+
+The migration is worth doing only when **the generated artefacts become the thing
+everyone reviews.** Until then it is overhead with a standards logo on it.
+</Plain>
+
+<Recap>
+- VSS is a **shared tree of names, types and units** — not a protocol and not
+  software.
+- It ends the specific, expensive argument about **what a signal is called and
+  what its units are**.
+- Nodes are **branch, sensor, actuator or attribute**; `instances` express
+  repeated things like seats and doors.
+- **Overlays** extend the standard tree without forking it — forking loses the
+  compatibility that was the point.
+- It deliberately says nothing about **transport, rate or permissions**. Those
+  need an overlay and a protocol.
+- The value appears when VSS becomes the **generated source of truth**, enforced
+  in CI.
+- It fails if only one team adopts it.
+</Recap>
+
+## Next
+
+The component that holds these values and serves them to everyone.

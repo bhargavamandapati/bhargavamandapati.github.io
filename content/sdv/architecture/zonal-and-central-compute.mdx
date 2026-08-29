@@ -1,0 +1,184 @@
+---
+title: "Zonal wiring and central compute"
+description: "The hardware shape that makes software-defined possible — why grouping by location beats grouping by function, and what moves to the centre when it does."
+order: 1
+difficulty: "Intermediate"
+tags: ["Zonal", "Architecture", "Hardware"]
+sources:
+  - label: "COVESA vehicle architecture"
+    href: "https://covesa.global/"
+  - label: "Automotive Ethernet (IEEE 802.1)"
+    href: "https://www.ieee802.org/1/"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+---
+
+Software-defined is a software claim, but it rests on a hardware change. Without
+<T>zonal architecture</T> and <T>central compute</T>, the software promises are
+not achievable — you cannot update a function that lives in a sealed box from a
+supplier who has moved on.
+
+<DiagramFrame
+  title="Zonal wiring with central compute"
+  caption="Zones own short local wiring to whatever is physically near them. One fast link carries everything to the centre, where the actual function logic lives as software."
+>
+  <ZonalArchitecture />
+</DiagramFrame>
+
+## The insight: group by place, not by purpose
+
+The older way grouped by function. A lighting controller connected to every lamp
+in the vehicle — front, rear, interior, indicators — because they were all
+"lighting".
+
+<Plain>
+The problem is geographic. Those lamps are metres apart in different corners of
+the car, so a functional grouping guarantees long wire runs.
+
+Zonal inverts it. A rear-left zone controller connects to the rear-left lamp, the
+rear-left door motor, the rear-left seat and the boot latch — things that have
+nothing functionally in common but are within half a metre of each other.
+</Plain>
+
+<Analogy title="Like postal delivery">
+You would not send one van to deliver all the shoes in a city and a second van
+for all the books. You send one van per district, carrying whatever is going
+there.
+
+Zonal is delivery by district. Functional grouping is delivery by product type,
+and it is exactly as inefficient as it sounds.
+</Analogy>
+
+## What this actually saves
+
+| | Functional grouping | Zonal |
+| --- | --- | --- |
+| Wiring | Long runs across the vehicle | Short local runs |
+| Harness weight | 50–70 kg on a premium car | Substantially less |
+| Assembly | Largely manual, irregular routing | Simpler, more repeatable |
+| Adding a sensor | New wire to the relevant controller | Connect to the nearest zone |
+| Connectors | Many, and a common warranty fault | Fewer |
+
+<Plain>
+Weight matters more than it might seem. On an electric vehicle, mass directly
+costs range, and range costs battery, and battery is the most expensive component
+in the car. A harness saving compounds through the whole vehicle economics.
+</Plain>
+
+## The zone controller does almost nothing
+
+This is the part people find surprising, and it is the key to the whole
+architecture.
+
+A zone controller is deliberately simple. It reads sensors, drives actuators,
+converts between local buses and Ethernet, and forwards. It contains very little
+decision-making.
+
+<Plain>
+**The function logic moves to the centre.** "Fold the mirrors when the car locks"
+is not implemented in the door zone controller. It is software on central
+compute that calls a mirror service and listens to a lock service.
+
+That is what makes it changeable. Logic in a zone controller is embedded software
+in a small box. Logic in central compute is software on a general-purpose
+computer that can be updated over the air.
+</Plain>
+
+<Scenario title="Adding a feature, both ways">
+The feature: when the driver approaches at night, the puddle lamps illuminate
+and the mirrors unfold.
+
+**Functionally grouped.** The lighting ECU must learn about the key module. The
+mirror ECU must learn about the lighting state. Both need software changes from
+their suppliers, network signals must be added, the network design is revised,
+and everything is revalidated. Months.
+
+**Zonal with central compute.** A new piece of software on the central computer
+subscribes to the key service and calls the lighting and mirror services, both of
+which already exist. No new signals, no supplier involvement, no wiring. It ships
+in an over-the-air update.
+
+Same feature. The difference is entirely architectural.
+</Scenario>
+
+## Why Ethernet is required
+
+Zonal only works if the link between zone and centre is fast enough to carry
+everything that used to be separate wires.
+
+<T>CAN</T> runs at up to 1 Mbit/s and broadcasts. Automotive Ethernet runs at
+100 Mbit/s to multiple gigabits, switched, over a single twisted pair.
+
+<Plain>
+Raw speed is not the whole story. The essential addition is <T>TSN</T> —
+Time-Sensitive Networking — which adds scheduling guarantees so a control message
+cannot be delayed behind a camera stream.
+
+Without timing guarantees, Ethernet is fast but unpredictable, and unpredictable
+is unusable for vehicle control. TSN is what makes the substitution acceptable.
+</Plain>
+
+## Power distribution moves too
+
+An under-discussed part: zone controllers usually take over **power switching**
+as well as signalling.
+
+Instead of a central fuse box with a wire to every load, each zone has solid-state
+switches for the loads near it. That means:
+
+- Fuses become software-configurable current limits
+- A fault can be isolated and reported rather than blowing a physical fuse
+- Loads can be shed intelligently when the battery is low
+
+<Plain>
+This is quietly one of the larger changes. "The fuse is a piece of software" has
+consequences for diagnostics, for how faults are reported, and for what a
+workshop actually does when something stops working.
+</Plain>
+
+## What it costs
+
+**Central compute is expensive.** A capable automotive processor costs far more
+than the ECUs it replaces, and it needs cooling.
+
+**Isolation must be rebuilt.** A hundred separate boxes could not interfere with
+each other. Software on one processor absolutely can — which is why hypervisors
+and <T>freedom from interference</T> become central concerns.
+
+**A single point of failure appears.** If central compute fails, a great deal
+fails together. Real designs keep genuinely critical functions — braking,
+steering, airbags — on their own hardware for exactly this reason.
+
+<Plain>
+That last point is worth stating plainly, because it is a common misconception:
+**central compute does not mean everything runs centrally.** Safety-critical
+control stays distributed and independent. What consolidates is the large,
+complex, updatable software — cockpit, ADAS perception, connectivity, comfort.
+</Plain>
+
+## What to check on a real programme
+
+- **How many zones, and what does each one own?**
+- **Is it Ethernet with TSN, or Ethernet without timing guarantees?**
+- **Does the zone controller contain logic, or only I/O?** Logic in the zone
+  means the updatability benefit was not achieved.
+- **What stayed on dedicated hardware, and why?** There should be a clear,
+  safety-driven answer.
+- **What still speaks CAN?** Usually a lot, through a gateway.
+
+<Recap>
+- Zonal groups wiring by **location**, not function — the geography is what makes
+  it cheaper.
+- **Zone controllers are deliberately simple.** The function logic moves to
+  central compute, which is what makes it updatable.
+- Requires **Automotive Ethernet with TSN** — speed alone is not enough, timing
+  guarantees are.
+- **Power switching moves to the zones**, turning fuses into software.
+- **Central compute does not mean everything is central.** Safety-critical control
+  stays on its own hardware.
+- The cost is expense, rebuilt isolation, and a concentrated failure point.
+</Recap>
+
+## Next
+
+How several operating systems share one processor without disturbing each other.

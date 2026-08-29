@@ -1,0 +1,220 @@
+---
+title: "IVI as a service consumer"
+description: "Writing infotainment software against vehicle services rather than raw signals — discovery, absence, version skew, and rendering honestly when the vehicle disagrees with you."
+order: 2
+difficulty: "Intermediate"
+tags: ["IVI", "Services", "Patterns"]
+sources:
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+  - label: "Build apps for Android Automotive OS"
+    href: "https://developer.android.com/training/cars"
+---
+
+This page is the practical one for an infotainment engineer: the patterns that
+work when your data comes from services you do not own, on a vehicle whose
+configuration you cannot assume.
+
+## Pattern 1 — Discover, never assume
+
+<Plain>
+The single most common automotive UI defect is assuming a capability exists.
+
+A vehicle programme ships six trims. The base trim has no powered seats, no
+massage, no ambient lighting and no heated steering wheel. Your UI must handle
+all of that without a separate build.
+</Plain>
+
+```kotlin title="Absence is a normal state, not an error"
+class ComfortViewModel(private val vehicle: VehicleServices) {
+
+    init {
+        // Discover once, at startup, and shape the UI from what is there.
+        val seat = vehicle.discover<SeatService>(minVersion = 1)
+        val massage = seat?.supports("massage") == true
+
+        _uiState.value = ComfortUi(
+            showSeatControls = seat != null,
+            showMassage = massage,
+            showAmbientLight = vehicle.discover<LightingService>() != null,
+        )
+    }
+}
+```
+
+<Scenario title="The crash that only happened on the cheap trim">
+An app calls the massage service directly at startup. On the development vehicle
+— a fully-optioned prototype — it works perfectly for eight months.
+
+It ships. Every base-trim customer gets a crash on launch, because the service
+does not exist on their car.
+
+The bug is not in the crash handling. It is that the code assumed a capability
+instead of asking. **Discovery is not defensive programming here — it is the
+normal way to write against a vehicle.**
+</Scenario>
+
+## Pattern 2 — Render from confirmation, never from the request
+
+This is the rule that appears throughout this site, and it matters most in IVI
+because IVI is where the driver looks.
+
+```kotlin title="Ask, then wait to be told"
+fun onTemperatureSliderChanged(target: Float) {
+    // Send the request. Do NOT update the displayed value.
+    climate.setTargetTemperature(target)
+    showPending()
+}
+
+// The displayed value only ever comes from here.
+private val onTemperatureChanged = { actual: Float ->
+    _displayed.value = actual
+    clearPending()
+}
+```
+
+<Plain>
+Why this matters more than it looks: the vehicle can refuse. The compressor may
+be off, the cabin may be in a mode that overrides the request, or the ECU may
+simply be busy.
+
+If you render optimistically, the screen shows 19° while the vehicle is at 22°.
+The driver adjusts again, nothing happens, and they conclude the car is broken —
+which, from their point of view, it is.
+
+Showing a brief pending state and then the confirmed value is slower and
+completely honest.
+</Plain>
+
+## Pattern 3 — Tolerate version skew in both directions
+
+IVI ships monthly; the service layer may ship yearly. Both directions of
+mismatch will occur in the field.
+
+```kotlin title="Negotiate, do not assume"
+val seat = vehicle.discover<SeatService>(minVersion = 1)
+
+// A capability added in 1.3 — the vehicle in front of you may be on 1.1.
+if (seat != null && seat.version >= Version(1, 3)) {
+    enableMemoryPresets()
+} else {
+    hideMemoryPresets()
+}
+```
+
+<Plain>
+The habit to build: **every use of a newer capability is guarded by a version
+check**, and the fallback is a smaller UI rather than an error.
+
+The alternative — requiring the whole fleet to update in lockstep — is not
+achievable and never will be.
+</Plain>
+
+## Pattern 4 — Subscribe at the rate the pixel needs
+
+```kotlin title="Match the subscription to the display, not the data"
+// A gauge redrawing at 60 fps does not need 60 Hz of data.
+vehicle.subscribe(SPEED, rate = Rate.UI)      // ~5 Hz
+    .collect { speed -> gauge.setTarget(speed) }   // interpolate between samples
+```
+
+<Plain>
+Subscribing faster than you display is pure cost — it wakes the producer, the
+broker, and your process, to deliver values you throw away.
+
+On a shared vehicle network, that cost is not only yours. One careless subscriber
+raises the publish rate for every other consumer of the same signal.
+</Plain>
+
+## Pattern 5 — Handle the service disappearing
+
+Services restart. Processors reboot. Links drop.
+
+```kotlin title="Degrade visibly, recover automatically"
+vehicle.onServiceLost<ClimateService> {
+    _uiState.update { it.copy(climateAvailable = false) }   // grey it out
+}
+
+vehicle.onServiceFound<ClimateService> { service ->
+    _uiState.update { it.copy(climateAvailable = true) }
+    resubscribe(service)
+}
+```
+
+<Plain>
+Two failure modes to avoid:
+
+**Freezing on the last value.** The user sees a stale number with no indication
+it is stale. Same problem as the cluster, same answer: a timeout and a visible
+degraded state.
+
+**Crashing.** A service disappearing is a normal runtime event, not an
+exceptional one.
+</Plain>
+
+## Pattern 6 — Do not process on the callback thread
+
+```kotlin title="Receive and hand off"
+override fun onValueChanged(signal: String, value: Any) {
+    // This is a transport thread. Do nothing expensive here.
+    pending[signal] = value
+    scheduleRender()      // coalesce and render on your own thread
+}
+```
+
+<Plain>
+Doing layout, parsing or allocation on a transport callback backs up the
+transport's thread pool. The visible symptom is UI jank whose cause profiling
+attributes to rendering, because the actual problem is elsewhere.
+</Plain>
+
+## Testing all of this without a vehicle
+
+The patterns above are exactly what a <T>data broker</T> makes testable.
+
+```bash title="Exercise every case from a command line"
+# The value your UI should display
+kuksa-client set Vehicle.Cabin.HVAC.AmbientAirTemperature 22.5
+
+# Simulate a refusal — target set, current never follows
+kuksa-client set-target Vehicle.Cabin.HVAC.TargetTemperature 19
+# ... and deliberately do not update the current value
+
+# Simulate the service disappearing
+docker stop climate-service
+```
+
+<Plain>
+Each of those is a test case that would otherwise need a vehicle, an engineer and
+a fault injection rig. All three run in a pipeline.
+
+The tests worth automating, in priority order:
+
+1. **Service absent at startup** — does the UI shrink correctly?
+2. **Request refused** — does the display stay at the vehicle's value?
+3. **Service disappears while running** — does it grey out rather than freeze?
+4. **Older service version** — do newer controls hide cleanly?
+5. **Value goes stale** — does the timeout fire and show it?
+
+Those five cover the defects that actually reach customers.
+</Plain>
+
+<Recap>
+- **Discover, never assume.** A capability missing on a cheaper trim is normal,
+  not an error.
+- **Render from confirmation, never from the request.** Optimistic rendering makes
+  the screen disagree with the vehicle.
+- **Guard newer capabilities with a version check** — skew happens in both
+  directions and lockstep updates are impossible.
+- **Subscribe at the rate the pixel needs**, because the cost is shared with every
+  other consumer.
+- **Degrade visibly when a service disappears**; never freeze on the last value.
+- **Receive and hand off** — do not process on the transport callback thread.
+- Every one of these is testable from a command line against a data broker.
+</Recap>
+
+## Next
+
+Getting applications onto the vehicle in the first place.

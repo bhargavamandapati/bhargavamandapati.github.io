@@ -1,0 +1,217 @@
+---
+title: "Data brokers"
+description: "The component that holds current vehicle values and serves them to everyone — decoupling producers from consumers, and making the whole stack testable without a vehicle."
+order: 5
+difficulty: "Intermediate"
+tags: ["Kuksa", "Data broker", "Testing"]
+sources:
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+---
+
+You have a naming scheme (<T>VSS</T>) and transports (<T>SOME/IP</T>, <T>DDS</T>).
+The missing piece is something that holds the current value of every signal and
+serves it to whoever asks.
+
+That is a data broker, and it is quietly one of the highest-leverage components
+in an SDV stack.
+
+## What it does
+
+<DiagramFrame
+  title="Producers publish, consumers subscribe, neither knows the other"
+  caption="Feeders translate from whatever the vehicle actually speaks into VSS. Applications read and write VSS. Swapping a feeder for a simulator changes nothing above."
+>
+  <DataBrokerFlow />
+</DiagramFrame>
+
+<Plain>
+A broker sits in the middle and holds the **current value** of every signal in
+the VSS tree.
+
+**Feeders** write into it — a CAN feeder translating bus frames, a SOME/IP feeder
+subscribing to services, a simulator injecting test values.
+
+**Applications** read from it and subscribe to changes, and write to actuator
+signals.
+
+Neither side knows about the other. That indirection is the entire point.
+</Plain>
+
+<Analogy title="Like a departure board">
+Trains do not tell each passenger where to stand. They report to a system, which
+publishes a board, which everybody reads.
+
+Add a passenger and nothing about the trains changes. Replace the board's data
+source with a test feed and the passengers cannot tell.
+
+That decoupling is what a broker buys.
+</Analogy>
+
+## Why this matters more than it sounds
+
+### Testing without a vehicle
+
+This is the big one.
+
+<Scenario title="Two teams, one bottleneck">
+Without a broker, an infotainment team wanting to test a low-battery warning
+needs a vehicle with a low battery. That means a test slot, a driver, and hours
+of driving to drain a pack — or a bench with the real ECU.
+
+With a broker, they run:
+
+```bash
+kuksa-client set Vehicle.Powertrain.TractionBattery.StateOfCharge.Current 8
+```
+
+The warning appears. The whole path above the broker — application, UI,
+notification, cluster display — is exercised, in a second, on a laptop.
+
+The vehicle is now only needed for the part below the broker: does the CAN feeder
+translate correctly? That is a much smaller question, and it does not block
+everyone else.
+</Scenario>
+
+<Plain>
+This is the mechanism behind <T>shift left</T> in vehicle software. The broker is
+the seam that lets most testing move off hardware, and it is why programmes that
+adopt one early move noticeably faster.
+</Plain>
+
+### Producers and consumers evolve independently
+
+The CAN feeder can be replaced with a SOME/IP feeder when the underlying ECU is
+modernised. Every application above continues working unchanged, because they all
+talk VSS.
+
+### Access control in one place
+
+Rather than each application enforcing its own rules, the broker decides who may
+read or write each signal.
+
+```text title="Per-signal, per-client"
+telemetry-uploader   → read:  Vehicle.Speed, Vehicle.Powertrain.*
+                       write: (none)
+
+cockpit-app          → read:  Vehicle.**
+                       write: Vehicle.Cabin.**
+
+charging-service     → read:  Vehicle.Powertrain.TractionBattery.**
+                       write: Vehicle.Powertrain.TractionBattery.Charging.**
+```
+
+<Plain>
+Centralising this is genuinely valuable for review. "Which components can read
+location?" is a question with one place to look, rather than an audit of every
+application.
+</Plain>
+
+## Eclipse Kuksa
+
+The most widely used open implementation is the **Kuksa databroker**, from the
+Eclipse SDV working group. It stores current VSS values and exposes them over
+gRPC.
+
+```bash title="Running one and driving it"
+docker run -p 55555:55555 ghcr.io/eclipse-kuksa/kuksa-databroker:latest
+
+kuksa-client set Vehicle.Speed 42.5
+kuksa-client get Vehicle.Speed
+kuksa-client subscribe Vehicle.Cabin.Seat.Row1.DriverSide.Heating
+```
+
+```python title="An application reading from it"
+from kuksa_client.grpc import VSSClient
+
+with VSSClient('127.0.0.1', 55555) as client:
+    for updates in client.subscribe_current_values(['Vehicle.Speed']):
+        speed = updates['Vehicle.Speed'].value
+        render(speed)
+```
+
+<Plain>
+Notice how ordinary that code is. No CAN knowledge, no protocol handling, no
+vehicle. An application developer can build and test a complete feature against a
+broker on their own machine.
+
+That is the productivity change, and it is larger than any individual protocol
+decision.
+</Plain>
+
+## Sensor and actuator writes are different
+
+A subtlety worth getting right.
+
+Writing to a **sensor** signal means "this is the current value" — that is what a
+feeder does when reporting reality.
+
+Writing to an **actuator** signal means "please make it so" — a request that
+travels down to the vehicle and may be refused.
+
+```python title="Target value versus current value"
+# An application requests a change
+client.set_target_values({'Vehicle.Cabin.Seat.Row1.DriverSide.Heating': 80})
+
+# The feeder reports what actually happened
+client.set_current_values({'Vehicle.Cabin.Seat.Row1.DriverSide.Heating': 80})
+```
+
+<Plain>
+Keeping target and current separate is what lets a UI render honestly. The
+application sets a target; the current value only changes when the vehicle
+confirms.
+
+If the seat refuses — because it is not fitted on this trim, or the seat is
+occupied by a child seat — the current value never moves, and the UI shows
+reality rather than the request.
+
+This is the same "never render optimistically" rule as everywhere else in vehicle
+software, expressed at the broker layer.
+</Plain>
+
+## Honest limitations
+
+**It is a current-value store, not a message bus.** Ask it what speed is now and
+it answers. Ask for every speed sample over the last ten seconds and it cannot.
+High-rate historical streams need something else.
+
+**It is a component that can fail.** Everything depending on it is affected.
+Production designs need to think about restart behaviour and what consumers do
+while it is unavailable.
+
+**Latency is added.** A hop through a broker costs something. For control loops
+with tight budgets it may be the wrong path — direct service calls are shorter.
+
+**It does not make legacy signals into services.** A signal exposed through a
+broker is still a value. It does not gain request-response semantics or
+meaningful errors just by being renamed.
+
+<Plain>
+That last point is worth repeating because it is a common misunderstanding. A
+broker over CAN gives you a clean vocabulary and easy testing. It does not give
+you service orientation. Both are worth having; they are not the same thing.
+</Plain>
+
+<Recap>
+- A data broker holds the **current value** of every VSS signal and serves it to
+  everyone.
+- **Feeders** translate from whatever the vehicle speaks; **applications** only
+  ever see VSS.
+- The biggest gain is **testing without a vehicle** — set a value from a command
+  line and exercise the whole stack above.
+- It centralises **access control**, making "who can read location?" a
+  one-place question.
+- **Target and current values are separate**, which is what lets a UI render
+  honestly.
+- It is not a message bus, it adds latency, it can fail, and it does not turn
+  signals into services.
+</Recap>
+
+## Next
+
+The platforms this all runs on — AUTOSAR, Android, Linux and QNX.

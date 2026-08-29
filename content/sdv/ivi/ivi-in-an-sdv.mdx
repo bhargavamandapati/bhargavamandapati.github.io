@@ -1,0 +1,177 @@
+---
+title: "Infotainment in a software-defined vehicle"
+description: "The screen with the most freedom and the least authority — what changes for IVI when the vehicle becomes service-oriented, and why that is mostly good news."
+order: 1
+difficulty: "Intermediate"
+tags: ["IVI", "Cockpit", "Architecture"]
+sources:
+  - label: "Android Automotive OS"
+    href: "https://source.android.com/docs/automotive/start/what_automotive"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "COVESA"
+    href: "https://covesa.global/"
+---
+
+The infotainment system is the part of the vehicle customers judge most and
+engineers argue about least. It has the largest screen, the richest software, and
+— by design — almost no authority over the vehicle.
+
+That combination is deliberate, and in an SDV it becomes clearer rather than more
+blurred.
+
+## What IVI is for
+
+<Plain>
+Three jobs, in order of how much of the code they account for:
+
+**Presenting vehicle state.** Climate, charging, doors, trip data — showing the
+driver what the vehicle is doing.
+
+**Hosting applications.** Media, navigation, communication, and increasingly
+third-party apps.
+
+**Requesting vehicle actions.** Set the temperature, open the charge flap, adjust
+a seat. Requesting, not commanding — the vehicle decides.
+</Plain>
+
+That third word matters. IVI asks. Whether the request is honoured is decided by
+the component that owns the function.
+
+## What changes in an SDV
+
+### Data arrives as services, not signals
+
+<Scenario title="The same feature, before and after">
+**Before.** The infotainment team wants tyre pressure. It exists on a CAN segment
+the head unit is not on. The gateway must forward it, the network load is
+recalculated, three teams sign off. Six weeks.
+
+**After.** A tyre service exists. The infotainment team discovers it and calls
+it. Nobody else is involved. An afternoon.
+
+Nothing about the infotainment code is very different. What changed is the cost
+of getting data — from a cross-organisational negotiation to a function call.
+</Scenario>
+
+<Plain>
+This is the single largest practical change for an IVI team, and it is almost
+entirely good news. The historic frustration of automotive UI work — that the
+data you need exists somewhere and getting it takes a quarter — largely goes
+away.
+</Plain>
+
+### IVI shares a chip with things that matter more
+
+Consolidation puts infotainment on the same processor as the cluster. Which means
+IVI acquires an obligation it did not have before: **it must be provably
+incapable of disturbing the safety guest.**
+
+In practice this constrains IVI teams less than expected — the hypervisor
+enforces it — but it does mean:
+
+- Resource budgets are real and enforced, not advisory
+- "It only misbehaves under heavy load" is now a safety-relevant statement
+- The inter-guest channel is bounded, and flooding it is not an option
+
+### The update cadence changes
+
+IVI has always updated more often than the rest of the vehicle. In an SDV that
+becomes formalised: infotainment may ship monthly while body electronics ship
+annually or never.
+
+<Plain>
+Which creates a versioning obligation. If IVI updates twelve times a year and the
+vehicle service layer updates once, **every interface between them must tolerate
+version skew in both directions.** A new IVI must work against an old service, and
+occasionally the reverse.
+
+This is the practical reason interface versioning gets so much attention in this
+curriculum. It is not theoretical — it is the direct consequence of two things
+updating at different rates.
+</Plain>
+
+## What IVI must not own
+
+Worth stating explicitly, because requirements land here constantly.
+
+| Function | Belongs to | Why |
+| --- | --- | --- |
+| Telltales and warning lamps | Safety system | Availability and regulation |
+| Collision warnings | ADAS domain | Timing and ASIL rating |
+| Emergency call | Dedicated module | Must survive a crash |
+| Braking, steering, airbags | Their own ECUs | ASIL D |
+| Reversing camera, first image | EVS fast path | Two-second legal deadline |
+| Charging control | Vehicle domain | Safety and standards compliance |
+
+<Plain>
+IVI may **display** all of these. It may not be responsible for any of them.
+
+The test to apply to any requirement: *if infotainment were switched off, would
+this still have to work?* If yes, it does not belong to IVI.
+</Plain>
+
+## The cockpit domain controller
+
+On a consolidated vehicle, IVI is one guest on a cockpit controller alongside the
+cluster, and possibly passenger and rear displays.
+
+<DiagramFrame
+  title="One controller, several screens"
+  caption="The infotainment guest may drive several displays. The safety guest drives the cluster. They share silicon and must not share failures."
+>
+  <CockpitConvergence />
+</DiagramFrame>
+
+<Plain>
+A consequence IVI teams often meet late: **you may be responsible for more than
+one screen.** The centre stack, a passenger display and rear entertainment can all
+be driven by the same Android instance, with different users, different content
+and different distraction rules on each.
+
+The multi-display and occupant zone material in the Learn AAOS section covers the
+mechanics. The point here is that it is a normal SDV cockpit arrangement, not an
+exotic one.
+</Plain>
+
+## What IVI gains
+
+It is worth ending on the positive side, because the constraints above can read
+as limiting.
+
+**Data access without negotiation.** The largest practical improvement.
+
+**Genuine post-sale improvement.** Features can be added to vehicles already
+sold, which was previously almost impossible.
+
+**Modern tooling.** Consolidated platforms run modern operating systems with
+modern development, testing and observability tooling.
+
+**Testability without hardware.** With a data broker and virtual ECUs, most IVI
+work can be done and tested on a laptop.
+
+<Plain>
+That last one is transformative and under-appreciated. The historic bottleneck in
+automotive UI work was access to hardware. When the vehicle can be simulated well
+enough, that bottleneck largely disappears — and IVI benefits more than any other
+domain, because it sits furthest from the physical vehicle.
+</Plain>
+
+<Recap>
+- IVI **presents state, hosts applications and requests actions** — it asks, it
+  does not command.
+- The biggest SDV change is that **data arrives as services**, turning a six-week
+  negotiation into a function call.
+- Sharing a chip brings a new obligation: **provably incapable of disturbing the
+  safety guest.**
+- IVI updates far more often than the vehicle around it, which makes **two-way
+  version tolerance** mandatory.
+- The test for any requirement: **if infotainment were off, would this still have
+  to work?** If yes, it is not IVI's.
+- IVI gains data access, post-sale improvement, modern tooling, and — most
+  importantly — **testability without hardware.**
+</Recap>
+
+## Next
+
+How IVI actually consumes those services.

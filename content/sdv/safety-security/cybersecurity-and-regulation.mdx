@@ -1,0 +1,240 @@
+---
+title: "Cybersecurity management and regulation"
+description: "R155 and R156 turned security process into a condition of selling vehicles. What a CSMS actually requires, what an SBOM is for, and how a vulnerability report becomes a fleet-wide fix."
+order: 3
+difficulty: "Intermediate"
+tags: ["Regulation", "Security", "Process"]
+sources:
+  - label: "UNECE R155 — cybersecurity management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-155-cyber-security-and-cyber-security"
+  - label: "UNECE R156 — software update management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update"
+  - label: "Uptane — automotive software update security"
+    href: "https://uptane.org/"
+---
+
+Security in automotive changed character around 2022, and not because the
+technology changed. It changed because it became a condition of being allowed to
+sell.
+
+## What R155 and R156 actually do
+
+<Plain>
+<T>UNECE R155</T> requires a manufacturer to have a certified **Cybersecurity
+Management System** — a demonstrable organisational process for identifying,
+assessing and responding to cyber risk across a vehicle's whole lifecycle.
+
+R156 requires a certified **Software Update Management System** — a demonstrable
+process for how software gets changed on vehicles in the field.
+
+Both are **type approval** requirements. Without them a vehicle type cannot be
+approved for sale in the EU, UK, Japan, Korea and a growing list of others.
+
+The shift is subtle and total. Previously, security was something a responsible
+manufacturer did well and a careless one did badly, with the market as the only
+referee. Now the absence of a process is a reason a vehicle cannot be sold.
+</Plain>
+
+<Analogy title="From a claim to an inspection">
+A restaurant can say it takes hygiene seriously, and mean it. An inspector arriving to check
+the temperature logs, the cleaning schedule and the training records is a
+different relationship.
+
+The food might have been fine before. The difference is that the process now has
+to exist, be written down, and survive somebody looking at it.
+</Analogy>
+
+## What a CSMS requires in practice
+
+The regulation is about process, so it lands as obligations on how you work.
+
+| Requirement | What it means day to day |
+|---|---|
+| **Risk assessment** | A threat analysis (TARA) per system, kept current |
+| **Risk treatment** | Mitigations traced to identified threats |
+| **Verification** | Evidence that mitigations work — testing, pen testing |
+| **Monitoring** | Watching for new vulnerabilities affecting the fleet |
+| **Incident response** | A defined path from report to fix to deployment |
+| **Supplier management** | Suppliers held to the same standard, contractually |
+| **Lifecycle coverage** | From concept through production to end of support |
+
+<Plain>
+The two that most change engineering practice are **monitoring** and
+**supplier management**.
+
+Monitoring means somebody must be able to answer "does this new CVE affect our
+vehicles?" — quickly, and for software shipped years ago. That is what makes an
+<T>SBOM</T> a requirement rather than a nice-to-have.
+
+Supplier management means the security posture of every component you did not
+write becomes your problem. Most of a vehicle's software comes from suppliers,
+and the OEM holds the type approval.
+</Plain>
+
+## Why the SBOM is the load-bearing artefact
+
+<Scenario title="A vulnerability lands on a Friday afternoon">
+A critical remote-code-execution vulnerability is announced in a widely used
+compression library.
+
+**Without an SBOM.** Email every supplier. Wait. Some reply within a day, some
+within three weeks, some ask what version they shipped and go looking. Meanwhile
+nobody can say whether the fleet is exposed. Six weeks later a partial answer
+exists, and confidence in it is low.
+
+**With an SBOM.** Query the build artefacts:
+
+```bash
+# which shipped images contain the affected library, at an affected version?
+sbom-query --component "libcompress" --version-range "<2.4.1" \
+           --releases "2023-*,2024-*,2025-*"
+```
+
+Answer in minutes: four images, two model years, roughly 180,000 vehicles.
+Response planning starts the same afternoon.
+
+The difference is not diligence. It is having built the inventory automatically
+at the time the software was made, when it cost nothing, rather than trying to
+reconstruct it under pressure when it costs everything.
+</Scenario>
+
+<Plain>
+This is why CI pipelines are expected to emit an SBOM per build, why it is stored
+alongside the artefact, and why "which version of what is in this image" must be
+a query rather than an investigation.
+
+If you take one operational point from this topic, it is that one.
+</Plain>
+
+<Gotcha>
+An SBOM covering only your own build is incomplete. Supplier binaries are the
+majority of a vehicle's software, and the components inside them are exactly
+where unpatched libraries hide.
+
+Getting SBOMs from suppliers is a contractual and commercial problem more than a
+technical one, and it is the part programmes underestimate.
+</Gotcha>
+
+## From report to fixed fleet
+
+The path a vulnerability takes, and where it gets stuck.
+
+```
+  report arrives                     (researcher, supplier, CVE feed,
+        │                             internal testing, bug bounty)
+        ▼
+  triage: are we affected?           ← SBOM makes this minutes, not weeks
+        │
+        ▼
+  assess: exploitable here?          ← reachable? behind the gateway?
+        │                              what does exploitation achieve?
+        ▼
+  fix + verify                       ← including a regression test
+        │
+        ▼
+  safety impact analysis             ← does this touch the safety case?
+        │
+        ▼
+  release + staged rollout           ← R156 evidence produced here
+        │
+        ▼
+  confirm fleet coverage             ← who has not updated, and why?
+```
+
+<Plain>
+Two stages absorb more time than people expect.
+
+**Assessment.** Not every vulnerability in a component you ship is exploitable in
+your configuration. A flaw in a parser you never feed untrusted data to is real
+but not urgent. Getting this judgement right is what stops a team drowning in
+low-severity noise — and getting it wrong in the optimistic direction is how
+incidents happen.
+
+**Fleet coverage confirmation.** Shipping the fix is not the end. Vehicles that
+are offline, out of storage, or whose owners keep declining the update remain
+vulnerable, sometimes for a very long time. The regulation asks what you do about
+that, and "we published an update" is not a complete answer.
+</Plain>
+
+## Coordinated disclosure
+
+<Plain>
+Manufacturers now generally run a coordinated vulnerability disclosure process —
+a published contact point, a commitment to respond, and an agreed timeline before
+the researcher publishes.
+
+This is a change in posture worth noting. The industry's earlier instinct toward
+legal threats produced worse outcomes: researchers published without notice, and
+fixes arrived after the exploit was public.
+
+For an engineer, the practical consequence is that a report may arrive from
+outside and will have a clock attached. The process for handling it needs to exist
+before the first one lands.
+</Plain>
+
+## The end-of-support question
+
+<Plain>
+This is the genuinely unresolved part, and it is worth thinking about.
+
+A vehicle lasts fifteen to twenty years. Software support does not. So:
+
+- How long will security updates be provided? Some manufacturers now state this;
+  many do not.
+- What happens to a ten-year-old vehicle with an unpatched connected component?
+- Is disabling connectivity an acceptable end state, when features the customer
+  paid for depend on it?
+- Who is responsible for a vehicle whose supplier no longer exists?
+
+There is no settled industry answer. Regulators are looking at it, consumer
+groups are pressing, and the first vehicles sold under R155 are still young.
+
+Expect this to become a defined obligation within a few years. Designs that
+assume indefinite cloud dependencies are accumulating a liability.
+</Plain>
+
+## What this means for you
+
+**Your dependencies are a long-term commitment.** Adding a library is signing up
+to track its vulnerabilities for the life of every vehicle it ships in. Prefer
+fewer, well-maintained dependencies. This is a much stronger argument in
+automotive than in web development.
+
+**Your build must produce an inventory.** If your component's dependencies are
+not in the SBOM, your component is a blind spot during the next incident.
+
+**Write down what your component trusts.** During assessment, someone will ask
+whether a vulnerable parser can be reached by untrusted input. A design note
+answering that saves days.
+
+**Report suspicious behaviour.** A crash on malformed input, an unexpected
+network connection, a permission that seems too broad. Engineers noticing things
+is a real part of the monitoring obligation.
+
+**Expect security work to be scheduled, not heroic.** Patch cycles, dependency
+updates and pen-test remediation are now planned work with regulatory deadlines.
+A team treating them as interruptions will miss them.
+
+<Recap>
+- **R155 (cybersecurity) and R156 (software updates)** are type-approval
+  requirements — without a certified management system, the vehicle cannot be
+  sold.
+- A CSMS requires risk assessment, treatment, verification, **monitoring**,
+  incident response, **supplier management**, and full lifecycle coverage.
+- The **SBOM** is the load-bearing artefact: it turns "are we affected?" from
+  weeks of archaeology into a query.
+- Supplier binaries dominate a vehicle's software, so **supplier SBOMs** are
+  essential and are mostly a contractual problem.
+- The response path stalls at **assessment** (is it exploitable here?) and at
+  **fleet coverage** (who still has not updated?).
+- **Coordinated disclosure** is now normal, and reports arrive with a clock.
+- **End of support is unresolved** — assume it will become a defined obligation
+  and avoid open-ended cloud dependencies.
+- For you: dependencies are long-term commitments, your build must emit an
+  inventory, document what your component trusts, report anomalies, and expect
+  security work on the schedule.
+</Recap>
+
+## Next
+
+Everything assembled — one feature built end to end.

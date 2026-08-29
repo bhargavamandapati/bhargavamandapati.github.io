@@ -1,0 +1,298 @@
+---
+title: "AUTOSAR Classic and Adaptive"
+description: "The two AUTOSAR platforms, why they exist, what each is actually for, and why a modern vehicle runs both at once rather than migrating from one to the other."
+order: 1
+difficulty: "Intermediate"
+tags: ["AUTOSAR", "Platforms", "Real-time"]
+sources:
+  - label: "AUTOSAR — Classic Platform"
+    href: "https://www.autosar.org/standards/classic-platform"
+  - label: "AUTOSAR — Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "AUTOSAR standards index"
+    href: "https://www.autosar.org/standards"
+---
+
+If you come from Android, <T>AUTOSAR</T> is the piece of the automotive world that
+looks least familiar and is explained worst. Almost every introduction starts with
+a layered block diagram that tells you nothing about why anyone built it.
+
+So start with the problem instead.
+
+## The problem AUTOSAR was invented to solve
+
+In the 1990s and 2000s, every <T>ECU</T> was written from scratch against its own
+microcontroller. A supplier building a door module for one carmaker could not
+reuse it for another, because the code was welded to that specific chip, that
+specific bus layout, and that specific carmaker's conventions.
+
+<Plain>
+The result: carmakers paid for the same software many times over, could not move
+a function from one supplier to another, and could not swap a microcontroller
+without a rewrite.
+
+AUTOSAR is the industry's answer — a standard that separates *what a function
+does* from *what hardware it runs on*.
+</Plain>
+
+<Analogy title="Like a wall socket">
+Before mains standards, an appliance was wired to a specific building. Standardise
+the socket and the appliance stops caring about the building, and the building
+stops caring about the appliance.
+
+AUTOSAR standardises the socket between application code and the hardware
+underneath it. The application says "give me the wheel-speed signal"; whether it
+arrives over CAN, over FlexRay, or from a simulator is somebody else's
+configuration problem.
+</Analogy>
+
+## Two platforms, two different jobs
+
+The single most common misunderstanding is that Adaptive replaces Classic. It does
+not. They coexist in the same vehicle because they are answers to different
+questions.
+
+| | **Classic Platform** | **Adaptive Platform** |
+|---|---|---|
+| Runs on | Microcontroller, no MMU | Microprocessor with an OS |
+| Operating system | OSEK-style, fixed task table | POSIX-compatible (often Linux or QNX) |
+| Language | C, MISRA-constrained | C++14 and later |
+| Configuration | Everything fixed at build time | Services discovered at runtime |
+| Memory | Statically allocated | Dynamic allocation allowed |
+| Communication | Signals on CAN, LIN, FlexRay | SOME/IP, DDS — services over Ethernet |
+| Updatable in the field | Rarely, and awkwardly | Yes, by design |
+| Typical function | Braking, steering, body control | Sensor fusion, ADAS, gateways |
+| Timing | Deterministic, microseconds | Best-effort with soft real-time |
+
+<Plain>
+Read the table one line at a time and a pattern appears. Classic gives up
+flexibility to buy **predictability**. Adaptive gives up some predictability to
+buy **changeability**.
+
+Neither is better. A brake controller that occasionally takes an extra
+millisecond is a defect. A parking-assist stack that cannot be improved after
+launch is a wasted investment.
+</Plain>
+
+## AUTOSAR Classic, concretely
+
+<T>AUTOSAR Classic</T> targets a microcontroller with tens or hundreds of
+kilobytes of RAM and no memory-management unit. There is no process isolation,
+no filesystem, no dynamic loading. What there is instead is a task table decided
+before the binary was built.
+
+### What "statically configured" really means
+
+The configuration is not a settings file the software reads at startup. It is
+input to a code generator that runs at build time and emits C.
+
+```
+your function code (SWC)
+        +
+ARXML configuration          →  generator  →  generated C  →  compiled binary
+(signals, tasks, timing,
+ which bus, which ECU)
+```
+
+<Scenario title="Adding one signal to a Classic ECU">
+An engineer needs the door module to report an extra flag — "child lock engaged".
+
+1. The signal is added to the **ARXML** database: name, type, which CAN message
+   it rides in, which bit offset, which ECUs receive it.
+2. The database is shared with every ECU that touches that message, because they
+   all must agree on the layout down to the bit.
+3. The generator re-runs on each affected ECU, emitting new C.
+4. Every affected ECU is rebuilt, re-tested, and re-flashed.
+
+This is not a slow process because anyone is being careless. It is slow because
+the bit layout of a CAN message is a contract between separate binaries built by
+separate companies, and there is no runtime negotiation to fall back on.
+
+That is precisely the cost that service-oriented communication removes — and
+precisely why an SDV programme wants as few functions as possible stuck down
+here.
+</Scenario>
+
+### Why it is still everywhere
+
+Because for a brake controller, all of that rigidity is a feature.
+
+<Plain>
+When you can prove at build time exactly which tasks run, in what order, within
+what deadline, and using how much memory, the safety argument becomes
+tractable. A regulator can be shown that the worst case was computed, not
+hoped for.
+
+You cannot make that argument about a system that allocates memory at runtime and
+discovers its peers over a network. That is why <T>ASIL</T> D functions are still
+overwhelmingly Classic, and will be for a long time.
+</Plain>
+
+<Gotcha>
+Do not read "legacy" into Classic. New Classic ECUs are designed every year.
+The right mental model is that Classic is the automotive equivalent of firmware —
+you would not run a pacemaker on a general-purpose OS either.
+</Gotcha>
+
+## AUTOSAR Adaptive, concretely
+
+<T>AUTOSAR Adaptive</T> targets the other end: a real processor with an MMU,
+running a <T>POSIX</T> operating system, with megabytes or gigabytes of memory.
+
+<Plain>
+Applications are separate processes. They start and stop. They find each other
+by **service discovery** rather than by a pre-agreed bit offset. They talk over
+<T>SOME/IP</T> or <T>DDS</T>. They can be replaced individually by an update.
+
+If that sounds like ordinary server software, that is the point. Adaptive is
+AUTOSAR admitting that the parts of a car that change fastest should be built
+the way changeable software is built everywhere else.
+</Plain>
+
+### The functional clusters
+
+Adaptive is organised into functional clusters — the standard's word for
+"subsystems the platform provides". The ones you meet in practice:
+
+| Cluster | What it gives you |
+|---|---|
+| **ara::com** | Service-oriented communication — the SOME/IP or DDS binding |
+| **ara::exec** | Starting, stopping and supervising applications |
+| **ara::per** | Persistent storage with integrity guarantees |
+| **ara::diag** | Diagnostics — UDS, fault memory |
+| **ara::sm** | State management: which applications run in which vehicle state |
+| **ara::ucm** | Update and configuration management — the OTA mechanism |
+| **ara::crypto** | Key storage and cryptographic operations |
+
+<Plain>
+`ara` stands for *AUTOSAR Runtime for Adaptive applications*. When you see
+`ara::com::ServiceProxy` in a codebase, that is an application calling another
+component's service.
+
+The two worth knowing by name are **ara::com**, because it is how everything
+talks, and **ara::ucm**, because it is how software gets updated — which is the
+whole point of the SDV.
+</Plain>
+
+### What service-oriented buys you here
+
+<DiagramFrame
+  title="Signals are broadcast and fixed; services are requested and discovered"
+  caption="Classic sends a signal onto a bus and hopes the right ECU is listening. Adaptive asks a named service for something and gets an answer, or an error."
+>
+  <SignalVsService />
+</DiagramFrame>
+
+<Scenario title="The same child-lock change, on Adaptive">
+1. The service interface gains a new field, versioned.
+2. The provider is rebuilt and deployed.
+3. Consumers that know about the field use it. Consumers that do not, ignore it
+   and keep working.
+4. No coordinated flash of five ECUs. No bit-offset negotiation.
+
+The difference is not that Adaptive engineers are faster. It is that the change
+touches one deployable unit instead of a bus contract shared by many.
+</Scenario>
+
+## How they live together
+
+A real vehicle runs both, joined by a gateway.
+
+```
+        ┌──────────────── central compute ────────────────┐
+        │                                                 │
+        │  Adaptive: ADAS stack, sensor fusion, gateway   │
+        │  Android:  cluster + infotainment               │
+        │  (both on a hypervisor, plus a safety island)    │
+        └───────────────────────┬─────────────────────────┘
+                                │  Automotive Ethernet, SOME/IP
+                ┌───────────────┼───────────────┐
+                │               │               │
+        ┌───────┴──────┐ ┌──────┴───────┐ ┌─────┴────────┐
+        │ Zone (front) │ │ Zone (rear)  │ │ Powertrain   │
+        │   Classic    │ │   Classic    │ │   Classic    │
+        └───────┬──────┘ └──────┬───────┘ └─────┬────────┘
+                │ CAN, LIN      │ CAN           │ CAN, FlexRay
+             sensors         actuators       inverter, motors
+```
+
+<Plain>
+Read that top to bottom and you have the shape of a modern vehicle. Classic at
+the edges where things must be fast, small and certain. Adaptive and Android in
+the centre where things must be changeable. A gateway translating between them.
+
+Your Android work sits at the top of that picture, and almost every vehicle
+signal you consume has travelled up through it.
+</Plain>
+
+<Analogy title="Like a hospital">
+Classic ECUs are the monitoring equipment: single-purpose, always working,
+absolutely trusted, and not something you update on a Tuesday.
+
+Adaptive and Android are the records system and the staff: they coordinate,
+schedule, present information, and get improved constantly.
+
+You want both. You would not run the heart monitor on the records system, and you
+would not schedule appointments on the heart monitor.
+</Analogy>
+
+## Where AAOS fits relative to AUTOSAR
+
+This confuses people, so state it plainly.
+
+<Plain>
+Android Automotive is **not** an AUTOSAR platform and does not implement AUTOSAR
+interfaces. It is a peer that sits alongside Adaptive, usually on the same SoC
+under a <T>hypervisor</T>, and talks to the rest of the vehicle through the same
+service layer.
+
+Concretely: your <T>VHAL</T> implementation is very often a SOME/IP client. It
+subscribes to services provided by an Adaptive application or a gateway, and
+translates what it receives into <T>vehicle properties</T> that
+<T>CarPropertyManager</T> can serve to apps.
+
+That translation layer is one of the most common places an Android automotive
+engineer actually touches AUTOSAR — not by writing AUTOSAR code, but by being
+the consumer on the other end of its services.
+</Plain>
+
+## What to be sceptical about
+
+**"We are migrating from Classic to Adaptive."** Some functions will move. Brake
+control will not. Ask which specific functions, and what the safety argument is.
+
+**Adaptive is not automatically safe.** Running on POSIX with dynamic memory does
+not remove ASIL requirements — it makes them harder to argue. Adaptive supports
+safety up to ASIL D on paper; achieving it takes real work, and much of the
+industry solves it by keeping the highest-ASIL logic on a separate safety
+microcontroller instead.
+
+**Adaptive is not free.** Tooling is expensive, expertise is scarce, and the
+standard is large. Some OEMs have concluded that plain Linux or QNX plus
+SOME/IP gets them most of the benefit with less overhead — and that is a
+defensible position, not heresy.
+
+**The tooling is the real cost.** ARXML editing, configuration management and
+generator licences dominate. Engineers arriving from open-source ecosystems are
+usually more surprised by the tooling than by the concepts.
+
+<Recap>
+- AUTOSAR exists to **decouple vehicle functions from specific hardware**, so
+  software can be reused and suppliers can be swapped.
+- **Classic** is statically configured C on a microcontroller — rigid on purpose,
+  because rigidity is what makes safety provable. It is not legacy.
+- **Adaptive** is C++ on a POSIX OS with runtime service discovery, updates and
+  dynamic memory — built for the parts that must change.
+- They **coexist**: Classic at the edges and in powertrain, Adaptive and Android
+  in the centre, a gateway between them.
+- The functional clusters worth remembering are **ara::com** (communication) and
+  **ara::ucm** (updates).
+- **AAOS is a peer, not an AUTOSAR platform** — your VHAL is frequently the
+  SOME/IP client consuming Adaptive services.
+- Be sceptical of migration claims, of "Adaptive is safe by default", and budget
+  for tooling.
+</Recap>
+
+## Next
+
+The other platforms competing for the same sockets — Android, Linux and QNX.

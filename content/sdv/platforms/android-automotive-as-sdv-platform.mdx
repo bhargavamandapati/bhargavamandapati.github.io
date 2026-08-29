@@ -1,0 +1,241 @@
+---
+title: "Android Automotive as an SDV platform"
+description: "An honest assessment of what AAOS contributes to a software-defined vehicle, what it deliberately does not do, and where the boundary between Android and the rest of the vehicle actually sits."
+order: 2
+difficulty: "Intermediate"
+tags: ["AAOS", "Platforms", "Architecture"]
+sources:
+  - label: "Android Automotive — overview"
+    href: "https://source.android.com/docs/automotive/start/what_automotive"
+  - label: "Vehicle HAL"
+    href: "https://source.android.com/docs/automotive/vhal"
+  - label: "Android for Cars — developer site"
+    href: "https://developer.android.com/training/cars"
+  - label: "Android — SDV documentation"
+    href: "https://source.android.com/docs/automotive/sdv"
+---
+
+You already know how <T>AAOS</T> works. What is worth being precise about is
+where it sits in a software-defined vehicle, because the boundary is drawn in a
+specific place and a lot of confusion comes from misplacing it.
+
+## What Android is actually for here
+
+<Plain>
+Android's contribution to an SDV is the **experience layer and its ecosystem**:
+rendering, application lifecycle, a permission model users understand, an app
+distribution channel, and a very large pool of developers who already know the
+APIs.
+
+Its contribution is *not* vehicle control. It does not command actuators, it is
+not on the safety path, and it is not the thing that keeps the car running.
+</Plain>
+
+<Analogy title="Like the dashboard of a factory">
+The factory floor has controllers running machines to the millisecond. The
+control room has screens, dashboards, alerts and people making decisions.
+
+Android is the control room. It reads everything, presents it well, and lets
+people act — but the actual machine control lives elsewhere, and the factory
+keeps running if a screen goes dark.
+</Analogy>
+
+## The boundary, drawn precisely
+
+<DiagramFrame
+  title="Android's slice of the vehicle stack"
+  caption="Everything above the VHAL is Android's world. Everything below it belongs to the vehicle and speaks the vehicle's protocols."
+>
+  <SdvStack />
+</DiagramFrame>
+
+The <T>VHAL</T> is the boundary, and it is a good one because it is narrow and
+explicit. Above it, Android sees a typed key-value world of
+<T>vehicle properties</T>. Below it, the implementation can be anything.
+
+<Plain>
+In a modern SDV the thing below the VHAL is usually **not** a CAN driver. It is a
+SOME/IP client, or a DDS subscriber, or a gRPC connection to a service running in
+a different virtual machine on the same chip.
+
+That is a meaningful change from earlier vehicles, and it has a practical
+consequence: the VHAL's job has shifted from *decoding* to *translating*. Less
+bit-twiddling of CAN frames, more mapping between two service vocabularies.
+</Plain>
+
+<Scenario title="Following one value across the boundary">
+Ambient light level, in a zonal SDV.
+
+1. A photodiode in the front-left zone reports to the zone controller over LIN.
+2. The zone controller publishes it as a SOME/IP event — `LightingService`,
+   event `AmbientLevel`, in lux.
+3. In central compute, the VHAL implementation is a SOME/IP client subscribed to
+   that event. On each notification it scales the value and calls
+   `onPropertyEvent` for a vendor property.
+4. <T>Car Service</T> receives it and fans it out to registered listeners.
+5. Your app's `CarPropertyManager` callback fires; the UI switches to night
+   theme.
+
+Steps 1–2 are the vehicle's problem. Step 3 is the seam. Steps 4–5 are ordinary
+Android.
+
+Notice what the app never learns: that there is a photodiode, that LIN exists,
+that SOME/IP exists. It asked for a property and got a number. That opacity is
+the design working.
+</Scenario>
+
+## What Android genuinely brings
+
+**An application model that already works.** Lifecycle, permissions, process
+isolation, resource management, an installer, a settings framework. Building
+that from scratch is years of work that adds no differentiation.
+
+**Distribution.** <T>GAS</T> vehicles get Play, which means an app catalogue
+without the OEM negotiating with every developer individually. Even AOSP-only
+builds inherit APK packaging and signing.
+
+**Developers.** The pool of engineers who can write an Android app is enormous
+compared with the pool who can write a QNX Screen application.
+
+**Multi-display and multi-user out of the box.** <T>Occupant zones</T>, per-user
+profiles and multiple displays are platform features rather than a bespoke
+subsystem. In a vehicle with front and rear screens this is significant.
+
+**Graphics that keep up.** SurfaceFlinger, hardware composer, GPU compositing and
+a mature animation stack. Modern cockpit UI expectations are essentially phone
+expectations, and Android already meets them.
+
+## What Android deliberately does not do
+
+<Plain>
+**Hard real-time.** Android is not, and does not attempt to be, a real-time
+operating system. If something must complete within a bounded time or a person
+is harmed, Android is the wrong place for it. This is a design decision, not a
+gap awaiting a fix.
+
+**High-ASIL safety.** There is no ISO 26262 certification for AOSP as such. A
+safety-rated cluster built on Android achieves that rating by putting the
+safety-critical part *somewhere else* — a separate microcontroller, a
+safety-certified hypervisor partition, or a QNX guest — and letting Android
+handle only the rest.
+
+**Actuation.** Android can request. Something below the VHAL decides whether to
+comply. Sending a "set steering angle" property does not move a wheel unless a
+vehicle-side component with its own logic and its own safety argument agrees.
+
+**Boot in a legally required time.** Reversing camera imagery is required within
+about two seconds in several markets. Android cannot boot that fast from cold.
+This is solved by an early-boot path — <T>EVS</T> — that runs before and
+independently of the Android framework, or by a separate microcontroller
+entirely.
+</Plain>
+
+<Gotcha>
+These are not deficiencies to argue away in a design review. They are the reasons
+the architecture around Android looks the way it does. An engineer who
+understands *why* the safety island exists is far more useful than one who
+proposes moving its function into Android.
+</Gotcha>
+
+## Android on the cluster
+
+Increasingly the same Android instance drives both the centre screen and the
+<T>cluster</T>. This works, and the way it works is worth being precise about,
+because the safety question does not disappear — it gets partitioned.
+
+<Plain>
+The pattern nearly everyone converges on:
+
+- **Android renders the informational cluster** — map, media, trip data, the
+  parts drivers notice but do not depend on.
+- **A safety-rated component renders the mandatory <T>telltales</T>** — brake
+  warning, airbag, oil pressure. Often a separate microcontroller compositing on
+  top, or a certified guest, or a hardware overlay plane.
+- If Android stops, the telltales are **still on screen**, because they never
+  came from Android.
+
+The regulator's requirement is that a brake warning is visible. It says nothing
+about who draws the album art.
+</Plain>
+
+## Where Android is a poor fit
+
+Being honest about this matters more than advocacy.
+
+| Situation | Better fit | Why |
+|---|---|---|
+| ASIL D display content | QNX or a safety MCU | Certification evidence already exists |
+| Sub-millisecond control loops | AUTOSAR Classic | Deterministic scheduling |
+| Sub-second cold boot | RTOS or dedicated MCU | Android's init cannot get there |
+| Very constrained hardware | Linux or an RTOS | Android's memory floor is high |
+| Full control of every binary | <T>Yocto</T> / <T>AGL</T> | No Google-defined components |
+| Vehicle backbone gateway | Adaptive or Linux | Android has no business in the middle |
+
+<Plain>
+Notice that none of these are infotainment. In the infotainment slot Android's
+trade-offs are close to ideal, which is why it has taken so much of that market.
+
+Outside it, the calculus changes quickly.
+</Plain>
+
+## How Android benefits from the SDV shift
+
+The change runs in both directions, and this part often gets missed.
+
+**Ethernet replaces bespoke plumbing.** When the vehicle speaks SOME/IP over
+Ethernet, the VHAL becomes a network client instead of a bus decoder. That is a
+substantially simpler and more testable thing to write.
+
+**A <T>data broker</T> makes development possible without hardware.** Point the
+VHAL at a broker instead of the vehicle, inject values from a script, and the
+entire Android stack above becomes testable on a desk. This is the single largest
+productivity change available to an AAOS team.
+
+**Consolidation gives Android better hardware.** A cockpit SoC shared with the
+cluster and ADAS is far more capable than a dedicated head-unit chip of the
+previous generation.
+
+**<T>OTA</T> becomes normal.** Android already has <T>A/B partitions</T> and a
+proper update mechanism. In a vehicle programme that has committed to shipping
+updates, that maturity is an argument in Android's favour rather than an
+inconvenience.
+
+<Scenario title="What changes for you in practice">
+On a pre-SDV programme, testing a new "battery preconditioning" screen meant
+booking an EV, driving it to a specific state of charge, and hoping the bench
+build matched.
+
+On an SDV programme with a broker, it means:
+
+```bash
+kuksa-client set Vehicle.Powertrain.TractionBattery.StateOfCharge.Current 18
+kuksa-client set Vehicle.CurrentLocation.Latitude 52.52
+```
+
+and the screen renders on your desk emulator. You go near a real vehicle only to
+confirm the layer *below* the broker.
+
+The Android code you write is the same. The loop you write it in is hours
+shorter.
+</Scenario>
+
+<Recap>
+- Android's role in an SDV is the **experience layer** — rendering, apps,
+  permissions, distribution — not vehicle control.
+- The **VHAL is the boundary**, and in an SDV its implementation is usually a
+  SOME/IP or DDS client rather than a CAN decoder.
+- Android brings a working app model, a huge developer pool, multi-display and
+  multi-user support, and mature graphics.
+- It deliberately does **not** do hard real-time, high-ASIL safety, actuation, or
+  two-second cold boot — the architecture around it exists because of that.
+- On a shared cluster, **safety content is rendered by something else** and
+  composited over Android.
+- Android is a poor fit for gateways, control loops and heavily constrained
+  hardware — and an excellent fit for infotainment.
+- The SDV shift **helps** Android work: simpler VHALs, desk-testable stacks,
+  better silicon, and OTA as a first-class expectation.
+</Recap>
+
+## Next
+
+The main alternative in the same slot — Linux, AGL and Yocto.

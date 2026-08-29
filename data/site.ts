@@ -37,6 +37,7 @@ export const site = {
     { label: 'Experience', href: '/#experience' },
     { label: 'Projects', href: '/projects/' },
     { label: 'Learn AAOS', href: '/learn/' },
+    { label: 'SDV', href: '/sdv/' },
     { label: 'Tutorials', href: '/tutorials/' },
     { label: 'Glossary', href: '/glossary/' },
     { label: 'Skills', href: '/#skills' },

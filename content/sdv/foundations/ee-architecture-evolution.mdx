@@ -1,0 +1,183 @@
+---
+title: "How vehicle electronics evolved"
+description: "Distributed, then domain, then zonal, then central — four architectures, what each solved, what each broke, and how to tell which one a programme is actually on."
+order: 3
+difficulty: "Beginner"
+tags: ["Architecture", "E/E", "Zonal"]
+sources:
+  - label: "COVESA vehicle architecture work"
+    href: "https://covesa.global/"
+  - label: "AUTOSAR — Classic and Adaptive platforms"
+    href: "https://www.autosar.org/standards"
+  - label: "Automotive Ethernet overview"
+    href: "https://www.ieee802.org/1/"
+---
+
+The phrase you will hear is **E/E architecture** — electrical and electronic
+architecture. It means how the computers in a vehicle are organised and wired.
+
+It has been through four generations. Knowing which one a programme is on tells
+you more about what is possible than any amount of feature discussion.
+
+<DiagramFrame
+  title="Four generations of vehicle electronics"
+  caption="Each square is a computer. The trend is fewer, more capable ones — and the wiring shrinks with them."
+>
+  <EeArchitectureEvolution />
+</DiagramFrame>
+
+## Generation 1 — Distributed
+
+One <T>ECU</T> per function. A door module, a seat module, a lighting module, an
+engine controller. Each does one job and does it reliably.
+
+They talk over <T>CAN</T>, broadcasting values that anything interested can hear.
+
+**What it solved.** Independence. A supplier delivered a complete, testable
+component. A fault in one thing did not affect another. Adding a function meant
+adding a box — simple to plan and simple to price.
+
+**What it broke.** Everything, once the count grew.
+
+<Scenario title="The wiring harness problem">
+By the mid-2010s a premium vehicle's wiring harness weighed **50–70 kg** and was
+often the third most expensive component after the engine and gearbox.
+
+It was also assembled largely by hand, because the routing is too irregular to
+automate, and it was one of the most common sources of warranty faults —
+connectors corrode, wires chafe.
+
+None of that is a software problem. It is the physical consequence of running a
+wire from a central box to every individual lamp and sensor in the vehicle.
+</Scenario>
+
+## Generation 2 — Domain
+
+Group ECUs by **what they do**: a powertrain domain, a body domain, a chassis
+domain, an infotainment domain. Each has a domain controller; the small ECUs
+under it get simpler.
+
+**What it solved.** Fewer independent parties per feature. A body feature is now
+mostly one supplier's problem.
+
+**What it broke.** The wiring, mostly. A body domain controller still needs a
+wire to every lamp in the vehicle, so the harness barely shrank. And features
+increasingly crossed domains — a "welcome" sequence touches body, comfort and
+infotainment at once, which the domain split makes awkward rather than easier.
+
+## Generation 3 — Zonal
+
+The insight is to stop grouping by function and start grouping by **location**.
+
+<T>Zonal architecture</T> puts a controller in each corner of the vehicle. It
+connects to whatever is physically near it — the lamps, the door motor, the
+sensors in that corner — regardless of what function they belong to. One
+high-speed cable links it back to the centre.
+
+<DiagramFrame
+  title="Zonal wiring"
+  caption="Each zone owns short local wiring to whatever is nearby. One fast link carries everything back. The intelligence is not in the zone — it is in the centre."
+>
+  <ZonalArchitecture />
+</DiagramFrame>
+
+<Analogy title="Like a building's electrical risers">
+An old building might run a separate cable from the basement to every socket. A
+modern one has a distribution board on each floor: one thick cable up the riser,
+short runs from there.
+
+Same electricity, dramatically less copper. And when you want to add a socket,
+you work on that floor rather than pulling a new cable from the basement.
+</Analogy>
+
+<Plain>
+The savings are large and physical: harness weight down substantially, assembly
+simplified, fewer connectors to fail.
+
+But the important consequence is not the wiring. It is that **the zone
+controllers are deliberately simple** — they mostly convert signals and forward
+them. The actual function logic moves to the centre, where it becomes software
+that can be changed.
+</Plain>
+
+## Generation 4 — Central compute
+
+The endpoint: a small number of powerful computers running nearly all vehicle
+functions, with zones acting as little more than intelligent connectors.
+
+<T>Central compute</T> is where <T>SDV</T> becomes fully realisable. When a
+function is software on a shared computer, it can be updated, replaced, or added
+without touching hardware.
+
+**What it solves.** Everything the earlier generations struggled with:
+integration, updatability, feature addition, wiring.
+
+**What it breaks.** Isolation. A hundred separate boxes could not interfere with
+each other; software sharing a processor absolutely can.
+
+<Plain>
+This is why <T>hypervisor</T>s and <T>freedom from interference</T> become
+central concerns. The architecture that makes everything updatable also removes
+the physical separation that used to guarantee safety, and that guarantee has to
+be reconstructed in software and silicon.
+
+The architecture module covers exactly how.
+</Plain>
+
+## Where real programmes actually are
+
+<Plain>
+Almost nobody is at generation 4. Most current vehicles are somewhere between 2
+and 3 — some domain controllers, some zonal wiring, and a long tail of
+conventional ECUs that nobody has had a reason to consolidate.
+
+That mixture is the normal case, not a failure. A vehicle can be genuinely
+software-defined in the cockpit while the door modules are unchanged from 2015,
+because there is no commercial reason to redesign a door module that works.
+</Plain>
+
+<Scenario title="What this means when you join a programme">
+A recruiter says the programme is "fully software-defined, zonal architecture".
+
+Ask three questions:
+
+1. **How many ECUs are in the vehicle?** If the answer is "about 80", it is
+   partially zonal at best.
+2. **Which functions run on central compute?** Often it is the cockpit and
+   nothing else.
+3. **What talks over Ethernet and what still talks over CAN?** The honest answer
+   is usually "the new parts over Ethernet, everything else over CAN, with a
+   gateway between".
+
+None of these answers is bad. But they tell you whether you will be writing
+services on a modern platform or writing a gateway that translates CAN frames —
+which are very different jobs.
+</Scenario>
+
+## What each generation means for software
+
+| Generation | Adding a feature means | Updating means |
+| --- | --- | --- |
+| Distributed | A new ECU, new wiring, new supplier | Reflashing an ECU in a workshop |
+| Domain | Changing a domain controller, coordinating below it | Reflashing that domain |
+| Zonal | Software on central compute, using existing zone I/O | An over-the-air update |
+| Central | Software, deployed like any other software | Continuous delivery |
+
+<Recap>
+- **Distributed**: one box per function. Simple, independent, and it produced a
+  70 kg wiring harness.
+- **Domain**: grouped by function. Fewer parties per feature, but the wiring
+  barely improved and cross-domain features got harder.
+- **Zonal**: grouped by **location**. Short local wiring, one fast link to the
+  centre — and the logic moves centrally.
+- **Central compute**: nearly everything as software on shared computers. Makes
+  SDV real, and removes the physical isolation that safety used to rely on.
+- **Most real programmes are between generations 2 and 3**, with a long tail of
+  conventional ECUs. That is normal.
+- Ask how many ECUs there are, which functions run centrally, and what still
+  speaks CAN. The answers tell you what job you are actually taking.
+</Recap>
+
+## Next
+
+An honest look at how far the industry has actually got.

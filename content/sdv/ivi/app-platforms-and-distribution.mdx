@@ -1,0 +1,175 @@
+---
+title: "App platforms and distribution"
+description: "How software gets onto a vehicle and stays updatable — system image, OEM store, public store or sideload — and what each route costs in release cadence and capability."
+order: 3
+difficulty: "Intermediate"
+tags: ["Apps", "Distribution", "Platforms"]
+sources:
+  - label: "Distribute apps for Android Automotive OS"
+    href: "https://developer.android.com/training/cars/distribute"
+  - label: "Android for Cars overview"
+    href: "https://developer.android.com/training/cars"
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+---
+
+A software-defined vehicle is only software-defined if software can actually get
+onto it. That is less obvious than it sounds — the route determines what your
+software can do and how often it can change.
+
+## The four routes
+
+| Route | Who decides | Cadence | Vehicle access |
+| --- | --- | --- | --- |
+| **System image** | The OEM | Vehicle programme gates — months | Anything, including vehicle control |
+| **OEM store** | The OEM | Their review cycle | Usually read-only vehicle data |
+| **Public store** | The store, on GAS-style vehicles | Yours | Normal permissions only |
+| **Sideload** | You, on a dev unit | Immediate | Whatever the build allows |
+
+<Plain>
+The decision that matters is between the first row and the rest.
+
+**If your software actuates the vehicle — moves a seat, opens a flap, changes a
+setting the ECU acts on — it ships in the system image.** No store route grants
+that. Which means the OEM includes it, and your release schedule becomes theirs.
+
+Discovering this in week one is a scoping conversation. Discovering it in month
+six is a replan.
+</Plain>
+
+## What the system image route actually means
+
+<Scenario title="The feature that shipped a year late">
+A supplier builds a comfort feature. It works, it is tested, it is finished in
+March.
+
+It needs `CONTROL_CAR_SEATS` — a signature-level permission. So it ships inside
+the vehicle image, which means it ships at the next software gate, which is
+aligned to a model year, which is November.
+
+Eight months of the delay is not engineering. It is the release vehicle.
+
+The team could have known in week one by asking one question: *what permission
+does this need?*
+</Scenario>
+
+<Plain>
+This is not a criticism of the model — an app that can move a seat should be
+scrutinised and signed by the manufacturer. It is a planning fact, and the whole
+point of raising it early is that the answer sometimes changes the design.
+
+Occasionally the feature can be split: a system component doing the actuation
+with a stable, narrow interface, and a store-distributed app doing the user
+experience on top. Then the part that changes often ships often.
+</Plain>
+
+## The OEM store
+
+Most non-GAS vehicles have a manufacturer store. Practically, each is a separate
+integration project — its own submission process, review criteria, and often its
+own SDK for identity and payment.
+
+Three questions before committing:
+
+1. **What is the review turnaround, and is it tied to vehicle gates?**
+2. **Are additional permissions available to store apps, or only to system apps?**
+3. **Is there a test fleet, or does validation need a physical vehicle?**
+
+<Plain>
+That third question is the one that decides how painful the project is. A store
+with a simulator and a test channel is a normal software project. One requiring a
+physical vehicle for every submission is not.
+</Plain>
+
+## What runs where
+
+An SDV cockpit typically hosts several kinds of software with different rules:
+
+**Native platform components.** Part of the image, full access, OEM cadence.
+
+**Templated apps.** Navigation and point-of-interest apps built from a fixed
+template set the platform renders. Safe by construction, which is why third
+parties are allowed to ship them.
+
+**Media apps.** Serve a content tree and a playback session; the car draws the UI.
+
+**Full applications.** Draw their own screens. Usually restricted to OEM and
+system apps, because they carry the whole driver-distraction burden themselves.
+
+**Web content.** Increasingly used for parked-only experiences — manuals,
+account management, purchase flows — where the update cadence benefit outweighs
+the constraints.
+
+<Plain>
+The trend worth noticing: the categories with the most freedom have the least
+distribution reach, and vice versa. A templated app can be shipped by anyone and
+can express very little. A system app can do anything and ships once a year.
+
+Most real products end up split across two of these.
+</Plain>
+
+## Keeping it updatable
+
+Getting software onto the vehicle is half the problem. Keeping it updatable for
+fifteen years is the other half.
+
+**Every dependency is a fifteen-year commitment.** A library abandoned in year
+four becomes an unpatchable vulnerability with a regulatory obligation attached.
+"Small and boring" is a security requirement here, not an aesthetic preference.
+
+**Interfaces to platform services must be versioned**, because they will move
+underneath you.
+
+**The app must tolerate an older platform.** A vehicle three model years old is
+still in the field and still yours.
+
+**Feature detection, not version detection.** Ask whether a capability exists
+rather than inferring it from a platform version — trims differ within a version.
+
+## Sideloading during development
+
+```bash title="On a development head unit"
+# Install for the CURRENT foreground user
+adb install -r --user current app.apk
+adb shell am get-current-user
+
+# A privileged app cannot be installed this way — it must be pushed
+adb root && adb remount
+adb push app.apk /product/priv-app/MyApp/MyApp.apk
+adb shell stop && adb shell start
+```
+
+<Plain>
+The second block is the one that catches people. `adb install` places an APK in
+`/data/app`, where it is not privileged and its signature permissions are
+refused. The symptom is a `SecurityException` that looks like a permission bug
+and is an installation-location one.
+</Plain>
+
+## A decision order
+
+1. **Does it actuate the vehicle?** → system image. Talk to the OEM now.
+2. **Is it media or templated on a store-equipped vehicle?** → store route. Read
+   the quality guidelines before designing.
+3. **Neither?** → per-OEM store integration, one project per manufacturer.
+4. **Still exploring?** → sideload, but do not let a prototype's permissions set
+   expectations the distribution route cannot meet.
+
+<Recap>
+- Four routes: **system image, OEM store, public store, sideload** — and the route
+  decides both capability and cadence.
+- **Anything that actuates the vehicle ships in the system image**, which makes
+  your release schedule the OEM's.
+- Ask "what permission does this need?" in **week one**. It sometimes changes the
+  design.
+- Consider **splitting**: a narrow system component for actuation, a
+  store-distributed app for the experience.
+- More freedom means less reach. Most products end up **split across two
+  categories**.
+- Every dependency is a **fifteen-year commitment**; use feature detection, not
+  version detection.
+</Recap>
+
+## Next
+
+How this software actually gets built and delivered — starting with virtual ECUs.

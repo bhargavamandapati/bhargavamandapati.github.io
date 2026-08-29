@@ -1,0 +1,192 @@
+---
+title: "SOME/IP in depth"
+description: "The protocol that carries vehicle services — discovery, methods, events and fields — and the design decisions that determine whether an interface survives a decade."
+order: 2
+difficulty: "Advanced"
+tags: ["SOME/IP", "Services", "Protocols"]
+sources:
+  - label: "SOME/IP — AUTOSAR Foundation"
+    href: "https://www.autosar.org/standards/foundation"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "Franca IDL"
+    href: "https://github.com/franca/franca"
+---
+
+<T>SOME/IP</T> — Scalable service-Oriented MiddlewarE over IP — is how vehicle
+services actually talk over Ethernet. If <T>service-oriented architecture</T> is
+the idea, SOME/IP is the mechanism most of the industry chose to implement it.
+
+## The four mechanisms
+
+<DiagramFrame
+  title="What SOME/IP provides"
+  caption="Discovery finds the service. Methods are requests with answers. Events are pushed notifications. Fields combine a value with get, set and notify."
+>
+  <SomeIpFlow />
+</DiagramFrame>
+
+### Service discovery
+
+A client does not know where a service lives. It asks.
+
+```text title="Discovery, conceptually"
+Client  →  multicast:  "who offers SeatService, service id 0x1234, version 1.x?"
+Server  →  unicast:    "I do — at 192.168.1.20:30501, version 1.2"
+Client  →  server:     subscribe / call
+```
+
+<Plain>
+The server also **offers** its service periodically without being asked, so a
+client that starts later finds it without waiting for a query cycle.
+
+This is the mechanism that makes a service replaceable. Swap the implementation,
+move it to a different processor, or substitute a simulator — clients discover
+whatever is currently offering the service, and nothing else changes.
+</Plain>
+
+### Methods — requests with answers
+
+```text title="A method call"
+Client → Server:  setPosition(seat = ROW1_LEFT, position = 42)
+Server → Client:  ok
+              or  error: BLOCKED
+```
+
+<Plain>
+The ability to return a **meaningful error** is the single biggest gain over
+broadcast signals.
+
+A signal can say "the seat is at position 30". It cannot say "I refused to move
+it because someone is leaning on it". That distinction is the difference between
+a UI that can explain itself and one that silently disagrees with the vehicle.
+</Plain>
+
+Methods can also be **fire-and-forget** — no response expected — which is the
+right choice for anything where the answer would be ignored anyway.
+
+### Events — pushed notifications
+
+The server sends to subscribed clients when something changes. Subscription is
+per-event-group, not per-event, so related notifications are managed together.
+
+### Fields — a value with three operations
+
+A field is a value that supports **get**, **set** and **notify**. It is the
+closest thing to a traditional signal, which makes it the natural landing place
+for migrated CAN signals.
+
+<Plain>
+A useful rule when designing: if a consumer would reasonably want to ask "what is
+it now?" as well as "tell me when it changes", it is a field. If they only ever
+care about the moment of change, it is an event.
+</Plain>
+
+## Interfaces are described, not hand-written
+
+Interfaces are defined in an IDL — commonly **Franca IDL**, or ARXML in an
+AUTOSAR toolchain — and code is generated for both ends.
+
+```text title="A Franca interface definition"
+package com.oem.vehicle
+
+interface SeatService {
+    version { major 1 minor 2 }
+
+    attribute UInt8 massageIntensity          // a field: get, set, notify
+
+    method setPosition {
+        in  { UInt8 seatId  UInt8 position }
+        out { Boolean accepted }
+        error { INVALID_SEAT BLOCKED NOT_AVAILABLE }
+    }
+
+    broadcast occupancyChanged {              // an event
+        out { UInt8 seatId  Boolean occupied }
+    }
+}
+```
+
+<Plain>
+Generating both ends from one definition is what prevents the classic integration
+failure where two teams implement subtly different interpretations of the same
+document.
+
+It also means the IDL file, not the code, is the artefact that matters in review.
+</Plain>
+
+## The decisions that determine whether it lasts
+
+<Scenario title="Two interfaces, ten years later">
+**Interface A** was defined with a version, errors as a proper enum, and optional
+fields for anything not certain to be needed. Over eight years it gained four new
+methods and two new error codes. Old consumers kept working throughout.
+
+**Interface B** had no version field, returned a boolean for success, and packed
+several values into one integer to save bytes. When a new error case appeared,
+there was nowhere to put it. When a value needed more range, the packing broke.
+
+Interface B was replaced by a parallel service. Both now exist, both must be
+maintained, and every consumer must know which to use.
+
+The difference was perhaps two hours of design thought at the start.
+</Scenario>
+
+**Version explicitly, from the first message.** Major and minor, with defined
+compatibility rules.
+
+**Errors are an enum, not a boolean.** A boolean can only say "no". An enum can
+say why, and can gain values.
+
+**Append only.** New methods and fields go at the end. Reordering breaks
+generated code on the other end.
+
+**Do not pack values to save bytes.** Ethernet has bandwidth. Packing costs you
+the ability to change a range later.
+
+**Design for the service being absent.** On a cheaper trim it will not exist.
+
+## Practical concerns
+
+**Serialisation is not free.** Every call is packed and unpacked. High-frequency
+data over SOME/IP costs measurable CPU — which is one reason continuous sensor
+streams often use <T>DDS</T> instead.
+
+**Multicast for discovery needs network configuration.** Discovery traffic uses
+multicast, and switch configuration must permit it. A service that is offered but
+never discovered is very often a multicast configuration problem, not a code
+problem.
+
+**Timing is not guaranteed by SOME/IP itself.** It relies on the network. If
+timing matters, that is a <T>TSN</T> concern underneath.
+
+```bash title="Debugging"
+# Capture and dissect — Wireshark understands SOME/IP
+tcpdump -i eth0 -w some-ip.pcap
+
+# Is the service being offered at all?
+tcpdump -i eth0 'udp port 30490'   # the usual service discovery port
+```
+
+<Plain>
+That second command answers the most common SOME/IP question — "why can't my
+client find the service?" — faster than anything else. Either the offers are on
+the wire or they are not, and that immediately tells you which end to look at.
+</Plain>
+
+<Recap>
+- SOME/IP provides **discovery, methods, events and fields** over Ethernet.
+- **Discovery is what makes services replaceable** — swap the implementation or
+  substitute a simulator and clients adapt.
+- **Meaningful errors** are the biggest gain over broadcast signals.
+- Interfaces are defined in **IDL and generated for both ends**, so the IDL is the
+  review artefact.
+- Longevity comes from: **version from message one, errors as an enum, append
+  only, do not pack, design for absence.**
+- Serialisation costs CPU; discovery needs multicast to be configured; timing
+  comes from TSN, not from SOME/IP.
+</Recap>
+
+## Next
+
+The other major protocol, and when it is the better choice.

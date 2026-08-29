@@ -1,0 +1,208 @@
+---
+title: "Service-oriented architecture in a vehicle"
+description: "The idea that makes features addable after production — components offering named capabilities others discover and call, and the interface discipline it demands."
+order: 3
+difficulty: "Intermediate"
+tags: ["SOA", "Services", "Architecture"]
+sources:
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "SOME/IP specification"
+    href: "https://www.autosar.org/standards/foundation"
+  - label: "COVESA"
+    href: "https://covesa.global/"
+  - label: "Android SDV — VSIDL service definitions"
+    href: "https://source.android.com/docs/automotive/sdv/core-areas/vsidl"
+---
+
+If you take one idea from this whole curriculum, take this one.
+<T>Service-oriented architecture</T> is what actually makes a vehicle
+software-defined. The hardware consolidation enables it; this is the thing it
+enables.
+
+## The problem it solves
+
+<Scenario title="Adding one consumer, the old way">
+A vehicle broadcasts wheel speed on <T>CAN</T>. Three ECUs listen.
+
+A new feature needs wheel speed on a fourth ECU. That fourth ECU is on a
+different CAN segment.
+
+What now has to happen: the gateway must be configured to forward the message.
+The network load on the second segment must be recalculated and re-validated. The
+network design document is revised. Three organisations sign it off.
+
+Weeks of work, and **not one line of it is the feature**. It is all plumbing to
+get an existing value to a new place.
+</Scenario>
+
+<Plain>
+That is the cost service orientation removes. In a service world, the fourth
+consumer discovers the existing service at runtime and calls it. Nothing is
+reconfigured, nothing is re-validated, no other team is involved.
+
+The feature becomes the only work.
+</Plain>
+
+<DiagramFrame
+  title="Broadcast signals versus callable services"
+  caption="On the left, values are shouted onto a shared wire and the wiring is fixed at design time. On the right, capabilities are offered, discovered at runtime, and called."
+>
+  <SignalVsService />
+</DiagramFrame>
+
+## What a service actually is
+
+A named capability with a defined interface, offered by one component and usable
+by others.
+
+```text title="A seat service, conceptually"
+SeatService  (version 1.2)
+
+  methods
+    setPosition(seat, position)  -> ok | INVALID_SEAT | BLOCKED
+    getPosition(seat)            -> position
+    savePreset(seat, slot)       -> ok
+
+  events
+    positionChanged(seat, position)
+    occupancyChanged(seat, occupied)
+
+  fields
+    massageIntensity   get · set · notify
+```
+
+<Plain>
+Three mechanism types, and the distinction matters:
+
+**Methods** are requests with answers. "Move the seat, tell me if it worked."
+Crucially, they can **fail meaningfully** — `BLOCKED` is information a broadcast
+signal cannot convey.
+
+**Events** are notifications the service pushes when something happens.
+
+**Fields** are values with a getter, a setter and a change notification — the
+closest thing to the old signal model, and the bridge most migrations use.
+</Plain>
+
+## Discovery is the part that matters
+
+A consumer does not have a hard-coded address for the seat service. It asks the
+network at runtime: *who offers SeatService, version 1 or compatible?*
+
+<Analogy title="Like a phone directory versus a hard-wired intercom">
+An intercom is wired to one specific office. If that department moves, you rewire.
+
+A directory lets you look up who does what, now. The department can move floors,
+be split in two, or be replaced by a different team — and callers still find it.
+
+Broadcast signals are the intercom. Service discovery is the directory.
+</Analogy>
+
+<Plain>
+This is what allows a function to move between processors between model years
+without every consumer changing. It is also what allows a service to be
+*replaced* — by a newer implementation, or by a simulator during testing —
+transparently.
+</Plain>
+
+## The discipline it demands
+
+Service orientation is not free. It trades network-design work for **interface
+design work**, and the interface has to survive a decade.
+
+**Version from the first message.** Both ends will be updated on different
+schedules by different suppliers. An unversioned interface means neither end can
+ever change.
+
+**Add, never reorder or remove.** New methods go at the end. Removing one breaks
+consumers you may not know about.
+
+**Errors are part of the contract.** A method that returns void and reports
+failures through a side channel is not a service — it is a signal wearing a
+costume.
+
+**Design for absence.** A consumer must handle the service not being present at
+all, because on a cheaper trim it will not be.
+
+```kotlin title="Absence is the normal case, not an error"
+val seat = discover<SeatService>(minVersion = 1)
+    ?: run {
+        hideSeatControls()   // this trim has no powered seats
+        return
+    }
+```
+
+<Scenario title="The interface that could never change">
+A supplier delivers a service with no version field. It ships in 200,000
+vehicles.
+
+Two years later the service needs one additional field in an event.
+
+There is no way to add it. Older consumers would misparse the message, and there
+is no mechanism to tell whether a given consumer is old or new. The only options
+are a flag day — updating every consumer simultaneously across a fleet, which is
+not possible — or a second, parallel service.
+
+They shipped a second service. Both now exist forever.
+
+**Put a version field in the first message you define.** It costs two bytes and
+it is the difference between an interface that can evolve and one that cannot.
+</Scenario>
+
+## Where services actually run
+
+A service is software on some processor. Which processor is, deliberately, not
+the consumer's business.
+
+| Service | Typically runs on |
+| --- | --- |
+| Seat, door, lighting | A zone controller, or central compute |
+| Vehicle state | Central compute |
+| Navigation | Cockpit domain controller |
+| ADAS state | The ADAS domain, exposed read-only |
+| Charging | Vehicle domain, often with its own safety constraints |
+
+<Plain>
+The freedom to move a service between these without changing consumers is the
+whole payoff. A programme that hard-codes locations has adopted the syntax of
+service orientation without the benefit.
+</Plain>
+
+## Migration reality
+
+<Plain>
+Almost nobody rewrites a whole vehicle at once. The common and sensible path is a
+**translation layer**: services on top, CAN signals underneath, a component in
+the middle mapping between them.
+
+This is a legitimate step, not a failure. It lets new software be written in the
+new style against unchanged legacy electronics.
+
+It is worth being honest about what it does and does not buy, though. You get the
+programming model and the ability to add consumers cheaply. You do not get
+request-response semantics, meaningful errors, or the ability to move the
+underlying function — because underneath, it is still a broadcast signal.
+
+Knowing which of those you actually have prevents a lot of disappointed
+architecture reviews.
+</Plain>
+
+<Recap>
+- Service orientation is **what makes features addable after production** —
+  hardware consolidation only enables it.
+- A service offers **methods** (with meaningful errors), **events** and
+  **fields**.
+- **Runtime discovery** is the essential part: it lets a function move, be
+  replaced or be simulated without consumers changing.
+- It trades network-design work for **interface-design work** that must last a
+  decade.
+- **Version from the first message. Add, never reorder. Errors are part of the
+  contract. Design for absence.**
+- A services-over-CAN translation layer is a legitimate migration step — know
+  what it does and does not give you.
+</Recap>
+
+## Next
+
+How the software actually gets deployed onto these computers.

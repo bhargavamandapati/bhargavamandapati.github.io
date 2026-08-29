@@ -1,0 +1,220 @@
+---
+title: "What a software-defined vehicle actually is"
+description: "The term is used loosely enough to mean almost nothing. Here is the concrete engineering definition, what genuinely changes, and how to tell a real SDV claim from marketing."
+order: 1
+difficulty: "Beginner"
+tags: ["SDV", "Fundamentals"]
+sources:
+  - label: "COVESA — Connected Vehicle Systems Alliance"
+    href: "https://covesa.global/"
+  - label: "Eclipse Software Defined Vehicle working group"
+    href: "https://sdv.eclipse.org/"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "Android — SDV documentation"
+    href: "https://source.android.com/docs/automotive/sdv"
+---
+
+Almost every car company now says they are building software-defined vehicles.
+The phrase appears in press releases, job adverts and architecture documents,
+and it is used so loosely that it has nearly stopped meaning anything.
+
+So let us pin it down.
+
+## The definition that is actually useful
+
+<Plain>
+A vehicle is **software-defined** when what the car *does* is determined mostly by
+software running on general-purpose computers, rather than by fixed behaviour
+built into dedicated hardware.
+
+The practical test: **can the vehicle gain a new capability after it has been
+sold, without changing any hardware?**
+
+If yes, in a meaningful way — not just a new wallpaper — it is software-defined.
+If no, it is a conventional vehicle that happens to contain software.
+</Plain>
+
+Note what is *not* in that definition. Nothing about touchscreens, connectivity,
+electric drivetrains or artificial intelligence. Those often accompany SDV, and
+none of them is what the term means.
+
+## How cars were built before
+
+To see what changed, look at how it worked for thirty years.
+
+A car maker decides it wants heated seats. An engineer writes a specification. A
+supplier builds a small computer — an <T>ECU</T> — that does exactly that: reads
+a switch, reads a temperature sensor, drives a heating element.
+
+That ECU is delivered, tested, and bolted into the car. Its software is burned in
+and essentially never changes. Multiply by a hundred functions and you get a
+vehicle with a hundred small computers, each doing one thing, wired together.
+
+<Analogy title="Like a kitchen full of single-purpose appliances">
+A toaster toasts. A kettle boils. A blender blends. Each does its one job
+reliably and none of them can learn a new one. If you want to make soup, you buy
+another appliance.
+
+That is a conventional vehicle. Each function has its own box, and adding a
+function means adding a box.
+</Analogy>
+
+<Plain>
+This was not a bad design. It was an excellent one for its constraints:
+components were cheap, functions were independent, and a failure in one thing did
+not affect another.
+
+It stopped being the right answer when the number of functions exploded and
+customers started expecting the car to improve after they bought it.
+</Plain>
+
+## What replaces it
+
+<Analogy title="Like replacing the appliances with a computer and a robot arm">
+Now imagine one capable machine that can be *told* how to toast, boil or blend.
+Making soup becomes a software update, not a purchase.
+
+That is the software-defined vehicle. Fewer, more powerful computers, and
+functions expressed as software running on them.
+</Analogy>
+
+<DiagramFrame
+  title="How vehicle electronics got here"
+  caption="Left to right: one computer per function, then grouped by function, then grouped by physical location, then consolidated into central compute with simple zone controllers doing only the wiring."
+>
+  <EeArchitectureEvolution />
+</DiagramFrame>
+
+## The four things that actually change
+
+Strip away the marketing and SDV means four specific engineering shifts.
+
+### 1. Fewer, more powerful computers
+
+A hundred small controllers becomes a handful of powerful ones, with simple
+**zone controllers** near the wiring doing little more than connecting things up.
+
+This is the change that makes everything else possible, and it is a hardware
+change — which is why SDV cannot be retrofitted to an existing platform.
+
+### 2. Functions become software, not boxes
+
+Heated seats stop being "the seat ECU" and become a piece of software running on
+a shared computer, alongside forty other pieces of software.
+
+<Plain>
+This is a bigger change than it sounds. Once a function is software on a shared
+machine, it can be updated, replaced, moved to a different processor, or removed
+— none of which is true of a box bolted behind the dashboard.
+</Plain>
+
+### 3. Components offer services instead of broadcasting signals
+
+The old model: an ECU shouts values onto a shared wire and anything interested
+listens. Nobody is addressed and nothing replies.
+
+The new model: a component **offers a service** that others discover at runtime
+and call, with requests, responses and errors.
+
+<Plain>
+Why it matters: in the old model, adding a new consumer of a signal means
+re-doing the network design. In the new model, adding a consumer means writing
+software that calls an existing service — and nothing else changes.
+
+That single difference is most of what allows features to be added after the car
+ships.
+</Plain>
+
+### 4. Software is delivered continuously
+
+Software stops being finished at start of production. Updates arrive over the
+air, throughout the vehicle's life, which means the development process has to
+keep running for fifteen years rather than stopping at launch.
+
+<Scenario title="The same feature, both ways">
+**Before.** A customer wants automatic high beams. Retrofitting means a new
+camera, a new ECU, a wiring change and a workshop visit. In practice it is not
+offered.
+
+**After.** The camera is already there for other functions. The compute is
+already there. The feature is software that reads the existing camera service and
+calls the existing lighting service. It arrives as an update while the car sits
+on the driveway.
+
+The customer experience is completely different, and the enabling change was
+architectural, not clever.
+</Scenario>
+
+## What SDV is not
+
+<Plain>
+Being blunt about this saves a lot of confused conversations.
+
+**Not the same as electric.** Combustion cars can be software-defined; plenty of
+EVs are not. The two happen to be arriving together because both need new
+platforms.
+
+**Not the same as connected.** A car with a data connection and a hundred fixed
+ECUs is connected, not software-defined.
+
+**Not the same as a big touchscreen.** The screen is the most visible part and
+the least relevant to the definition.
+
+**Not the same as autonomous.** Self-driving needs SDV foundations; SDV does not
+imply any autonomy at all.
+</Plain>
+
+## How to tell whether a claim is real
+
+Four questions that cut through it quickly:
+
+1. **How many general-purpose computers does the vehicle have?** If it is still
+   dozens of fixed-function ECUs, the architecture has not changed.
+2. **Can a new feature be added without new hardware?** Ask for an example that
+   actually shipped.
+3. **Do components offer services, or broadcast signals?** Ask what happens when
+   a new consumer needs an existing value.
+4. **Is software still being developed for vehicles already sold?** Or did the
+   team disband at start of production?
+
+<Plain>
+Answers of "a few", "yes, here is one", "services", and "yes" describe a real SDV
+programme. Anything else is a conventional vehicle with a modern user interface —
+which is a perfectly reasonable product, just not this one.
+</Plain>
+
+## Why anyone is doing this
+
+The engineering is harder, the platforms cost more, and the organisational change
+is painful. Three reasons it is happening anyway:
+
+**Complexity became unmanageable.** A hundred ECUs from thirty suppliers, each
+with its own release cycle, is not integrable at the rate customers now expect
+features.
+
+**Customers expect improvement.** A phone gets better after purchase. A car that
+does not now feels dated within two years.
+
+**Revenue after the sale.** Features, subscriptions and services sold to a vehicle
+already on the road — a genuinely new business model, and the one most often
+cited internally.
+
+The next topic goes into these forces properly, because they explain most of the
+decisions you will otherwise find arbitrary.
+
+<Recap>
+- A vehicle is **software-defined** when its capabilities come from software on
+  general-purpose computers, and can meaningfully change after it is sold.
+- Four concrete shifts: **fewer, bigger computers**; **functions as software**;
+  **services instead of broadcast signals**; **continuous delivery**.
+- SDV is **not** the same as electric, connected, touchscreen-equipped or
+  autonomous.
+- The sharpest test: **can a new capability arrive without new hardware?**
+- The move is driven by **unmanageable complexity, customer expectation, and
+  revenue after the sale** — not by technology enthusiasm.
+</Recap>
+
+## Next
+
+The forces pushing this change, and why they are not going away.

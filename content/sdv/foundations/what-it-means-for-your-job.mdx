@@ -1,0 +1,168 @@
+---
+title: "What SDV means for your job"
+description: "The roles that appear, the ones that change, and the skills that carry across — written for someone deciding what to learn next rather than for a strategy deck."
+order: 5
+difficulty: "Beginner"
+tags: ["Careers", "Skills", "SDV"]
+sources:
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "COVESA"
+    href: "https://covesa.global/"
+---
+
+Architecture diagrams are abstract. This page is about what actually lands on
+your desk.
+
+## The roles that appear
+
+**Vehicle service developer.** Writing the services that expose vehicle
+capability — a seat service, a lighting service — with versioned interfaces that
+other teams call. Closest to ordinary backend work of anything in automotive.
+
+**Platform / middleware engineer.** The layer between the vehicle network and
+applications: signal translation, data brokers, service discovery. This is where
+<T>VSS</T> and <T>SOME/IP</T> live.
+
+**Cockpit engineer.** The cluster and infotainment domain, increasingly on one
+consolidated computer. Where Android Automotive knowledge applies directly.
+
+**Virtualisation / integration engineer.** Hypervisor configuration, guest
+partitioning, proving <T>freedom from interference</T>. A genuinely scarce skill.
+
+**Vehicle DevOps.** Build infrastructure, <T>virtual ECU</T> pipelines, staged
+rollout tooling. Almost nonexistent as a role ten years ago.
+
+**Data engineer.** Vehicle telemetry pipelines, on-vehicle aggregation, fleet
+analysis, and the privacy obligations attached to all of it.
+
+## The roles that change rather than disappear
+
+<Plain>
+A recurring anxiety is that classic embedded automotive skills are becoming
+obsolete. They are not, and it is worth being clear about why.
+
+**Someone still writes the ECU software.** Zone controllers, sensors, actuators
+and safety-critical functions remain small embedded systems. That work continues.
+
+**Someone still owns the vehicle network.** CAN does not disappear. Most vehicles
+will contain it for another decade, and the gateway between old and new is
+significant, ongoing work.
+
+**Safety engineering becomes more important, not less.** Proving isolation on
+shared hardware is harder than proving separation between physically separate
+boxes.
+
+What changes is that these roles now sit alongside service architecture, cloud
+delivery and continuous integration — so the people who can work across both
+sides become disproportionately valuable.
+</Plain>
+
+## The skills that carry across
+
+Ranked by how much leverage they give you:
+
+**1. Understanding both worlds.** Someone who can read a CAN database *and* design
+a service interface is the person who ends up designing the gateway — which is on
+every real programme, because every real programme is a mixture.
+
+**2. Service and interface design.** Versioning, backwards compatibility,
+designing something that will not need to change for a decade. This is the
+distinguishing skill of the SDV era.
+
+**3. Testing without hardware.** Building things that can be exercised in a
+pipeline rather than on a bench. The engineers who make this possible unblock
+everybody else.
+
+**4. Safety literacy.** Not becoming a safety engineer — knowing enough to
+recognise when a requirement has landed on the wrong system and to escalate it
+early.
+
+**5. Ordinary software engineering.** Version control, code review, automated
+testing, observability. Automotive has historically been weaker at these than the
+wider industry, and they transfer completely.
+
+<Scenario title="What a week actually looks like">
+An engineer on a cockpit SDV programme:
+
+**Monday.** A cluster value is wrong. Trace it back through the service, the data
+broker and the CAN gateway. The scaling factor was applied twice.
+
+**Tuesday.** Design review for a new comfort service. The argument is about
+whether a field should be an enum or an integer — because the interface must
+survive ten years and an enum cannot gain values safely without versioning.
+
+**Wednesday.** The <T>virtual ECU</T> pipeline is failing intermittently. Turns
+out to be a timing assumption that holds on hardware and not in simulation.
+
+**Thursday.** A requirement arrives saying the head unit shall display a
+collision warning. Escalate it — that belongs on the safety-rated path.
+
+**Friday.** Review a supplier's service interface. It has a method that returns
+void and reports errors through a separate signal. Send it back.
+
+Note how little of that is writing new features, and how much is interfaces,
+integration and evidence. That ratio is characteristic.
+</Scenario>
+
+## What to learn, in what order
+
+If you are coming from **classic embedded automotive**:
+
+1. Service-oriented thinking — the communication module here
+2. <T>SOME/IP</T> and <T>VSS</T> specifically
+3. Linux and POSIX, if you have only worked on microcontrollers
+4. Git, CI, and automated testing as daily practice
+5. A modern application platform — Android Automotive or AUTOSAR Adaptive
+
+If you are coming from **general software engineering**:
+
+1. Why vehicles are different — safety, longevity, variation
+2. The vehicle network: CAN, and why it looks so primitive
+3. Functional safety literacy — enough to know what you must not own
+4. Real-time and determinism concepts
+5. The regulatory environment, which genuinely constrains design
+
+If you are coming from **Android or app development**:
+
+1. This site's Learn AAOS section — the platform specifics
+2. The communication module here — where the data comes from
+3. Cluster and cockpit consolidation — the part that surprises app developers
+4. Safety boundaries — what Android is and is not allowed to own
+
+## Being useful in the first month
+
+<Plain>
+Three habits that make a disproportionate difference on an SDV programme:
+
+**Ask what the interface contract is, before writing anything.** On a programme
+where components must interoperate for a decade, the interface is the artefact
+that matters. Code is comparatively disposable.
+
+**Build the evidence path.** When you fix something, leave behind the command
+that proves it. Cross-team defects are settled by evidence, and whoever can
+produce it fastest sets the narrative.
+
+**Learn to say "that belongs on the other system."** Requirements land on the
+wrong component constantly. Recognising it early is cheap; discovering it during
+homologation is not.
+</Plain>
+
+<Recap>
+- New roles: **vehicle service developer, platform engineer, cockpit engineer,
+  virtualisation engineer, vehicle DevOps, data engineer.**
+- Classic embedded roles **change rather than disappear** — someone still writes
+  the ECU software and owns the CAN gateway.
+- The highest-leverage skill is **understanding both worlds**, because every real
+  vehicle is a mixture.
+- **Interface design for a decade of compatibility** is the distinguishing skill
+  of this era.
+- Most of the work is **interfaces, integration and evidence** — not new features.
+- Learn in an order that starts from where you already are.
+</Recap>
+
+## Next
+
+Into the architecture that makes all of this possible.

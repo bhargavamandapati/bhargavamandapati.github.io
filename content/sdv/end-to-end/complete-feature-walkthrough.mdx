@@ -1,0 +1,315 @@
+---
+title: "End to end: one feature, all the way through"
+description: "A complete worked example — a seat massage feature built from the physical actuator to both the cluster and the centre screen, naming every layer, every interface and every decision along the way."
+order: 1
+difficulty: "Advanced"
+tags: ["End to end", "Worked example", "Integration"]
+sources:
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+---
+
+Everything in this curriculum so far has been a layer at a time. This page builds
+one complete feature through all of them, so the pieces connect.
+
+**The feature:** the driver adjusts seat massage intensity from the centre
+screen. The cluster shows a brief confirmation. Everything degrades sensibly on
+trims that do not have the hardware.
+
+Simple enough to follow, and it touches every layer.
+
+<DiagramFrame
+  title="The full stack this feature crosses"
+  caption="The accent layers are what SDV adds. This feature touches every one of them."
+>
+  <SdvStack />
+</DiagramFrame>
+
+## Step 1 — Define the signal, before writing anything
+
+The first artefact is not code. It is the signal definition, because that is what
+three teams will agree on.
+
+```yaml title="vss-overlay/seat-massage.vspec"
+Vehicle.Cabin.Seat.Massage:
+  datatype: uint8
+  type: actuator          # it can be commanded, not just observed
+  unit: percent
+  min: 0
+  max: 100
+  description: Massage intensity for this seat. 0 is off.
+```
+
+Because `Seat` already carries instances, this expands automatically:
+
+```text
+Vehicle.Cabin.Seat.Row1.DriverSide.Massage
+Vehicle.Cabin.Seat.Row1.PassengerSide.Massage
+```
+
+<Plain>
+Three decisions are already locked in, and each one is a conversation that will
+now not happen later:
+
+**The name.** Not `SeatMsgIntns`, not `SEAT_MASSAGE_INTENSITY` — one name all
+three teams use.
+
+**The unit.** Percent, explicitly. Nobody will assume a 0–5 scale.
+
+**Actuator, not sensor.** It can be written, which means access control applies
+and a write can be refused.
+</Plain>
+
+## Step 2 — The ECU end
+
+The seat module already drives the massage motors. It needs to accept a command
+and report actual state.
+
+```text title="What the ECU offers, in its interface definition"
+SeatComfortService (1.0)
+
+  method setMassage
+    in  { uint8 seatId, uint8 intensity }
+    out { bool accepted }
+    error { INVALID_SEAT, NOT_FITTED, OCCUPANT_ABSENT, THERMAL_LIMIT }
+
+  broadcast massageChanged
+    out { uint8 seatId, uint8 intensity }
+```
+
+<Plain>
+Note the errors. `NOT_FITTED` and `OCCUPANT_ABSENT` are the difference between a
+UI that can explain itself and one that silently disagrees with the car.
+
+A broadcast signal could only ever have said "intensity is 0". A service can say
+*why*.
+</Plain>
+
+## Step 3 — Bridge the service into VSS
+
+Something must connect the SOME/IP service to the VSS name.
+
+```python title="feeder/seat_massage_feeder.py"
+from kuksa_client.grpc import VSSClient
+
+SEATS = {
+    0x01: 'Vehicle.Cabin.Seat.Row1.DriverSide.Massage',
+    0x04: 'Vehicle.Cabin.Seat.Row1.PassengerSide.Massage',
+}
+
+def on_massage_changed(seat_id: int, intensity: int) -> None:
+    # The ECU reported reality -> write the CURRENT value.
+    path = SEATS.get(seat_id)
+    if path:
+        client.set_current_values({path: intensity})
+
+def on_target_requested(path: str, intensity: int) -> None:
+    # An application asked for a change -> call the service.
+    # Do NOT update the current value here; wait for the ECU to confirm.
+    seat_id = next(k for k, v in SEATS.items() if v == path)
+    seat_service.setMassage(seat_id, intensity)
+```
+
+<Plain>
+The comment on the last function is the whole design in two lines.
+
+Target and current are separate. An application writes a **target**; the current
+value only moves when the ECU confirms. If the seat refuses — not fitted, nobody
+sitting there — the current value never changes, and every UI above shows reality
+rather than the request.
+</Plain>
+
+## Step 4 — Access control
+
+The broker decides who may do what.
+
+```yaml title="broker/policy.yaml"
+clients:
+  cockpit-ui:
+    read:  ['Vehicle.Cabin.**']
+    write: ['Vehicle.Cabin.Seat.*.*.Massage']    # targets only
+
+  cluster-service:
+    read:  ['Vehicle.Cabin.Seat.*.*.Massage']
+    write: []                                     # display only, never commands
+
+  telemetry:
+    read:  ['Vehicle.Cabin.Seat.*.*.Massage']
+    write: []
+```
+
+<Plain>
+One place to answer "who can command the seats?" — which is exactly the question
+a security review asks, and exactly the question that is painful when the answer
+is spread across twelve applications.
+</Plain>
+
+## Step 5 — The infotainment UI
+
+```kotlin title="cockpit/SeatMassageViewModel.kt" showLineNumbers
+class SeatMassageViewModel(private val vehicle: VehicleClient) : ViewModel() {
+
+    private val path = "Vehicle.Cabin.Seat.Row1.DriverSide.Massage"
+
+    // Discover, never assume. The base trim has no massage motors.
+    private val available = vehicle.exists(path)
+
+    val ui = MutableStateFlow(
+        SeatMassageUi(visible = available, intensity = 0, pending = false)
+    )
+
+    init {
+        if (available) {
+            viewModelScope.launch {
+                // The displayed value comes ONLY from the vehicle.
+                vehicle.subscribe(path).collect { v ->
+                    ui.update { it.copy(intensity = v.toInt(), pending = false) }
+                }
+            }
+        }
+    }
+
+    fun onSliderChanged(target: Int) {
+        // Send the request; show pending; do NOT move the displayed value.
+        viewModelScope.launch {
+            ui.update { it.copy(pending = true) }
+            vehicle.setTarget(path, target)
+        }
+    }
+
+    fun onServiceLost() {
+        // Grey it out rather than freezing on a stale number.
+        ui.update { it.copy(visible = false) }
+    }
+}
+```
+
+Four patterns from the IVI module, all in twenty lines: **discover**, **render
+from confirmation**, **show pending**, **degrade visibly**.
+
+## Step 6 — The cluster confirmation
+
+The cluster shows a brief card. Android sends a description, never pixels.
+
+```protobuf title="cluster/messages.proto"
+message ComfortCard {
+  uint32 version   = 1;      // versioned from the first message
+  Zone   zone      = 2;      // ZONE_3 — the infotainment region
+  Icon   icon      = 3;      // ICON_SEAT_MASSAGE, an enum
+  string primary   = 4;      // "Massage"
+  uint32 value     = 5;      // 60
+  uint32 ttl_ms    = 6;      // clear after this long with no update
+}
+```
+
+<Plain>
+`ttl_ms` is the field that makes this safe. The cluster clears the card if
+nothing arrives within the time-to-live.
+
+Without it, Android hanging leaves a stale card on the safety display — the exact
+failure the cluster module warned about. With it, the card simply disappears, and
+that is the correct behaviour.
+</Plain>
+
+## Step 7 — Test the whole thing without a vehicle
+
+This is the payoff for all the layering.
+
+```bash title="Every case, from a command line"
+# 1. Normal operation
+kuksa-client set Vehicle.Cabin.Seat.Row1.DriverSide.Massage 60
+#    -> UI shows 60, cluster card appears
+
+# 2. The vehicle refuses (target set, current never follows)
+kuksa-client set-target Vehicle.Cabin.Seat.Row1.DriverSide.Massage 80
+#    -> UI shows pending, then returns to 60. It must NOT show 80.
+
+# 3. The trim has no massage hardware
+docker stop seat-massage-feeder
+#    -> the control is hidden entirely, no crash
+
+# 4. The service disappears mid-session
+docker stop seat-comfort-service
+#    -> control greys out; it must not freeze on 60
+
+# 5. Cluster time-to-live
+#    stop the cockpit app -> the cluster card clears within ttl_ms
+```
+
+<Plain>
+Five test cases. Five defects that would otherwise reach customers. Not one of
+them needs a vehicle, a test slot or a driver.
+
+That is the concrete argument for the whole architecture: **the layering is what
+makes the testing possible**, and the testing is what makes monthly releases
+possible.
+</Plain>
+
+## Step 8 — Ship it
+
+```text title="What goes where"
+VSS overlay              → generated artefacts, committed, checked in CI
+Feeder                   → a container on central compute, updatable
+Access policy            → broker configuration, reviewed like code
+Cockpit UI               → the Android system image, or an OEM store app
+Cluster message schema   → shared with the cluster supplier, versioned
+```
+
+<Scenario title="What happens six months later">
+The seat supplier adds a second massage programme. They extend the service —
+appending a method, not reordering — and bump the minor version to 1.1.
+
+**The feeder** does not need to change; it still calls `setMassage`.
+
+**The broker** does not need to change; the VSS signal is unchanged.
+
+**The cockpit UI** checks the version, sees 1.1, and shows the programme
+selector. On a vehicle still running 1.0 it does not.
+
+**The cluster** does not need to change at all.
+
+One team changed one thing, and it shipped to vehicles that could use it while
+vehicles that could not carried on working.
+
+That is what all the interface discipline was for. Not elegance — this.
+</Scenario>
+
+## The decisions that made this work
+
+Looking back at the whole feature, seven choices did the heavy lifting:
+
+1. **The signal was named and typed before any code was written.**
+2. **The service returns meaningful errors**, not a boolean.
+3. **Target and current values are separate**, so the UI cannot lie.
+4. **Access control lives in one place.**
+5. **The UI discovers rather than assumes.**
+6. **The cluster receives a description with a time-to-live**, not pixels.
+7. **Every interface is versioned**, so parts can change independently.
+
+<Plain>
+None of those is clever. All of them are boring discipline applied at the right
+moment — usually before writing code, which is when they cost almost nothing.
+
+That is, in the end, what software-defined actually requires. Not new
+technology so much as the willingness to define an interface properly and then
+live with it for a decade.
+</Plain>
+
+<Recap>
+- Start with the **signal definition**, not the code — it is what three teams
+  agree on.
+- **Meaningful errors** are what let a UI explain itself.
+- **Target and current values are separate.** This is what stops the screen
+  disagreeing with the vehicle.
+- **Access control in one place** answers the question a security review asks.
+- The UI **discovers, renders from confirmation, shows pending, degrades
+  visibly**.
+- The cluster gets a **description with a time-to-live**, never pixels.
+- Five test cases cover the real defects, and **none of them needs a vehicle**.
+- Six months later, one team changes one thing — because every interface was
+  versioned.
+</Recap>

@@ -1,0 +1,191 @@
+---
+title: "DDS and when to use it"
+description: "The other major vehicle protocol — publish-subscribe with quality-of-service guarantees. Why ADAS chose it, why body electronics did not, and how to pick between it and SOME/IP."
+order: 3
+difficulty: "Advanced"
+tags: ["DDS", "Protocols", "ADAS"]
+sources:
+  - label: "OMG Data Distribution Service"
+    href: "https://www.omg.org/spec/DDS/"
+  - label: "ROS 2 — DDS-based middleware"
+    href: "https://docs.ros.org/"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+---
+
+<T>SOME/IP</T> is not the only answer. <T>DDS</T> — Data Distribution Service —
+solves an overlapping problem differently, and on most modern vehicles both are
+present, doing different jobs.
+
+## The different starting point
+
+<Plain>
+SOME/IP starts from **services**: a component offers named capabilities, others
+call them. The mental model is remote procedure calls.
+
+DDS starts from **data**: there is a shared space of typed topics, publishers
+write to them, subscribers read from them. Nobody calls anybody.
+</Plain>
+
+<Analogy title="A shop counter versus a noticeboard">
+SOME/IP is a shop counter. You go to a specific place, ask for something, and get
+an answer or a refusal.
+
+DDS is a noticeboard with sections. Anyone can pin an update to the "vehicle
+speed" section; anyone interested watches that section. Nobody addresses anybody,
+and the board keeps the latest notice for people who arrive later.
+</Analogy>
+
+## What DDS adds: quality of service
+
+The distinguishing feature is that a subscriber can *state its requirements*, and
+the middleware enforces them.
+
+| QoS policy | What it controls |
+| --- | --- |
+| Reliability | Best-effort, or retransmit until delivered |
+| Durability | Does a late subscriber receive the last value, or only new ones? |
+| Deadline | Declare an expected update period; get notified if it is missed |
+| Liveliness | Detect that a publisher has stopped, quickly and explicitly |
+| History | How many past samples are kept for late joiners |
+| Latency budget | Hint the middleware to batch or send immediately |
+
+<Plain>
+The **deadline** and **liveliness** policies are the ones that matter most in a
+vehicle. Being told "the publisher of this data has stopped" — automatically, at
+a defined interval — is exactly what a consumer needs in order to degrade
+visibly rather than freezing on a stale value.
+
+That behaviour has to be hand-built on top of SOME/IP. In DDS it is
+configuration.
+</Plain>
+
+## Why ADAS chose it
+
+<Scenario title="Camera frames and a control loop">
+An ADAS perception stack takes four camera streams, runs detection, and feeds a
+control function that must react within a bounded time.
+
+The traffic profile is: high volume, continuous, many consumers of the same data,
+and a hard requirement to know immediately if a producer stops.
+
+DDS fits this exactly. Publishers write frames to a topic; perception, logging
+and diagnostics all subscribe independently. A liveliness policy detects a failed
+camera in milliseconds. A deadline policy detects a slow one.
+
+Modelling the same thing as SOME/IP method calls would mean either polling — a
+continuous request-response round trip per consumer — or building a bespoke
+notification mechanism that re-implements what DDS already provides.
+</Scenario>
+
+<Plain>
+This is also why robotics standardised on DDS: the problem shape is the same.
+Many sensors, many consumers, continuous data, and a need to know when something
+has stopped.
+</Plain>
+
+## Why body electronics did not
+
+Now the opposite case. "Move the seat to position 42, and tell me if you
+refused."
+
+<Plain>
+That is a request with a specific answer and a meaningful error. In DDS it
+becomes: publish a command to a topic, subscribe to a result topic, and correlate
+the response yourself with a request identifier you invented.
+
+It works. It is more machinery than the problem needs, and the correlation logic
+is exactly what SOME/IP methods give you for free.
+
+**Use the one whose model matches the problem.** Request-response is SOME/IP.
+Continuous multi-consumer data is DDS.
+</Plain>
+
+## Choosing between them
+
+| Your situation | Use |
+| --- | --- |
+| Request with a specific answer and errors | SOME/IP |
+| Continuous stream, several consumers | DDS |
+| Need automatic deadline and liveliness detection | DDS |
+| Migrating from CAN signals | SOME/IP fields |
+| High-frequency sensor data | DDS |
+| Occasional command | SOME/IP |
+| Sharing with a ROS-based stack | DDS |
+| Existing AUTOSAR toolchain | SOME/IP |
+
+<Plain>
+The last two rows are worth taking seriously. Protocol choice is often decided by
+the surrounding ecosystem rather than by technical merit — and that is a
+legitimate reason.
+
+An ADAS team using ROS is going to use DDS. A body team with an AUTOSAR toolchain
+is going to use SOME/IP. Fighting that costs more than it gains.
+</Plain>
+
+## Both, with a bridge
+
+Most real vehicles run both, with a bridge where they meet.
+
+```text title="The common arrangement"
+  cameras, radar ──DDS──> ADAS perception ──DDS──> ADAS control
+                                │
+                            bridge (state only, not raw data)
+                                │
+  seat, lights, doors ──SOME/IP──> cockpit ──SOME/IP──> cluster & IVI
+```
+
+<Plain>
+The bridge should carry **derived state, not raw data**. The cockpit needs "lane
+keeping is active" — it does not need camera frames.
+
+A bridge that forwards raw ADAS data into the infotainment domain is both a
+bandwidth problem and a safety-argument problem, because it creates a coupling
+between a rated domain and an unrated one.
+</Plain>
+
+## Practical notes
+
+**Discovery is chatty.** DDS discovery is more talkative than SOME/IP's. On a
+constrained network this needs tuning, and default settings are rarely right for
+a vehicle.
+
+**Configuration is where the complexity lives.** The API is small; QoS policy
+interaction is not. Two policies that each look sensible can combine into
+behaviour nobody intended — a reliability setting that conflicts with a history
+depth, for instance.
+
+**Implementations differ.** DDS is a specification with several implementations,
+some open source and some commercial. Interoperability is specified but worth
+testing rather than assuming.
+
+```bash title="Debugging"
+tcpdump -i eth0 -w dds.pcap        # Wireshark dissects RTPS, the DDS wire protocol
+# then check: are participants discovering each other, and do QoS settings match?
+```
+
+<Plain>
+That last check is the most common DDS failure: a publisher and subscriber whose
+QoS policies are **incompatible** simply never connect. No error, no traffic — the
+match just does not happen. It looks like a network fault and is a configuration
+mismatch.
+</Plain>
+
+<Recap>
+- **SOME/IP starts from services** (call something). **DDS starts from data**
+  (publish to a topic).
+- DDS's distinguishing feature is **quality of service** — especially **deadline**
+  and **liveliness**, which give you stale-data detection as configuration rather
+  than code.
+- **ADAS and robotics choose DDS** because the shape is many producers, many
+  consumers, continuous data.
+- **Body and comfort choose SOME/IP** because the shape is request-response with
+  meaningful errors.
+- Most vehicles run **both, with a bridge** — and the bridge should carry derived
+  state, never raw data.
+- Incompatible QoS policies **silently fail to connect**. Check that first.
+</Recap>
+
+## Next
+
+The shared vocabulary both protocols carry.

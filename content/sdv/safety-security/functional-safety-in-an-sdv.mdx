@@ -1,0 +1,262 @@
+---
+title: "Functional safety in a software-defined vehicle"
+description: "ISO 26262 in plain terms, why consolidation makes safety harder rather than easier, and what changes when the software is supposed to be updated after the safety case was written."
+order: 1
+difficulty: "Advanced"
+tags: ["Functional safety", "ISO 26262", "ASIL"]
+sources:
+  - label: "ISO 26262 — road vehicles functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+  - label: "Android — instrument cluster"
+    href: "https://source.android.com/docs/automotive/displays/cluster_api"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+---
+
+Functional safety is the part of automotive that most obviously has no equivalent
+in general software, and it is usually taught through the standard's structure
+rather than its purpose. Start with the purpose.
+
+## What it is actually about
+
+<Plain>
+Functional safety asks one question: **if this system malfunctions, can it hurt
+someone, and what have you done about it?**
+
+That is narrower than it first sounds. It is not about the system being good, or
+reliable, or meeting requirements. It is about the specific subset of failures
+that lead to physical harm.
+
+A navigation app that crashes is a quality problem. A navigation app that crashes
+and takes the speedometer with it is a safety problem — and the difference is
+entirely about what else was on that screen.
+</Plain>
+
+<Analogy title="Two questions about a ladder">
+"Is this a good ladder?" asks about height, weight, how pleasant it is to use.
+
+"Can this ladder drop someone?" is a different question with a different method:
+what could fail, how likely, how bad, and what stops it.
+
+ISO 26262 is a rigorous way of asking the second question, and it deliberately
+does not care about the first.
+</Analogy>
+
+## ASIL, without the ceremony
+
+<T>ASIL</T> ratings come from a hazard analysis of three factors, at the level of
+a *situation*, not a component.
+
+| Factor | Question |
+|---|---|
+| **Severity** | How badly hurt, if this goes wrong? |
+| **Exposure** | How often are people in the situation where it matters? |
+| **Controllability** | Can a normal driver cope when it happens? |
+
+<Plain>
+Combine those and you get QM (no safety requirement) through ASIL A, B, C to
+ASIL D (the most stringent).
+
+The crucial and frequently missed point: **ASIL applies to a hazard, not to a
+box**. "The cluster is ASIL B" is shorthand at best. What is actually rated is
+something like "loss of the brake warning telltale while driving is ASIL B", and
+from that flows a requirement on whatever displays it.
+
+This matters practically because it is what allows decomposition. If the hazard
+is "the driver is not warned", and two independent paths could warn them, each
+path may carry a lower rating than the combined requirement.
+</Plain>
+
+<Scenario title="Rating one cluster, item by item">
+Take a single display and work through what it shows.
+
+**Speed reading wrong.** Severity: moderate. Exposure: constant. Controllability:
+a driver has other cues — engine noise, traffic, road signs. Typically **ASIL A
+or B**.
+
+**Brake fault telltale missing.** Severity: high — the driver keeps driving with
+failing brakes. Exposure: rare, but the situation is exactly when it matters.
+Controllability: low, since the driver has no other way to know. Typically
+**ASIL B or C**.
+
+**Navigation showing the wrong street.** Severity: annoyance. Not a safety
+hazard at all. **QM**.
+
+**Media artwork failing to load.** **QM**, obviously.
+
+One physical display, four items, ratings from QM to ASIL C. That spread is the
+entire reason for the mixed-criticality architecture — you build to the highest
+requirement only where it applies, and let the rest be ordinary software.
+</Scenario>
+
+## Why consolidation makes this harder
+
+The SDV promise is fewer, more powerful computers. The safety consequence runs
+the other way.
+
+<Plain>
+**Separate ECUs give you independence for free.** If the cluster and the media
+system are different boxes with different power supplies, a fault in one cannot
+plausibly affect the other. You do not have to argue it; the wiring diagram is
+the argument.
+
+**Consolidation removes that.** Shared SoC, shared memory controller, shared
+power rail, shared thermal envelope, shared bus. Now every claim of independence
+must be argued explicitly and demonstrated.
+
+This is the central difficulty of modern cockpit safety, and it is why
+<T>freedom from interference</T> is a phrase you will hear constantly.
+</Plain>
+
+### What must be shown
+
+| Resource | The question to answer |
+|---|---|
+| **CPU time** | Can a runaway process starve the safety partition? |
+| **Memory** | Can one partition read or corrupt another's? |
+| **Peripherals** | Can a guest reprogram a shared controller? |
+| **Interrupts** | Can one partition delay another's interrupt handling? |
+| **Power** | Does a shared rail create a common-cause failure? |
+| **Thermal** | Can heavy load in one partition throttle the other? |
+| **Time** | Do both partitions have a trustworthy clock? |
+
+<Plain>
+A certified <T>hypervisor</T> answers the first four with hardware enforcement —
+fixed core allocation, an IOMMU, static memory partitioning, interrupt routing
+that is configured rather than negotiated.
+
+Power and thermal are harder because they are physical. Many designs conclude
+that a shared SoC cannot support the highest ASIL content at all, and put a
+separate safety microcontroller on the board. That is not a failure of
+consolidation; it is consolidation stopping at the point where the argument runs
+out.
+</Plain>
+
+<Gotcha>
+"The hypervisor is certified, therefore we have freedom from interference" is
+incomplete. The certificate covers the hypervisor **configured as described in
+its safety manual**.
+
+If you allocated cores dynamically, enabled a feature the manual excludes, or
+shared a device it said not to share, the certificate does not extend to your
+system. This gap has been discovered late on real programmes.
+</Gotcha>
+
+## The pattern that actually gets built
+
+<DiagramFrame
+  title="Mixed criticality on one SoC"
+  caption="The safety function is small, isolated and separately rendered. Android handles everything the safety case does not depend on."
+>
+  <MixedCriticality />
+</DiagramFrame>
+
+<Plain>
+The recurring shape:
+
+1. **The safety function is made as small as possible.** Telltales and a numeric
+   speed, not a full UI. Small means arguable.
+2. **It runs somewhere isolated** — a certified guest, or a separate MCU.
+3. **It gets its data independently.** The brake telltale's signal does not pass
+   through Android. If it did, Android would be in the safety path and would need
+   the rating.
+4. **It renders to its own layer**, composited by hardware above Android's
+   output.
+5. **A watchdog checks it** — the display is actually being updated, the content
+   is what was intended, at the expected rate.
+6. **Android does everything else**, and its failure is a quality event.
+
+The design instinct to take from this: **the goal is to keep things out of the
+safety path, not to make more things safe.**
+</Plain>
+
+## What updates do to a safety case
+
+Here is where the SDV genuinely creates a new problem rather than inheriting an
+old one.
+
+<Plain>
+A safety case is an argument that a **specific version** of a system is
+acceptably safe. Traditionally the software was frozen at start of production and
+the argument held for the vehicle's life.
+
+If software is going to be updated fifty times over fifteen years, the argument
+has to be maintained fifty times. That means:
+
+- **Impact analysis per change.** Does this touch anything the safety argument
+  depends on? Answering that requires traceability that most codebases do not
+  have by default.
+- **Regression evidence.** The safety-relevant tests re-run and re-recorded, every
+  release.
+- **Configuration control across the fleet.** Which vehicle runs which version,
+  and is each combination one you have an argument for?
+- **Compatibility with the unchanged parts.** A new cockpit version running
+  against a three-year-old body controller must still be safe.
+- **R156 documentation.** The regulator expects to see this process, not just its
+  output.
+</Plain>
+
+<Scenario title="A one-line change and its cost">
+An engineer changes the cluster's rendering to composite one extra layer, for a
+new media animation.
+
+**The question the process asks:** does this affect the timing of the safety
+overlay?
+
+**Finding out:** the overlay is a hardware plane, so in principle no. But the
+change increases GPU load, and if GPU load can cause the display controller to
+miss a frame deadline, the telltale could be late.
+
+**The work:** measure worst-case frame timing under maximum load, confirm the
+margin, record the evidence, update the impact analysis.
+
+Three days of work for a one-line change — and this is the process functioning
+correctly, not bureaucracy. The alternative is not knowing.
+
+The lesson for design: **architect so that most changes cannot affect the safety
+path**, because the analysis cost is per change and it compounds. A team that
+puts the safety overlay on a dedicated hardware plane with a guaranteed budget
+pays once. A team that shares a GPU queue pays every release.
+</Scenario>
+
+## What an Android engineer should actually know
+
+You will not write the safety case. These five things will still affect you:
+
+**Know whether your feature is in the safety path.** Usually it is not, and
+knowing that with confidence is what lets you move quickly.
+
+**Never route safety-relevant data through Android** to save an interface. It
+pulls Android into the argument and the cost is enormous.
+
+**Respect the display layering.** The safety plane is above yours by design. Do
+not design layouts that assume otherwise.
+
+**Understand your resource budget is fixed.** Fixed cores and memory are what
+buys freedom from interference. You cannot borrow.
+
+**Take degraded modes seriously.** What your UI shows when a property goes stale
+or a service dies is often a safety-adjacent requirement, even when your
+component is QM. Showing a plausible stale value is worse than showing nothing.
+
+<Recap>
+- Functional safety asks only: **can a malfunction here cause harm, and what
+  prevents it?**
+- <T>ASIL</T> comes from **severity × exposure × controllability**, and it applies
+  to a **hazard**, not to a box — which is what makes decomposition possible.
+- One display can carry items from QM to ASIL C; build to the highest requirement
+  only where it applies.
+- **Consolidation removes free independence.** Every claim must now be argued:
+  CPU, memory, peripherals, interrupts, power, thermal, time.
+- A certified hypervisor covers only the configuration in its **safety manual**.
+- The standard pattern: **make the safety function small**, isolate it, feed it
+  independently, render it separately, watchdog it, and keep Android out.
+- **Updates mean the safety case must be maintained**, per release, with impact
+  analysis and traceability.
+- Architect so that most changes **cannot** touch the safety path — the analysis
+  cost is per change.
+</Recap>
+
+## Next
+
+Security inside the vehicle, where the network can no longer be trusted.

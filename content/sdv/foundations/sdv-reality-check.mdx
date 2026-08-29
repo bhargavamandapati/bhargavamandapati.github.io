@@ -1,0 +1,150 @@
+---
+title: "An honest reality check"
+description: "Where the industry actually is versus where the slides say it is — what has genuinely shipped, what has gone wrong, and how to read an SDV claim without being cynical about it."
+order: 4
+difficulty: "Beginner"
+tags: ["SDV", "Industry"]
+sources:
+  - label: "Eclipse SDV working group"
+    href: "https://sdv.eclipse.org/"
+  - label: "COVESA"
+    href: "https://covesa.global/"
+  - label: "UN R156 — software update management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update"
+---
+
+Every technology goes through a period where the presentations run well ahead of
+the products. SDV is in that period.
+
+This page is the corrective — not to be cynical, but because knowing what has
+actually shipped is genuinely useful when you are estimating work or evaluating
+a claim.
+
+## What has demonstrably worked
+
+**Over-the-air updates.** Several manufacturers now routinely update vehicle
+software in the field, including safety-relevant components. This is real,
+shipped, and increasingly expected. It is also now a regulatory obligation, so it
+is not going away.
+
+**Cockpit consolidation.** Cluster and infotainment sharing one processor is in
+volume production across many brands. The hypervisor-based approach works.
+
+**Modern infotainment platforms.** Android Automotive and comparable stacks have
+shipped in large numbers with app ecosystems, voice assistants and genuine
+post-sale feature additions.
+
+**Zonal wiring.** Real vehicles ship with real zonal harnesses and real weight
+savings.
+
+<Plain>
+That is a substantial list. The core claim of SDV — that vehicles can improve
+after they are sold — has been demonstrated repeatedly. It is not vapour.
+</Plain>
+
+## What has been harder than expected
+
+**Full central compute.** Almost nobody has consolidated *everything*. Most
+vehicles are a modern cockpit and central ADAS bolted onto a conventional body
+electrical system, with a gateway between. That mixture is the normal case.
+
+**Service-oriented everything.** Adoption is uneven. Plenty of "service-oriented"
+programmes have a service layer sitting on top of unchanged CAN signals — which
+is a legitimate migration step, but it is not the same thing.
+
+**Cross-manufacturer standards.** VSS, uProtocol and the Eclipse projects are
+real and useful, and adoption is patchy. Most vehicles still run largely
+proprietary stacks.
+
+**Organisational change.** This is consistently the biggest obstacle and the
+least discussed. Companies structured around hardware programmes and project
+funding find it genuinely difficult to sustain software teams for fifteen years.
+
+## What has gone badly
+
+<Scenario title="The heated seats episode">
+A manufacturer offered heated seats as a monthly subscription in markets where
+the hardware was fitted to every car.
+
+Technically it worked exactly as designed. Commercially it was a serious
+misjudgement. The reaction was strongly negative, coverage was hostile, and the
+policy was walked back.
+
+The lesson generalised across the industry: **customers distinguish sharply
+between paying for something new and paying to unlock something they already
+own.** Feature-on-demand works for capabilities that genuinely arrive later. It
+does not work for hardware sitting in the car, switched off.
+
+Worth knowing because the same proposal will come up on your programme, framed
+as a revenue opportunity, and the technical answer is "yes, easily" while the
+right answer is more complicated.
+</Scenario>
+
+**Update quality.** Several manufacturers have shipped over-the-air updates that
+degraded or disabled functions, occasionally requiring recovery visits. The
+capability to update everywhere quickly is also the capability to break
+everything quickly, and staged rollout discipline is not always as mature as the
+delivery mechanism.
+
+**Complexity underestimation.** The consolidated software stack is genuinely
+harder than the sum of the ECUs it replaced. Several high-profile programmes have
+slipped substantially on software.
+
+## How to read an SDV claim
+
+Not cynically — usefully. Four questions:
+
+1. **What shipped, in which model year, to how many vehicles?** Demonstrations
+   and pilots are not products.
+2. **Which functions are actually on central compute?** Frequently the cockpit
+   only.
+3. **What is the update cadence in the field?** Monthly is a real capability.
+   Annually is a workshop process with a different name.
+4. **What still speaks CAN?** The honest answer is usually "most of the body
+   electronics", and that is fine — it just bounds what is possible.
+
+<Plain>
+None of these questions is hostile. They are the same questions a good architect
+asks internally, and the answers determine what work is actually available.
+
+A programme that says "the cockpit is on a new platform, the body is legacy, and
+we ship cockpit updates quarterly" is being honest and is a perfectly good place
+to work. One that cannot answer is either early or overselling.
+</Plain>
+
+## Where this is heading
+
+The direction is not in doubt — the pressures from the previous topic are not
+reversible. What is uncertain is pace, and the realistic expectation is:
+
+- **Consolidation continues**, unevenly, domain by domain rather than all at once
+- **Cockpit and ADAS lead**, body electronics follow slowly
+- **Standards adoption grows** but proprietary stacks persist for a long time
+- **Regulation drives update capability** faster than commercial appetite would
+- **Feature-on-demand settles** into genuinely-new capabilities rather than
+  unlocking installed hardware
+
+<Plain>
+For your career, the useful read is this: the skills that matter are the ones
+that survive the mixture. Understanding both a modern service architecture *and*
+a CAN gateway is far more employable than understanding only one, because real
+vehicles will contain both for at least another decade.
+</Plain>
+
+<Recap>
+- **OTA updates, cockpit consolidation, modern infotainment and zonal wiring have
+  genuinely shipped.** SDV is not vapour.
+- **Full central compute is rare.** Most vehicles are a modern cockpit on a
+  conventional body electrical system.
+- **Service-oriented adoption is uneven** — a service layer over unchanged CAN
+  signals is a migration step, not the destination.
+- The **heated seats episode** taught the industry that customers reject paying
+  to unlock installed hardware.
+- **Organisational change is the biggest obstacle**, and the least talked about.
+- Ask what shipped, to how many vehicles, at what cadence, and what still speaks
+  CAN.
+</Recap>
+
+## Next
+
+What all of this means for the work you will actually do.

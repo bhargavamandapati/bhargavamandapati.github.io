@@ -1,0 +1,182 @@
+---
+title: "Why the industry is changing"
+description: "SDV is expensive, disruptive and organisationally painful. Four pressures explain why car makers are doing it anyway — and knowing them makes most architecture decisions predictable."
+order: 2
+difficulty: "Beginner"
+tags: ["SDV", "Industry", "Strategy"]
+sources:
+  - label: "COVESA — industry alliance"
+    href: "https://covesa.global/"
+  - label: "Eclipse SDV working group"
+    href: "https://sdv.eclipse.org/"
+  - label: "UN R156 — software update management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update"
+---
+
+Rewriting a vehicle's entire electrical architecture is an enormous, risky,
+expensive undertaking. Car makers are conservative organisations. So why is
+essentially the whole industry doing it at once?
+
+Four pressures. Once you know them, most of the technical decisions you will
+meet stop looking arbitrary.
+
+## Pressure 1 — Complexity stopped being manageable
+
+<Scenario title="The integration problem that has no solution">
+A vehicle programme has 120 <T>ECU</T>s from 40 suppliers. Each supplier has its
+own release cycle, tooling and test process.
+
+A single feature — say, "the seat moves back when you unlock the car" —
+touches the key module, the body controller, the seat ECU and the gateway. Four
+suppliers, four release schedules.
+
+Changing it means coordinating four organisations, four validation cycles and
+four delivery dates. This takes months, and it takes months **every single
+time**.
+
+There is no clever process that fixes this. The cost is structural: it comes from
+the number of independent parties, and the only way to reduce it is to reduce
+that number.
+</Scenario>
+
+<Plain>
+This is the pressure engineers feel most directly. Consolidating a hundred
+independently-delivered boxes into a handful of computers running software you
+control turns a four-organisation negotiation into a code change.
+
+It is the least glamorous reason for SDV and probably the most important one.
+</Plain>
+
+## Pressure 2 — Customers now expect improvement
+
+A phone gets better after you buy it. So does a television, a games console, a
+watch.
+
+A car, historically, did not. It was as good on day one as it would ever be, and
+slightly worse every year after.
+
+<Plain>
+Once one manufacturer demonstrated that a car could gain features overnight, that
+became the baseline expectation rather than a differentiator. A vehicle that
+cannot improve now reads as dated within two years of purchase — which affects
+resale value, which affects lease pricing, which affects what customers will pay.
+
+The competitive pressure here is not about any specific feature. It is about
+whether the product feels alive.
+</Plain>
+
+## Pressure 3 — Revenue after the sale
+
+Traditionally a car generates revenue once, at the point of sale, plus servicing.
+
+Software changes that. A feature can be sold to a vehicle already on the road.
+Subscriptions, one-off unlocks, upgrades — all delivered without anybody visiting
+a workshop.
+
+<Plain>
+This is the reason most often cited in boardrooms, and it is worth being honest
+about how it has actually gone.
+
+Some of it has worked well: navigation subscriptions, connected services,
+genuinely new capabilities delivered later.
+
+Some of it has gone badly. Charging for heated seats in a car that physically
+contains the heating elements produced a significant customer backlash, and
+several manufacturers reversed course.
+
+The distinction customers draw is clear even when companies miss it: **paying for
+something new is acceptable; paying to unlock something you already own is not.**
+<T>Feature on demand</T> covers this properly later in the curriculum.
+</Plain>
+
+## Pressure 4 — Regulation now requires update capability
+
+This one is less discussed and increasingly decisive.
+
+<T>Cybersecurity</T> regulation in several major markets now requires
+manufacturers to monitor for vulnerabilities and respond throughout a vehicle's
+service life — which can be fifteen years.
+
+<Plain>
+Consider what that obligation implies. A vulnerability is found in a library used
+by a component in a vehicle sold six years ago. You are legally required to
+respond.
+
+If the only way to update that component is a workshop visit for every affected
+vehicle, the obligation is practically impossible to meet.
+
+**The ability to update over the air stops being a feature and becomes a
+compliance requirement.** And once you have built the infrastructure to deliver
+security fixes over the air, delivering features over the air is nearly free —
+which pulls the rest of SDV along behind it.
+</Plain>
+
+## What actually enabled it
+
+Pressures explain the motive. Three things made it possible now rather than a
+decade ago:
+
+**Automotive-grade processors got powerful enough.** Running several operating
+systems and dozens of functions on one chip, within an automotive thermal and
+temperature envelope, is recent.
+
+**Automotive Ethernet matured.** Moving from broadcast <T>CAN</T> at kilobits to
+switched Ethernet at gigabits — with <T>TSN</T> providing timing guarantees — is
+what allows a central computer to talk to everything fast enough.
+
+**Hypervisors became automotive-viable.** Running a safety-rated system and a
+general-purpose one on the same chip, with provable isolation, is what makes
+consolidation acceptable to a safety engineer.
+
+## The costs, stated honestly
+
+SDV is not free, and pretending otherwise leads to bad planning.
+
+| Cost | Reality |
+| --- | --- |
+| Hardware | Central compute is far more expensive than a small ECU |
+| Complexity moves | It does not vanish — it becomes software complexity |
+| New skills | Hypervisors, service architectures, cloud, CI at scale |
+| Organisational change | Suppliers deliver software, not boxes — a different contract |
+| Safety burden | Proving isolation on shared hardware is genuinely hard |
+| Lifetime obligation | Software teams must exist for fifteen years, not until launch |
+
+<Plain>
+That last row is the one most often underestimated. A conventional programme's
+software team disbands after start of production. An SDV programme's team must
+keep going for the life of the vehicle — a permanent operating cost, not a
+project cost.
+
+Organisations built around project funding find this genuinely difficult.
+</Plain>
+
+## What this means for your work
+
+Understanding the pressures makes a lot of things predictable:
+
+- **Why architecture reviews are strict about service interfaces.** Because the
+  whole point is adding consumers later without redesign.
+- **Why the update path is treated as safety-critical.** Because it is a
+  compliance obligation, not a convenience.
+- **Why dependencies get scrutinised.** Because someone will be patching them in
+  2041.
+- **Why simulation gets so much investment.** Because physical vehicles are the
+  bottleneck and always will be.
+
+<Recap>
+- **Complexity** made a hundred independently-delivered ECUs unintegrable at the
+  rate features are now expected.
+- **Customer expectation** shifted: a car that cannot improve feels dated.
+- **Revenue after the sale** is the commercial driver — and the part that has
+  caused real backlash when done badly.
+- **Regulation** now requires update capability for a vehicle's whole life, which
+  makes OTA a compliance matter rather than a feature.
+- Enabled by **powerful automotive processors, Automotive Ethernet, and viable
+  hypervisors**.
+- The costs are real: hardware, skills, organisational change, and a software
+  team that must exist for fifteen years.
+</Recap>
+
+## Next
+
+How the electronics got to this point, in more detail.

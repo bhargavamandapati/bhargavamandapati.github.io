@@ -1,0 +1,171 @@
+---
+title: "Automotive Ethernet and TSN"
+description: "The physical layer that makes everything else possible — why a car needed its own Ethernet, and why raw speed was never the hard part."
+order: 1
+difficulty: "Intermediate"
+tags: ["Ethernet", "TSN", "Networking"]
+sources:
+  - label: "IEEE 802.1 Time-Sensitive Networking"
+    href: "https://www.ieee802.org/1/"
+  - label: "IEEE 802.3 Automotive Ethernet"
+    href: "https://www.ieee802.org/3/"
+  - label: "COVESA"
+    href: "https://covesa.global/"
+---
+
+Everything in this module rests on the network. Services, data brokers and
+central compute all assume that moving data around the vehicle is fast and
+predictable — which, on <T>CAN</T>, it is not.
+
+## What CAN could and could not do
+
+CAN has been the vehicle backbone since the 1980s, and it earned that position.
+It is extremely robust, cheap, needs only two wires, and degrades gracefully.
+
+Its limits, though, are structural:
+
+| | CAN | What a modern vehicle needs |
+| --- | --- | --- |
+| Speed | Up to 1 Mbit/s | Camera and sensor data: hundreds of Mbit/s |
+| Payload | 8 bytes per frame | Structured messages, sometimes kilobytes |
+| Topology | Shared bus, everyone hears everything | Switched, point-to-point |
+| Addressing | None — messages are numbered, not addressed | Named endpoints |
+| Growth | Adding traffic loads the whole bus | Capacity that scales |
+
+<Plain>
+The 8-byte payload is the constraint people underestimate. A service call with a
+few parameters and a structured response does not fit. Everything must be
+fragmented and reassembled, which is why signal-oriented design was not really a
+choice — it was what the wire allowed.
+</Plain>
+
+## Why ordinary Ethernet was not enough
+
+Office Ethernet is fast, cheap and universal. Two things made it unusable in a
+vehicle without modification.
+
+**Cabling.** Standard Ethernet uses four twisted pairs and bulky connectors.
+Automotive Ethernet (100BASE-T1, 1000BASE-T1) runs over **a single twisted pair**
+with automotive connectors, tolerating vehicle temperature ranges and
+electromagnetic conditions.
+
+**Timing.** This is the important one.
+
+<Plain>
+Standard Ethernet makes no promise about *when* a packet arrives. Under load,
+packets queue. Usually that is invisible — a web page arriving 40 ms later does
+not matter.
+
+In a vehicle it matters enormously. If a brake-related message can be delayed
+behind a camera frame, the network is unusable for control, regardless of how
+fast it is on average.
+
+**Speed was never the hard part. Predictability was.**
+</Plain>
+
+## What TSN adds
+
+<T>TSN</T> — Time-Sensitive Networking — is a set of IEEE standards that add
+guarantees to Ethernet. The pieces that matter in a vehicle:
+
+**Time synchronisation.** Every device shares a common clock, accurate to
+microseconds. Everything else depends on this.
+
+**Scheduled traffic.** The network runs on a repeating schedule with reserved
+slots. A control message has a slot; nothing else may transmit during it.
+
+**Frame preemption.** A large, low-priority frame already in transmission can be
+interrupted so an urgent frame goes first, then resumed.
+
+**Stream reservation.** A talker declares its bandwidth and latency needs up
+front; the network either guarantees them or refuses the stream.
+
+<Analogy title="Like bus lanes and a timetable">
+An ordinary road is fast when empty and unpredictable at rush hour. You cannot
+promise an ambulance a journey time.
+
+Add dedicated lanes and a schedule, and certain traffic gets a guarantee
+regardless of congestion. Everything else uses the remaining capacity.
+
+TSN is the bus lanes and the timetable. The road is the same Ethernet.
+</Analogy>
+
+<Scenario title="Why this is not theoretical">
+A consolidated vehicle carries, on one network: four camera feeds, ADAS sensor
+data, cluster content, infotainment audio and video, diagnostic traffic, and
+vehicle control messages.
+
+Without scheduling, a burst of camera traffic delays a control message by a few
+milliseconds. Usually harmless. Occasionally not — and "occasionally" is not
+something a safety argument can accommodate.
+
+With TSN, the control message has a reserved slot. The camera traffic uses what
+is left. The delay is bounded and the bound is provable, which is what a safety
+case actually requires.
+</Scenario>
+
+## What this means in practice
+
+**The network is designed, not grown.** Schedules and reservations are computed
+offline from a description of all traffic. Adding a stream is a configuration
+change, not something that happens spontaneously.
+
+<Plain>
+This is worth noticing, because it slightly qualifies the service-oriented
+promise. Discovery lets you add a *consumer* freely. Adding a new
+high-bandwidth *stream* still touches the network configuration.
+
+In practice programmes reserve headroom for exactly this.
+</Plain>
+
+**CAN does not disappear.** Automotive Ethernet is the backbone; CAN remains at
+the edges, connecting simple sensors and actuators where its cost and robustness
+still win. A gateway translates between them, and that gateway is significant,
+ongoing work on every real programme.
+
+```text title="The realistic topology"
+   sensors/actuators ──CAN/LIN──> zone controller
+                                        │
+                                   Automotive
+                                    Ethernet
+                                    (+ TSN)
+                                        │
+                                 central compute
+```
+
+**Diagnostics change.** Debugging shifts from a CAN analyser to Ethernet packet
+capture. Familiar tools work, with automotive-specific dissectors.
+
+```bash title="Looking at the wire"
+# CAN, at the edges
+candump can0
+
+# Ethernet backbone
+tcpdump -i eth0 -w capture.pcap
+# then analyse SOME/IP and DDS traffic in Wireshark
+```
+
+## What to check on a programme
+
+- **Is TSN actually enabled, or is it Ethernet without timing guarantees?** This
+  is a real distinction and the answer is sometimes "not yet".
+- **Who owns the network schedule**, and what does adding a stream cost?
+- **Where is the CAN boundary**, and who owns the gateway?
+- **Is there reserved headroom** for streams added later in the programme?
+
+<Recap>
+- CAN's limits are **structural**: 1 Mbit/s, 8-byte payloads, shared bus, no
+  addressing.
+- Automotive Ethernet runs over **a single twisted pair** with automotive-grade
+  connectors and tolerances.
+- **Speed was never the problem — predictability was.** TSN adds time sync,
+  scheduled traffic, preemption and reservation.
+- The network is **designed offline**, so adding a high-bandwidth stream is a
+  configuration change even in a service-oriented world.
+- **CAN persists at the edges**, and the gateway between old and new is permanent
+  work.
+</Recap>
+
+## Next
+
+The protocol that carries services over this network.

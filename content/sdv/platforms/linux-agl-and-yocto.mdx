@@ -1,0 +1,227 @@
+---
+title: "Linux, AGL and Yocto"
+description: "The open-source alternative to Android in the cockpit — how an automotive Linux is actually built, what Automotive Grade Linux provides, and the real trade-off an OEM is making when it chooses this route."
+order: 3
+difficulty: "Intermediate"
+tags: ["Linux", "Yocto", "AGL", "Platforms"]
+sources:
+  - label: "Automotive Grade Linux"
+    href: "https://www.automotivelinux.org/"
+  - label: "Yocto Project documentation"
+    href: "https://docs.yoctoproject.org/"
+  - label: "Eclipse SDV working group"
+    href: "https://sdv.eclipse.org/"
+---
+
+Android is not the only answer to "what runs the screen". A large part of the
+industry runs plain Linux, and understanding why makes the trade-offs of your own
+platform much clearer.
+
+## Why not just use a desktop distribution
+
+<Plain>
+You cannot ship Ubuntu in a car, and the reasons are worth listing because they
+explain the entire tooling ecosystem that follows.
+
+**You must account for every binary.** Regulation and security review require
+knowing exactly what is on the device and where it came from. A general-purpose
+distribution pulls in thousands of packages you did not choose.
+
+**Licences are a legal exposure.** A GPL-3 component in a locked-down device
+creates obligations most OEMs will not accept. You need to control what enters
+the image, not discover it later.
+
+**The hardware is fixed and odd.** A specific SoC, a specific display
+controller, vendor kernel patches that are not upstream. A distribution built for
+generic PCs does not boot on it.
+
+**Storage and boot time are constrained.** A few gigabytes of flash and a
+requirement to show something within seconds. Desktop distributions optimise for
+neither.
+
+**The lifetime is fifteen years.** You need to rebuild bit-identically in a
+decade, long after any distribution's support window.
+</Plain>
+
+<Analogy title="Ordering a suit versus buying one">
+An off-the-peg suit is quicker and fine for most occasions. But if you need it to
+fit an unusual frame, last fifteen years, and come with documentation of every
+thread's origin, it gets made to measure.
+
+<T>Yocto</T> is the tailor. It is more work up front, and the result fits exactly
+one body.
+</Analogy>
+
+## Yocto: building a distribution rather than installing one
+
+Yocto is not a Linux distribution. It is a build system that produces one from
+recipes.
+
+<Plain>
+A **recipe** describes one piece of software: where the source comes from, what
+it depends on, how to configure and compile it, what files end up in the image.
+
+A **layer** is a collection of recipes — a BSP layer for your SoC, a layer for
+your OEM's software, a layer for a middleware stack.
+
+An **image** is a named set of packages to include.
+
+You run `bitbake`, it works out the dependency graph, and hours later you have a
+flashable image containing exactly what you specified and nothing else.
+</Plain>
+
+```
+meta                (Yocto core recipes)
+meta-poky           (reference distro policy)
+meta-openembedded   (community recipes)
+meta-<soc-vendor>   (kernel, bootloader, GPU drivers for your chip)
+meta-agl            (automotive services and profiles)
+meta-<oem>          (your applications, your branding, your policy)
+                    ↓
+                 bitbake
+                    ↓
+       image + SDK + licence manifest + SBOM
+```
+
+<Gotcha>
+The output that surprises people is not the image — it is the **licence manifest**
+and <T>SBOM</T>. Yocto emits a full account of every component and its licence,
+because that account is a shipping requirement. Getting it for free is one of the
+strongest practical arguments for the whole approach.
+</Gotcha>
+
+### The cost, stated plainly
+
+A full Yocto build from cold is measured in hours and tens of gigabytes. Adding
+one library can trigger a large rebuild. New engineers find it opaque for weeks.
+
+<Scenario title="A day with Yocto">
+You need to add a small JSON library to the image.
+
+1. Write a recipe: source URL, checksum, licence, build steps.
+2. Add it to an image or a package group.
+3. `bitbake your-image` — and wait, because your change invalidated a dependency
+   the sysroot was built on.
+4. Flash and test.
+
+Total: most of a day the first time, twenty minutes once you know the layout.
+
+Compare with Android, where adding a dependency to an app is a line in a Gradle
+file. The Android experience is better for application work. The Yocto experience
+gives you something Android does not: you can also change the kernel, the
+bootloader, and the init sequence in the same build with the same tooling.
+</Scenario>
+
+## AGL: the shared baseline
+
+Every OEM building automotive Linux was solving the same problems separately.
+<T>AGL</T> is the Linux Foundation project that pooled that work.
+
+<Plain>
+AGL provides a Yocto-based reference distribution plus a set of automotive
+services — audio routing, vehicle signal access, application framework, an
+identity model, a Wayland-based compositor with automotive window management.
+
+The pitch is that roughly 70% of a cockpit stack is undifferentiated plumbing
+that no customer will ever notice. Sharing it means each OEM's effort goes into
+the 30% that is actually their product.
+</Plain>
+
+Things AGL contributes that you would otherwise write:
+
+| Piece | What it handles |
+|---|---|
+| **agl-compositor** | Wayland compositor with automotive policy — which surface may be on top, and when |
+| **Application framework** | Launching, sandboxing and permissioning applications |
+| **Audio (PipeWire/WirePlumber)** | Routing, priority and ducking between sources |
+| **KUKSA integration** | Vehicle signals as <T>VSS</T>, through a <T>data broker</T> |
+| **Demo platform** | A bootable reference on common dev boards |
+
+<Plain>
+Notice how closely those map onto Android concepts: the compositor is
+SurfaceFlinger's job, the application framework is ActivityManager's, the audio
+policy is <T>audio focus</T>, and the KUKSA integration plays the role of the
+VHAL and <T>Car Service</T>.
+
+They are the same problems. Every cockpit platform has to solve them, and there
+are only so many sensible ways to do so.
+</Plain>
+
+## Android versus Linux, decided honestly
+
+| | **Android Automotive** | **Automotive Linux / AGL** |
+|---|---|---|
+| App ecosystem | Play or APK sideload, huge developer pool | Build your own, or web apps |
+| Time to a working UI | Fast — the framework is there | Slower — more assembly |
+| Control over the stack | Bounded by AOSP's shape | Total |
+| Licence exposure | Apache-2 base, Google terms for GAS | You choose every component |
+| Memory and storage floor | High | Low, and tunable |
+| Boot time | Harder to shorten | Easier to shorten |
+| Graphics maturity | Excellent, phone-grade | Good, more integration work |
+| Multi-user, multi-display | Built in | You design it |
+| Talent pool | Very large | Smaller, more specialised |
+| Google relationship | Required for GAS | None |
+| Safety certification | Not for the framework | Not for stock Linux either |
+
+<Plain>
+Read the last two rows together and you have most of the real decision. An OEM
+that wants Play, Maps and Assistant accepts a relationship with Google and
+Android's shape. An OEM that treats the cockpit as brand-defining and wants no
+dependency chooses Linux and pays for it in engineering.
+
+Both are rational. Which is right depends on whether the cockpit is a
+differentiator for that brand or a cost centre.
+</Plain>
+
+<Scenario title="Two OEMs, two defensible answers">
+**OEM A** sells high volumes in markets where buyers expect their phone
+ecosystem in the car. Cockpit software is not where the brand competes. They pick
+Android Automotive with GAS, ship familiar apps in eighteen months, and put their
+engineering into powertrain and ADAS.
+
+**OEM B** sells premium vehicles where the interior *is* the product. They want a
+UI nobody else can have, no third-party dependency on the customer relationship,
+and control over every byte. They build on Yocto with AGL components, spend three
+years and a much larger team, and end up with something distinctive.
+
+Neither made a mistake. They optimised different things.
+</Scenario>
+
+## Where both approaches meet
+
+The interesting development is that below the UI, the two converge.
+
+<Plain>
+Both consume vehicle data as <T>VSS</T>. Both increasingly go through a
+<T>data broker</T>. Both talk <T>SOME/IP</T> or <T>DDS</T> to the rest of the
+vehicle. Both run as a guest on a <T>hypervisor</T> next to a safety partition.
+
+That convergence is genuinely useful to you. A vehicle-abstraction design, a
+signal model, and a test harness built around a broker transfer between the two
+almost unchanged. Only the top layer — Activities and Views versus Wayland
+surfaces — is platform-specific.
+
+If your career is in cockpit software, invest in the layer that transfers.
+</Plain>
+
+<Recap>
+- A desktop distribution cannot ship in a car: licence exposure, unknown
+  binaries, odd hardware, tight storage, fifteen-year support.
+- **Yocto builds a distribution from recipes**, giving exact control plus a
+  licence manifest and SBOM as build output.
+- Its cost is real — long builds, steep learning curve — and its payoff is total
+  control of kernel, bootloader and image.
+- **AGL** shares the undifferentiated 70%: compositor, app framework, audio,
+  vehicle signals via KUKSA.
+- AGL's components map almost one-to-one onto Android's — the problems are the
+  same.
+- The **Android/Linux choice** is mostly about ecosystem versus control, and both
+  answers are defensible.
+- Below the UI the two **converge** on VSS, brokers and service-oriented
+  communication, so that knowledge transfers.
+</Recap>
+
+## Next
+
+The platform that handles what neither Android nor stock Linux will — QNX and
+safety operating systems.

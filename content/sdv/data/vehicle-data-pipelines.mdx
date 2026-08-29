@@ -1,0 +1,219 @@
+---
+title: "Vehicle data pipelines"
+description: "What a fleet actually produces, why almost none of it can be sent anywhere, and the filtering decisions that determine whether a data programme is useful or merely expensive."
+order: 1
+difficulty: "Intermediate"
+tags: ["Data", "Cloud", "Telemetry"]
+sources:
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+---
+
+"Vehicles generate terabytes of data" appears in every SDV presentation. It is
+true and almost entirely misleading, because the interesting question is not how
+much is generated but how little can usefully leave.
+
+## The numbers that shape everything
+
+<Plain>
+A modern vehicle's internal buses carry on the order of **tens of megabytes per
+second** of signal traffic. Add camera and radar feeds and it reaches gigabytes
+per second internally.
+
+A connected vehicle's realistic cellular budget is on the order of **tens to
+hundreds of megabytes per month** — because someone pays for every byte, coverage
+is uneven, and the customer's data plan may be involved.
+
+That is a gap of roughly six orders of magnitude.
+</Plain>
+
+<Analogy title="A fire hose and a drinking straw">
+The vehicle produces at fire-hose rate. The link to the outside is a straw.
+
+So the entire design problem is not transport. It is **deciding what deserves to
+go through the straw**, and doing that decision-making on the vehicle.
+
+Any data architecture that treats the network as the hard part has misread the
+problem.
+</Analogy>
+
+## The pipeline
+
+<DiagramFrame
+  title="Volume falls by orders of magnitude at every stage"
+  caption="Each stage exists to discard data. The design work is deciding what to discard, and that decision has to happen on the vehicle."
+>
+  <VehicleDataPipeline />
+</DiagramFrame>
+
+### Collection
+
+Signals come off the buses, out of the <T>data broker</T>, and from application
+telemetry. At this point everything exists and nothing has been decided.
+
+### On-vehicle filtering
+
+<Plain>
+This is where the volume problem is solved, and it is the most important stage.
+Four techniques, in rough order of how much they save:
+
+**Event triggering.** Send nothing until something happens. Ninety-nine percent
+of driving is unremarkable; a hard-braking event is not.
+
+**Aggregation.** Do not send 100 Hz wheel speed. Send a summary per minute:
+mean, max, and the count of samples outside a band.
+
+**Change-based reporting.** Send a value only when it moves by more than a
+threshold. Cabin temperature does not need reporting at 10 Hz.
+
+**Local computation.** Compute the answer on the vehicle and send the answer. If
+the question is "how often does the driver override lane keeping", the vehicle
+can count, and send an integer per day rather than a stream.
+</Plain>
+
+<Scenario title="One signal, four designs">
+The question: does a new suspension setting reduce harsh events?
+
+**Naive.** Stream vertical acceleration at 100 Hz. That is roughly 400 bytes/s,
+about 1 GB per vehicle per month. Across a fleet of 100,000 vehicles it is
+100 petabytes per month and a cellular bill nobody will sign.
+
+**Event-triggered.** Send a 5-second window around each event above a threshold.
+Perhaps 30 events per month × 2 KB = 60 KB per vehicle. A factor of ~17,000
+saved, and the answer is just as good.
+
+**Aggregated.** Send a daily histogram of event magnitudes. About 200 bytes per
+vehicle per day. Loses the waveform, keeps the distribution — sufficient if you
+only need the trend.
+
+**Computed locally.** Send one number per day: harsh-event count. 8 bytes.
+Sufficient if the question really is only "more or fewer".
+
+All four answer a version of the question. The engineering skill is knowing
+which version you actually need — and the default mistake is choosing a design
+that answers questions nobody has asked yet, at a cost somebody will notice.
+</Scenario>
+
+### Buffering
+
+<Plain>
+Vehicles go offline constantly — car parks, tunnels, rural roads, foreign
+markets, and simply being switched off for a week.
+
+So the vehicle stores what it intends to send, and forwards when it can. Which
+forces three decisions:
+
+- **How much storage** may telemetry use? Flash is finite and has write
+  endurance.
+- **What is dropped first** when the buffer fills? Almost always: keep fault
+  data, drop routine aggregates.
+- **What survives a power cycle?** Anything only in RAM is gone at every
+  ignition-off.
+
+A pipeline that assumes connectivity will silently lose exactly the data from
+the vehicles that are most interesting — the ones in unusual conditions.
+</Plain>
+
+### Transport and ingestion
+
+Batched, compressed, authenticated, usually MQTT or HTTPS. The cloud side is
+ordinary data engineering: ingest, validate, store, and make queryable.
+
+<Gotcha>
+Schema evolution is the part that bites. Vehicles in the field run software from
+several model years, all emitting slightly different payloads for years.
+
+Version every message, never reuse a field name with a new meaning, and make the
+ingestion side tolerant of both older and newer shapes than it expects. A schema
+change that assumes the whole fleet updates together is a schema change that will
+lose data.
+</Gotcha>
+
+## The categories of data, and their different rules
+
+Not all vehicle data is the same kind of thing, and treating it uniformly is a
+mistake.
+
+| Category | Example | Volume | Sensitivity | Typically |
+|---|---|---|---|---|
+| **Diagnostic** | Fault codes, ECU health | Low | Low | Always collected |
+| **Operational** | Speed, energy use, temperatures | Medium | Medium | Aggregated |
+| **Behavioural** | Braking style, feature usage | Medium | **High** | Consent required |
+| **Location** | GNSS trace | Medium | **Very high** | Consent, minimised |
+| **Media** | Camera, microphone | Enormous | **Very high** | Almost never leaves |
+| **Application** | Crash logs, UI telemetry | Low | Medium | Standard app rules |
+
+<Plain>
+Two rows deserve attention.
+
+**Location** is special because a trace is identifying even without a name
+attached. Where a vehicle sleeps every night is a home address. Regulators treat
+it accordingly, and so should you.
+
+**Media** almost never leaves the vehicle, and when it does — a crash snapshot,
+an ADAS training clip — it is a deliberate, consented, tightly scoped exception,
+not a pipeline.
+</Plain>
+
+## What this means for cockpit engineering
+
+**Your app telemetry is part of a shared budget.** An analytics SDK sending
+events per interaction is trivial on a phone and can be significant across a
+fleet on metered cellular. Batch, aggregate, and consider whether each event
+earns its bytes.
+
+**Aggregate before sending, not after.** The instinct from server work — collect
+everything, decide later — inverts here. Deciding later means paying to transmit
+data you will discard.
+
+**Design for offline as the normal case.** Not an error path. Queue, persist
+across reboot, and define what gets dropped when the queue is full.
+
+**Never log location or personal data casually.** A debug log with GPS
+coordinates that syncs to a backend is a compliance incident, and the
+investigation will find it.
+
+**Know which consent your feature depends on.** If it needs behavioural data,
+what happens for a customer who declined? "It silently does nothing" is not an
+acceptable answer.
+
+<Scenario title="A well-behaved feature telemetry design">
+A team wants to know whether a redesigned media browser is easier to use.
+
+**Wrong:** log every tap with a timestamp and screen name; upload continuously.
+Roughly 2 KB per drive per vehicle, always on, and it is behavioural data
+requiring consent for a question that does not need per-tap detail.
+
+**Right:** compute the metric on the vehicle — median taps to start playback, per
+session. Accumulate a daily summary. Upload once, batched with everything else,
+about 40 bytes. No individual interactions leave. No consent-gated category is
+touched, because a distribution is not behaviour tied to a person.
+
+The team gets a better answer — a distribution across the fleet rather than a pile
+of events to process — for a thousandth of the data and none of the privacy
+exposure.
+</Scenario>
+
+<Recap>
+- A vehicle produces data at **fire-hose rate** and has a **drinking-straw** link
+  out; the whole problem is deciding what deserves to be sent.
+- On-vehicle filtering is the load-bearing stage: **event triggering,
+  aggregation, change-based reporting, local computation**.
+- **Buffer for offline** — persist across power cycles and define what is dropped
+  first, or you will lose data from the most interesting vehicles.
+- **Version every message** and tolerate old and new shapes; the fleet never
+  updates together.
+- Data categories have different rules — **location and media are in a class of
+  their own**.
+- For cockpit work: your telemetry shares a fleet budget, aggregate before
+  sending, treat offline as normal, never log location casually, and know which
+  consent your feature needs.
+</Recap>
+
+## Next
+
+Where the processing should happen — vehicle or cloud.

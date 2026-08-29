@@ -1,0 +1,204 @@
+---
+title: "Virtualisation and hypervisors"
+description: "Several operating systems on one chip, with proof that one cannot disturb another — what a hypervisor actually does, and why it is the enabling technology for consolidation."
+order: 2
+difficulty: "Advanced"
+tags: ["Hypervisor", "Virtualisation", "Safety"]
+sources:
+  - label: "Android Virtualization Framework"
+    href: "https://source.android.com/docs/core/virtualization"
+  - label: "ISO 26262 — functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+  - label: "COVESA"
+    href: "https://covesa.global/"
+  - label: "Android — automotive virtualization"
+    href: "https://source.android.com/docs/automotive/virtualization/architecture"
+---
+
+Consolidation creates an immediate problem. Once the instrument cluster and the
+infotainment system share a processor, what stops a badly behaved app from
+freezing the speedometer?
+
+The answer is a <T>hypervisor</T>, and understanding what it does — and what it
+does not — is essential to reasoning about any consolidated cockpit.
+
+## What a hypervisor is
+
+<Plain>
+A hypervisor is a thin layer of software that sits directly on the hardware and
+divides it into isolated compartments. Each compartment runs its own complete
+operating system, unaware that it is sharing.
+
+The operating systems are called **guests**. They each believe they have their
+own processor, their own memory and their own devices.
+</Plain>
+
+<Analogy title="Like flats in one building">
+A converted building has several flats. Each has its own front door, its own
+meter, its own thermostat. The residents share foundations, a roof and a water
+main, but one tenant cannot turn off another's electricity or walk into their
+bedroom.
+
+The hypervisor is the conversion work: the walls, the separate meters, the fire
+doors. It does not run the flats — it makes them independent.
+</Analogy>
+
+<DiagramFrame
+  title="Mixed criticality on one chip"
+  caption="Four operating systems with four different safety obligations. The hypervisor's job is to make the QM guests provably incapable of disturbing the rated ones."
+>
+  <MixedCriticality />
+</DiagramFrame>
+
+## What it actually partitions
+
+Four resources, and each needs handling differently.
+
+**CPU cores.** Cores can be assigned exclusively to a guest, or time-shared with
+guaranteed budgets. A safety guest usually gets dedicated cores, so no scheduling
+decision anywhere else can delay it.
+
+**Memory.** Each guest gets its own physical memory region, enforced by hardware
+memory management. A guest cannot address memory it was not given — not by
+convention, but because the hardware refuses.
+
+**Devices.** Some are assigned exclusively — the safety guest owns the cluster
+display controller outright. Some are shared through virtual devices, which is
+where most of the complexity lives.
+
+**Interrupts.** Routed to the owning guest, with priorities that prevent a
+low-criticality guest's interrupt storm from delaying a high-criticality one.
+
+## Freedom from interference
+
+This is the phrase you will hear in every safety review, and it is the actual
+requirement.
+
+<Plain>
+<T>Freedom from interference</T> means: it must be **demonstrable** that a
+lower-criticality component cannot affect a higher-criticality one.
+
+Not "unlikely to". Not "we tested it and it seemed fine". Demonstrable, in three
+specific dimensions:
+
+**Memory** — the QM guest cannot read or write the safety guest's memory.
+**Timing** — the QM guest cannot delay the safety guest's execution.
+**Exchange of information** — a corrupted message from the QM guest cannot cause
+incorrect behaviour in the safety guest.
+
+The third is the one people forget. Partitioning memory and CPU is comparatively
+straightforward. Proving that a malformed message across the shared channel
+cannot cause harm requires the receiving side to validate everything and have a
+defined fallback.
+</Plain>
+
+<Scenario title="The test that should be routine and often is not">
+On a consolidated cockpit, kill the Android guest entirely while the vehicle is
+running.
+
+The cluster must continue displaying speed and telltales correctly, with no
+flicker, no stale values and no degradation. Infotainment content in the cluster
+should disappear cleanly rather than freezing.
+
+If anything safety-relevant is disturbed, freedom from interference has not been
+achieved — regardless of what the hypervisor datasheet says.
+
+Run this deliberately, early, and repeatedly. It is cheap and it is the single
+most informative test on a consolidated platform.
+</Scenario>
+
+## Type 1 versus type 2
+
+**Type 1** runs directly on the hardware, with guests above it. This is what
+vehicles use — thin, auditable, and certifiable.
+
+**Type 2** runs as an application inside a host operating system. Fine for
+development, unsuitable for a vehicle, because the whole host is now in the trust
+path.
+
+<Plain>
+Automotive hypervisors are type 1 and deliberately small. A smaller codebase is
+easier to certify to a safety standard, and the hypervisor is the one component
+whose failure affects everything.
+</Plain>
+
+## The hard part: sharing a GPU
+
+Partitioning CPU and memory is well understood. The graphics processor is where
+consolidated cockpits actually get difficult.
+
+Both the cluster and infotainment want to render. There is one GPU. The cluster's
+rendering is safety-relevant and must not be starved; infotainment's is not but
+is visually demanding.
+
+Approaches in use:
+
+- **Time-sliced GPU** with guaranteed budgets per guest
+- **Hardware-partitioned GPU**, where the silicon supports splitting it
+- **Separate display pipelines** so composition is independent even if rendering
+  is shared
+- **A dedicated 2D engine** for the cluster's critical layer, bypassing the GPU
+  entirely
+
+<Plain>
+The last option is more common than the marketing suggests. Telltales and warning
+lamps are frequently drawn by a simple, separate hardware layer that does not
+depend on the GPU at all — because proving GPU availability to a safety standard
+is much harder than avoiding the dependency.
+</Plain>
+
+## Inter-guest communication
+
+Guests must exchange data — the cluster needs the navigation instruction that
+Android computed.
+
+That happens through a **controlled channel**: shared memory rings or a virtio
+transport, with the hypervisor mediating.
+
+Design rules that hold up:
+
+- **The channel is bounded.** A guest cannot flood it.
+- **The receiver validates everything.** The sender is untrusted, by design.
+- **The receiver has a fallback.** If messages stop, it degrades visibly rather
+  than freezing on the last value.
+- **The protocol is versioned.** The two guests will be updated on different
+  schedules by different suppliers.
+
+## What it costs
+
+**Performance overhead**, usually modest for CPU, potentially significant for I/O
+and graphics.
+
+**Certification effort.** The hypervisor itself must be qualified to the highest
+safety level of any guest it isolates.
+
+**Debugging difficulty.** A problem may be in a guest, in the hypervisor, or in
+the interaction. Correlating traces across guests requires deliberate tooling.
+
+**Licensing.** Commercial automotive hypervisors are not cheap.
+
+<Plain>
+On the debugging point: on any virtualised programme, the highest-value tooling
+investment is a **correlated timeline across guests sharing one clock**. Without
+it, every latency question becomes two teams each demonstrating it is not their
+layer.
+</Plain>
+
+<Recap>
+- A hypervisor divides one chip into isolated compartments, each running a
+  complete operating system.
+- It partitions **CPU, memory, devices and interrupts** — enforced by hardware,
+  not convention.
+- The requirement is **freedom from interference** in memory, timing *and*
+  exchange of information. The third is the one teams forget.
+- **Kill the QM guest and check the cluster is unaffected.** Cheap, routine, and
+  the most informative test available.
+- **Sharing the GPU is the genuinely hard part** — which is why critical cluster
+  content often bypasses it entirely.
+- Inter-guest channels must be **bounded, validated, versioned, and have a
+  visible fallback**.
+</Recap>
+
+## Next
+
+The safety framework that all of this exists to satisfy.

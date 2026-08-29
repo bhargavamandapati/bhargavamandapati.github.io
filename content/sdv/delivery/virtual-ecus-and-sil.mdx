@@ -1,0 +1,244 @@
+---
+title: "Virtual ECUs and software-in-the-loop"
+description: "Running vehicle software without vehicle hardware — what a virtual ECU actually is, the four levels of fidelity, and why this is the change that makes everything else in an SDV possible."
+order: 1
+difficulty: "Intermediate"
+tags: ["Virtual ECU", "Testing", "Shift left"]
+sources:
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+---
+
+Of everything in this section, this is the topic with the largest practical
+effect on your working day. Not the most glamorous — the most consequential.
+
+## The bottleneck it removes
+
+<Plain>
+Traditional vehicle software development has a hardware dependency at every step.
+To test anything you need the <T>ECU</T>. To test an interaction you need several
+ECUs wired together. To test a whole feature you need a vehicle.
+
+Hardware is scarce, expensive, and shared. Which produces the pattern everyone in
+the industry recognises:
+
+- Engineers book bench time days ahead.
+- Integration happens late, because it needs hardware nobody has yet.
+- Bugs surface at integration, where they are most expensive to fix.
+- One broken bench blocks a dozen people.
+- Test coverage is limited by how many hours of bench time exist, not by how many
+  cases matter.
+</Plain>
+
+<Analogy title="One shared oven">
+Twenty cooks, one oven. Every recipe change means queueing, and you find out the
+cake is wrong only after your slot.
+
+Give each cook a simulator that behaves like the oven for most purposes, and use
+the real one only for the final bake. Same twenty cooks, an order of magnitude
+more experiments.
+</Analogy>
+
+## What a virtual ECU actually is
+
+A <T>virtual ECU</T> is the ECU's software running on a development machine
+instead of its target hardware, with the vehicle around it simulated.
+
+The word covers four quite different things, and confusion between them causes
+real arguments. Be specific about which one you mean.
+
+| Level | What is real | What is simulated | Speed | Good for |
+|---|---|---|---|---|
+| **1 — Application** | Your application logic, compiled for the host | Everything below it | Instant | Logic, algorithms, unit tests |
+| **2 — Platform** | Application plus the real middleware stack | Hardware, bus, sensors | Seconds | Integration, API behaviour, most day-to-day work |
+| **3 — Instruction** | The actual target binary, on an emulated CPU | The chip and peripherals | Slow | Compiler and toolchain issues, memory layout |
+| **4 — Cycle-accurate** | Target binary with real timing | Everything, precisely | Very slow | Timing analysis, worst-case execution |
+
+<Plain>
+Level 2 is where most value lives, and it is the one worth investing in first.
+You get real middleware and real service interfaces — so integration problems
+show up — while still running in seconds on a laptop.
+
+Level 1 is essentially unit testing and you probably already do it.
+
+Levels 3 and 4 are specialist tools. Reach for them when you have a timing or
+toolchain question, not as a default.
+</Plain>
+
+<Gotcha>
+When someone says "we have virtual ECUs", ask which level. A level-1 vECU proves
+your algorithm is right. It proves nothing about whether your SOME/IP client
+handles a service going away mid-request. Teams have shipped bugs straight past
+a vECU suite that never exercised the layer containing them.
+</Gotcha>
+
+## Software-in-the-loop, concretely
+
+SIL is one stage in a progression, and it is worth seeing where it sits before
+looking at how it is built.
+
+<DiagramFrame
+  title="The testing progression, from model to real vehicle"
+  caption="Each step to the right is more faithful, more expensive and scarcer. SIL is the rightmost stage that still runs on a laptop, which is why so much value concentrates there."
+>
+  <VirtualEcuPipeline />
+</DiagramFrame>
+
+<Plain>
+**MIL** tests a model of the logic before there is production code. **SIL** runs
+the real software against a simulated vehicle. **HIL** runs the real software on
+real hardware against a simulated vehicle. Then the vehicle itself.
+
+The four *fidelity levels* in the table above are a different axis — they describe
+how faithfully a single vECU is emulated. A level-2 vECU is the usual thing
+people mean by SIL.
+</Plain>
+
+SIL means the software under test runs against a simulated environment rather
+than physical hardware. For a cockpit team, a working setup looks like this:
+
+```
+┌─── your laptop ──────────────────────────────────────────────┐
+│                                                              │
+│  ┌────────────────┐   ┌────────────────┐  ┌───────────────┐  │
+│  │ Android        │   │ Cluster        │  │ Test scripts  │  │
+│  │ emulator (AAOS)│   │ renderer       │  │ / pytest      │  │
+│  └───────┬────────┘   └───────┬────────┘  └───────┬───────┘  │
+│          │ VHAL               │ subscribe          │ set     │
+│          └─────────┬──────────┴────────────────────┘         │
+│                    ▼                                         │
+│          ┌───────────────────────┐                           │
+│          │  data broker (VSS)    │                           │
+│          └───────────┬───────────┘                           │
+│                      │                                       │
+│          ┌───────────┴───────────┐                           │
+│          │  vehicle simulation   │  ← drive cycles, faults,   │
+│          │  or recorded traces   │    battery models          │
+│          └───────────────────────┘                           │
+└──────────────────────────────────────────────────────────────┘
+```
+
+<Plain>
+The <T>data broker</T> is the load-bearing component. Because everything above it
+speaks <T>VSS</T> and nothing above it knows what is below, you can replace the
+whole vehicle with a script and nothing notices.
+
+That single indirection is what turns "book a vehicle" into "run a command".
+</Plain>
+
+<Scenario title="A regenerative-braking display bug">
+The cluster shows the wrong regen level during hard braking on a low battery. It
+reproduces roughly once per hour of driving.
+
+**Without a vECU setup:** book a vehicle, find a safe place to brake hard
+repeatedly, instrument the build, drive until it reproduces, drive back, change
+one line, repeat. Realistically two or three attempts per day, and each attempt
+costs a driver and a vehicle.
+
+**With one:** capture a trace from the one occurrence you already have, replay it
+into the broker, and reproduce on demand in eight seconds.
+
+```bash
+# replay the captured drive segment at 1x
+kuksa-replay --file regen-bug-2026-03-14.vssjson
+
+# or construct the exact state directly
+kuksa-client set Vehicle.Powertrain.TractionBattery.StateOfCharge.Current 4
+kuksa-client set Vehicle.Speed 92
+kuksa-client set Vehicle.Chassis.Accelerator.PedalPosition 0
+kuksa-client set Vehicle.Chassis.Brake.PedalPosition 88
+```
+
+Thirty iterations before lunch. Then a **single** vehicle session to confirm.
+
+The engineering skill involved is identical. The loop is two orders of magnitude
+shorter, and that difference is what people mean by <T>shift left</T>.
+</Scenario>
+
+## Where virtual stops being enough
+
+Being clear-eyed about this protects you from the failure mode where a team
+trusts simulation past its limits.
+
+<Plain>
+**Timing.** A host machine is far faster than the target and has a completely
+different scheduler. Anything that passes only because your laptop is quick will
+fail on the vehicle.
+
+**Electrical reality.** Voltage drops during cranking, ground offsets, EMI,
+connectors that corrode. Nothing in simulation touches any of it.
+
+**Real bus behaviour.** Bus load at 85%, arbitration, error frames, a node that
+babbles. Simulations model the happy path far more faithfully than the sick one.
+
+**Thermal.** Sustained load, throttling, a display in direct sun at 60 °C.
+
+**Hardware-specific graphics.** GPU driver bugs, display controller quirks,
+overlay plane limits. These are found on the board and nowhere else.
+
+**Wear.** Flash endurance, connector fatigue, fifteen years of thermal cycling.
+</Plain>
+
+<Analogy title="A flight simulator">
+Pilots train mostly in simulators, and it works — procedures, emergencies,
+judgement all transfer.
+
+Nobody concludes that pilots need not fly. The simulator handles the ninety
+percent that is decision-making, so the expensive aircraft time goes on the ten
+percent that genuinely needs an aircraft.
+
+Read every claim about virtual ECUs through that lens. The goal is not to
+eliminate hardware testing. It is to stop wasting hardware testing on things a
+laptop could have caught.
+</Analogy>
+
+## Building this on an Android programme
+
+Practical steps, roughly in order of value:
+
+1. **Get a broker into the loop.** Point the VHAL at a <T>data broker</T> behind
+   a build flag, so the same APK runs against a vehicle or a simulator. This is
+   the highest-value change and often the smallest.
+2. **Model your properties in VSS.** Even if the vehicle does not speak VSS,
+   agreeing a signal vocabulary makes traces portable and tests readable.
+3. **Record real drives.** A library of captured traces — cold start, motorway,
+   low battery, charging, fault injection — is worth more than any synthetic
+   generator.
+4. **Make scenarios files, not procedures.** A YAML scenario in the repository
+   can run in CI. A page of manual steps in a wiki cannot.
+5. **Run it on every commit.** A vECU suite that runs nightly catches things.
+   One that runs per commit changes behaviour, because the feedback arrives while
+   the author still has the context.
+
+<Gotcha>
+The trap is building an elaborate vehicle simulation nobody trusts. Fidelity is
+earned by comparing against recorded reality, repeatedly.
+
+Start with replayed real traces, which are trustworthy by construction, and add
+synthetic models only where you have a reason and a way to validate them.
+</Gotcha>
+
+<Recap>
+- Hardware scarcity is the historic bottleneck in vehicle software; virtual ECUs
+  remove it for most of the work.
+- A **vECU** comes in four levels — application, platform, instruction,
+  cycle-accurate — and **level 2** carries most of the practical value.
+- **SIL** runs the real software against a simulated environment; the **data
+  broker** is what makes the substitution invisible.
+- The payoff is loop time: minutes instead of days, and thirty experiments where
+  you previously got three.
+- Simulation **cannot** cover timing, electrical behaviour, sick buses, thermal
+  effects, GPU quirks or wear — hardware testing narrows, it does not disappear.
+- On an Android programme, start by putting a broker behind the VHAL, then model
+  signals in VSS, then record real traces, then run it per commit.
+- Trust is earned by validating against recorded reality, not by adding model
+  detail.
+</Recap>
+
+## Next
+
+What to do with all that automated testing — continuous integration for vehicles.

@@ -1,0 +1,212 @@
+---
+title: "The cluster in a software-defined vehicle"
+description: "The screen behind the wheel is the one with legal obligations. How it is architected when everything else is consolidating, and what Android is and is not allowed to own."
+order: 1
+difficulty: "Advanced"
+tags: ["Cluster", "Safety", "Architecture"]
+sources:
+  - label: "ISO 26262 — functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+  - label: "UNECE vehicle regulations"
+    href: "https://unece.org/transport/vehicle-regulations"
+  - label: "Instrument cluster support (source.android.com)"
+    href: "https://source.android.com/docs/automotive/displays/cluster_api"
+---
+
+The instrument cluster is the screen the driver looks at most and trusts most. It
+is also the one with legal requirements attached, which makes it the hardest part
+of a consolidated cockpit.
+
+## What makes the cluster different
+
+<Plain>
+Everything else on a head unit is, in safety terms, optional. If infotainment
+crashes, the driver is inconvenienced.
+
+The cluster is not optional. Speed must be displayed. Warning lamps must appear
+when the condition they represent occurs, in the specified colour and symbol.
+These are **regulatory requirements**, not product decisions, and they carry
+availability obligations a general-purpose operating system cannot meet.
+</Plain>
+
+The content splits into three tiers, and the split determines the architecture.
+
+| Tier | Examples | Obligation |
+| --- | --- | --- |
+| **Regulated** | Speed, telltales, warning lamps | Legal — colour, symbol, availability |
+| **Safety-relevant** | ADAS state, gear, range | <T>ASIL</T>-rated, must be correct |
+| **Informational** | Media, navigation card, phone | None — nice to have |
+
+<Scenario title="Where the tiers actually run">
+On a typical consolidated cockpit:
+
+**Regulated content** is drawn by a safety-rated system — an RTOS guest, a
+separate microcontroller, or a dedicated hardware layer. It does not depend on
+Android or Linux being alive.
+
+**Safety-relevant content** comes from the domain that owns it. ADAS state
+originates in the ADAS domain and is displayed by the safety guest.
+
+**Informational content** is where Android contributes. It sends a navigation
+instruction or a now-playing card, which the cluster renders in one designated
+region.
+
+Android owns one tier out of three, and it is the tier where failure is
+survivable. That is not a limitation to work around — it is the design.
+</Scenario>
+
+## Why the cluster cannot simply run Android
+
+Three independent reasons, any one sufficient:
+
+**Availability.** A telltale must appear within a bounded time of its condition
+occurring, every time. Android can be garbage collecting, updating, or restarting.
+
+**Boot time.** Telltales are typically required within about two seconds of
+ignition. Android takes fifteen or more.
+
+**Certification.** The rated content needs a safety argument. A general-purpose
+OS with dynamic memory allocation, preemptive scheduling and millions of lines of
+third-party code cannot practicably provide one.
+
+<Plain>
+This is why every serious cluster design keeps the rated content on something
+else, and why the most useful test on a consolidated cockpit is: **kill Android
+while driving and confirm nothing rated is disturbed.**
+</Plain>
+
+## The two architectures
+
+<DiagramFrame
+  title="Cluster and infotainment converging"
+  caption="One cockpit controller, several displays, and a hypervisor proving that the infotainment guest cannot disturb the safety guest."
+>
+  <CockpitConvergence />
+</DiagramFrame>
+
+### Separate systems
+
+The cluster has its own processor running its own safety-rated software.
+Infotainment sends content over a link — Ethernet, or shared memory if they are
+on the same board.
+
+**Advantages:** clean safety argument, independent failure, straightforward
+certification.
+**Costs:** two systems to build, two bills of material, a link to design and
+version.
+
+### Consolidated with a hypervisor
+
+One processor, several guests. A safety guest owns the cluster display; an
+infotainment guest owns the centre screen. A <T>hypervisor</T> provides
+<T>freedom from interference</T>.
+
+**Advantages:** one chip, lower cost, shared GPU, a single thermal budget.
+**Costs:** the isolation argument is now a software argument and must be proven
+rather than assumed.
+
+<Plain>
+The industry is moving toward consolidation because the cost saving is real and
+recurring. But the safety work does not go away — it moves from "these are
+separate boxes, obviously independent" to "here is our evidence that this guest
+cannot affect that one", which is a much larger document.
+</Plain>
+
+## What Android actually sends
+
+Structured content, not pixels.
+
+```protobuf title="A cluster content message"
+message ClusterCard {
+  uint32 version   = 1;    // versioned from the first message
+  Zone   zone      = 2;    // which region of the cluster
+  Type   type      = 3;    // NAVIGATION | MEDIA | PHONE | ASSISTANT
+  string primary   = 4;    // "Turn right"
+  string secondary = 5;    // "300 m"
+  Icon   icon      = 6;    // an enumerated icon, not a bitmap
+  uint32 progress  = 7;
+}
+```
+
+<Plain>
+Sending a description rather than a picture matters for three reasons:
+
+**The cluster owns its look.** It has a design language certified with the
+vehicle and will not render your fonts.
+
+**Bandwidth.** A 60 fps pixel stream between two guests is expensive and
+unnecessary.
+
+**Failure behaviour.** If Android stops sending, the cluster shows its own
+fallback. A frozen pixel stream would just sit there looking correct.
+</Plain>
+
+## Zones
+
+Clusters are divided into regions with different owners and criticality.
+
+| Zone | Content | Owner |
+| --- | --- | --- |
+| 1 | Speedometer, tachometer | Safety system |
+| 2 | Telltales and warnings | Safety system |
+| 3 | Infotainment cards | **Android** |
+| 4 | ADAS visualisation | ADAS domain |
+
+<Plain>
+Knowing which zone you are writing for immediately tells you your failure budget.
+Zone 3 going blank is a degraded experience. Zone 2 going blank is a recall.
+</Plain>
+
+## Versioning the link
+
+<Scenario title="The protocol that could not change">
+An infotainment guest and a cluster guest exchange messages over shared memory.
+The message format has no version field.
+
+Three years later the cluster supplier ships a new software version that needs an
+additional field. Android's side is on a different release schedule, owned by a
+different supplier.
+
+There is no way to add the field. An older Android sending the old format to a
+newer cluster, or vice versa, produces misparsed messages — and there is no way
+for either end to detect which it is talking to.
+
+**Put a version field in the first message you define.** The two ends of this link
+will be updated years apart by different companies. That is not an edge case; it
+is the normal condition.
+</Scenario>
+
+## Debugging across the boundary
+
+```bash title="The Android side"
+adb shell dumpsys car_service --services ClusterHomeService
+adb shell dumpsys display | grep -i cluster
+adb logcat -b all | grep -i cluster
+```
+
+<Plain>
+That is the easy half. The hard half is proving whether a wrong value was wrong
+when Android sent it.
+
+**Log what you send with a timestamp and a sequence number, and get the cluster
+team to log what they receive.** That single agreement converts a multi-week
+inter-company dispute into a five-minute comparison, and it is worth insisting on
+before integration starts rather than after the first defect.
+</Plain>
+
+<Recap>
+- Cluster content splits into **regulated, safety-relevant and informational** —
+  and Android only owns the third.
+- Android cannot own rated content because of **availability, boot time and
+  certification** — three independent blockers.
+- Two architectures: **separate systems** (clean argument, higher cost) or
+  **consolidated under a hypervisor** (cheaper, larger safety burden).
+- Android sends **structured descriptions, not pixels**, so the cluster keeps its
+  own look and can fall back when Android stops.
+- **Know which zone you are writing for** — it tells you your failure budget.
+- **Version the link from the first message.** The two ends update years apart.
+</Recap>
+
+## Next
+
+How the pixels actually get onto that screen.

@@ -1,0 +1,250 @@
+---
+title: "Digital twins and simulation"
+description: "What a digital twin is once the marketing is removed, the four kinds that actually get built, and how to tell a useful one from an expensive demonstration."
+order: 3
+difficulty: "Intermediate"
+tags: ["Digital twin", "Simulation", "Testing"]
+sources:
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "Eclipse Kuksa"
+    href: "https://eclipse-kuksa.github.io/kuksa-website/"
+---
+
+"Digital twin" is among the most oversold phrases in the industry. There is a
+genuinely useful idea underneath, and separating it from the demo footage is
+worth doing carefully.
+
+## The definition, stripped down
+
+<Plain>
+A <T>digital twin</T> is a software model of a specific physical thing, kept in
+sync with that thing's actual state.
+
+Two words carry the weight.
+
+**Specific** — not "a model of this vehicle line", but a model of
+`WVWZZZ1JZ3W386752`, with its options, its software versions, its accumulated
+wear.
+
+**Synchronised** — the model is updated from the real thing as it operates. A
+model that was accurate at build time and never updated is a specification, not
+a twin.
+
+Drop either word and you have something else. Useful, possibly — but not what
+the term means, and the distinction matters when someone is asking for budget.
+</Plain>
+
+<Analogy title="A medical record versus a textbook">
+A textbook describes how a human body works. Accurate, general, and it tells a
+doctor nothing about *you*.
+
+Your medical record is specific to you and updated at every visit. That is what
+lets a doctor say "this reading is unusual **for you**".
+
+The textbook is a simulation model. The record is a twin.
+</Analogy>
+
+## The four kinds that actually get built
+
+Programmes say "digital twin" and mean quite different things. Naming them
+prevents a lot of talking past each other.
+
+### 1. Component twin
+
+A model of one part — a battery pack, a motor, a brake actuator.
+
+<Plain>
+Usually a physics or empirical model: given current, temperature and state of
+charge, what voltage does this pack produce, and how does it age?
+
+**Used for:** feeding realistic values into SIL testing, and estimating remaining
+useful life from real telemetry.
+
+**Reality:** this is the most mature category. Battery models in particular are
+genuinely good, because the physics is well understood and manufacturers have
+enormous datasets.
+</Plain>
+
+### 2. Vehicle twin
+
+A model of one complete vehicle — its configuration, software versions, faults
+and history.
+
+<Plain>
+Often less a physics model than a **state mirror**: what is installed, what
+version, what has failed, what the fleet backend believes about it.
+
+**Used for:** deciding whether a specific vehicle can receive a specific update,
+diagnosing a customer complaint without the vehicle present, and warranty
+analysis.
+
+**Reality:** this is the highest-value and most underrated kind. It is mostly a
+data problem rather than a simulation problem, and the payoff is large.
+</Plain>
+
+### 3. Environment twin
+
+A simulated world — roads, other traffic, weather, sensor physics.
+
+<Plain>
+**Used for:** ADAS and autonomy validation, where the number of scenarios far
+exceeds what can be driven physically.
+
+**Reality:** impressive and genuinely necessary for autonomy, but the
+sensor-realism problem is hard. A camera model that fools a perception network
+is an active research area, and results in simulation do not transfer to reality
+as cleanly as demonstrations suggest.
+</Plain>
+
+### 4. Fleet twin
+
+An aggregate model across many vehicles.
+
+<Plain>
+**Used for:** "which configurations show this fault", "how does this feature
+behave across climates", "what is the real-world energy consumption by market".
+
+**Reality:** valuable, and mostly an analytics problem wearing a simulation word.
+</Plain>
+
+<Gotcha>
+When someone proposes a digital twin programme, ask which of the four they mean
+and what decision it will change. "All of them" usually means none of them well.
+
+The kind with the fastest payback is nearly always the **vehicle twin** — because
+it is data engineering rather than physics, and because it immediately improves
+OTA targeting and diagnostics.
+</Gotcha>
+
+## What a twin is worth in cockpit work
+
+You are unlikely to build the physics. You will still benefit in four concrete
+ways.
+
+**Realistic test data.** A battery twin driving your SIL environment produces
+plausible state-of-charge curves — including the awkward non-linear end of
+discharge where display bugs hide. Far better than a linear ramp.
+
+**Diagnosing a customer complaint.** "The range estimate jumped by 40 km" is
+untestable as a bug report. With a vehicle twin holding that car's software
+versions, configuration and recent signal history, it becomes reproducible on a
+desk.
+
+**Deciding who gets an update.** A vehicle twin knows which hardware revision and
+which dependent components each car has, which is what makes a targeted rollout
+possible rather than a fleet-wide gamble.
+
+**Answering questions about the past.** "Did this ever happen before the March
+release?" is a query against fleet history, not a testing exercise.
+
+<Scenario title="A range-estimate complaint, with and without a twin">
+A customer reports that predicted range drops sharply on cold mornings — more
+than the physics should justify.
+
+**Without a twin.** The vehicle has to come in. A technician tries to reproduce
+it, on a warm day, in a workshop. It does not reproduce. The ticket is closed as
+"no fault found", and the customer is unhappy and correct.
+
+**With one.** Engineering queries the vehicle twin for that VIN: software
+versions, battery-pack revision, cabin-preconditioning settings, and the signal
+history for the mornings in question.
+
+The pattern is visible in an afternoon — preconditioning draws from the pack
+before the estimator's temperature compensation has settled, so the estimate
+briefly double-counts the loss. A specific ordering bug, found without the
+vehicle ever leaving the customer.
+
+Note what did the work: not physics simulation, but **having that vehicle's
+actual state and history in a form somebody could query**.
+</Scenario>
+
+## How faithful does it need to be
+
+The most common failure is building for more fidelity than the decision requires.
+
+| Question being asked | Fidelity needed |
+|---|---|
+| Does the UI render correctly at 5% charge? | Very low — set a number |
+| Does the charging state machine handle interruption? | Low — a state model |
+| Does the range estimate behave in winter? | Medium — thermal battery model |
+| Will the pack meet warranty in 8 years? | High — validated ageing model |
+| Will the perception stack detect a child at dusk? | Very high, and still not sufficient alone |
+
+<Plain>
+Match the model to the decision. A UI team asking for a validated electrochemical
+battery model is asking for a year of work to answer a question a constant would
+have settled.
+
+Equally, a warranty team using a linear approximation is going to be wrong in a
+way that costs money.
+</Plain>
+
+## How to tell a real twin from a demonstration
+
+Questions that separate the two quickly:
+
+**"Where does its state come from, and how often?"** A real twin has a telemetry
+path and an update rate. A demonstration has a configuration file.
+
+**"How was it validated?"** Against what recorded reality, and what was the
+error? An unvalidated model is a hypothesis.
+
+**"What decision does it change?"** If nobody acts differently because of it, it
+is a visualisation.
+
+**"What happens when the vehicle is offline for a month?"** Real fleets go quiet.
+A twin that assumes continuous connectivity has not met one.
+
+**"Can I query one VIN?"** If the answer is only aggregate dashboards, it is
+analytics, which is fine — but it is not a vehicle twin.
+
+<Gotcha>
+A rendered 3D vehicle rotating on a screen is a visualisation. It may sit on top
+of a real twin, or on nothing at all. The graphics tell you nothing about
+whether the underlying state is synchronised, validated, or used.
+
+This sounds cynical. It is the single most useful filter to apply in this area.
+</Gotcha>
+
+## Starting small, in the direction that pays
+
+If you want the benefit without a programme-scale investment:
+
+1. **Record real traces** and replay them. This is a twin of one drive, it is
+   perfectly faithful by construction, and it costs nothing.
+2. **Version the vehicle configuration** — software versions, hardware revisions,
+   options — in a queryable store keyed by VIN. This alone unlocks targeted OTA
+   and most diagnostics value.
+3. **Add a physics model only where a decision needs one**, and validate it
+   against recorded data before trusting it.
+4. **Keep signal history** for the fleet, at a sample rate you can afford. Most
+   "we cannot reproduce it" tickets die here.
+
+<Plain>
+Steps 1 and 2 deliver the majority of the practical value and require no
+simulation expertise at all. Programmes that start at step 3 tend to produce
+impressive models nobody uses.
+</Plain>
+
+<Recap>
+- A digital twin is a **specific** and **synchronised** model — drop either word
+  and it is something else.
+- Four kinds get built: **component**, **vehicle**, **environment** and **fleet**.
+- The **vehicle twin** has the fastest payback and is mostly a data problem, not
+  a physics problem.
+- In cockpit work a twin gives you realistic test data, desk-reproducible customer
+  complaints, targeted OTA, and answers about the past.
+- **Match fidelity to the decision** — over-modelling wastes a year, under-modelling
+  costs money, and both are common.
+- Interrogate claims: where does state come from, how was it validated, what
+  decision changes, what about offline vehicles, can you query one VIN.
+- Start with **recorded traces** and a **queryable per-VIN configuration store**;
+  add physics only where it is needed and validated.
+</Recap>
+
+## Next
+
+Getting software onto vehicles that are already sold — OTA in an SDV.

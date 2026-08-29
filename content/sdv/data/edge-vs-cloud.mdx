@@ -1,0 +1,200 @@
+---
+title: "Edge versus cloud"
+description: "Deciding what runs on the vehicle and what runs in a datacentre — the four constraints that make the decision for you, and the hybrid patterns that come out of it."
+order: 2
+difficulty: "Intermediate"
+tags: ["Edge", "Cloud", "Architecture"]
+sources:
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "Android — car app quality"
+    href: "https://developer.android.com/docs/quality-guidelines/car-app-quality"
+---
+
+Every connected feature raises the same question: does this computation happen in
+the vehicle or in a datacentre? The answer is usually forced by constraints
+rather than chosen, and knowing which constraint applies saves a lot of debate.
+
+## The four constraints that decide it
+
+<Plain>
+**Latency.** How long may this take? A cellular round trip is realistically
+100–500 ms on a good day, seconds on a bad one, and infinite in a tunnel. Any
+budget under about a second belongs on the vehicle.
+
+**Availability.** Must it work with no network? If yes, it runs on the vehicle,
+full stop. There is no clever architecture around this.
+
+**Data volume.** Can the input be transmitted at all? A camera frame cannot. A
+temperature reading can.
+
+**Compute cost.** Does the vehicle have the capability? A large language model,
+route optimisation across a continent, or fleet-wide analysis does not fit in a
+cockpit SoC's budget.
+</Plain>
+
+<Analogy title="A chef and a head office">
+A chef decides how long to sear a steak. That decision cannot go to head office —
+by the time the answer came back the steak would be ruined, and the kitchen must
+work when the phone lines are down.
+
+Head office decides which dishes are on next season's menu. That needs data from
+every restaurant, and it is nobody's job in the kitchen.
+
+Neither could do the other's job well. The interesting design work is in what
+flows between them.
+</Analogy>
+
+## Where things actually land
+
+| Function | Where | The deciding constraint |
+|---|---|---|
+| Braking, stability control | Vehicle (safety ECU) | Latency, availability, safety |
+| Lane keeping, ADAS perception | Vehicle | Latency, data volume |
+| Cluster rendering | Vehicle | Latency, availability |
+| Voice wake word | Vehicle | Latency, privacy |
+| Voice understanding | Usually cloud, with fallback | Compute cost |
+| Turn-by-turn guidance | Vehicle, with cached maps | Availability |
+| Route calculation with traffic | Cloud | Needs fleet-wide data |
+| Charging-stop planning | Cloud, cached on vehicle | Needs live charger status |
+| Media playback | Vehicle, streamed content | Availability of the UI |
+| Fleet analytics | Cloud | Needs every vehicle |
+| Fault detection | Vehicle detects, cloud correlates | Both — see below |
+| Model training | Cloud | Compute cost |
+| Model inference | Vehicle | Latency, data volume |
+
+<Plain>
+Read the last two rows together, because they are the general pattern for
+anything involving learning: **train centrally, infer locally.**
+
+The training needs data from thousands of vehicles and compute the car does not
+have. The inference needs to happen in milliseconds on data too large to send.
+So the model is built in the cloud and shipped to vehicles as part of an update.
+</Plain>
+
+## The hybrid patterns worth knowing
+
+Most real features are not purely one or the other. Four recurring shapes:
+
+### Detect locally, correlate centrally
+
+<Plain>
+The vehicle notices something — a fault, an anomaly, a threshold crossed — and
+sends a small event. The cloud, seeing events from the whole fleet, works out
+whether it is one vehicle's problem or a pattern.
+
+Neither side could do it alone. The vehicle cannot know it is one of four
+thousand. The cloud cannot see the raw signal.
+</Plain>
+
+### Compute centrally, cache locally
+
+Route options, charger locations, map tiles, media metadata. Computed where the
+data lives, cached on the vehicle so the feature survives a tunnel.
+
+### Cloud with a degraded local fallback
+
+<Plain>
+The best answer comes from the cloud; a worse but acceptable answer is always
+available locally.
+
+Voice is the clearest example: an on-vehicle recogniser handles a fixed command
+set — climate, media, navigation destinations — and the cloud handles everything
+else. The customer gets a working system underground and a better one above.
+
+Designing the fallback is real work and it is frequently skipped, which is why so
+many connected features simply stop in a car park.
+</Plain>
+
+### Shadow mode
+
+<Plain>
+A new algorithm runs on the vehicle alongside the current one but its output is
+not used — only compared. Disagreements are reported.
+
+This is how ADAS features are validated at fleet scale without risking anything,
+and it is a pattern worth borrowing for any behavioural change where you want
+real-world evidence before switching over.
+</Plain>
+
+<Scenario title="Charging-stop planning, designed properly">
+An EV needs to plan charging stops on a long route. Every constraint appears at
+once.
+
+**Cloud does:** route calculation across the network, live charger availability
+and pricing, traffic. None of this can be on the vehicle — it needs data from
+outside.
+
+**Vehicle does:** state-of-charge modelling using its own battery temperature and
+recent consumption, and continuous re-evaluation as conditions change. This must
+work in a mountain pass with no coverage.
+
+**The seam:** the cloud returns a plan with several candidate chargers and
+predicted arrival charge. The vehicle re-evaluates that plan locally every few
+minutes against its own consumption model, and can drop to the next candidate
+without asking.
+
+**Degraded mode:** with no connectivity, the vehicle uses cached charger locations
+and its own model. Charger availability is unknown, so it says so rather than
+pretending.
+
+**The honest UI:** "Charger availability last updated 40 minutes ago" is a much
+better experience than confidently displaying stale data. Surfacing staleness is
+usually the right call, and it is usually the last thing anyone implements.
+</Scenario>
+
+## Where teams get this wrong
+
+<Gotcha>
+**Assuming connectivity.** The most common error by a wide margin, and it comes
+from developing on a desk with good Wi-Fi. Test in aeroplane mode, deliberately
+and routinely.
+
+**Sending raw data to decide in the cloud.** Discussed in the previous topic —
+this is usually a volume problem disguised as an architecture preference.
+
+**No degraded mode.** A feature that works only online is a feature that visibly
+fails in every car park.
+
+**Putting a latency-critical loop behind a network call.** It will work in
+testing and fail in a tunnel, at the worst moment.
+
+**Ignoring cost.** Cloud compute per vehicle per month, multiplied by a fleet
+over fifteen years, is a number the business needs to have seen before you build.
+
+**Forgetting the fifteen-year horizon.** A cloud service the feature depends on
+must still exist in 2041, or the feature must degrade gracefully when it does
+not. Vehicles have outlived the services they were built against, repeatedly.
+</Gotcha>
+
+## Practical questions for a design review
+
+Ask these five, in order, and the architecture usually settles itself:
+
+1. **What is the latency budget?** Under a second means on-vehicle.
+2. **What happens with no network?** If the answer is "it breaks", that is a
+   requirement, not an accident.
+3. **How much data must move?** If the input is a video frame, the decision is
+   made.
+4. **Does it need data from other vehicles?** If yes, part of it is in the cloud.
+5. **What does this cost per vehicle per month, for fifteen years?**
+
+<Recap>
+- Four constraints decide edge versus cloud: **latency, availability, data
+  volume, compute cost** — and usually one of them makes the decision for you.
+- The general pattern for learning systems is **train centrally, infer locally**.
+- Four hybrid shapes recur: **detect locally / correlate centrally**, **compute
+  centrally / cache locally**, **cloud with degraded local fallback**, and
+  **shadow mode**.
+- Designing the **degraded mode** is real work and the most commonly skipped part.
+- **Surface staleness** rather than displaying stale data confidently.
+- Common errors: assuming connectivity, sending raw data, no fallback,
+  latency-critical work behind a network call, unmodelled cost, and a cloud
+  dependency that will not outlive the vehicle.
+</Recap>
+
+## Next
+
+Who is accountable for all of this data — governance and privacy.

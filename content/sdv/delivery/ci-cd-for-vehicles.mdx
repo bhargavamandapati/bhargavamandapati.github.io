@@ -1,0 +1,254 @@
+---
+title: "Continuous integration and delivery for vehicles"
+description: "What a real automotive CI pipeline looks like, why the last mile is nothing like web deployment, and how safety, regulation and physical hardware reshape a familiar practice."
+order: 2
+difficulty: "Intermediate"
+tags: ["CI/CD", "Testing", "Process"]
+sources:
+  - label: "UNECE R156 — software update management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update"
+  - label: "Eclipse SDV projects"
+    href: "https://sdv.eclipse.org/"
+  - label: "Android — A/B system updates"
+    href: "https://source.android.com/docs/core/ota/ab"
+---
+
+Continuous integration in a vehicle programme borrows the vocabulary of web
+development and then diverges sharply. The first half of the pipeline is
+familiar. The second half is not, and the differences are the interesting part.
+
+## What is the same
+
+<Plain>
+Commit triggers a build. Tests run. Artefacts are versioned. Merges are gated on
+green. Nothing exotic — and getting even this far is a genuine improvement over
+programmes that integrate quarterly.
+
+Teams arriving from software backgrounds sometimes assume automotive has not
+heard of CI. Most have. The constraints are downstream.
+</Plain>
+
+## What is different, and why
+
+| | **Typical web service** | **Vehicle software** |
+|---|---|---|
+| Deploy target | Servers you control | Millions of devices you do not |
+| Rollback | Redeploy, seconds | Another full update cycle, days |
+| Failure blast radius | Users see an error page | Vehicle may be undrivable |
+| Test environment | Identical to production | Approximation of a physical system |
+| Release approval | Team lead | Safety case, homologation, regulator |
+| Hardware variants | One | Dozens of trim, market and model-year combinations |
+| Update bandwidth | Free | Metered cellular, per vehicle |
+| Update opportunity | Any time | Parked, charged, and consented |
+| Regulatory record | None | R156 requires an auditable trail |
+
+<Plain>
+Read the rollback row twice. It reframes everything else.
+
+On the web, an incremental rollout to 1% is safe because you can stop it in
+seconds. In a vehicle, the vehicle may be moving, may be out of coverage for
+days, and cannot be reverted remotely on your schedule. So the pipeline has to
+front-load confidence rather than rely on fast recovery.
+</Plain>
+
+<Analogy title="Publishing a book versus a blog post">
+A blog post with an error is fixed in a minute and few people notice.
+
+A hundred thousand printed books with an error is a recall. So publishing invests
+in proofreading, copy-editing and proofs — expensive process that exists precisely
+because the correction path is closed.
+
+Vehicle software sits closer to the book than the blog. OTA has softened this
+enormously, but a bad update is still measured in weeks and reputation, not
+minutes.
+</Analogy>
+
+## The pipeline
+
+<DiagramFrame
+  title="Confidence increasing, execution frequency decreasing"
+  caption="Every stage is slower and scarcer than the one before it. The pipeline's job is to fail as early and as cheaply as possible."
+>
+  <SdvCiPipeline />
+</DiagramFrame>
+
+### Stage 1 — Commit (seconds to minutes, every commit)
+
+Static analysis, unit tests, licence and <T>SBOM</T> checks, secret scanning.
+On safety-relevant C, <T>MISRA C</T> compliance is checked here.
+
+<Plain>
+The rule for this stage is that it must stay fast enough that people run it
+before pushing. Once it takes twenty minutes, engineers stop waiting for it, and
+you have a slow gate instead of a fast signal.
+</Plain>
+
+### Stage 2 — Component build (minutes)
+
+Build for every target variant. This is where automotive gets expensive quickly:
+a matrix of SoC variants, market configurations, and model years, each producing
+its own artefact.
+
+```yaml
+# The variant matrix is the thing that grows without anyone deciding to grow it
+matrix:
+  soc:     [gen3, gen4]
+  market:  [eu, us, cn]
+  cluster: [standard, hud]
+# 2 × 3 × 2 = 12 images, every time
+```
+
+<Gotcha>
+Variant explosion is the most common reason automotive CI becomes unusably slow.
+The fix is not more build machines — it is questioning whether each dimension
+must be a separate image, or could be runtime configuration or an <T>RRO</T>
+instead.
+
+An overlay you can flip at runtime costs one build. A build flag costs a full
+matrix row forever.
+</Gotcha>
+
+### Stage 3 — SIL / virtual ECU (minutes, every merge)
+
+The <T>virtual ECU</T> stage from the previous topic. Scenario tests against a
+<T>data broker</T>, replayed real traces, fault injection, API contract checks.
+
+<Plain>
+This is where the largest share of behavioural coverage should live, because it
+is the last stage that is both fast and cheap. Everything you do not catch here
+becomes a hardware problem.
+</Plain>
+
+### Stage 4 — HIL (hours, nightly)
+
+Real ECUs on a bench, driven by a real-time vehicle simulation. Catches timing,
+bus behaviour under load, boot sequencing, power transitions.
+
+<T>HIL</T> rigs are expensive and few. Treat rig time as the scarce resource it
+is: run the tests that genuinely need hardware, and be ruthless about moving
+everything else down to SIL.
+
+### Stage 5 — Vehicle fleet (days, per release candidate)
+
+A test fleet running the candidate in real conditions. Finds thermal problems,
+real network behaviour, GNSS in tunnels and multipath, and the long tail of
+things nobody modelled.
+
+### Stage 6 — Release (weeks)
+
+Safety case updated, homologation evidence assembled, <T>R155</T>/R156
+documentation produced, staged rollout planned.
+
+<Plain>
+This stage is process, not engineering, and it is not optional. R156 requires a
+demonstrable software update management system — what was released, to which
+vehicles, with what evidence that it was safe.
+
+The practical consequence is that the pipeline must produce that evidence as a
+build artefact. Retrofitting an audit trail after the fact is painful; emitting
+it automatically is not.
+</Plain>
+
+## Testing on hardware that barely exists
+
+Early in a programme, silicon is scarce and late. The standard answers:
+
+**Emulate first.** AAOS builds run on an emulator with a simulated VHAL long
+before boards exist. Most application and framework work needs nothing else.
+
+**Previous-generation boards.** Slower and differently shaped, but they boot and
+they run integration tests.
+
+**Shared rigs with scheduling.** A booking system, and jobs that queue rather than
+fail when a rig is busy.
+
+**Record and replay.** Capture bus traces from the vehicles that do exist, replay
+them into SIL forever after. One drive becomes a permanent test asset.
+
+<Scenario title="A cluster feature, all the way through">
+A new charging-status view for the cluster.
+
+**Day 1.** Written against a broker on a laptop, using a recorded charging trace.
+Commit stage green in four minutes. UI reviewed from a screenshot in the PR.
+
+**Day 1, on merge.** SIL stage runs 40 scenarios: charging start, stop,
+interrupted, fault, unplugged mid-session, negative temperature. Two failures on
+edge cases nobody thought of at design time. Fixed the same afternoon.
+
+**Night 1.** HIL run. Catches that the view takes 900 ms to appear after wake
+because it waits on a property the vehicle publishes late. Fixed with a cached
+last-known value.
+
+**Week 2.** Test fleet. A driver reports the view flickers on a specific charger
+brand that reports state of charge at 20 Hz. Debounced.
+
+**Week 6.** Ships in the quarterly release.
+
+None of these four bugs would have been caught by the stage before it. That is
+the argument for having all of them — each stage exists because it finds a class
+of problem the cheaper stage structurally cannot.
+</Scenario>
+
+## Continuous delivery, honestly
+
+<Plain>
+Continuous **integration** — merging small changes constantly with automated
+verification — is entirely achievable in automotive, and the good programmes do
+it.
+
+Continuous **deployment** to customer vehicles is not, and mostly should not be.
+Every update consumes cellular data the customer may be paying for, requires the
+vehicle to be parked, requires consent, and carries regulatory obligations.
+
+What mature programmes actually do:
+
+- **Continuous integration:** many times a day.
+- **Continuous delivery to test fleets:** daily or weekly.
+- **Customer releases:** every 4–12 weeks, staged.
+- **Security fixes:** out of band, expedited, as needed.
+
+That cadence is not timidity. A customer who gets an update notification twice a
+week is being annoyed, not served.
+</Plain>
+
+<Gotcha>
+Beware the "we deploy to cars like we deploy to servers" claim. Ask three
+questions: what is the rollback path, what is the staged rollout policy, and what
+happens to a vehicle that is offline for two months.
+
+Programmes with good answers exist. Programmes that have not thought about the
+third question are the ones that end up with a fragmented fleet nobody can
+reason about.
+</Gotcha>
+
+## What good looks like
+
+Practical markers you can check on a real programme:
+
+- Commit stage under ten minutes, and engineers actually wait for it.
+- SIL scenarios in the repository, versioned with the code they test.
+- Nightly HIL, with failures triaged the next morning rather than accumulating.
+- A build produces its SBOM and licence manifest automatically.
+- Any artefact can be traced to its commit, its tests and its release.
+- Test data — recorded traces — treated as an asset with an owner.
+- Rig time trending **down** per feature as SIL coverage grows.
+
+<Recap>
+- The early pipeline is ordinary CI; the difference is that **rollback is slow and
+  the blast radius is a vehicle**, so confidence must be front-loaded.
+- Stages run **commit → build → SIL → HIL → fleet → release**, each slower,
+  scarcer and more expensive than the last.
+- **Variant explosion** is the usual cause of unusable automotive CI — prefer
+  runtime configuration and overlays over build flags.
+- Push coverage down to **SIL**, because it is the last stage that is fast and
+  cheap; reserve HIL for what genuinely needs hardware.
+- **R156 requires an auditable update trail** — emit that evidence from the
+  pipeline rather than assembling it later.
+- Continuous **integration** is achievable; continuous **deployment to customers**
+  is neither practical nor desirable. Real cadence is 4–12 weeks, staged.
+- A good sign of health: rig hours per feature going down over time.
+</Recap>
+
+## Next
+
+The simulation asset that ties all of this together — the digital twin.

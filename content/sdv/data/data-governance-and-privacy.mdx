@@ -1,0 +1,237 @@
+---
+title: "Data governance and privacy"
+description: "A vehicle knows where you go, who is inside and how you drive. What the law requires, what good practice looks like, and the specific decisions that land on a cockpit engineer."
+order: 3
+difficulty: "Intermediate"
+tags: ["Privacy", "Governance", "Regulation"]
+sources:
+  - label: "Android — car permissions"
+    href: "https://source.android.com/docs/core/permissions"
+  - label: "Android — privacy best practices"
+    href: "https://developer.android.com/privacy-and-security/about"
+  - label: "Android Automotive multi-user"
+    href: "https://source.android.com/docs/automotive/users_accounts/multi_user"
+---
+
+A vehicle is one of the most privacy-sensitive devices a person owns. It knows
+where they live, where they work, when they are away from home, who travels with
+them, and how they behave when they think nobody is watching.
+
+That deserves to be treated seriously on its own terms, and separately, it is
+increasingly enforced.
+
+## Why a vehicle is a harder case than a phone
+
+<Plain>
+**It is shared.** A phone belongs to one person. A vehicle carries family,
+colleagues, passengers who never agreed to anything, and — eventually — a second
+owner.
+
+**It is not obviously a computer.** People understand that a phone collects data.
+Far fewer expect their car to, so consent obtained by the usual means is weaker
+in practice.
+
+**Location is continuous and unavoidable.** A phone can have location switched
+off. A vehicle needs to know where it is to function.
+
+**It lasts fifteen years.** Data collected under today's policy will exist under
+policies and owners nobody has yet imagined.
+
+**Passengers cannot consent.** A rear-seat display, a cabin microphone or a
+driver-monitoring camera captures people who were never asked.
+
+**Resale transfers the device, not the data.** Saved destinations, paired phones
+and account sessions belong to the previous owner and must not follow the car.
+</Plain>
+
+<Analogy title="A diary somebody else is keeping">
+A phone is a diary you write. You know it exists and roughly what is in it.
+
+A vehicle is a diary somebody else keeps about you, continuously, including
+entries about the people who travelled with you. They did not agree to be in
+it, and it outlives your ownership of the book.
+
+That framing makes the design obligations obvious in a way that "comply with the
+regulation" does not.
+</Analogy>
+
+## What the rules actually require
+
+Details vary by market, but the principles converge, and they are worth knowing
+as engineering constraints rather than legal text.
+
+| Principle | What it means in code |
+|---|---|
+| **Lawful basis** | You need a reason to process each category — consent, contract, or legitimate interest |
+| **Purpose limitation** | Data collected for diagnostics may not be quietly reused for marketing |
+| **Data minimisation** | Collect what the purpose needs and no more |
+| **Storage limitation** | Define a retention period and actually delete |
+| **Transparency** | The person can find out what is collected and why |
+| **Access and erasure** | They can request a copy, and request deletion |
+| **Security** | Encrypted in transit and at rest, access controlled |
+| **Accountability** | You can demonstrate all of the above to a regulator |
+
+<Plain>
+The two that most often surprise engineers are **purpose limitation** and
+**storage limitation**.
+
+Purpose limitation means the useful dataset you already have cannot simply be
+repurposed for a new question. A different purpose needs its own basis.
+
+Storage limitation means deletion has to be implemented and to work — including
+deletion from backups, from analytics stores, and from the copy somebody pulled
+into a spreadsheet.
+</Plain>
+
+## The categories, and how to treat them
+
+<Plain>
+**Vehicle-only data** — coolant temperature, fault codes, ECU versions. Not
+about a person. Ordinary engineering data.
+
+**Vehicle data that identifies a person indirectly** — a VIN is tied to an owner
+record, so anything keyed by VIN is personal data even if the values are about
+the machine. This surprises people regularly.
+
+**Location** — always personal, and identifying even when stripped of names. A
+week of overnight positions is a home address. Treat pseudonymisation of location
+with scepticism; it is much weaker than it looks.
+
+**Behavioural** — braking style, speed relative to limits, feature usage.
+Personal, sensitive, and of interest to parties the customer did not choose.
+
+**In-cabin sensing** — driver-monitoring cameras, microphones, occupancy. The
+most sensitive category, and the one involving people who never consented.
+
+**Account and profile data** — contacts, messages, calendar synced from a phone.
+Belongs to the person, not the vehicle, and must not survive them leaving it.
+</Plain>
+
+<Gotcha>
+"We anonymise it" is the claim most often wrong in practice. A trip trace is
+extremely re-identifiable: the pair of locations where a vehicle spends most
+nights and most weekday hours identifies a household with high confidence.
+
+If you rely on anonymisation, be specific about the technique — aggregation
+thresholds, spatial and temporal coarsening, noise — and be honest that removing
+the VIN is not one.
+</Gotcha>
+
+## In-cabin sensing deserves its own rules
+
+<Plain>
+<T>DMS</T> cameras and cabin microphones are the sharpest case, because the
+capability is genuinely useful and the misuse potential is severe.
+
+The design consensus that has emerged:
+
+- **Process locally, always.** Driver-attention state is computed on the vehicle.
+  Frames do not leave.
+- **Never store raw frames or audio** beyond the processing window, and make that
+  window as short as the function allows.
+- **Send derived state, not observations.** "Attention state: distracted" is a
+  bounded disclosure. An image is not.
+- **Indicate when sensing is active**, visibly and honestly.
+- **Provide an off switch** for anything not legally mandated.
+- **Keep wake-word detection on-device**, with only the utterance after the wake
+  word going anywhere.
+
+Regulation is moving toward mandating driver monitoring in several markets. That
+makes it more important, not less, that the data handling around it is
+conservative — a mandated sensor with loose data practices is the worst
+combination available.
+</Plain>
+
+## Multi-user and the second owner
+
+Android gives you real tools here, and they are under-used.
+
+<Plain>
+<T>Occupant zones</T> and Android's multi-user model let each driver have their
+own profile — accounts, destinations, media, paired devices — genuinely separated
+by the platform rather than by application convention.
+
+Use them. The alternative is one shared profile in which every driver sees the
+previous driver's destinations and messages, which is a privacy failure that
+customers notice immediately and personally.
+
+And implement **factory reset properly**. On resale, everything must go: accounts,
+tokens, saved destinations, paired Bluetooth devices, voice profiles, cached
+media, and any local analytics. A second owner finding the first owner's home
+address in the navigation history is a story that ends up in the press, and it
+has, more than once.
+</Plain>
+
+<Scenario title="A saved-destinations feature, done two ways">
+The feature: the vehicle learns frequent destinations and offers them
+proactively.
+
+**Careless version.** Every trip endpoint is stored with a timestamp, synced to
+the cloud keyed by VIN, retained indefinitely, and shared with the connected-
+services partner. One profile for the vehicle. Factory reset clears the UI list
+but not the cloud copy.
+
+What has been built: a permanent, cloud-hosted record of everywhere a household
+went, tied to an identifiable vehicle, surviving resale, accessible to a third
+party. Whether that is lawful depends on paperwork. Whether it is defensible does
+not.
+
+**Careful version.** Clustering runs on the vehicle; only cluster centres are
+kept, at reduced precision, not individual trips. Stored in the driver's user
+profile, encrypted at rest. Nothing syncs to the cloud unless the driver enables
+cross-vehicle sync, and that is off by default. Retention is 90 days of activity.
+The list is visible and individually deletable in settings. Factory reset removes
+it, locally and remotely.
+
+The feature works identically for the customer. The difference is entirely in
+what exists afterwards, and what happens when something goes wrong.
+</Scenario>
+
+## What lands on a cockpit engineer
+
+Concrete habits, not principles:
+
+**Ask what personal data your feature touches, at design time.** After
+implementation it is a retrofit; before, it is a five-minute conversation.
+
+**Prefer derived over raw.** Every step away from the raw observation reduces
+exposure and usually reduces data volume too.
+
+**Default to off for anything optional.** A default-on collection that a customer
+discovers later is the pattern that generates complaints.
+
+**Keep it on the vehicle if you can.** Data that never leaves cannot leak, cannot
+be subpoenaed, and cannot outlive its purpose.
+
+**Never log personal data at debug level.** Debug logs get collected, uploaded and
+retained by systems that were never reviewed for personal data. Location in a
+logcat line is a real incident, and it is a common one.
+
+**Implement deletion for real, and test it.** Including from the cloud, including
+from backups, and including the analytics store somebody added later.
+
+**Test factory reset like a security control.** Because it is one. Reset a
+populated vehicle and go looking for what survived.
+
+<Recap>
+- A vehicle is harder than a phone: **shared, long-lived, continuously located,
+  carrying non-consenting passengers, and resold**.
+- The principles that matter in code: lawful basis, **purpose limitation**,
+  minimisation, **storage limitation**, transparency, access and erasure,
+  security, accountability.
+- Anything keyed by **VIN is personal data**, even when the values describe the
+  machine.
+- **Anonymised location is usually not** — overnight and weekday positions
+  identify a household.
+- **In-cabin sensing**: process locally, never store raw frames, send derived
+  state, indicate when active, provide an off switch.
+- Use Android's **multi-user and occupant zones** rather than one shared profile.
+- **Factory reset is a security control** — test it by trying to find what
+  survived.
+- Day to day: ask early, prefer derived data, default to off, keep it on the
+  vehicle, never log personal data, and make deletion actually work.
+</Recap>
+
+## Next
+
+Keeping a consolidated stack safe — functional safety in an SDV.

@@ -1,0 +1,242 @@
+---
+title: "QNX and safety operating systems"
+description: "Why a commercial microkernel keeps winning the safety-critical slot, what certification actually buys, and how a safety OS sits next to Android on the same chip."
+order: 4
+difficulty: "Advanced"
+tags: ["QNX", "Safety", "RTOS", "Platforms"]
+sources:
+  - label: "ISO 26262 — road vehicles functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+  - label: "Android — instrument cluster"
+    href: "https://source.android.com/docs/automotive/displays/cluster_api"
+  - label: "AUTOSAR Classic Platform"
+    href: "https://www.autosar.org/standards/classic-platform"
+---
+
+Every cockpit consolidation project eventually hits the same wall: some content on
+the screen is legally required to be there, and Android cannot promise it will
+be. <T>QNX</T> and its peers exist for exactly that gap.
+
+## The requirement that forces the issue
+
+<Plain>
+A handful of <T>telltales</T> are mandatory. If the brake system has a fault, a
+red warning must appear and stay visible. Same for airbags, and for a small
+regulated set of others.
+
+"Must" here is a legal obligation, not a product goal. A vehicle that fails it
+cannot be type-approved.
+
+Now ask: can you promise that an Android process will draw a specific pixel
+pattern, within a bounded time, every time, for fifteen years, including when the
+system is under memory pressure and an app is misbehaving?
+
+You cannot promise that. Not because Android is badly built, but because nothing
+in its design was ever intended to support that promise, and there is no
+certification evidence to back it.
+</Plain>
+
+<Analogy title="Like a fire alarm">
+A building's lighting can be smart, scheduled, app-controlled and occasionally
+buggy. Nobody dies.
+
+The fire alarm is on its own circuit, with its own battery, tested on a schedule,
+and deliberately not connected to anything clever. It does one thing and it does
+it when everything else has failed.
+
+The safety OS is the fire alarm circuit of the cockpit.
+</Analogy>
+
+## What a microkernel actually changes
+
+QNX is a microkernel, and the architectural difference has direct safety
+consequences.
+
+```
+   MONOLITHIC (Linux, Android)          MICROKERNEL (QNX)
+
+   ┌───────────────────────────┐        ┌────────────┐ ┌────────────┐
+   │        applications       │        │    apps    │ │  drivers   │
+   ├───────────────────────────┤        │ user space │ │ user space │
+   │  drivers │ fs │ net │ mm  │        └──────┬─────┘ └──────┬─────┘
+   │        KERNEL SPACE       │               │ message      │
+   └───────────────────────────┘        ┌──────┴──────────────┴─────┐
+                                        │  microkernel: scheduling, │
+   a bad driver panics                  │  IPC, memory protection   │
+   the whole system                     └───────────────────────────┘
+
+                                        a bad driver is a process
+                                        that can be restarted
+```
+
+<Plain>
+In Linux, a driver bug is a kernel bug, and a kernel bug takes the system down.
+
+In QNX, a driver is an ordinary user-space process talking to the kernel by
+message passing. If it faults, it faults alone. It can be restarted while
+everything else keeps running.
+
+The kernel itself is small — tens of thousands of lines rather than tens of
+millions. That size is not a bragging point; it is what makes formal analysis and
+certification affordable. You can argue about the correctness of something you
+can read.
+</Plain>
+
+## What "certified" actually means
+
+This phrase gets used loosely, so be precise about what is being bought.
+
+<Plain>
+An ISO 26262 certification for an OS is not a claim that the software has no
+bugs. It is a package of evidence that:
+
+- The development process followed the standard — requirements traced to code,
+  code traced to tests.
+- Coverage targets were met at the levels the <T>ASIL</T> requires (MC/DC
+  coverage at ASIL D, not merely line coverage).
+- Known defects are documented with analysed impact, not quietly fixed.
+- A **safety manual** states exactly how the OS must be configured to remain
+  within its certified envelope, and what the integrator is still responsible
+  for.
+- An independent assessor reviewed the whole package.
+
+You are buying **an argument you do not have to construct**, and a supplier who
+will stand behind it. On a programme where building that argument yourself would
+take years, that is the entire value proposition.
+</Plain>
+
+<Gotcha>
+Certification is conditional. The safety manual will say things like "the
+following filesystem is not certified" or "this scheduling mode is out of scope".
+Step outside the envelope and the certificate does not cover you.
+
+Teams have discovered late that the configuration they shipped was not the
+configuration that was certified. Read the safety manual early, and treat its
+constraints as requirements rather than suggestions.
+</Gotcha>
+
+## The safety island pattern
+
+Here is how QNX and Android actually coexist, and it is the pattern you will meet
+in almost every consolidated cockpit.
+
+<DiagramFrame
+  title="One SoC, partitions with different safety levels"
+  caption="The hypervisor enforces freedom from interference: Android cannot starve, corrupt or delay the safety partition, whatever it does."
+>
+  <MixedCriticality />
+</DiagramFrame>
+
+<Plain>
+A certified <T>hypervisor</T> partitions the chip. Each guest gets a fixed
+allocation of CPU cores, memory ranges and devices.
+
+- The **safety partition** — QNX, or an RTOS, or in some designs a separate
+  microcontroller entirely — renders mandatory telltales and handles anything
+  ASIL-rated.
+- The **Android partition** renders everything else: navigation, media, the
+  informational parts of the cluster.
+- The display controller composites the two, with the safety layer on a hardware
+  overlay plane that Android cannot touch.
+
+The property being enforced is <T>freedom from interference</T>: nothing Android
+does — spinning every core, exhausting memory, crashing — may affect the safety
+partition's ability to meet its deadline.
+</Plain>
+
+<Scenario title="What the driver sees when Android dies">
+A driver is following the map when an update leaves the infotainment stack in a
+bad state and Android restarts.
+
+- The map area of the cluster goes blank or shows a fallback.
+- The speedometer keeps updating.
+- The brake and airbag telltales stay lit exactly as before.
+- Nothing about vehicle behaviour changes.
+- Thirty seconds later Android is back and the map returns.
+
+The driver experienced a glitch, not a hazard. That outcome is not luck — it is
+the partitioning working as designed, and it is the entire reason for the extra
+architectural complexity.
+</Scenario>
+
+## The alternatives to QNX
+
+QNX has the largest share of this slot but it is not the only option.
+
+| Option | Character | Where it fits |
+|---|---|---|
+| **QNX** | Certified microkernel, commercial, mature tooling | Clusters, hypervisors, ADAS — the default choice |
+| **Integrity / PikeOS / VxWorks** | Certified RTOS, separation-kernel heritage | Avionics-influenced programmes, very high assurance |
+| **Safety-certified Linux** | Linux plus a certification package | Attractive licence story, ASIL claims are narrower |
+| **AUTOSAR Classic on an MCU** | No OS in the desktop sense | Highest ASIL, small deterministic functions |
+| **Zephyr / FreeRTOS** | Small open-source RTOS | Zone controllers, sensors; certification varies |
+
+<Plain>
+The pattern across all of them: **the higher the ASIL, the smaller and dumber the
+software**. That is not a coincidence. Complexity is the enemy of a safety
+argument, so the safest components are deliberately the least capable ones.
+
+This is a useful instinct to carry into design reviews. When someone proposes
+adding a feature to the safety partition, the correct first question is whether
+it can live outside it instead.
+</Plain>
+
+## Why an Android engineer should care
+
+You will not write QNX code. You will still hit its consequences constantly.
+
+**Boot ordering.** The safety partition boots first and fast. Android boots
+later and slower. Anything of yours that assumes it is up early is wrong.
+
+**Resource limits are hard limits.** Your partition has N cores and M megabytes,
+fixed by configuration. There is no borrowing from the safety partition under
+load. Performance work has a ceiling you cannot argue with.
+
+**You do not own the whole display.** The safety overlay sits above your surfaces.
+A full-screen layout that assumes it can use every pixel of the cluster will be
+partly covered, by design.
+
+**Some properties are read-only to you for a reason.** If a value originates in
+the safety domain, Android sees it and cannot set it. That is not a missing
+feature request.
+
+**Crashes are contained but visible.** Android restarting is survivable, and it
+is also noticeable to the driver. "The partitioning protects us" is not a reason
+to be relaxed about stability.
+
+<Scenario title="A design review you will sit in">
+Someone proposes drawing the speedometer needle in Android because the animation
+would be nicer.
+
+The right response is not "no, because rules". It is to ask which parts are
+regulated. Typically: the numeric speed and the mandatory telltales are, and the
+surrounding styling is not.
+
+The usual landing point is that the safety partition draws a plain, certified
+speed readout and the telltales, while Android draws everything around it. The
+result looks like one coherent design and satisfies the requirement.
+
+Getting to that answer requires knowing where the line is — which is why this
+topic is worth your time even though you will never open a QNX IDE.
+</Scenario>
+
+<Recap>
+- Mandatory telltales must be shown reliably, and Android carries no evidence that
+  it can promise that.
+- QNX is a **microkernel**: drivers run in user space, a fault is contained, and
+  the small kernel is what makes certification affordable.
+- **Certified** means a package of process, coverage and traceability evidence,
+  plus a **safety manual** whose constraints you must actually follow.
+- The standard pattern is a **safety island** — certified hypervisor, fixed
+  partitions, safety content on a hardware overlay above Android.
+- The property enforced is **freedom from interference**: Android cannot affect
+  the safety partition, whatever it does.
+- Alternatives exist, and across all of them **higher ASIL means smaller, simpler
+  software**.
+- As an Android engineer this shapes your boot order, your resource budget, your
+  display area, and which properties you may write.
+</Recap>
+
+## Next
+
+The cluster — where all of this has to be safe as well as correct.

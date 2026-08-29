@@ -1,0 +1,247 @@
+---
+title: "Zero trust inside the vehicle"
+description: "Why the vehicle network stopped being a trusted place, what replaces implicit trust between components, and the practical controls that follow."
+order: 2
+difficulty: "Advanced"
+tags: ["Security", "Zero trust", "Architecture"]
+sources:
+  - label: "UNECE R155 — cybersecurity management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-155-cyber-security-and-cyber-security"
+  - label: "Android — SELinux for Android"
+    href: "https://source.android.com/docs/security/features/selinux"
+  - label: "Android — verified boot"
+    href: "https://source.android.com/docs/security/features/verifiedboot"
+---
+
+The vehicle network was designed in an era when being physically inside the car
+was the security boundary. That assumption is no longer defensible, and the
+architecture is still catching up.
+
+## The assumption that broke
+
+<Plain>
+<T>CAN</T> has no authentication. None. A frame carries an identifier and some
+bytes. Any node on the bus can send any identifier, and every receiver believes
+it.
+
+This was a reasonable design in 1986. To send a frame you needed physical access
+to the wiring, and if an attacker was already inside the car with tools, message
+authentication was not the weakest link.
+
+Then vehicles gained cellular modems, Wi-Fi, Bluetooth, USB, app stores and
+charging connectors that talk protocols. The perimeter acquired doors, and
+"inside the vehicle" stopped meaning "physically present".
+</Plain>
+
+<Analogy title="An office with one locked front door">
+An old office locked the front door and trusted everyone inside — any desk could
+use any filing cabinet, because getting in required a key.
+
+Then the office added a public reception, a visitor Wi-Fi, and contractors coming
+and going. The front door still locks, but "inside" now includes people you have
+not vetted.
+
+<T>Zero trust</T> is the response: stop treating location as evidence of
+trustworthiness, and check at every cabinet instead.
+</Analogy>
+
+## What zero trust means concretely
+
+The principle is that no component is trusted because of where it sits. Trust is
+established per interaction.
+
+<Plain>
+Four things follow:
+
+**Authenticate every component.** A message is accepted because it is provably
+from the component authorised to send it, not because it appeared on the bus.
+
+**Authorise every action.** Being authenticated is not being permitted. The
+infotainment system is a legitimate component that still has no business
+commanding the brakes.
+
+**Assume compromise.** Design so that one component being owned does not hand
+over the vehicle. Segment, and limit what any single position can reach.
+
+**Verify continuously.** Not once at boot. A component that was trustworthy at
+startup may not be an hour later.
+</Plain>
+
+## The controls that implement it
+
+### Segmentation
+
+```
+   ┌──────────── untrusted ────────────┐
+   │  apps, browser, Bluetooth, USB,   │
+   │  media, connected services        │
+   └────────────────┬──────────────────┘
+                    │  narrow, validated interface
+   ┌────────────────┴──────────────────┐
+   │  cockpit platform (Android, IVI)  │
+   └────────────────┬──────────────────┘
+                    │  gateway: filters, rate-limits, authenticates
+   ┌────────────────┴──────────────────┐
+   │  vehicle domain: powertrain,      │
+   │  chassis, body, ADAS              │
+   └───────────────────────────────────┘
+```
+
+<Plain>
+The **gateway** is the load-bearing control. It is the only path between the
+connected world and the vehicle's control networks, and its job is to be
+deliberately unhelpful: allow a known list of messages, in a known direction,
+within known rate limits, and nothing else.
+
+The design rule is allow-listing, not block-listing. A gateway that blocks known
+bad messages fails to an open state. One that permits only known good messages
+fails closed.
+</Plain>
+
+### Authenticated messages
+
+<Plain>
+SecOC — Secure Onboard Communication — adds a truncated message authentication
+code and a freshness counter to critical bus messages. It costs payload bytes and
+computation, so it is applied selectively to messages that matter.
+
+On the service side, <T>SOME/IP</T> and <T>DDS</T> run over TLS or DTLS with
+per-component certificates, which gives both authentication and confidentiality.
+
+The freshness counter matters as much as the signature: without it, a captured
+valid message can simply be replayed later.
+</Plain>
+
+### Secure boot and attestation
+
+<Plain>
+<T>Verified boot</T> establishes that the software running is the software that
+was signed — each stage verifies the next before handing over. Android's
+implementation is one you already know.
+
+Attestation extends it across components: a device can prove to another what it
+is running. That is what lets a gateway decline to talk to a cockpit that cannot
+demonstrate it booted a known image.
+</Plain>
+
+### Isolation within a component
+
+<Plain>
+<T>SELinux</T> is exactly this principle applied inside Android — a process is
+confined to what its domain permits regardless of its UID. An
+<T>AVC denial</T> in a log is the model working.
+
+The same discipline applies to <T>SEPolicy</T> you write for vendor services.
+Every `allow` rule is a relaxation of zero trust, and the review question is
+always whether a narrower rule would do.
+</Plain>
+
+### Intrusion detection
+
+Anomaly monitoring on the buses and in the gateway: unexpected identifiers,
+implausible rates, messages from the wrong direction. Reported to a backend
+where fleet-wide patterns become visible.
+
+<Plain>
+Detection matters because prevention is never complete. The realistic goal is not
+that nothing gets in — it is that you find out, at fleet scale, before it becomes
+a recall.
+</Plain>
+
+## The attack surface, honestly
+
+| Entry point | Nature | Typical mitigation |
+|---|---|---|
+| Cellular modem | Remote, scalable — the worst case | Hardened stack, isolated, behind the gateway |
+| Wi-Fi / Bluetooth | Proximate, no contact needed | Pairing controls, isolation, patching |
+| App store / apps | Remote via a legitimate channel | Signing, review, permissions, sandbox |
+| USB / media | Physical, but casual | Parser hardening, mount restrictions |
+| Charging (ISO 15118) | Physical, protocol-rich, growing | Certificate validation, input hardening |
+| OBD-II port | Physical, often exposed | Gateway filtering, authentication |
+| Supply chain | Pre-delivery | SBOM, signed artefacts, provenance |
+| The update channel | Remote, total | Signing, rollback protection, Uptane |
+
+<Plain>
+Two rows deserve emphasis.
+
+**Remote and scalable beats physical.** An attack requiring physical access to
+each vehicle is a limited problem. One reachable over cellular against the whole
+fleet is a different category, and this is where the effort belongs.
+
+**The update channel is the crown jewel.** It is, by design, a mechanism for
+running arbitrary new code on every vehicle. Compromising it compromises
+everything, which is why the controls around it are so heavy.
+</Plain>
+
+<Scenario title="Thinking through a compromised infotainment system">
+An attacker achieves code execution in the infotainment stack — a browser bug, a
+malicious app, a media parser flaw. What can they reach?
+
+**In a flat-trust design:** infotainment is on the vehicle network. It can send
+CAN frames. Frames are unauthenticated. The attacker can command anything any
+ECU accepts. This is essentially the well-publicised remote-vehicle-control
+research from the mid-2010s.
+
+**In a zero-trust design:**
+
+- Infotainment is on its own network segment; it cannot reach the chassis bus at
+  all.
+- The gateway allows a specific, small set of requests — climate, media, seat
+  position — in one direction, rate-limited.
+- Critical messages carry authentication codes the attacker cannot forge without
+  keys held in hardware they do not control.
+- The safety domain would reject the requests anyway; a "set steering angle" from
+  the cockpit is not an authorised action.
+- The gateway's IDS flags the unusual traffic, and the backend sees it across the
+  fleet.
+
+The attacker has infotainment, which is bad: personal data, an unpleasant
+customer experience, a mandatory disclosure. They do not have the vehicle.
+
+**That containment is the whole objective.** Zero trust does not promise nothing
+is compromised. It promises a compromise stays small.
+</Scenario>
+
+## What this means for your work
+
+**Every interface you expose is attack surface.** A service, a broadcast receiver,
+a content provider, a socket, an intent filter. Ask who can reach it and what
+they can make it do.
+
+**Validate everything from outside your process**, including from other parts of
+the vehicle. "It comes from the VHAL so it is trusted" is exactly the assumption
+zero trust removes.
+
+**Least privilege for real.** Each `allow` in SEPolicy is a deliberate weakening.
+Each permission your app requests should have a reason a reviewer would accept.
+
+**Never hardcode secrets.** Keys belong in hardware-backed storage. An APK is not
+a secure place and is trivially extracted.
+
+**Treat crashes as security-relevant.** A parser that segfaults on malformed input
+is often a memory-safety bug and therefore a potential exploit, not merely a
+stability issue.
+
+**Assume your component will be the compromised one** and design what it can
+reach accordingly. That framing is more productive than assuming it will not.
+
+<Recap>
+- CAN has **no authentication**, which was fine when physical access was the
+  boundary — and vehicles now have modems, radios, ports and app stores.
+- **Zero trust**: authenticate every component, authorise every action, assume
+  compromise, verify continuously.
+- The controls are **segmentation with an allow-listing gateway**, **authenticated
+  messages with freshness**, **verified boot and attestation**, **SELinux-style
+  isolation**, and **intrusion detection**.
+- Prioritise **remote, scalable** entry points over physical ones, and treat the
+  **update channel** as the crown jewel.
+- A compromised infotainment system should cost you infotainment, not the
+  vehicle — containment is the objective.
+- For your code: every interface is surface, validate all external input, least
+  privilege genuinely, no hardcoded secrets, treat crashes as security bugs, and
+  assume you are the compromised component.
+</Recap>
+
+## Next
+
+The regulation and process wrapped around all of this.

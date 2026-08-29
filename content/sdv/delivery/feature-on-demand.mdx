@@ -1,0 +1,241 @@
+---
+title: "Feature on demand"
+description: "Selling software capability after the vehicle is built — how entitlement actually works end to end, why some attempts were rejected by customers, and the engineering it forces on you."
+order: 5
+difficulty: "Intermediate"
+tags: ["Feature on demand", "Business model", "Architecture"]
+sources:
+  - label: "Android — car permissions"
+    href: "https://source.android.com/docs/core/permissions"
+  - label: "Vehicle HAL properties"
+    href: "https://source.android.com/docs/automotive/vhal/system-properties"
+  - label: "UNECE R156 — software update management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update"
+---
+
+<T>Feature on demand</T> is the commercial reason many SDV programmes are funded.
+It is also the part of the SDV story that has generated the most customer anger,
+and the difference between the two outcomes is worth understanding precisely.
+
+## The idea
+
+<Plain>
+Build one hardware specification. Sell capability separately — at purchase,
+later, as a subscription, or as a trial.
+
+The manufacturing argument is genuinely strong. Fitting every vehicle identically
+removes variant complexity from a factory, from the supply chain, and from the
+service network. One wiring harness instead of nine. One spare part instead of
+four.
+
+The commercial argument is that revenue continues after the sale, and that a
+customer who did not want a feature in year one can buy it in year three.
+</Plain>
+
+<DiagramFrame
+  title="One build, capability gated by entitlement"
+  caption="The hardware and software are present in every vehicle. What differs is the entitlement the vehicle holds, and what it therefore permits."
+>
+  <FeatureOnDemand />
+</DiagramFrame>
+
+## Where it works, and where it does not
+
+This is the crux, and it is not subtle once stated.
+
+| Reception | Kind of feature | Examples |
+|---|---|---|
+| **Accepted** | Ongoing service with ongoing cost | Live traffic, connected navigation, remote services, hotspot data |
+| **Accepted** | Genuinely new capability delivered later | A driver-assist function that did not exist at build |
+| **Accepted** | Temporary or occasional use | Trailer-towing mode for one weekend, a trial before buying |
+| **Rejected** | Hardware present, artificially disabled | Heated seats you can feel under you, unlocked by subscription |
+| **Rejected** | Capability the customer believes they bought | Full battery range, already-fitted acceleration |
+
+<Plain>
+The pattern behind the line: customers accept paying for something that
+**costs the manufacturer money to keep providing**, and reject paying repeatedly
+for something **already installed in the car they own**.
+
+Heated seats became the notorious case because the hardware is physically present
+and costs nothing to run. Charging monthly for it reads as withholding, and
+customers said so loudly enough that the plan was withdrawn.
+
+Live traffic, by contrast, requires servers and data feeds indefinitely. Almost
+nobody objects to paying for that.
+</Plain>
+
+<Analogy title="A gym membership versus a locked room in your house">
+Paying monthly for a gym is normal — the gym has staff, equipment and a building,
+and stops costing you when you stop going.
+
+Paying monthly to unlock a room in the house you bought is not the same
+transaction, however the contract is written. The room is already yours; the
+lock is the product.
+
+Every FoD proposal should be tested against that distinction before engineering
+starts.
+</Analogy>
+
+<Gotcha>
+This is a genuinely useful thing to raise in a design review, and it is a
+technical point as well as an ethical one. Features on the wrong side of the line
+generate customer anger, press coverage, regulatory attention, and — very
+reliably — an aftermarket unlocking industry that becomes your security problem.
+
+Engineering effort spent gating a feature customers believe they own is effort
+spent building something you will later be asked to remove.
+</Gotcha>
+
+## How entitlement actually works
+
+The mechanism is the same regardless of the feature.
+
+```
+  purchase (app, web, in-car store)
+            │
+            ▼
+   ┌──────────────────┐
+   │ entitlement      │   the authority: which VIN owns what, until when
+   │ service (cloud)  │
+   └────────┬─────────┘
+            │ signed entitlement token, bound to VIN, with expiry
+            ▼
+   ┌──────────────────┐
+   │ vehicle          │   verifies signature, stores securely,
+   │ entitlement mgr  │   re-validates when connectivity allows
+   └────────┬─────────┘
+            │
+   ┌────────┴──────────┬──────────────────┐
+   ▼                   ▼                  ▼
+ feature flag      capability        UI visibility
+ in the ECU        in the VHAL       in the app
+ that performs     that permits      that presents
+ the function      the write         the control
+```
+
+<Plain>
+Three properties do the real work.
+
+**Signed and VIN-bound.** A token lifted from one vehicle must not work in
+another. Signature verification happens on the vehicle, against a key it holds in
+hardware.
+
+**Enforced at the point of action, not in the UI.** Hiding a button is
+presentation. The check that matters is in the component that actually performs
+the function.
+
+**Works offline.** A vehicle in an underground car park must still know what it is
+entitled to. Tokens are cached with an expiry long enough to survive realistic
+offline periods, and re-validated opportunistically.
+</Plain>
+
+<Gotcha>
+Enforcing entitlement only in the app layer is the classic mistake. Someone will
+send the underlying intent, call the API directly, or install a modified APK.
+
+The rule is the same as any authorisation design: **the layer that performs the
+action is the layer that must check.** In practice that means the VHAL
+implementation or the vehicle-side service, not the Activity.
+</Gotcha>
+
+## What this forces on the engineering
+
+FoD is not a feature you add at the end. It changes how the whole build is
+structured.
+
+**One image, many configurations.** You can no longer branch the build per trim,
+because every vehicle ships the same software. Differences become runtime state.
+This is a good discipline — it collapses the variant matrix that makes automotive
+CI slow — but it has to be designed in.
+
+**Every feature needs a defined off state.** Not "the button is hidden" but what
+the whole system does: what the cluster shows, what a voice command answers, what
+happens if an entitlement expires mid-drive. Those are product decisions that
+need answers before code.
+
+**Graceful expiry.** A subscription ending while the vehicle is moving must not
+change vehicle behaviour abruptly. The usual rule is that anything affecting
+driving continues until the vehicle is next parked.
+
+**Testing multiplies.** Every FoD feature at least doubles its own test matrix:
+entitled, not entitled, expired, expiring during use, offline with a cached
+token, offline with an expired token, and transferred to a new owner.
+
+**Ownership transfer.** When the vehicle is sold, entitlements must move or end
+predictably. Getting this wrong produces a second owner who paid for a car whose
+features silently stopped, which is a support and reputation problem.
+
+<Scenario title="Trailer mode, designed properly">
+An OEM offers a towing package purchasable for a weekend. It changes stability
+control tuning, adds a trailer view to the cluster, and alters range estimation.
+
+**Entitlement.** Purchased in the app, token issued for 72 hours bound to the VIN,
+delivered next time the vehicle is online.
+
+**Enforcement.** The stability-control ECU checks entitlement itself before
+applying trailer tuning — it does not trust a message from infotainment. The
+cluster view and range model check separately.
+
+**Off state.** Without entitlement, the trailer view is absent from the cluster
+menu entirely rather than shown greyed out, because a greyed control the customer
+cannot use is an advertisement, not a UI.
+
+**Expiry.** At 72 hours, if the vehicle is moving with a trailer connected,
+tuning **stays active** until the next park. Safety is not a subscription.
+
+**Offline.** Token cached; a vehicle out of coverage for the whole weekend still
+works.
+
+**Test matrix.** Entitled towing, unentitled towing, expiry while parked, expiry
+while towing, offline purchase delivery, and purchase while already towing.
+
+That is one modest feature, and the design work is substantial. Multiply by a
+catalogue and you see why FoD is an architecture decision rather than a product
+decision.
+</Scenario>
+
+## Doing it without antagonising customers
+
+Patterns that have worked in practice:
+
+**Charge for ongoing cost, not for unlocking.** The clearest test of whether a
+feature belongs in the catalogue.
+
+**Offer permanent purchase alongside subscription.** Customers object far less
+when a subscription is a choice rather than the only route.
+
+**Be explicit at the point of sale.** "This vehicle includes the hardware;
+this function requires a subscription" printed clearly is a different transaction
+from a discovery in year two.
+
+**Let trials be genuine.** A trial that converts silently into a charge is the
+fastest way to lose the argument.
+
+**Never gate safety.** Emergency braking, stability control, warning telltales.
+Some markets are moving to make this explicit in regulation; the reputational
+cost already makes it settled.
+
+**Make ownership transfer work well.** It is the cheapest goodwill available and
+the most commonly neglected.
+
+<Recap>
+- FoD means **one hardware build, capability sold separately** — the
+  manufacturing argument for this is genuinely strong.
+- Customers accept paying for **ongoing cost** (traffic, connectivity, new
+  capability, temporary use) and reject paying for **unlocking hardware they
+  already own**.
+- Entitlement is a **signed, VIN-bound token** verified on the vehicle, cached to
+  work offline, and re-validated when possible.
+- Enforcement must live in the **component that performs the action**, never only
+  in the UI.
+- FoD forces one image with runtime configuration, a defined off state per
+  feature, graceful expiry, ownership transfer, and a much larger test matrix.
+- **Safety-relevant behaviour is never gated**, and an entitlement expiring
+  mid-drive must not change how the vehicle drives.
+- The catalogue test is simple: does this cost the manufacturer money to keep
+  providing?
+</Recap>
+
+## Next
+
+What the fleet produces and where it goes — vehicle data pipelines.

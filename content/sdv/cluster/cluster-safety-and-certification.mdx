@@ -1,0 +1,188 @@
+---
+title: "Cluster safety and certification"
+description: "What has to be proven before a consolidated cockpit can ship — the evidence a safety case actually needs, and the requirements that keep landing on the wrong system."
+order: 3
+difficulty: "Advanced"
+tags: ["Safety", "ISO 26262", "Certification"]
+sources:
+  - label: "ISO 26262 — road vehicles functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+  - label: "UNECE vehicle regulations"
+    href: "https://unece.org/transport/vehicle-regulations"
+  - label: "ISO 21448 — safety of the intended functionality"
+    href: "https://www.iso.org/standard/77490.html"
+---
+
+Consolidating the cluster with infotainment saves real money. The price is that
+the isolation which used to be obvious — they were separate boxes — now has to be
+argued for in a document.
+
+This page is about what that document contains and what it demands of your work.
+
+## What the cluster owes the driver
+
+Two distinct obligations, often conflated:
+
+**Regulatory.** Specific telltales must be a specific colour and symbol, and must
+appear when their condition occurs. These come from vehicle regulations, not from
+<T>ASIL</T> ratings, and they are checked at homologation.
+
+**Functional safety.** The rated content must be **correct** — a speedometer that
+displays 50 when the vehicle is doing 70 is a safety failure, not a cosmetic one.
+This is <T>ISO 26262</T> territory, with an ASIL rating attached.
+
+<Plain>
+A useful way to hold them apart: regulation is mostly about **presence and
+appearance**; functional safety is mostly about **correctness and availability**.
+
+A cluster can satisfy one and fail the other.
+</Plain>
+
+## The three failure modes a safety case must address
+
+For any displayed value, the analysis asks what happens if it is:
+
+**Absent.** The speedometer shows nothing. Usually detectable by the driver, and
+usually the least dangerous of the three.
+
+**Wrong.** The speedometer shows 50 when the vehicle is doing 70. **This is the
+dangerous one**, because the driver has no way to know and will act on it.
+
+**Stale.** The speedometer shows a value from four seconds ago. Dangerous for the
+same reason as wrong, and harder to detect from inside the system.
+
+<Scenario title="Why 'fail visibly' is a design requirement">
+A cluster receives speed over a link that stops.
+
+**Bad design:** keep displaying the last value. The driver sees a plausible
+number and has no reason to doubt it.
+
+**Good design:** the value is dashed out, or the gauge greys, within a defined
+timeout. The driver immediately knows the vehicle is not telling them their
+speed.
+
+Nobody enjoys designing a UI that visibly breaks. But **absent is much safer than
+wrong**, and a safety case will ask you to demonstrate which one you produce.
+
+This is the single most transferable idea in this topic: every rated value needs
+a defined staleness timeout and a visible degraded state.
+</Scenario>
+
+## Freedom from interference, concretely
+
+When rated and unrated software share hardware, <T>freedom from interference</T>
+must be demonstrated in three dimensions.
+
+**Memory.** The infotainment guest cannot read or write the safety guest's
+memory. Evidence: hypervisor configuration, hardware memory protection settings,
+and tests attempting violations.
+
+**Timing.** The infotainment guest cannot delay the safety guest. Evidence: core
+allocation, scheduling configuration, and measurement under adversarial load.
+
+**Exchange of information.** A corrupted or malicious message from the
+infotainment guest cannot cause incorrect behaviour in the safety guest.
+Evidence: the receiver validates everything, bounds the channel, and has a
+defined fallback.
+
+<Plain>
+The third is where designs most often fall short, because the first two are
+configuration and the third is discipline.
+
+The rule that satisfies it: **the safety side treats the infotainment side as
+untrusted input**, exactly as if it came from the internet. Validate length,
+validate version, validate ranges, reject anything unexpected, and have a
+fallback for silence.
+</Plain>
+
+## The evidence a safety case actually wants
+
+Not code quality opinions — artefacts:
+
+| Evidence | What it looks like |
+| --- | --- |
+| Hazard analysis | Every displayed item, its failure modes, and the resulting risk |
+| Safety requirements | Derived from the hazards, traceable both ways |
+| Architecture rationale | Why this partitioning satisfies those requirements |
+| Isolation evidence | Configuration plus tests attempting to violate it |
+| Timing evidence | Measured worst-case under adversarial load, not typical load |
+| Tool qualification | Confidence in the compiler, hypervisor and generators used |
+| Verification results | Tests traceable back to requirements |
+
+<Plain>
+The pattern to notice: almost all of it is **traceability**. A hazard leads to a
+requirement leads to a design decision leads to a test result.
+
+Which means the practical advice for an engineer is unglamorous: when you make a
+safety-relevant decision, **write down why, in a place the safety engineer can
+reference.** Reconstructing rationale eighteen months later is expensive and
+sometimes impossible.
+</Plain>
+
+## Requirements that keep landing on the wrong system
+
+These arrive on infotainment teams regularly, and all of them belong elsewhere:
+
+- "The head unit shall display the brake warning lamp."
+- "The infotainment system shall alert the driver when adaptive cruise
+  disengages."
+- "Android shall guarantee the speed display updates within 100 ms."
+- "The head unit shall place the emergency call."
+- Any availability figure Android cannot meet.
+
+<Plain>
+The correct response is not to attempt it and hope. It is to raise it as an
+architectural finding, name the system that should own it, and involve the safety
+engineer.
+
+Doing that in week one is a five-minute conversation. Doing it during
+homologation is a programme problem, and by then somebody has built the thing.
+
+In my experience safety engineers are pleased to be asked — the requirement
+usually landed on the wrong component through a documentation path, not a
+decision.
+</Plain>
+
+## Testing the safety argument
+
+Three tests worth running early and repeatedly:
+
+```bash title="1. Kill the unrated guest"
+# From the infotainment guest, on a development build
+adb shell stop
+# Cluster must be completely unaffected: gauges, telltales, no flicker
+adb shell start
+```
+
+```text title="2. Load the shared resources adversarially"
+Run a GPU benchmark, saturate memory bandwidth, and flood the inter-guest
+channel — simultaneously. Measure cluster frame timing throughout.
+```
+
+```text title="3. Corrupt the channel"
+Send malformed messages: wrong version, oversized, truncated, wrong field types,
+absurd values. The safety guest must reject every one and keep working.
+```
+
+<Plain>
+Test 3 is the one most often skipped and the one a reviewer will ask about. It is
+also easy to automate, which makes it a good candidate for the pipeline.
+</Plain>
+
+<Recap>
+- Two separate obligations: **regulatory** (presence and appearance) and
+  **functional safety** (correctness and availability).
+- Three failure modes: **absent, wrong, stale**. Wrong and stale are the dangerous
+  ones because the driver cannot detect them.
+- **Absent is safer than wrong** — every rated value needs a staleness timeout and
+  a visible degraded state.
+- **Freedom from interference** must be shown in memory, timing *and* information
+  exchange. The third requires the safety side to treat the other as untrusted.
+- A safety case wants **traceable artefacts**, so write down rationale as you go.
+- Requirements land on the wrong system constantly. **Escalate early — it is a
+  five-minute conversation in week one.**
+</Recap>
+
+## Next
+
+The infotainment side of the same cockpit.

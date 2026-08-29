@@ -1,0 +1,202 @@
+---
+title: "How cluster pixels actually get drawn"
+description: "Four ways to put content on the cluster — native, streamed, shared-surface and hardware-composed — with the trade-offs that decide which one a programme picks."
+order: 2
+difficulty: "Advanced"
+tags: ["Cluster", "Rendering", "GPU"]
+sources:
+  - label: "Android graphics architecture"
+    href: "https://source.android.com/docs/core/graphics"
+  - label: "Instrument cluster support"
+    href: "https://source.android.com/docs/automotive/displays/cluster_api"
+  - label: "ISO 26262 — functional safety"
+    href: "https://www.iso.org/standard/68383.html"
+---
+
+Once you accept that the cluster's rated content must come from a safety system
+and its informational content from Android, a practical question follows: how do
+those two actually end up on one screen?
+
+There are four answers in production use, and the choice shapes a lot else.
+
+## Option 1 — Native, everything drawn by the safety system
+
+The safety guest draws every pixel. Android sends structured content — a
+navigation instruction, a media title — and the safety guest renders it in its
+own style.
+
+```text
+Android ──(structured message)──> Safety guest ──> Display
+```
+
+**Good:** cleanest safety argument. One system owns the display, so proving
+availability is straightforward. Android failing changes nothing about how the
+cluster looks except that the info card empties.
+
+**Costs:** the safety guest must implement rendering for everything, including
+things it does not naturally care about. Visual richness is limited by what a
+certifiable renderer can reasonably do. Every visual change requires a change to
+certified software.
+
+<Plain>
+This is the conservative choice and it is common on vehicles where the cluster is
+mostly gauges and telltales with a small info area.
+</Plain>
+
+## Option 2 — Streamed, Android renders and sends pixels
+
+Android renders its region into a buffer and sends the image to the cluster,
+which composites it under its own rated layer.
+
+```text
+Android ──(pixel buffer)──> Safety guest ──(composites)──> Display
+```
+
+**Good:** Android's region can look like anything. No renderer to build twice.
+Visual updates ship with Android rather than with certified software.
+
+**Costs:** bandwidth, latency, and a hard failure question — **what happens when
+the stream stops?**
+
+<Scenario title="The frozen navigation card">
+An implementation streams Android's navigation card into the cluster. Android
+hangs during an update.
+
+The last frame remains on screen. It shows "Turn right, 300 m" — an instruction
+that was correct twelve seconds ago and is now actively misleading.
+
+The fix is a **liveness contract**: the cluster expects a frame at least every N
+milliseconds and clears the region if one does not arrive. That has to be
+designed in, not discovered.
+
+Any streamed design needs an explicit answer to "how does the receiver know the
+sender stopped?", and that answer must be a timeout, not a hope.
+</Scenario>
+
+## Option 3 — Shared surface, composed by hardware
+
+Both guests render into separate buffers. The display controller composites them
+in hardware, with the rated layer always on top.
+
+```text
+Safety guest ──> layer 0 (rated)      ┐
+                                      ├──> display controller ──> Display
+Android      ──> layer 1 (info)       ┘
+```
+
+**Good:** the best of both. Android renders freely; the rated layer is composited
+by hardware that Android cannot influence. If Android stops, its layer is stale
+or empty but the rated layer is untouched — provably, because the compositing is
+in silicon.
+
+**Costs:** requires a display controller with enough independent hardware layers,
+and careful configuration so Android genuinely cannot affect layer 0. It is a
+hardware-dependent option.
+
+<Plain>
+Where the silicon supports it, this is usually the best answer, and it is why
+display controller layer capability is a real selection criterion for cockpit
+SoCs — not just GPU performance.
+</Plain>
+
+## Option 4 — Dedicated 2D path for the critical layer
+
+Telltales and warning lamps bypass the GPU entirely, drawn by a simple 2D engine
+or even fixed-function hardware.
+
+**Good:** proving GPU availability to a safety standard is genuinely hard.
+Avoiding the dependency is much easier than proving it.
+
+**Costs:** limited to simple content. Fine for lamps and numbers; not for a
+rendered 3D scene.
+
+<Plain>
+This is more common than the marketing suggests. On many production vehicles, the
+telltales you see are not drawn by the impressive GPU in the cockpit controller —
+they are drawn by a separate, boring path chosen precisely because it is easy to
+argue about.
+</Plain>
+
+## Choosing
+
+| Situation | Likely choice |
+| --- | --- |
+| Mostly gauges, small info area | Native |
+| Rich Android content, no hardware layers | Streamed, with a liveness timeout |
+| Display controller has independent layers | Shared surface |
+| Telltales specifically | Dedicated 2D path, whatever else you do |
+| Highest safety integrity | Native or dedicated path |
+
+<Plain>
+In practice most vehicles use **more than one**: a dedicated path for telltales, a
+hardware layer for gauges, and either streaming or native rendering for the info
+region.
+
+The question "how does the cluster render?" usually has a three-part answer.
+</Plain>
+
+## The GPU is the contended resource
+
+Whichever option, if the cluster and infotainment share a GPU, that GPU is the
+hard problem.
+
+Approaches:
+
+- **Time-sliced with guaranteed budgets** — the safety guest gets a reserved
+  share, enforced by the hypervisor
+- **Hardware-partitioned**, where the silicon supports splitting it
+- **Separate display pipelines**, so composition is independent even if rendering
+  is shared
+- **Avoid the dependency**, per option 4
+
+<Scenario title="The test that finds this">
+Run something GPU-intensive on the infotainment guest — a map with 3D buildings,
+a video, a benchmark.
+
+Watch the cluster's frame timing.
+
+If cluster rendering degrades at all, the GPU partitioning does not hold, and the
+safety argument that depends on it does not either. This test takes ten minutes
+and is skipped remarkably often.
+</Scenario>
+
+## Latency budgets
+
+The cluster is in the driver's direct view, and delay is noticeable there in a
+way it is not on the centre screen.
+
+| Content | Budget |
+| --- | --- |
+| Speed | Under 100 ms from measurement to pixel |
+| Telltales | Under 100 ms, and bounded |
+| Gear indicator | Under 200 ms |
+| Navigation card | Under 500 ms is fine |
+| Media info | A second is fine |
+
+<Plain>
+Note how the budgets track the tiers exactly. Rated content is tight; Android's
+contribution is generous.
+
+That is convenient, and it is not a coincidence — the architecture assigns
+Android the content whose latency does not matter, for the same reason it assigns
+Android the content whose failure does not matter.
+</Plain>
+
+<Recap>
+- Four approaches: **native** rendering by the safety system, **streamed** pixels
+  from Android, **shared surface** composed in hardware, and a **dedicated 2D
+  path** for critical content.
+- Streaming needs an explicit **liveness timeout** — a frozen frame showing an old
+  instruction is worse than a blank one.
+- **Hardware layer composition is usually best** where the silicon supports it,
+  which makes display-controller layers a real SoC selection criterion.
+- Telltales frequently **bypass the GPU entirely**, because avoiding the
+  dependency is easier than certifying it.
+- Most vehicles use **several approaches at once**.
+- **Load the GPU from infotainment and watch cluster frame timing.** Ten minutes,
+  and it validates the whole partitioning argument.
+</Recap>
+
+## Next
+
+Proving all of this to a safety standard.

@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getAllPosts, getAllTags } from '@/lib/blog'
 import { getAllTopics } from '@/lib/learn'
 import { getAllTutorials } from '@/lib/tutorials'
+import { getAllSdvTopics } from '@/lib/sdv'
 import { projects } from '@/data/resume'
 import { site } from '@/data/site'
 
@@ -11,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts()
   const topics = getAllTopics()
   const tutorials = getAllTutorials()
+  const sdv = getAllSdvTopics()
   const latestPost = posts[0]?.date
 
   return [
@@ -28,6 +30,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${site.url}/learn/`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.95,
+    },
+    {
+      url: `${site.url}/sdv/`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.95,
@@ -59,6 +67,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...topics.map((t) => ({
       url: `${site.url}/learn/${t.slug}/`,
       lastModified: t.updated ? new Date(t.updated) : new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    })),
+    ...sdv.map((t) => ({
+      url: `${site.url}/sdv/${t.slug}/`,
+      lastModified: new Date(),
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     })),
