@@ -142,7 +142,7 @@ export default async function SdvTopicPage({ params }: { params: Promise<Params>
             </div>
           </header>
 
-          <article id="topic-body" className="prose-bm mt-10">
+          <article id="topic-body" data-copy-guard className="prose-bm mt-10">
             <ReadAloud targetId="topic-body" className="mb-8" />
             <MDXRemote source={topic.content} components={mdxComponents} options={mdxOptions} />
           </article>

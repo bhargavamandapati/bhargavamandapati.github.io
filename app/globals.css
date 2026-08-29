@@ -595,3 +595,22 @@ h4:hover .heading-anchor,
 @media (prefers-reduced-motion: reduce) {
   [data-reading] { transition: none; }
 }
+
+/* Copy deterrent. Prose in a guarded article is not selectable; code samples,
+   form fields and the audio player inside it stay fully usable. The vehicle
+   property pages never carry the attribute, so they are unaffected. */
+[data-copy-guard] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+[data-copy-guard] pre,
+[data-copy-guard] code,
+[data-copy-guard] .code-window,
+[data-copy-guard] input,
+[data-copy-guard] textarea,
+[data-copy-guard] select,
+[data-copy-guard] [data-copyable],
+[data-copy-guard] [data-no-tts] {
+  -webkit-user-select: text;
+  user-select: text;
+}

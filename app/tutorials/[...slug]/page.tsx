@@ -156,7 +156,7 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
             prerequisites={tutorial.prerequisites}
           />
 
-          <article id="topic-body" className="prose-bm mt-10">
+          <article id="topic-body" data-copy-guard className="prose-bm mt-10">
             <ReadAloud targetId="topic-body" className="mb-8" />
             <MDXRemote source={tutorial.content} components={mdxComponents} options={mdxOptions} />
           </article>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google'
 import { ProgressProvider } from '@/components/paths/progress'
+import { CopyGuard } from '@/components/copy-guard'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { site } from '@/data/site'
@@ -110,6 +111,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <ProgressProvider>
+          <CopyGuard />
           <SiteHeader />
           <main id="main">{children}</main>
           <SiteFooter />
