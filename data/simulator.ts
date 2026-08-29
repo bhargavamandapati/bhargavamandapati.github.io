@@ -63,6 +63,50 @@ export type SimState = {
   cruiseEnabled: boolean // CRUISE_CONTROL_ENABLED
   cruiseTarget: number // m/s — CRUISE_CONTROL_TARGET_SPEED
   laneKeepEnabled: boolean // LANE_KEEP_ASSIST_ENABLED
+  leadDistance: number // mm — ADAPTIVE_CRUISE_CONTROL_LEAD_VEHICLE_MEASURED_DISTANCE
+  timeGap: number // ms — ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP
+  forwardCollision: number // ForwardCollisionWarningState
+  blindSpot: number // BlindSpotWarningState
+  laneDeparture: number // LaneDepartureWarningState
+  aeb: number // AutomaticEmergencyBrakingState
+
+  // Occupants
+  seatOccupancy: number // VehicleSeatOccupancyState — SEAT_OCCUPANCY (passenger)
+  beltDriver: boolean // SEAT_BELT_BUCKLED
+  beltPassenger: boolean // SEAT_BELT_BUCKLED
+  seatHeat: number // HVAC_SEAT_TEMPERATURE
+  backrestAngle: number // SEAT_BACKREST_ANGLE_1_POS
+
+  // Interior lighting
+  cabinLights: number // VehicleLightSwitch — CABIN_LIGHTS_SWITCH
+  readingLights: number // VehicleLightSwitch — READING_LIGHTS_SWITCH
+
+  // Body extras
+  doorLock: boolean // DOOR_LOCK
+  horn: boolean // VEHICLE_HORN_ENGAGED
+  mirrorY: number // MIRROR_Y_POS
+  mirrorHeat: number // HVAC_SIDE_MIRROR_HEAT
+
+  // Electric extras
+  chargeState: number // EvChargeState — EV_CHARGE_STATE
+  chargeLimit: number // EV_CHARGE_PERCENT_LIMIT
+  regenState: number // EvRegenerativeBrakingState — EV_REGENERATIVE_BRAKING_STATE
+  stoppingMode: number // EvStoppingMode — EV_STOPPING_MODE
+
+  // Engine and chassis
+  coolantTemp: number // ENGINE_COOLANT_TEMP
+  oilLevel: number // VehicleOilLevel — ENGINE_OIL_LEVEL
+  fuelLow: boolean // FUEL_LEVEL_LOW
+  absActive: boolean // ABS_ACTIVE
+  tractionActive: boolean // TRACTION_CONTROL_ACTIVE
+
+  // Towing
+  trailer: number // TrailerState — TRAILER_PRESENT
+
+  // Climate extras
+  hvacAuto: boolean // HVAC_AUTO_ON
+  hvacMaxAc: boolean // HVAC_MAX_AC_ON
+  wheelHeat: number // HVAC_STEERING_WHEEL_HEAT
 }
 
 export const initialState: SimState = {
@@ -112,6 +156,43 @@ export const initialState: SimState = {
   cruiseEnabled: false,
   cruiseTarget: 27.8,
   laneKeepEnabled: false,
+  leadDistance: 0,
+  timeGap: 1500,
+  forwardCollision: 1, // NO_WARNING
+  blindSpot: 1, // NO_WARNING
+  laneDeparture: 1, // NO_WARNING
+  aeb: 1, // ENABLED
+
+  seatOccupancy: 1, // VACANT
+  beltDriver: true,
+  beltPassenger: false,
+  seatHeat: 0,
+  backrestAngle: 0,
+
+  cabinLights: 0, // OFF
+  readingLights: 0, // OFF
+
+  doorLock: true,
+  horn: false,
+  mirrorY: 0,
+  mirrorHeat: 0,
+
+  chargeState: 0, // UNKNOWN
+  chargeLimit: 80,
+  regenState: 1, // DISABLED
+  stoppingMode: 1, // CREEP
+
+  coolantTemp: 88,
+  oilLevel: 3, // NORMAL
+  fuelLow: false,
+  absActive: false,
+  tractionActive: false,
+
+  trailer: 2, // NOT_PRESENT
+
+  hvacAuto: false,
+  hvacMaxAc: false,
+  wheelHeat: 0,
 }
 
 export type ControlKind = 'toggle' | 'range' | 'enum'
@@ -136,6 +217,12 @@ export type Control = {
   requires?: keyof SimState
   /** Note shown under the control. */
   note?: string
+  /**
+   * True when the real property is READ-only. You are standing in for the
+   * vehicle here, which is worth saying rather than implying an app could
+   * write it.
+   */
+  reported?: boolean
 }
 
 const kmh = (ms: number) => `${Math.round(ms * 3.6)} km/h`
@@ -570,6 +657,384 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Driver assistance',
     affects: 'Draws the lane markings the system is tracking.',
+  },
+
+  // ---- Occupants -----------------------------------------------------------
+  {
+    key: 'seatOccupancy',
+    property: 'SEAT_OCCUPANCY',
+    label: 'Front passenger seat',
+    kind: 'enum',
+    group: 'Occupants',
+    affects: 'Seats a passenger, who then appears in the cabin and the plan view.',
+    reported: true,
+    options: [
+      { value: 0, label: 'UNKNOWN' },
+      { value: 1, label: 'VACANT' },
+      { value: 2, label: 'OCCUPIED' },
+    ],
+  },
+  {
+    key: 'beltDriver',
+    property: 'SEAT_BELT_BUCKLED',
+    label: 'Driver belt',
+    kind: 'toggle',
+    group: 'Occupants',
+    affects: 'Unbuckled lights the belt telltale.',
+  },
+  {
+    key: 'beltPassenger',
+    property: 'SEAT_BELT_BUCKLED',
+    label: 'Passenger belt',
+    kind: 'toggle',
+    group: 'Occupants',
+    affects: 'Only warns when the seat is occupied — two properties, one decision.',
+    note: 'Same property, a different area ID. Availability and value are both per seat.',
+  },
+  {
+    key: 'seatHeat',
+    property: 'HVAC_SEAT_TEMPERATURE',
+    label: 'Seat heating',
+    kind: 'range',
+    group: 'Occupants',
+    affects: 'Warms the seat cushion — visible as a glow from above.',
+    min: -3,
+    max: 3,
+    step: 1,
+    requires: 'hvacPower',
+    note: 'Negative values ventilate, positive values heat.',
+  },
+  {
+    key: 'backrestAngle',
+    property: 'SEAT_BACKREST_ANGLE_1_POS',
+    label: 'Driver backrest',
+    kind: 'range',
+    group: 'Occupants',
+    affects: 'Reclines the seat back.',
+    min: -30,
+    max: 30,
+    step: 5,
+    unit: '°',
+  },
+
+  // ---- Driver assistance (extended) ---------------------------------------
+  {
+    key: 'leadDistance',
+    property: 'ADAPTIVE_CRUISE_CONTROL_LEAD_VEHICLE_MEASURED_DISTANCE',
+    label: 'Lead vehicle distance',
+    kind: 'range',
+    group: 'Driver assistance',
+    affects: 'Puts a car ahead. Zero means the radar sees nothing in front.',
+    reported: true,
+    min: 0,
+    max: 60000,
+    step: 1000,
+    unit: 'mm',
+    format: (mm) => (mm === 0 ? 'no lead vehicle' : `${(mm / 1000).toFixed(0)} m ahead`),
+  },
+  {
+    key: 'timeGap',
+    property: 'ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP',
+    label: 'Target time gap',
+    kind: 'range',
+    group: 'Driver assistance',
+    affects: 'The gap cruise control aims to hold, shown on the cluster.',
+    min: 500,
+    max: 3000,
+    step: 100,
+    unit: 'ms',
+    format: (ms) => `${(ms / 1000).toFixed(1)} s`,
+  },
+  {
+    key: 'forwardCollision',
+    property: 'FORWARD_COLLISION_WARNING_STATE',
+    label: 'Forward collision warning',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'Flashes a red warning across the cluster and the road ahead.',
+    reported: true,
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'NO_WARNING' },
+      { value: 2, label: 'WARNING' },
+    ],
+  },
+  {
+    key: 'blindSpot',
+    property: 'BLIND_SPOT_WARNING_STATE',
+    label: 'Blind spot warning',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'Lights the mirror indicator on both sides.',
+    reported: true,
+    note: 'A MIRROR-area property — a real vehicle reports it per mirror.',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'NO_WARNING' },
+      { value: 2, label: 'WARNING' },
+    ],
+  },
+  {
+    key: 'laneDeparture',
+    property: 'LANE_DEPARTURE_WARNING_STATE',
+    label: 'Lane departure warning',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'Turns the lane markings amber on the side you are drifting towards.',
+    reported: true,
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'NO_WARNING' },
+      { value: 2, label: 'WARNING_LEFT' },
+      { value: 3, label: 'WARNING_RIGHT' },
+    ],
+  },
+  {
+    key: 'aeb',
+    property: 'AUTOMATIC_EMERGENCY_BRAKING_STATE',
+    label: 'Emergency braking',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'ACTIVATED brings the car to a stop and lights the cluster.',
+    reported: true,
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'ENABLED' },
+      { value: 2, label: 'ACTIVATED' },
+      { value: 3, label: 'USER_OVERRIDE' },
+    ],
+  },
+
+  // ---- Interior lighting ---------------------------------------------------
+  {
+    key: 'cabinLights',
+    property: 'CABIN_LIGHTS_SWITCH',
+    label: 'Cabin lights',
+    kind: 'enum',
+    group: 'Lights',
+    affects: 'Lights the whole cabin.',
+    options: [
+      { value: 0, label: 'OFF' },
+      { value: 1, label: 'ON' },
+      { value: 0x100, label: 'AUTOMATIC' },
+    ],
+  },
+  {
+    key: 'readingLights',
+    property: 'READING_LIGHTS_SWITCH',
+    label: 'Reading light',
+    kind: 'enum',
+    group: 'Lights',
+    affects: 'A focused pool over the driver.',
+    note: 'SEAT area — each seat has its own.',
+    options: [
+      { value: 0, label: 'OFF' },
+      { value: 1, label: 'ON' },
+    ],
+  },
+
+  // ---- Body (extended) -----------------------------------------------------
+  {
+    key: 'doorLock',
+    property: 'DOOR_LOCK',
+    label: 'Doors locked',
+    kind: 'toggle',
+    group: 'Body',
+    affects: 'Shows a lock marker beside each door in the plan view.',
+  },
+  {
+    key: 'horn',
+    property: 'VEHICLE_HORN_ENGAGED',
+    label: 'Horn',
+    kind: 'toggle',
+    group: 'Body',
+    affects: 'Sends a visible pulse out from the car.',
+  },
+  {
+    key: 'mirrorY',
+    property: 'MIRROR_Y_POS',
+    label: 'Mirror angle',
+    kind: 'range',
+    group: 'Body',
+    affects: 'Swings the mirror glass left and right.',
+    min: -30,
+    max: 30,
+    step: 5,
+  },
+  {
+    key: 'mirrorHeat',
+    property: 'HVAC_SIDE_MIRROR_HEAT',
+    label: 'Mirror heating',
+    kind: 'range',
+    group: 'Body',
+    affects: 'Warms the mirror glass — it glows from above.',
+    min: 0,
+    max: 3,
+    step: 1,
+  },
+
+  // ---- Electric (extended) -------------------------------------------------
+  {
+    key: 'chargeState',
+    property: 'EV_CHARGE_STATE',
+    label: 'Charge state',
+    kind: 'enum',
+    group: 'Electric',
+    affects: 'Drives the charging animation along the cable.',
+    reported: true,
+    options: [
+      { value: 0, label: 'UNKNOWN' },
+      { value: 1, label: 'CHARGING' },
+      { value: 2, label: 'FULLY_CHARGED' },
+      { value: 3, label: 'NOT_CHARGING' },
+      { value: 4, label: 'ERROR' },
+    ],
+  },
+  {
+    key: 'chargeLimit',
+    property: 'EV_CHARGE_PERCENT_LIMIT',
+    label: 'Charge limit',
+    kind: 'range',
+    group: 'Electric',
+    affects: 'Marks where charging stops on the battery gauge.',
+    min: 50,
+    max: 100,
+    step: 5,
+    unit: '%',
+  },
+  {
+    key: 'regenState',
+    property: 'EV_REGENERATIVE_BRAKING_STATE',
+    label: 'Regenerative braking',
+    kind: 'enum',
+    group: 'Electric',
+    affects: 'Shows a regen bar on the cluster while moving.',
+    reported: true,
+    options: [
+      { value: 0, label: 'UNKNOWN' },
+      { value: 1, label: 'DISABLED' },
+      { value: 2, label: 'PARTIALLY_ENABLED' },
+      { value: 3, label: 'FULLY_ENABLED' },
+    ],
+  },
+  {
+    key: 'stoppingMode',
+    property: 'EV_STOPPING_MODE',
+    label: 'Stopping mode',
+    kind: 'enum',
+    group: 'Electric',
+    affects: 'One-pedal driving decelerates harder when you lift off.',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'CREEP' },
+      { value: 2, label: 'ROLL' },
+      { value: 3, label: 'HOLD' },
+    ],
+  },
+
+  // ---- Engine and chassis --------------------------------------------------
+  {
+    key: 'coolantTemp',
+    property: 'ENGINE_COOLANT_TEMP',
+    label: 'Coolant temperature',
+    kind: 'range',
+    group: 'Engine & chassis',
+    affects: 'Above 110 °C the overheat telltale lights.',
+    reported: true,
+    min: 40,
+    max: 130,
+    step: 1,
+    unit: '°C',
+  },
+  {
+    key: 'oilLevel',
+    property: 'ENGINE_OIL_LEVEL',
+    label: 'Oil level',
+    kind: 'enum',
+    group: 'Engine & chassis',
+    affects: 'Anything below NORMAL lights the oil telltale.',
+    reported: true,
+    options: [
+      { value: 0, label: 'CRITICALLY_LOW' },
+      { value: 1, label: 'LOW' },
+      { value: 2, label: 'NORMAL' },
+      { value: 3, label: 'HIGH' },
+      { value: 4, label: 'ERROR' },
+    ],
+  },
+  {
+    key: 'fuelLow',
+    property: 'FUEL_LEVEL_LOW',
+    label: 'Low energy warning',
+    kind: 'toggle',
+    group: 'Engine & chassis',
+    affects: 'Lights the low-energy telltale.',
+    reported: true,
+  },
+  {
+    key: 'absActive',
+    property: 'ABS_ACTIVE',
+    label: 'ABS active',
+    kind: 'toggle',
+    group: 'Engine & chassis',
+    affects: 'Flashes the ABS telltale while the system is intervening.',
+    reported: true,
+  },
+  {
+    key: 'tractionActive',
+    property: 'TRACTION_CONTROL_ACTIVE',
+    label: 'Traction control active',
+    kind: 'toggle',
+    group: 'Engine & chassis',
+    affects: 'Flashes the traction telltale.',
+    reported: true,
+  },
+  {
+    key: 'trailer',
+    property: 'TRAILER_PRESENT',
+    label: 'Trailer',
+    kind: 'enum',
+    group: 'Engine & chassis',
+    affects: 'Attaches a trailer behind the car in the plan view.',
+    reported: true,
+    options: [
+      { value: 0, label: 'UNKNOWN' },
+      { value: 1, label: 'NOT_PRESENT' },
+      { value: 2, label: 'PRESENT' },
+      { value: 3, label: 'ERROR' },
+    ],
+  },
+
+  // ---- Climate (extended) --------------------------------------------------
+  {
+    key: 'hvacAuto',
+    property: 'HVAC_AUTO_ON',
+    label: 'Auto climate',
+    kind: 'toggle',
+    group: 'Climate',
+    affects: 'Lets the system pick the fan speed for you.',
+    requires: 'hvacPower',
+  },
+  {
+    key: 'hvacMaxAc',
+    property: 'HVAC_MAX_AC_ON',
+    label: 'Max A/C',
+    kind: 'toggle',
+    group: 'Climate',
+    affects: 'Full cooling — forces the fan high and recirculation on.',
+    requires: 'hvacPower',
+  },
+  {
+    key: 'wheelHeat',
+    property: 'HVAC_STEERING_WHEEL_HEAT',
+    label: 'Steering wheel heat',
+    kind: 'range',
+    group: 'Climate',
+    affects: 'The wheel rim glows as it warms.',
+    min: 0,
+    max: 3,
+    step: 1,
+    requires: 'hvacPower',
   },
 ]
 

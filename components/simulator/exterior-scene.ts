@@ -105,9 +105,9 @@ export function createExteriorScene(
   bonnet.position.set(0, 0.88, 1.5)
   car.add(bonnet)
 
-  const roof = box(1.62, 0.12, 1.9, PANEL)
+  // Semi-transparent so occupants and seats read as being inside the cabin.
+  const roof = box(1.62, 0.12, 1.9, PANEL, { transparent: true, opacity: 0.45 })
   roof.position.set(0, 0.94, -0.3)
-  roof.castShadow = true
   car.add(roof)
 
   const windscreen = new THREE.Mesh(
@@ -228,6 +228,154 @@ export function createExteriorScene(
     return m
   })
 
+  // Side windows — from above these are glass strips that clear as they lower.
+  const windowMat = () =>
+    new THREE.MeshStandardMaterial({ color: 0x0b1622, roughness: 0.1, metalness: 0.5, transparent: true })
+  const windows = {
+    left: (() => {
+      const m = box(0.06, 0.02, 0.9, 0x0b1622)
+      m.material = windowMat()
+      m.position.set(0.99, 0.86, 0.32)
+      car.add(m)
+      return m
+    })(),
+    right: (() => {
+      const m = box(0.06, 0.02, 0.9, 0x0b1622)
+      m.material = windowMat()
+      m.position.set(-0.99, 0.86, 0.32)
+      car.add(m)
+      return m
+    })(),
+  }
+
+  // Mirrors — fold, angle, heat and the blind-spot indicator all show here.
+  function makeMirror(side: 1 | -1) {
+    const arm = new THREE.Group()
+    arm.position.set(side * 0.98, 0.86, 0.84)
+    const stalk = box(0.16, 0.05, 0.06, BODY_DARK)
+    stalk.position.x = side * 0.08
+    arm.add(stalk)
+    const glass = box(0.1, 0.03, 0.16, 0x8fb6cc)
+    glass.position.set(side * 0.16, 0.03, 0)
+    arm.add(glass)
+    const bsw = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.02, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0x2a2f38 }),
+    )
+    bsw.position.set(side * 0.16, 0.06, -0.08)
+    arm.add(bsw)
+    car.add(arm)
+    return { arm, glass, bsw }
+  }
+  const mirrors = { left: makeMirror(1), right: makeMirror(-1) }
+
+  // Occupants, visible from directly above.
+  function occupant(x: number, z: number) {
+    const g = new THREE.Group()
+    g.position.set(x, 1.0, z)
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.13, 14, 14),
+      new THREE.MeshStandardMaterial({ color: 0xd8c3a5, roughness: 0.8 }),
+    )
+    g.add(head)
+    const shoulders = box(0.42, 0.1, 0.24, 0x334155)
+    shoulders.position.z = -0.22
+    g.add(shoulders)
+    car.add(g)
+    return g
+  }
+  const driverFigure = occupant(0.52, 0.2)
+  const passengerFigure = occupant(-0.52, 0.2)
+  passengerFigure.visible = false
+
+  // Seat pads, which glow when heated.
+  const seatPads = [0.52, -0.52].map((x) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.5, 0.7),
+      new THREE.MeshBasicMaterial({ color: 0xfb7185, transparent: true, opacity: 0 }),
+    )
+    m.rotation.x = -Math.PI / 2
+    m.position.set(x, 0.97, 0.05)
+    car.add(m)
+    return m
+  })
+
+  // Door lock markers.
+  const lockMarks = [
+    [0.99, 0.5],
+    [-0.99, 0.5],
+    [0.99, -0.6],
+    [-0.99, -0.6],
+  ].map(([x, z]) => {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(0.11, 0.03, 0.11),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0 }),
+    )
+    m.position.set(x, 0.98, z)
+    m.rotation.y = Math.PI / 4
+    car.add(m)
+    return m
+  })
+
+  // Horn pulse.
+  const hornRings = [0, 1, 2].map((i) => {
+    const m = new THREE.Mesh(
+      new THREE.RingGeometry(1.6, 1.72, 48),
+      new THREE.MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0, side: THREE.DoubleSide }),
+    )
+    m.rotation.x = -Math.PI / 2
+    m.position.y = 0.05
+    m.userData.phase = i / 3
+    scene.add(m)
+    return m
+  })
+
+  // Trailer.
+  const trailer = new THREE.Group()
+  trailer.position.set(0, 0, -4.4)
+  const trailerBody = box(1.8, 0.5, 2.6, 0x3f4b5c)
+  trailerBody.position.y = 0.62
+  trailerBody.castShadow = true
+  trailer.add(trailerBody)
+  const tow = box(0.1, 0.08, 0.9, 0x2a3340)
+  tow.position.set(0, 0.5, 1.7)
+  trailer.add(tow)
+  for (const x of [0.9, -0.9]) {
+    const w = new THREE.Mesh(wheelGeo, new THREE.MeshStandardMaterial({ color: 0x232a35, roughness: 0.85 }))
+    w.rotation.z = Math.PI / 2
+    w.position.set(x, 0.4, -0.4)
+    trailer.add(w)
+  }
+  trailer.visible = false
+  scene.add(trailer)
+
+  // Charge cable.
+  const cable = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 1.5, 10),
+    new THREE.MeshStandardMaterial({ color: 0x1f2937 }),
+  )
+  cable.position.set(1.6, 0.3, -1.6)
+  cable.rotation.z = Math.PI / 2
+  cable.visible = false
+  car.add(cable)
+  const chargePulse = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4 }),
+  )
+  chargePulse.visible = false
+  car.add(chargePulse)
+
+  // Lead vehicle for adaptive cruise control.
+  const lead = new THREE.Group()
+  const leadBody = box(1.8, 0.6, 4.0, 0x3f4b5c)
+  leadBody.position.y = 0.7
+  lead.add(leadBody)
+  const leadTail = box(1.4, 0.08, 0.1, 0xff3b30)
+  leadTail.position.set(0, 0.9, -2.0)
+  lead.add(leadTail)
+  lead.visible = false
+  scene.add(lead)
+
   // Charge flap.
   const flap = new THREE.Group()
   flap.position.set(0.98, 0.72, -1.6)
@@ -242,7 +390,9 @@ export function createExteriorScene(
   function update(state: SimState, delta: number, elapsed: number) {
     const powered = state.ignition >= 3
     const moving = state.gear === 0x0008 || state.gear === 0x0002
-    const speed = powered && moving && !state.parkingBrake ? state.speed : 0
+    const braked = state.aeb === 2
+    const cruising = state.cruiseEnabled ? state.cruiseTarget : state.speed
+    const speed = powered && moving && !state.parkingBrake && !braked ? cruising : 0
     const forward = state.gear === 0x0002 ? -1 : 1
 
     // The car is fixed and the world moves past it, so the road travels
@@ -293,9 +443,81 @@ export function createExteriorScene(
       mat.opacity = THREE.MathUtils.damp(mat.opacity, low ? 0.5 + Math.sin(elapsed * 5) * 0.3 : 0, 8, delta)
     }
 
+    // Side windows lower and clear.
+    const glassLeft = windows.left.material as THREE.MeshStandardMaterial
+    const glassRight = windows.right.material as THREE.MeshStandardMaterial
+    glassLeft.opacity = THREE.MathUtils.damp(glassLeft.opacity, 1 - state.windowFrontLeft / 100, 6, delta)
+    glassRight.opacity = THREE.MathUtils.damp(glassRight.opacity, 1 - state.windowFrontRight / 100, 6, delta)
+    windows.left.scale.z = THREE.MathUtils.damp(windows.left.scale.z, 1 - (state.windowFrontLeft / 100) * 0.7, 6, delta)
+    windows.right.scale.z = THREE.MathUtils.damp(windows.right.scale.z, 1 - (state.windowFrontRight / 100) * 0.7, 6, delta)
+
+    // Mirrors: fold, angle, heat and blind spot.
+    for (const [side, m] of [[1, mirrors.left], [-1, mirrors.right]] as const) {
+      m.arm.rotation.y = THREE.MathUtils.damp(m.arm.rotation.y, state.mirrorFold ? side * 1.5 : 0, 6, delta)
+      m.glass.rotation.y = THREE.MathUtils.damp(m.glass.rotation.y, (state.mirrorY / 30) * 0.5, 6, delta)
+      const heat = m.glass.material as THREE.MeshStandardMaterial
+      heat.emissive.setHex(0xfb7185)
+      heat.emissiveIntensity = THREE.MathUtils.damp(heat.emissiveIntensity, (state.mirrorHeat / 3) * 0.8, 5, delta)
+      const warn = m.bsw.material as THREE.MeshBasicMaterial
+      warn.color.setHex(state.blindSpot === 2 && Math.sin(elapsed * 9) > 0 ? 0xfbbf24 : 0x2a2f38)
+    }
+
+    // Occupants and their seats.
+    passengerFigure.visible = state.seatOccupancy === 2
+    driverFigure.rotation.x = THREE.MathUtils.damp(driverFigure.rotation.x, (state.backrestAngle / 30) * 0.3, 5, delta)
+    seatPads.forEach((pad, i) => {
+      const mat = pad.material as THREE.MeshBasicMaterial
+      const level = state.hvacPower ? Math.abs(state.seatHeat) / 3 : 0
+      mat.color.setHex(state.seatHeat >= 0 ? 0xfb7185 : 0x67e8f9)
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, i === 1 && state.seatOccupancy !== 2 ? level * 0.35 : level * 0.5, 5, delta)
+    })
+
+    // Door locks.
+    lockMarks.forEach((m) => {
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, state.doorLock ? 0.85 : 0, 6, delta)
+    })
+
+    // Horn pulse.
+    hornRings.forEach((ring, i) => {
+      const mat = ring.material as THREE.MeshBasicMaterial
+      if (state.horn && powered) {
+        const t = ((elapsed * 1.4 + (i as number) / 3) % 1)
+        ring.scale.setScalar(1 + t * 2.2)
+        mat.opacity = 0.5 * (1 - t)
+      } else {
+        mat.opacity = THREE.MathUtils.damp(mat.opacity, 0, 8, delta)
+      }
+    })
+
+    // Trailer.
+    trailer.visible = state.trailer === 2
+    trailer.rotation.y = THREE.MathUtils.damp(trailer.rotation.y, (state.steeringAngle / 35) * 0.25, 3, delta)
+
+    // Charge cable and its flow pulse.
+    const plugged = state.chargePortOpen && state.chargePortConnected
+    cable.visible = plugged
+    const charging = plugged && state.chargeState === 1
+    chargePulse.visible = charging
+    if (charging) {
+      const t = (elapsed * 0.9) % 1
+      chargePulse.position.set(2.3 - t * 1.4, 0.3, -1.6)
+    }
+
+    // Lead vehicle for adaptive cruise control.
+    const leadMetres = state.leadDistance / 1000
+    lead.visible = leadMetres > 0.5
+    if (lead.visible) lead.position.set(0, 0, 2.2 + Math.min(leadMetres, 9))
+
+    // Lane departure warning tints the markings on the side you drift towards.
+    const warnLeft = state.laneDeparture === 2
+    const warnRight = state.laneDeparture === 3
+    dashMat.color.setHex(
+      warnLeft || warnRight ? 0xfbbf24 : state.nightMode ? 0x4a5568 : 0x8ea3bd,
+    )
+
     hemi.intensity = THREE.MathUtils.damp(hemi.intensity, state.nightMode ? 0.22 : 1.4, 3, delta)
     key.intensity = THREE.MathUtils.damp(key.intensity, state.nightMode ? 0.2 : 2.2, 3, delta)
-    dashMat.color.setHex(state.nightMode ? 0x4a5568 : 0x8ea3bd)
   }
 
   return {

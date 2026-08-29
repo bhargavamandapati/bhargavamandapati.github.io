@@ -63,13 +63,17 @@ export function createInteriorScene(
   const screenGlow = new THREE.PointLight(0x67e8f9, 2.4, 2.6)
   screenGlow.position.set(0.16, 1.02, 0.86)
   scene.add(screenGlow)
+  // Daylight on the world beyond the screen — the cabin lamps do not reach it.
+  const sun = new THREE.DirectionalLight(0xdce9ff, 2.4)
+  sun.position.set(12, 24, 40)
+  scene.add(sun)
 
   // ---- Road seen through the windscreen -----------------------------------
   const world = new THREE.Group()
   scene.add(world)
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(60, 260),
-    new THREE.MeshStandardMaterial({ color: 0x10151d, roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: 0x2a323d, roughness: 1 }),
   )
   ground.rotation.x = -Math.PI / 2
   ground.position.set(0, -0.02, 60)
@@ -86,7 +90,7 @@ export function createInteriorScene(
       world.add(d)
     }
   }
-  scene.fog = new THREE.Fog(0x0a0e14, 30, 150)
+  scene.fog = new THREE.Fog(0x0a0e14, 45, 190)
   const sky = new THREE.Mesh(
     new THREE.PlaneGeometry(400, 90),
     new THREE.MeshBasicMaterial({ color: 0x111a26, fog: false }),
@@ -231,6 +235,58 @@ export function createInteriorScene(
   gearMesh.position.set(-0.18, 0.585, 0.26)
   scene.add(gearMesh)
 
+  // ---- Wipers -------------------------------------------------------------
+  const wiperArms = [-0.35, 0.42].map((x) => {
+    const g = new THREE.Group()
+    g.position.set(x, 1.05, 1.32)
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.62, 0.02, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x0b0e13, roughness: 0.9 }),
+    )
+    blade.position.x = 0.3
+    g.add(blade)
+    scene.add(g)
+    return g
+  })
+
+  // Defroster haze on the screen, which clears as it runs.
+  const haze = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.0, 0.9),
+    new THREE.MeshBasicMaterial({ color: 0xdbeafe, transparent: true, opacity: 0, depthWrite: false }),
+  )
+  haze.position.set(0, 1.28, 1.36)
+  haze.rotation.x = -0.3
+  scene.add(haze)
+
+  // Cabin and reading lights.
+  const cabinLamp = new THREE.PointLight(0xffe9c4, 0, 4)
+  cabinLamp.position.set(0, 1.5, 0.1)
+  scene.add(cabinLamp)
+  const readingLamp = new THREE.SpotLight(0xfff2d4, 0, 3, 0.5, 0.7, 1)
+  readingLamp.position.set(0.34, 1.55, 0.1)
+  readingLamp.target.position.set(0.34, 0.6, 0.3)
+  scene.add(readingLamp)
+  scene.add(readingLamp.target)
+
+  // Lead vehicle seen through the windscreen.
+  const lead = new THREE.Group()
+  const leadBody = new THREE.Mesh(
+    new THREE.BoxGeometry(1.85, 1.3, 4.2),
+    new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.55 }),
+  )
+  leadBody.position.y = 0.75
+  lead.add(leadBody)
+  for (const x of [-0.6, 0.6]) {
+    const t = new THREE.Mesh(
+      new THREE.BoxGeometry(0.44, 0.18, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xff2d20 }),
+    )
+    t.position.set(x, 0.95, -2.14)
+    lead.add(t)
+  }
+  lead.visible = false
+  world.add(lead)
+
   // ---- HVAC vents and airflow --------------------------------------------
   const ventPositions = [-0.72, -0.1, 0.5, 0.86]
   for (const x of ventPositions) {
@@ -333,25 +389,61 @@ export function createInteriorScene(
     ctx.font = '500 18px ui-monospace, monospace'
     ctx.fillText(`${state.batteryLevel}%  ·  ${Math.round((state.batteryLevel / 100) * 420)} km`, w / 2, h * 0.62)
     ctx.fillText(`OUT ${state.outsideTemp}°C   CABIN ${readout.cabinTemp.toFixed(1)}°C`, w / 2, h * 0.72)
+    const STOPPING = ['OTHER', 'CREEP', 'ROLL', 'HOLD']
+    const REGEN = ['UNKNOWN', 'OFF', 'PARTIAL', 'FULL']
+    ctx.fillText(
+      `${STOPPING[state.stoppingMode] ?? '—'} · REGEN ${REGEN[state.regenState] ?? '—'}`,
+      w / 2,
+      h * 0.9,
+    )
+    ctx.fillText(
+      state.leadDistance > 500
+        ? `LEAD ${(state.leadDistance / 1000).toFixed(0)} m · GAP ${(state.timeGap / 1000).toFixed(1)} s`
+        : `COOLANT ${Math.round(state.coolantTemp)}°C · LIMIT ${state.chargeLimit}%`,
+      w / 2,
+      h * 0.82,
+    )
 
-    // Telltales.
+    // Telltales. Warnings first, so the row reads worst-first.
+    const flash = Math.sin(elapsed * 9) > 0
     const tells: [boolean, string, string][] = [
+      [!state.beltDriver, 'BELT', '#f87171'],
+      [!state.beltPassenger && state.seatOccupancy === 2, 'BELT-P', '#f87171'],
+      [state.coolantTemp > 110, 'TEMP', '#f87171'],
+      [state.oilLevel < 2, 'OIL', '#f87171'],
+      [state.fuelLow, 'LOW', '#fbbf24'],
+      [state.forwardCollision === 2 && flash, 'FCW', '#f87171'],
+      [state.aeb === 2, 'AEB', '#f87171'],
+      [state.laneDeparture > 1 && flash, 'LDW', '#fbbf24'],
+      [state.blindSpot === 2 && flash, 'BSW', '#fbbf24'],
+      [state.absActive && flash, 'ABS', '#fbbf24'],
+      [state.tractionActive && flash, 'TCS', '#fbbf24'],
       [state.parkingBrake, 'P', '#f87171'],
       [readout.lowTyres > 0, '(!)', '#fbbf24'],
+      [state.trailer === 2, 'TOW', '#38bdf8'],
       [state.headlights, state.highBeam ? '≡D' : '≡', '#38bdf8'],
+      [state.fogLights, 'FOG', '#38bdf8'],
+      [state.cabinLights === 1 || state.readingLights === 1, 'LAMP', '#38bdf8'],
       [state.cruiseEnabled, 'CC', '#5eead4'],
       [state.laneKeepEnabled, 'LKA', '#5eead4'],
-      [state.hvacAc && state.hvacPower, 'A/C', '#5eead4'],
-      [state.chargePortConnected && state.chargePortOpen, '⚡', '#5eead4'],
+      [state.hvacAc && state.hvacPower, state.hvacMaxAc ? 'MAX A/C' : 'A/C', '#5eead4'],
+      [state.regenState > 1, 'REGEN', '#5eead4'],
+      [state.chargeState === 1, 'CHG', '#5eead4'],
     ]
-    let tx = 40
+    let tx = 34
+    let ty = 42
     ctx.textAlign = 'left'
-    ctx.font = '700 26px ui-monospace, monospace'
+    ctx.font = '700 22px ui-monospace, monospace'
     for (const [on, label, color] of tells) {
       if (!on) continue
+      const tw = ctx.measureText(label).width
+      if (tx + tw > w - 34) {
+        tx = 34
+        ty += 28
+      }
       ctx.fillStyle = color
-      ctx.fillText(label, tx, 48)
-      tx += ctx.measureText(label).width + 26
+      ctx.fillText(label, tx, ty)
+      tx += tw + 22
     }
 
     // Indicator arrows.
@@ -410,9 +502,20 @@ export function createInteriorScene(
     ctx.fillStyle = '#7d8ea6'
     ctx.font = '600 22px ui-monospace, monospace'
     ctx.fillText('FAN', 40, 330)
+    const shownFan = state.hvacMaxAc
+      ? 6
+      : state.hvacAuto
+        ? Math.max(1, Math.min(6, Math.round(Math.abs(state.hvacTemp - readout.cabinTemp) * 1.6)))
+        : state.hvacFanSpeed
     for (let i = 0; i < 6; i++) {
-      ctx.fillStyle = i < state.hvacFanSpeed ? '#22d3ee' : '#1a2431'
+      ctx.fillStyle = i < shownFan ? '#22d3ee' : '#1a2431'
       ctx.fillRect(120 + i * 58, 306 + (5 - i) * 3, 44, 30 + i * 6)
+    }
+    if (state.hvacAuto || state.hvacMaxAc) {
+      ctx.fillStyle = '#5eead4'
+      ctx.font = '700 18px ui-monospace, monospace'
+      ctx.textAlign = 'right'
+      ctx.fillText(state.hvacMaxAc ? 'MAX' : 'AUTO', w - 40, 330)
     }
 
     // Direction and modes.
@@ -422,7 +525,8 @@ export function createInteriorScene(
       ['FLOOR', (dir & 0x2) !== 0],
       ['DEFROST', (dir & 0x4) !== 0],
       ['A/C', state.hvacAc],
-      ['RECIRC', state.hvacRecirc],
+      ['RECIRC', state.hvacRecirc || state.hvacMaxAc],
+      ['AUTO', state.hvacAuto],
     ]
     let x = 40
     ctx.font = '600 20px ui-monospace, monospace'
@@ -464,7 +568,9 @@ export function createInteriorScene(
   function update(state: SimState, readout: Readout, delta: number, elapsed: number) {
     const powered = state.ignition >= 3
     const moving = state.gear === 0x0008 || state.gear === 0x0002
-    const speed = powered && moving && !state.parkingBrake ? state.speed : 0
+    const braked = state.aeb === 2
+    const target = state.cruiseEnabled ? state.cruiseTarget : state.speed
+    const speed = powered && moving && !state.parkingBrake && !braked ? target : 0
     const forward = state.gear === 0x0002 ? -1 : 1
 
     // Driving forward pulls the world towards the driver.
@@ -490,14 +596,18 @@ export function createInteriorScene(
     lever.position.z = THREE.MathUtils.damp(lever.position.z, 0.34 - slot * 0.05, 8, delta)
 
     // Cabin temperature drifts.
-    const goal = state.hvacPower && state.hvacFanSpeed > 0 ? state.hvacTemp : state.outsideTemp
+    const goal = state.hvacPower && state.hvacFanSpeed + (state.hvacAuto ? 1 : 0) > 0 ? state.hvacTemp : state.outsideTemp
     const rate = state.hvacPower ? 0.25 + state.hvacFanSpeed * 0.12 : 0.05
     lastCabin = THREE.MathUtils.damp(lastCabin, goal, rate, delta)
     readout.cabinTemp = lastCabin
 
-    // Airflow from the vents.
-    const active = state.hvacPower && state.hvacFanSpeed > 0
-    const count = active ? Math.round((state.hvacFanSpeed / 6) * AIR) : 0
+    // Airflow from the vents. With AUTO on, the system picks the fan speed from
+    // how far the cabin is from target — which is the whole point of the property.
+    const autoFan = Math.min(6, Math.round(Math.abs(state.hvacTemp - lastCabin) * 1.6))
+    const fanSpeed = state.hvacPower && state.hvacAuto ? Math.max(1, autoFan) : state.hvacFanSpeed
+    const boosted = state.hvacPower && state.hvacMaxAc ? 6 : fanSpeed
+    const active = state.hvacPower && boosted > 0
+    const count = active ? Math.round((boosted / 6) * AIR) : 0
     airMat.color.setHex(state.hvacTemp > lastCabin ? 0xfb7185 : 0x67e8f9)
     airMat.opacity = THREE.MathUtils.damp(airMat.opacity, active ? 0.5 : 0, 6, delta)
     const toFloor = (state.hvacFanDirection & 0x2) !== 0
@@ -506,7 +616,7 @@ export function createInteriorScene(
     for (let i = 0; i < AIR; i++) {
       const p = particles[i]
       if (i < count) {
-        const push = 0.5 + state.hvacFanSpeed * 0.32
+        const push = 0.5 + boosted * 0.32
         p.z -= p.speed * delta * push
         if (toFloor) p.vy = -0.55
         else if (toDefrost) p.vy = 0.5
@@ -529,8 +639,39 @@ export function createInteriorScene(
     }
     airflow.instanceMatrix.needsUpdate = true
 
+    // Wipers.
+    const wiperRate = state.wipers >= 8 ? 5.5 : state.wipers >= 3 ? 1.7 : 0
+    const sweep = wiperRate > 0 ? Math.abs(Math.sin(elapsed * wiperRate)) * 1.15 : 0
+    wiperArms.forEach((wiper) => (wiper.rotation.z = sweep))
+
+    // Defroster haze: builds when it is cold outside, clears when it runs.
+    const hazeMat = haze.material as THREE.MeshBasicMaterial
+    const clearing = state.hvacDefroster || (state.hvacFanDirection & 0x4) !== 0
+    const wantHaze = !clearing && state.outsideTemp < 6 ? 0.3 : 0
+    hazeMat.opacity = THREE.MathUtils.damp(hazeMat.opacity, wantHaze, clearing ? 2.5 : 0.6, delta)
+
+    // Interior lighting.
+    cabinLamp.intensity = THREE.MathUtils.damp(cabinLamp.intensity, state.cabinLights === 1 ? 5 : 0, 5, delta)
+    readingLamp.intensity = THREE.MathUtils.damp(readingLamp.intensity, state.readingLights === 1 ? 8 : 0, 5, delta)
+
+    // Steering wheel heat glows through the rim.
+    const rimMat = rim.material as THREE.MeshStandardMaterial
+    rimMat.emissive.setHex(0xfb7185)
+    rimMat.emissiveIntensity = THREE.MathUtils.damp(
+      rimMat.emissiveIntensity,
+      state.hvacPower ? (state.wheelHeat / 3) * 0.55 : 0,
+      5,
+      delta,
+    )
+
+    // Lead vehicle, positioned by the measured distance.
+    const leadMetres = state.leadDistance / 1000
+    lead.visible = leadMetres > 0.5
+    if (lead.visible) lead.position.set(0, 0, 5 + Math.min(leadMetres, 45))
+
     // Night mode dims the cabin; the screens stay lit.
     cabinLight.intensity = THREE.MathUtils.damp(cabinLight.intensity, state.nightMode ? 1.1 : 6, 3, delta)
+    sun.intensity = THREE.MathUtils.damp(sun.intensity, state.nightMode ? 0.12 : 2.4, 3, delta)
     screenGlow.intensity = powered ? (state.nightMode ? 3.4 : 2.4) : 0
     ;(scene.fog as THREE.Fog).color.lerp(
       new THREE.Color(state.nightMode ? 0x04070b : 0x0a0e14),

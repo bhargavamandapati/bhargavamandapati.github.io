@@ -156,7 +156,11 @@ export function CarSimulator() {
       const powered = state.ignition >= 3
       const moving = state.gear === 0x0008 || state.gear === 0x0002
       const r = readoutRef.current
-      r.effectiveSpeed = powered && moving && !state.parkingBrake ? state.speed : 0
+      // Same rule as both scenes: cruise control drives the speed when engaged,
+      // and emergency braking overrides everything.
+      const target = state.cruiseEnabled ? state.cruiseTarget : state.speed
+      r.effectiveSpeed =
+        powered && moving && !state.parkingBrake && state.aeb !== 2 ? target : 0
       r.lowTyres = [state.tyreFrontLeft, state.tyreFrontRight, state.tyreRearLeft, state.tyreRearRight]
         .filter((kpa) => kpa < 180).length
 
@@ -425,11 +429,16 @@ function ControlRow({
           </label>
           <Link
             href={`/learn/vehicle-properties/${slug(control.property)}/`}
-            className="mt-0.5 flex items-center gap-1 font-mono text-[0.68rem] text-muted transition-colors hover:text-accent"
+            className="mt-0.5 flex items-start gap-1 font-mono text-[0.68rem] text-muted transition-colors hover:text-accent [overflow-wrap:anywhere]"
           >
             {control.property}
-            <ExternalLink aria-hidden className="size-3 shrink-0" />
+            <ExternalLink aria-hidden className="mt-0.5 size-3 shrink-0" />
           </Link>
+          {control.reported && (
+            <p className="mt-1 font-mono text-[0.64rem] uppercase tracking-wider text-subtle">
+              read-only · you are standing in for the vehicle
+            </p>
+          )}
         </div>
         {control.kind === 'toggle' && (
           <input

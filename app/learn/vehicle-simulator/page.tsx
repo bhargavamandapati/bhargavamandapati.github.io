@@ -94,6 +94,16 @@ export default function VehicleSimulatorPage() {
               fine tells you nothing about the fourth.
             </li>
             <li>
+              <strong className="font-medium text-fg">Seat a passenger, then unbuckle their belt.</strong>{' '}
+              The belt telltale only appears once the seat is occupied — two properties, one
+              decision, and both of them per-seat.
+            </li>
+            <li>
+              <strong className="font-medium text-fg">Put a car 20 metres ahead.</strong> It appears
+              through the windscreen and on the cluster. The distance is a property the vehicle
+              reports; nothing an app writes puts a car there.
+            </li>
+            <li>
               <strong className="font-medium text-fg">Turn the ignition off.</strong> Almost
               everything stops responding — a good reminder that property availability is a runtime
               condition, not a fixed fact about the vehicle.
