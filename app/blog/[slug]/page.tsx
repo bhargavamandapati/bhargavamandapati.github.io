@@ -16,7 +16,7 @@ import {
 } from '@/lib/blog'
 import { formatDate, slugify } from '@/lib/utils'
 import { site } from '@/data/site'
-import { imageSize } from '@/lib/image-size'
+import { imageInfo } from '@/lib/image-size'
 
 type Params = { slug: string }
 
@@ -68,7 +68,10 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
   const headings = extractHeadings(post.content)
   const { previous, next } = getAdjacentPosts(post.slug)
   // Reserve the right space before the image loads, so the article does not jump.
-  const coverSize = post.cover ? imageSize(post.cover) : null
+  const cover = post.cover ? imageInfo(post.cover) : null
+  // The filename is fixed by the CMS, so the digest is what tells a browser
+  // the picture actually changed.
+  const coverSrc = cover ? `${post.cover}?v=${cover.hash}` : null
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -150,13 +153,13 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
 
       {/* The cover was previously only fed to Open Graph, so an author who set
           one saw it in a Slack preview and nowhere on the post itself. */}
-      {post.cover && coverSize && (
+      {coverSrc && cover && (
         <div data-copy-guard className="container-page -mt-4 mb-2">
           <Image
-            src={post.cover}
+            src={coverSrc}
             alt=""
-            width={coverSize.width}
-            height={coverSize.height}
+            width={cover.width}
+            height={cover.height}
             priority
             sizes="(min-width: 1280px) 1216px, 100vw"
             className="h-auto w-full rounded-xl border border-line bg-surface shadow-[var(--shadow-card)]"

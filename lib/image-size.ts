@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -11,6 +12,10 @@ import path from 'node:path'
  * that, and it happens once at build time.
  */
 export type ImageSize = { width: number; height: number }
+export type ImageInfo = ImageSize & {
+  /** Short digest of the file's bytes, used to bust caches when it changes. */
+  hash: string
+}
 
 function readPng(buf: Buffer): ImageSize | null {
   // 8-byte signature, then an IHDR chunk whose width and height are big-endian.
@@ -71,6 +76,28 @@ export function imageSize(publicPath: string): ImageSize | null {
     const size = readPng(buf) ?? readJpeg(buf) ?? readGif(buf) ?? readWebp(buf)
     if (!size || !size.width || !size.height) return null
     return size
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Size plus a content fingerprint.
+ *
+ * Cover filenames come from the CMS and never change, so regenerating an image
+ * — a new watermark, different compression — leaves every returning reader on
+ * the copy their browser already has. GitHub Pages sends `max-age=600` and
+ * social crawlers hold images far longer than that. Appending the digest to
+ * the URL makes a changed image a different URL, which is the only thing a
+ * cache reliably respects.
+ */
+export function imageInfo(publicPath: string): ImageInfo | null {
+  const size = imageSize(publicPath)
+  if (!size) return null
+  const file = path.join(process.cwd(), 'public', publicPath.replace(/^\//, ''))
+  try {
+    const hash = crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex').slice(0, 8)
+    return { ...size, hash }
   } catch {
     return null
   }
