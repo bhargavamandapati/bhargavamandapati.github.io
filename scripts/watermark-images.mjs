@@ -24,26 +24,13 @@ const SRC = path.join(ROOT, 'media-src')
 const OUT = path.join(ROOT, 'public', 'media')
 const EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp'])
 
-/** Read from public/CNAME so the mark follows the domain, like everything else. */
-async function siteLabel() {
-  try {
-    return (await fs.readFile(path.join(ROOT, 'public', 'CNAME'), 'utf8')).trim()
-  } catch {
-    return 'bhargavamandapati.com'
-  }
-}
-
-function escapeXml(value) {
-  return value.replace(/[<>&'"]/g, (c) => `&#${c.charCodeAt(0)};`)
-}
-
 /** The two ink variants of the BM monogram that already ship with the site. */
 const MARK_ON_DARK = path.join(ROOT, 'public', 'images', 'mark-light.png')
 const MARK_ON_LIGHT = path.join(ROOT, 'public', 'images', 'mark-dark.png')
 
 /** Perceived brightness of a region, 0-255, used to choose the ink. */
-async function regionLuma(file, region) {
-  const { channels } = await sharp(file).extract(region).removeAlpha().stats()
+async function regionLuma(input, region) {
+  const { channels } = await sharp(input).extract(region).removeAlpha().stats()
   const [r, g, b] = channels.map((c) => c.mean)
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
@@ -60,8 +47,8 @@ async function regionLuma(file, region) {
  * A soft shadow underneath separates the mark from busy detail, which is what a
  * flat panel behind it would otherwise be needed for.
  */
-async function buildMark({ imageFile, imageWidth, region, opacity = 0.85 }) {
-  const luma = await regionLuma(imageFile, region)
+async function buildMark({ image, region, opacity = 0.85 }) {
+  const luma = await regionLuma(image, region)
   const onDark = luma < 128
   const source = onDark ? MARK_ON_DARK : MARK_ON_LIGHT
   if (!existsSync(source)) throw new Error(`watermark: brand mark missing at ${source}`)
@@ -117,46 +104,67 @@ async function buildMark({ imageFile, imageWidth, region, opacity = 0.85 }) {
   return { mark: composed, width: width + pad * 2, height: height + pad * 2, ink: onDark ? 'light' : 'dark' }
 }
 
-async function processImage(name, label) {
+/**
+ * The widest an image is served at.
+ *
+ * Covers display around 1100 CSS pixels, so 2048 still has headroom on a
+ * high-density screen. The cap exists for what people actually upload: a phone
+ * photo arrives four or five thousand pixels wide, and none of that reaches
+ * the reader's eye.
+ */
+const MAX_WIDTH = 2048
+
+async function processImage(name) {
   const from = path.join(SRC, name)
   const to = path.join(OUT, name)
-  const image = sharp(from, { failOn: 'none' })
-  const meta = await image.metadata()
-  if (!meta.width || !meta.height) throw new Error(`${name}: could not read dimensions`)
 
-  // Scale with the image so a small thumbnail and a 2048px screenshot both
+  // Honour EXIF orientation before anything else, or a phone photo is marked
+  // in the wrong corner and then rotated by the browser.
+  const resized = await sharp(from, { failOn: 'none' })
+    .rotate()
+    .resize({ width: MAX_WIDTH, withoutEnlargement: true })
+    .toBuffer({ resolveWithObject: true })
+  const { width, height } = resized.info
+  if (!width || !height) throw new Error(`${name}: could not read dimensions`)
+
+  // Scale with the image so a small thumbnail and a full-width screenshot both
   // carry a mark that reads at the size it is actually displayed.
-  const markWidth = Math.round(Math.min(Math.max(meta.width * 0.13, 90), 320))
-  const margin = Math.round(Math.max(meta.width * 0.022, 10))
-  // Sample the corner the mark will occupy, clamped inside the image.
-  const probe = {
-    left: Math.max(0, meta.width - markWidth - margin * 2),
-    top: 0,
-    width: Math.min(markWidth + margin * 2, meta.width),
-    height: Math.min(Math.round(markWidth * 0.75), meta.height),
-  }
-  const { mark, width: mw, height: mh, ink } = await buildMark({
-    imageFile: from,
-    imageWidth: meta.width,
-    region: { ...probe, width: markWidth },
+  const markWidth = Math.round(Math.min(Math.max(width * 0.13, 90), 320))
+  const margin = Math.round(Math.max(width * 0.022, 10))
+  const { mark, width: mw, ink } = await buildMark({
+    image: resized.data,
+    region: {
+      left: Math.max(0, width - markWidth - margin),
+      top: 0,
+      width: Math.min(markWidth, width),
+      height: Math.min(Math.round(markWidth * 0.75), height),
+    },
   })
-  void mh
-  void label
 
-  let pipeline = image.composite([
-    { input: mark, top: margin, left: Math.max(0, meta.width - mw - margin) },
+  let pipeline = sharp(resized.data).composite([
+    { input: mark, top: margin, left: Math.max(0, width - mw - margin) },
   ])
 
   const ext = path.extname(name).toLowerCase()
-  // Re-encode in the same format; compression is lossless for PNG, and JPEG
-  // and WebP keep a quality high enough not to soften a screenshot.
-  if (ext === '.png') pipeline = pipeline.png({ compressionLevel: 9 })
-  else if (ext === '.webp') pipeline = pipeline.webp({ quality: 90 })
-  else pipeline = pipeline.jpeg({ quality: 90, mozjpeg: true })
+  if (ext === '.png') {
+    // Screenshots and diagrams are mostly flat colour, so a palette costs
+    // almost nothing visually and roughly a quarter of the bytes. Measured at
+    // 0.40/255 mean error on these covers, and transparency survives it.
+    pipeline = pipeline.png({ compressionLevel: 9, palette: true, quality: 90, effort: 8 })
+  } else if (ext === '.webp') {
+    pipeline = pipeline.webp({ quality: 82 })
+  } else {
+    pipeline = pipeline.jpeg({ quality: 82, mozjpeg: true })
+  }
 
   await pipeline.toFile(to)
   const [before, after] = await Promise.all([fs.stat(from), fs.stat(to)])
-  return { name, width: meta.width, height: meta.height, before: before.size, after: after.size, ink }
+  const source = await sharp(from).metadata()
+  return {
+    name, width, height, ink,
+    resizedFrom: source.width && source.width > width ? source.width : null,
+    before: before.size, after: after.size,
+  }
 }
 
 async function main() {
@@ -164,7 +172,6 @@ async function main() {
     console.log('watermark: no media-src/ directory, nothing to do')
     return
   }
-  const label = await siteLabel()
   const names = (await fs.readdir(SRC))
     .filter((f) => EXTENSIONS.has(path.extname(f).toLowerCase()))
     .sort()
@@ -184,12 +191,14 @@ async function main() {
 
   const results = []
   for (const name of names) {
-    results.push(await processImage(name, label))
+    results.push(await processImage(name))
   }
 
   const kb = (n) => `${(n / 1024).toFixed(0)} KB`
   for (const r of results) {
-    console.log(`  ${r.name}  ${r.width}x${r.height}  ${kb(r.before)} -> ${kb(r.after)}  ${r.ink} ink`)
+    const from = r.resizedFrom ? ` (from ${r.resizedFrom}px)` : ''
+    const saved = Math.round((1 - r.after / r.before) * 100)
+    console.log(`  ${r.name}  ${r.width}x${r.height}${from}  ${kb(r.before)} -> ${kb(r.after)}  ${saved > 0 ? `-${saved}%` : `+${-saved}%`}  ${r.ink} ink`)
   }
   console.log(`watermark: marked ${results.length} image(s) with the BM monogram`)
 }

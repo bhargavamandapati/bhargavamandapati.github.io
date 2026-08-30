@@ -112,8 +112,9 @@ collections:
         required: false
         hint: >-
           Optional. Shown across the top of the post, and used for the link
-          preview on Slack, LinkedIn and X. Wide images work best — around
-          1200x630. Large files are served as-is, so compress before uploading.
+          preview on Slack, LinkedIn and X. Wide images work best. Upload it at
+          full size — the build adds the watermark, caps the width and
+          compresses it for you.
 
       - label: Canonical URL
         name: canonical
