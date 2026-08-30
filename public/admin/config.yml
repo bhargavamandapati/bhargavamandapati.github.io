@@ -21,7 +21,10 @@ backend:
 
 # Uploads land in public/media and are referenced as /media/... in a post,
 # which is exactly how Next serves them from the static export.
-media_folder: public/media
+# Uploads land in media-src/, which is never served. The build watermarks
+# each one into public/media/, and that is what /media/... resolves to, so
+# the unmarked original is not reachable from the site.
+media_folder: media-src
 public_folder: /media
 
 # A post's filename becomes its URL forever, so it has to be plain ASCII.
