@@ -614,3 +614,13 @@ h4:hover .heading-anchor,
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Images inside guarded content: no drag-to-desktop, and no long-press "Save
+   Image" sheet on iOS and Android, which is the touch equivalent of the
+   right-click menu the guard already blocks. */
+[data-copy-guard] img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

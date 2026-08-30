@@ -120,7 +120,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
             </Link>
           </nav>
 
-          <header className="border-b border-line pb-8">
+          <header data-copy-guard className="border-b border-line pb-8">
             {category && (
               <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.14em] text-accent">
                 <CategoryIcon name={category.icon} className="size-3.5" />

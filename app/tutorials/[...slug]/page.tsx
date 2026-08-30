@@ -124,7 +124,7 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
             </Link>
           </nav>
 
-          <header>
+          <header data-copy-guard>
             {track && (
               <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.14em] text-accent">
                 <TrackIcon name={track.icon} className="size-3.5" />

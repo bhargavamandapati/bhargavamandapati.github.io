@@ -92,7 +92,7 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <header className="relative overflow-hidden border-b border-line">
+      <header data-copy-guard className="relative overflow-hidden border-b border-line">
         <div aria-hidden className="grid-bg absolute inset-0" />
         <div
           aria-hidden
@@ -151,7 +151,7 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
       {/* The cover was previously only fed to Open Graph, so an author who set
           one saw it in a Slack preview and nowhere on the post itself. */}
       {post.cover && coverSize && (
-        <div className="container-page -mt-4 mb-2">
+        <div data-copy-guard className="container-page -mt-4 mb-2">
           <Image
             src={post.cover}
             alt=""
