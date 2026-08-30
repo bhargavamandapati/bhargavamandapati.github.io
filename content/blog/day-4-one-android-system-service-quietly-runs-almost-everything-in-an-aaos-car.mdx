@@ -1,0 +1,24 @@
+---
+title: 'Day 4: One Android system service quietly runs almost everything in an AAOS car.'
+description: One Android system service quietly runs almost everything in an AAOS car.
+date: 2026-08-30
+updated: 2026-08-30
+tags:
+  - AndroidAutomotive
+draft: true
+featured: false
+cover: /media/pasted-image-1788063731239.png
+canonical: ''
+---
+
+It's called CarService — and if you've followed this series, you've already seen its name pop up twice: VHAL feeds it decoded signals, and it's what actually turns those signals into something an app can use.
+
+Think of it the same way you'd think of ActivityManagerService or WindowManagerService in regular Android — except instead of managing activities or windows, CarService manages "car." It runs as a privileged system service inside system_server, and it's the only thing in AAOS allowed to talk directly to VHAL. Every app goes through it instead — never straight to hardware, always through a permission-gated Binder call.
+It doesn't do this through one giant API. It's split into focused managers, each owning one slice of the vehicle:
+→ CarPropertyManager — HVAC, seats, windows, lights
+→ CarUserManager — driver profiles, fast account switching
+→ CarAudioManager — multi-zone audio routing (nav vs. media vs. calls, at the same time)
+→ CarProjectionManager — the same component that hosts Android Auto sessions from Day 1
+→ CarWatchdogManager — flags apps that hang or overrun resources, so one bad app can't freeze the cluster
+
+This is why AAOS feels consistent across completely different cars: every app is coded against the same Car API, regardless of what's wired underneath.
