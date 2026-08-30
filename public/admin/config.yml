@@ -107,7 +107,10 @@ collections:
         name: cover
         widget: image
         required: false
-        hint: Optional. Used on the post header and in social previews.
+        hint: >-
+          Optional. Shown across the top of the post, and used for the link
+          preview on Slack, LinkedIn and X. Wide images work best — around
+          1200x630. Large files are served as-is, so compress before uploading.
 
       - label: Canonical URL
         name: canonical
