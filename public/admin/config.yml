@@ -24,6 +24,16 @@ backend:
 media_folder: public/media
 public_folder: /media
 
+# A post's filename becomes its URL forever, so it has to be plain ASCII.
+# Sveltia's default `unicode` encoding strips brackets and quotes but leaves
+# em dashes and full stops alone, which turned the first post into
+# "…same-thing..mdx" with a raw — in the middle of the path. `ascii` keeps only
+# letters, digits, hyphens and tildes, which is what a URL should hold anyway.
+slug:
+  encoding: ascii
+  clean_accents: true
+  maxlength: 80
+
 collections:
   - name: blog
     label: Blog
