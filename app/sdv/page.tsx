@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { isFree } from '@/data/access'
+import { LockBadge } from '@/components/premium/lock-badge'
 import Link from 'next/link'
 import { ArrowRight, Clock, Cpu } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
@@ -133,6 +135,7 @@ export default function SdvPage() {
                           <Link href={`/sdv/${t.slug}/`} className="after:absolute after:inset-0">
                             {t.title}
                           </Link>
+                          {!isFree('sdv', t.slug) && <LockBadge className="ml-2" />}
                         </h3>
                         <p className="mt-2 flex-1 text-[0.85rem] leading-relaxed text-muted">
                           {t.description}
