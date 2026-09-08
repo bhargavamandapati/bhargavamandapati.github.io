@@ -1,6 +1,7 @@
 'use client'
 
 import { useDeferredValue, useMemo, useState, useId } from 'react'
+import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
 import Link from 'next/link'
 import { LockBadge } from '@/components/premium/lock-badge'
 import { ChevronDown, Search, X } from 'lucide-react'
@@ -72,6 +73,7 @@ function RowShell({
 }
 
 export function PropertyBrowser({ rows }: { rows: PropertyRow[] }) {
+  const unlocked = useRealmUnlocked('learn')
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<Record<string, string | null>>({})
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -230,7 +232,7 @@ export function PropertyBrowser({ rows }: { rows: PropertyRow[] }) {
               {/* A locked row still shows its identifiers, area, type and access
                   — those are facts from the AIDL, not prose — but it does not
                   open, and it carries no summary. */}
-              <RowShell locked={row.locked} slug={row.slug}>
+              <RowShell locked={row.locked && !unlocked} slug={row.slug}>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <code className="font-mono text-sm font-semibold text-fg [overflow-wrap:anywhere] group-hover:text-accent">
                     {row.name}
@@ -246,7 +248,7 @@ export function PropertyBrowser({ rows }: { rows: PropertyRow[] }) {
                       platform only
                     </span>
                   )}
-                  {row.locked && <LockBadge className="ml-auto" />}
+                  {row.locked && !unlocked && <LockBadge className="ml-auto" />}
                 </div>
                 {row.summary && (
                   <p className="mt-1.5 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">

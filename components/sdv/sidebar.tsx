@@ -8,14 +8,17 @@ import { SdvModuleIcon } from '@/components/sdv/module-icon'
 import type { SdvModuleWithTopics } from '@/lib/sdv'
 import { cn } from '@/lib/utils'
 import { isFree } from '@/data/access'
+import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
 import { LockBadge, lockedRowClass } from '@/components/premium/lock-badge'
 
 function Tree({
   modules,
   currentSlug,
+  unlocked,
 }: {
   modules: SdvModuleWithTopics[]
   currentSlug?: string
+  unlocked: boolean
 }) {
   let index = 0
   return (
@@ -30,7 +33,7 @@ function Tree({
             {m.topics.map((t) => {
               index += 1
               const active = t.slug === currentSlug
-              const locked = !isFree('sdv', t.slug)
+              const locked = !isFree('sdv', t.slug) && !unlocked
               return (
                 <li key={t.slug}>
                   {locked ? (
@@ -84,6 +87,7 @@ export function SdvSidebar({
   modules: SdvModuleWithTopics[]
   currentSlug?: string
 }) {
+  const unlocked = useRealmUnlocked('sdv')
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -109,7 +113,7 @@ export function SdvSidebar({
           <p className="mb-5 px-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle">
             {total} topics
           </p>
-          <Tree modules={modules} currentSlug={currentSlug} />
+          <Tree modules={modules} currentSlug={currentSlug} unlocked={unlocked} />
         </div>
       </aside>
 
@@ -147,7 +151,7 @@ export function SdvSidebar({
                 <X className="size-4" />
               </button>
             </div>
-            <Tree modules={modules} currentSlug={currentSlug} />
+            <Tree modules={modules} currentSlug={currentSlug} unlocked={unlocked} />
           </div>
         </div>
       )}

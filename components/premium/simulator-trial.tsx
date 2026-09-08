@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Linkedin, Lock } from 'lucide-react'
 import { EmailAccessButton } from '@/components/premium/email-access-button'
-import { FREE_SIMULATOR_PROPERTIES, access } from '@/data/access'
+import { FREE_SIMULATOR_PROPERTIES } from '@/data/access'
 import { site } from '@/data/site'
+import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
 
 const CarSimulator = dynamic(
   () => import('@/components/simulator/car-simulator').then((m) => m.CarSimulator),
@@ -22,27 +23,15 @@ const CarSimulator = dynamic(
  * which is a far better argument than a padlock over the whole page.
  */
 export function SimulatorTrial() {
-  const [unlocked, setUnlocked] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    const read = () => {
-      try {
-        setUnlocked(Boolean(window.localStorage.getItem(access.storageKey('learn'))))
-      } catch {
-        setUnlocked(false)
-      }
-    }
-    read()
-    window.addEventListener('storage', read)
-    window.addEventListener('focus', read)
-    return () => {
-      window.removeEventListener('storage', read)
-      window.removeEventListener('focus', read)
-    }
-  }, [])
-
-  // Wait until the answer is known, so the first paint is not wrong.
-  if (unlocked === null) return <div className="h-[32rem] animate-pulse rounded-xl bg-surface" />
+  const unlocked = useRealmUnlocked('learn')
+  // The hook's default of `false` is the right first-paint value for a small
+  // badge elsewhere, but here it would flash the whole trial layout — the
+  // banner, 99 extra disabled controls — for a frame before flipping to the
+  // real answer. Waiting one tick for a definite state avoids that, at the
+  // cost of a brief loading skeleton instead of a wrong one.
+  const [known, setKnown] = useState(false)
+  useEffect(() => setKnown(true), [])
+  if (!known) return <div className="h-[32rem] animate-pulse rounded-xl bg-surface" />
 
   return (
     <>

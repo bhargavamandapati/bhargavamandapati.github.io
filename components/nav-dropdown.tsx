@@ -6,6 +6,7 @@ import { ChevronDown } from 'lucide-react'
 import type { NavChild } from '@/data/site'
 import { cn } from '@/lib/utils'
 import { LockBadge } from '@/components/premium/lock-badge'
+import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
 
 /**
  * A disclosure, not a `role="menu"` widget.
@@ -28,6 +29,7 @@ export function NavDropdown({
   isActive: (href: string) => boolean
 }) {
   const [open, setOpen] = useState(false)
+  const learnUnlocked = useRealmUnlocked('learn')
   const wrapRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -125,7 +127,7 @@ export function NavDropdown({
                   )}
                 >
                   {item.label}
-                  {item.locked && <LockBadge className="ml-2 align-middle" />}
+                  {item.locked && !learnUnlocked && <LockBadge className="ml-2 align-middle" />}
                 </span>
                 <span className="mt-0.5 block text-xs leading-snug text-muted">
                   {item.description}

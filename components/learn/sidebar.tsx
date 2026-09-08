@@ -8,9 +8,10 @@ import { CategoryIcon } from '@/components/learn/category-icon'
 import type { CategoryWithTopics } from '@/lib/learn'
 import { cn } from '@/lib/utils'
 import { isFree } from '@/data/access'
+import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
 import { LockBadge, lockedRowClass } from '@/components/premium/lock-badge'
 
-function Tree({ curriculum, currentSlug }: { curriculum: CategoryWithTopics[]; currentSlug?: string }) {
+function Tree({curriculum, currentSlug, unlocked }: {curriculum: CategoryWithTopics[]; currentSlug?: string; unlocked: boolean }) {
   let index = 0
   return (
     <nav aria-label="Curriculum">
@@ -24,7 +25,7 @@ function Tree({ curriculum, currentSlug }: { curriculum: CategoryWithTopics[]; c
             {category.topics.map((topic) => {
               index += 1
               const active = topic.slug === currentSlug
-              const locked = !isFree('learn', topic.slug)
+              const locked = !isFree('learn', topic.slug) && !unlocked
               return (
                 <li key={topic.slug}>
                   {locked ? (
@@ -78,6 +79,7 @@ export function LearnSidebar({
   curriculum: CategoryWithTopics[]
   currentSlug?: string
 }) {
+  const unlocked = useRealmUnlocked('learn')
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -104,7 +106,7 @@ export function LearnSidebar({
           <p className="mb-5 px-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle">
             {total} topics
           </p>
-          <Tree curriculum={curriculum} currentSlug={currentSlug} />
+          <Tree curriculum={curriculum} currentSlug={currentSlug} unlocked={unlocked} />
         </div>
       </aside>
 
@@ -143,7 +145,7 @@ export function LearnSidebar({
                 <X className="size-4" />
               </button>
             </div>
-            <Tree curriculum={curriculum} currentSlug={currentSlug} />
+            <Tree curriculum={curriculum} currentSlug={currentSlug} unlocked={unlocked} />
           </div>
         </div>
       )}

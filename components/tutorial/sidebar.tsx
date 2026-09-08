@@ -7,10 +7,11 @@ import { ListTree, X } from 'lucide-react'
 import { TrackIcon } from '@/components/tutorial/track-icon'
 import type { TrackWithTutorials } from '@/lib/tutorials'
 import { cn } from '@/lib/utils'
-import { isFree } from '@/data/access'
+import { isFree, realmOf } from '@/data/access'
+import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
 import { LockBadge, lockedRowClass } from '@/components/premium/lock-badge'
 
-function Tree({ tracks, currentSlug }: { tracks: TrackWithTutorials[]; currentSlug?: string }) {
+function Tree({tracks, currentSlug, unlocked }: {tracks: TrackWithTutorials[]; currentSlug?: string; unlocked: boolean }) {
   let index = 0
   return (
     <nav aria-label="Tutorials">
@@ -24,7 +25,7 @@ function Tree({ tracks, currentSlug }: { tracks: TrackWithTutorials[]; currentSl
             {track.tutorials.map((t) => {
               index += 1
               const active = t.slug === currentSlug
-              const locked = !isFree('tutorials', t.slug)
+              const locked = !isFree('tutorials', t.slug) && !unlocked
               return (
                 <li key={t.slug}>
                   {locked ? (
@@ -78,6 +79,7 @@ export function TutorialSidebar({
   tracks: TrackWithTutorials[]
   currentSlug?: string
 }) {
+  const unlocked = useRealmUnlocked(realmOf('tutorials'))
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -103,7 +105,7 @@ export function TutorialSidebar({
           <p className="mb-5 px-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle">
             {total} tutorials
           </p>
-          <Tree tracks={tracks} currentSlug={currentSlug} />
+          <Tree tracks={tracks} currentSlug={currentSlug} unlocked={unlocked} />
         </div>
       </aside>
 
@@ -141,7 +143,7 @@ export function TutorialSidebar({
                 <X className="size-4" />
               </button>
             </div>
-            <Tree tracks={tracks} currentSlug={currentSlug} />
+            <Tree tracks={tracks} currentSlug={currentSlug} unlocked={unlocked} />
           </div>
         </div>
       )}
