@@ -319,13 +319,19 @@
 .prose-bm h3 { margin-top: 2em; margin-bottom: 0.5em; font-size: 1.2rem; }
 .prose-bm h4 { margin-top: 1.6em; font-size: 1.05rem; }
 .prose-bm strong { color: var(--fg); font-weight: 600; }
-.prose-bm a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1px;
+/* Link styling lives in a layer so a utility class can override it.
+   Unlayered, these rules beat every Tailwind utility regardless of
+   specificity, which is why `text-accent-fg` on a filled accent button
+   rendered accent-on-accent — a contrast ratio of 1.00, invisible. */
+@layer components {
+  .prose-bm a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  .prose-bm a:hover { color: var(--accent-hover); }
 }
-.prose-bm a:hover { color: var(--accent-hover); }
 .prose-bm ul,
 .prose-bm ol { padding-left: 1.4em; }
 .prose-bm ul { list-style: disc; }
@@ -624,3 +630,11 @@ h4:hover .heading-anchor,
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* The premium wrapper is plumbing, not layout: the prose rhythm has to keep
+   working through it, since .prose-bm > * + * only sees direct children. */
+.prose-bm > [data-premium-body] > * + * {
+  margin-top: 1.25em;
+}
+
+
