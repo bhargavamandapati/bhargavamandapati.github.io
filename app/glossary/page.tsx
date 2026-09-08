@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
 import { PageHeader } from '@/components/page-header'
+import { Gated } from '@/components/premium/gated'
+import { isFreeTerm } from '@/data/access'
+import { LockBadge } from '@/components/premium/lock-badge'
 import { glossary, glossaryCategories } from '@/data/glossary'
 import { site } from '@/data/site'
 import { slugify } from '@/lib/utils'
@@ -18,6 +21,46 @@ export const metadata: Metadata = {
   },
 }
 
+/** One glossary entry. Shared by the open list and the locked one. */
+function Entry({ t }: { t: (typeof glossary)[number] }) {
+  return (
+                    <div id={slugify(t.term)} className="scroll-mt-24">
+                      <dt className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span className="font-display text-lg font-semibold tracking-tight text-fg">
+                          {t.term}
+                        </span>
+                        {t.aliases && t.aliases.length > 0 && (
+                          <span className="font-mono text-xs text-subtle">
+                            also: {t.aliases.join(' · ')}
+                          </span>
+                        )}
+                      </dt>
+                      <dd className="mt-2.5 max-w-3xl">
+                        <p className="text-[0.95rem] font-medium leading-relaxed text-fg">{t.short}</p>
+                        <p className="mt-2.5 text-[0.95rem] leading-relaxed text-muted">{t.long}</p>
+                        {t.analogy && (
+                          <p className="mt-3 border-l-2 border-accent/50 pl-4 text-[0.9rem] italic leading-relaxed text-muted">
+                            {t.analogy}
+                          </p>
+                        )}
+                        {t.related && t.related.length > 0 && (
+                          <p className="mt-3 font-mono text-xs text-subtle">
+                            See also:{' '}
+                            {t.related.map((r, i) => (
+                              <span key={r}>
+                                {i > 0 && ' · '}
+                                <a href={`#${slugify(r)}`} className="text-accent link-underline">
+                                  {r}
+                                </a>
+                              </span>
+                            ))}
+                          </p>
+                        )}
+                      </dd>
+                    </div>
+  )
+}
+
 export default function GlossaryPage() {
   const byCategory = glossaryCategories
     .map((category) => ({
@@ -26,6 +69,15 @@ export default function GlossaryPage() {
         .filter((t) => t.category === category)
         .sort((a, b) => a.term.localeCompare(b.term)),
     }))
+    .filter((g) => g.terms.length > 0)
+
+  // The words used in the free topics are open, so a sample reads properly
+  // rather than sending the reader to a locked page mid-sentence.
+  const openTerms = glossary
+    .filter((t) => isFreeTerm(t.term))
+    .sort((a, b) => a.term.localeCompare(b.term))
+  const lockedByCategory = byCategory
+    .map((g) => ({ ...g, terms: g.terms.filter((t) => !isFreeTerm(t.term)) }))
     .filter((g) => g.terms.length > 0)
 
   const jsonLd = {
@@ -60,6 +112,29 @@ export default function GlossaryPage() {
       </PageHeader>
 
       <div className="container-page py-14 md:py-16">
+        <section aria-labelledby="open-terms" className="mb-16">
+          <h2
+            id="open-terms"
+            className="border-b border-line pb-3 font-display text-xl font-semibold tracking-tight md:text-2xl"
+          >
+            Open to read
+            <span className="ml-3 font-mono text-xs font-normal text-subtle">
+              {openTerms.length} of {glossary.length} terms
+            </span>
+          </h2>
+          <dl className="mt-8 space-y-8">
+            {openTerms.map((t) => (
+              <Entry key={t.term} t={t} />
+            ))}
+          </dl>
+        </section>
+
+        <p className="mb-8 inline-flex items-center gap-2 text-sm text-muted">
+          <LockBadge />
+          The remaining {glossary.length - openTerms.length} terms need a Learn AAOS key.
+        </p>
+
+        <Gated area="glossary" title="The glossary" locked>
         <nav aria-label="Glossary categories" className="flex flex-wrap gap-2">
           {byCategory.map((g) => (
             <a
@@ -74,7 +149,7 @@ export default function GlossaryPage() {
         </nav>
 
         <div className="mt-14 space-y-16">
-          {byCategory.map((group) => (
+          {lockedByCategory.map((group) => (
             <section key={group.category} aria-labelledby={slugify(group.category)}>
               <h2
                 id={slugify(group.category)}
@@ -85,45 +160,14 @@ export default function GlossaryPage() {
 
               <dl className="mt-8 space-y-8">
                 {group.terms.map((t) => (
-                  <div key={t.term} id={slugify(t.term)} className="scroll-mt-24">
-                    <dt className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <span className="font-display text-lg font-semibold tracking-tight text-fg">
-                        {t.term}
-                      </span>
-                      {t.aliases && t.aliases.length > 0 && (
-                        <span className="font-mono text-xs text-subtle">
-                          also: {t.aliases.join(' · ')}
-                        </span>
-                      )}
-                    </dt>
-                    <dd className="mt-2.5 max-w-3xl">
-                      <p className="text-[0.95rem] font-medium leading-relaxed text-fg">{t.short}</p>
-                      <p className="mt-2.5 text-[0.95rem] leading-relaxed text-muted">{t.long}</p>
-                      {t.analogy && (
-                        <p className="mt-3 border-l-2 border-accent/50 pl-4 text-[0.9rem] italic leading-relaxed text-muted">
-                          {t.analogy}
-                        </p>
-                      )}
-                      {t.related && t.related.length > 0 && (
-                        <p className="mt-3 font-mono text-xs text-subtle">
-                          See also:{' '}
-                          {t.related.map((r, i) => (
-                            <span key={r}>
-                              {i > 0 && ' · '}
-                              <a href={`#${slugify(r)}`} className="text-accent link-underline">
-                                {r}
-                              </a>
-                            </span>
-                          ))}
-                        </p>
-                      )}
-                    </dd>
-                  </div>
+                  <Entry key={t.term} t={t} />
                 ))}
               </dl>
             </section>
           ))}
         </div>
+      
+        </Gated>
       </div>
     </>
   )

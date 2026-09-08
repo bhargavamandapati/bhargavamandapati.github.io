@@ -91,6 +91,7 @@ export default function VehiclePropertiesPage() {
       </PageHeader>
 
       <div className="container-page py-10 md:py-14">
+        <>
         <section aria-labelledby="patterns" className="mb-14 max-w-3xl">
           <h2 id="patterns" className="font-display text-2xl font-semibold tracking-tight">
             Properties rarely work alone
@@ -208,6 +209,8 @@ export default function VehiclePropertiesPage() {
         </section>
 
         <PropertyBrowser rows={rows} />
+      
+        </>
       </div>
     </>
   )

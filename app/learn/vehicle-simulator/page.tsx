@@ -1,22 +1,12 @@
 import type { Metadata } from 'next'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { ArrowLeft, Gauge } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
+import { SimulatorTrial } from '@/components/premium/simulator-trial'
 import { controls, controlGroups } from '@/data/simulator'
 import { site } from '@/data/site'
 
 // Three.js is ~600KB. Loading it only on this route keeps it off every other page.
-const CarSimulator = dynamic(
-  () => import('@/components/simulator/car-simulator').then((m) => m.CarSimulator),
-  {
-    loading: () => (
-      <div className="grid aspect-[16/10] w-full place-items-center rounded-xl border border-line bg-bg-subtle font-mono text-xs text-muted">
-        Loading the simulator…
-      </div>
-    ),
-  },
-)
 
 const propertyCount = new Set(controls.map((c) => c.property)).size
 
@@ -61,7 +51,7 @@ export default function VehicleSimulatorPage() {
       </PageHeader>
 
       <div className="container-wide py-10 md:py-12">
-        <CarSimulator />
+        <SimulatorTrial />
 
         <section className="mt-14 max-w-3xl">
           <h2 className="font-display text-xl font-semibold tracking-tight">

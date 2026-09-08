@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowLeft, LayoutGrid } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
+import { GatedTool } from '@/components/premium/gated-tool'
+import { ToolLocked } from '@/components/premium/tool-locked'
 import { CockpitSimulator } from '@/components/cockpit/cockpit-simulator'
 import { displays, zones } from '@/data/cockpit'
 import { site } from '@/data/site'
@@ -48,7 +50,9 @@ export default function CockpitDisplaysPage() {
       </PageHeader>
 
       <div className="container-wide py-10 md:py-12">
-        <CockpitSimulator />
+        <GatedTool realm="learn" fallback={<ToolLocked area="cockpit" title="Cockpit and displays" />}>
+          <CockpitSimulator />
+        </GatedTool>
 
         <section className="mt-14 max-w-3xl">
           <h2 className="font-display text-xl font-semibold tracking-tight">Things worth trying</h2>

@@ -40,3 +40,6 @@ yarn-error.log*
 # The pristine originals must stay out of public/, or they would be served
 # alongside the watermarked copies and make the watermark pointless.
 /public/media/
+
+# Harvest build for premium encryption — contains every locked topic in full.
+/out-premium-src/

@@ -5,12 +5,13 @@
   "description": "Portfolio and engineering blog of Bhargava Mandapati \u2014 Android Automotive / AOSP engineer.",
   "scripts": {
     "dev": "node scripts/watermark-images.mjs && next dev",
-    "build": "node scripts/watermark-images.mjs && node --experimental-strip-types --no-warnings scripts/build-search-index.mjs && next build",
+    "build": "node scripts/watermark-images.mjs && node --experimental-strip-types --no-warnings scripts/build-search-index.mjs && PREMIUM_RENDER_ALL=1 next build && node -e \"require('node:fs').renameSync('out','out-premium-src')\" && next build && node scripts/encrypt-premium.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check:mdx": "node scripts/check-mdx.mjs",
-    "watermark": "node scripts/watermark-images.mjs"
+    "watermark": "node scripts/watermark-images.mjs",
+    "premium:encrypt": "node scripts/encrypt-premium.mjs"
   },
   "dependencies": {
     "github-slugger": "^2.0.0",

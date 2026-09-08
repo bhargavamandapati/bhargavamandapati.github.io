@@ -7,6 +7,8 @@ import { ListTree, X } from 'lucide-react'
 import { CategoryIcon } from '@/components/learn/category-icon'
 import type { CategoryWithTopics } from '@/lib/learn'
 import { cn } from '@/lib/utils'
+import { isFree } from '@/data/access'
+import { LockBadge, lockedRowClass } from '@/components/premium/lock-badge'
 
 function Tree({ curriculum, currentSlug }: { curriculum: CategoryWithTopics[]; currentSlug?: string }) {
   let index = 0
@@ -22,10 +24,29 @@ function Tree({ curriculum, currentSlug }: { curriculum: CategoryWithTopics[]; c
             {category.topics.map((topic) => {
               index += 1
               const active = topic.slug === currentSlug
+              const locked = !isFree('learn', topic.slug)
               return (
                 <li key={topic.slug}>
-                  <Link
-                    href={`/learn/${topic.slug}/`}
+                  {locked ? (
+                    <span
+                      aria-disabled="true"
+                      title="Requires access"
+                    className={cn(
+                      '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
+                      active
+                        ? 'border-accent font-medium text-accent'
+                        : cn('border-transparent text-subtle', lockedRowClass)
+                    )}
+                  >
+                    <span className="font-mono text-[0.68rem] text-subtle tabular-nums">
+                      {String(index).padStart(2, '0')}
+                    </span>
+                    <span className="min-w-0">{topic.title}</span>
+                      <LockBadge className="ml-auto" label="" />
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/learn/${topic.slug}/`}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
                       '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
@@ -38,7 +59,8 @@ function Tree({ curriculum, currentSlug }: { curriculum: CategoryWithTopics[]; c
                       {String(index).padStart(2, '0')}
                     </span>
                     <span className="min-w-0">{topic.title}</span>
-                  </Link>
+                    </Link>
+                  )}
                 </li>
               )
             })}

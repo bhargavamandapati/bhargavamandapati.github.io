@@ -12,6 +12,7 @@
  * Run automatically by `npm run build`.
  */
 import { readFileSync, writeFileSync, globSync, mkdirSync } from 'node:fs'
+import { isFree, isFreeTerm } from '../data/access.ts'
 import path from 'node:path'
 import matter from 'gray-matter'
 
@@ -38,15 +39,19 @@ const add = (e) => entries.push(e)
 
 // ---- MDX content ----------------------------------------------------------
 const SECTIONS = [
-  { dir: 'content/learn', base: '/learn', kind: 'Learn AAOS' },
-  { dir: 'content/sdv', base: '/sdv', kind: 'SDV' },
-  { dir: 'content/tutorials', base: '/tutorials', kind: 'Tutorial' },
+  { dir: 'content/learn', base: '/learn', kind: 'Learn AAOS', gate: 'learn' },
+  { dir: 'content/sdv', base: '/sdv', kind: 'SDV', gate: 'sdv' },
+  { dir: 'content/tutorials', base: '/tutorials', kind: 'Tutorial', gate: 'tutorials' },
 ]
 for (const section of SECTIONS) {
   for (const file of globSync(`${section.dir}/**/*.mdx`, { cwd: ROOT }).sort()) {
     const raw = readFileSync(path.join(ROOT, file), 'utf8')
     const { data, content } = matter(raw)
     const slug = file.slice(section.dir.length + 1).replace(/\.mdx$/, '')
+    // This file is public, so a locked topic must not put its prose in it.
+    // Title, summary and tags stay — a reader still has to be able to find
+    // the topic and see that it exists — but the body does not travel.
+    const open = isFree(section.gate, slug)
     add({
       t: data.title ?? slug,
       d: data.description ?? '',
@@ -54,8 +59,9 @@ for (const section of SECTIONS) {
       k: section.kind,
       // A trimmed body gives search something to match beyond the summary
       // without carrying the whole topic into the index.
-      x: plain(content).slice(0, 320),
+      x: open ? plain(content).slice(0, 320) : '',
       g: Array.isArray(data.tags) ? data.tags.join(' ') : '',
+      ...(open ? {} : { l: 1 }),
     })
   }
 }
@@ -74,14 +80,19 @@ for (const file of globSync('content/blog/*.mdx', { cwd: ROOT }).sort()) {
 }
 
 // ---- Glossary -------------------------------------------------------------
+// The glossary is open term by term: the index carries every word and its
+// one-line gloss, so anything can be found, but the full explanation travels
+// only for the terms in the trial.
 for (const term of glossary) {
+  const glossaryOpen = isFreeTerm(term.term)
   add({
     t: term.term,
     d: term.short,
     u: `/glossary/#${term.term.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
     k: 'Glossary',
-    x: (term.long ?? '').slice(0, 240),
+    x: glossaryOpen ? (term.long ?? '').slice(0, 240) : '',
     g: (term.aliases ?? []).join(' '),
+    ...(glossaryOpen ? {} : { l: 1 }),
   })
 }
 

@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useMemo, useState, useId } from 'react'
 import Link from 'next/link'
+import { LockBadge } from '@/components/premium/lock-badge'
 import { ChevronDown, Search, X } from 'lucide-react'
 import type { PropertyRow } from '@/lib/vehicle-properties'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,32 @@ function Pill({
       {children}
       {count !== undefined && <span className="font-mono text-[0.7rem]">{count}</span>}
     </button>
+  )
+}
+
+
+/** A property row: a link when it is readable, an inert card when it is not. */
+function RowShell({
+  locked,
+  slug,
+  children,
+}: {
+  locked: boolean
+  slug: string
+  children: React.ReactNode
+}) {
+  const shared = 'card group block px-4 py-3.5 transition-colors'
+  if (locked) {
+    return (
+      <div aria-disabled="true" title="Requires access" className={cn(shared, 'bg-surface-2/70')}>
+        {children}
+      </div>
+    )
+  }
+  return (
+    <Link href={`/learn/vehicle-properties/${slug}/`} className={cn(shared, 'hover:border-accent/40')}>
+      {children}
+    </Link>
   )
 }
 
@@ -200,10 +227,10 @@ export function PropertyBrowser({ rows }: { rows: PropertyRow[] }) {
         <ul className="mt-6 space-y-2">
           {results.map((row) => (
             <li key={row.name}>
-              <Link
-                href={`/learn/vehicle-properties/${row.slug}/`}
-                className="card group block px-4 py-3.5 transition-colors hover:border-accent/40"
-              >
+              {/* A locked row still shows its identifiers, area, type and access
+                  — those are facts from the AIDL, not prose — but it does not
+                  open, and it carries no summary. */}
+              <RowShell locked={row.locked} slug={row.slug}>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <code className="font-mono text-sm font-semibold text-fg [overflow-wrap:anywhere] group-hover:text-accent">
                     {row.name}
@@ -219,10 +246,13 @@ export function PropertyBrowser({ rows }: { rows: PropertyRow[] }) {
                       platform only
                     </span>
                   )}
+                  {row.locked && <LockBadge className="ml-auto" />}
                 </div>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
-                  {row.summary}
-                </p>
+                {row.summary && (
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
+                    {row.summary}
+                  </p>
+                )}
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   <span className="chip">{row.area}</span>
                   <span className="chip">{row.type}</span>
@@ -231,7 +261,7 @@ export function PropertyBrowser({ rows }: { rows: PropertyRow[] }) {
                   </span>
                   <span className="chip">{row.changeMode}</span>
                 </div>
-              </Link>
+              </RowShell>
             </li>
           ))}
         </ul>

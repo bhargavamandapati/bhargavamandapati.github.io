@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react'
-import { lookupTerm } from '@/data/glossary'
+import type { Term as GlossaryTerm } from '@/data/glossary'
 import { slugify } from '@/lib/utils'
 
 /**
@@ -12,9 +12,18 @@ import { slugify } from '@/lib/utils'
  * If the word is not in the glossary it renders as ordinary text, so wrapping
  * something in <T> can never break a page.
  */
-export function T({ children, id }: { children: React.ReactNode; id?: string }) {
-  const label = typeof children === 'string' ? children : String(children ?? '')
-  const entry = lookupTerm(id ?? label)
+export function TermPopover({
+  children,
+  entry,
+}: {
+  children: React.ReactNode
+  /**
+   * Resolved on the server. Importing the glossary here instead would put all
+   * 98 definitions into the client bundle, where they are readable regardless
+   * of whether the glossary page itself is locked.
+   */
+  entry: GlossaryTerm | undefined
+}) {
 
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)

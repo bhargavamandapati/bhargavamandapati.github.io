@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Pause, Play, RotateCcw } from 'lucide-react'
+import { ExternalLink, Pause, Play, RotateCcw,
+  Info } from 'lucide-react'
+import { isFreeControl } from '@/data/access'
+import { LockBadge } from '@/components/premium/lock-badge'
 import {
   controls,
   controlGroups,
@@ -39,7 +42,27 @@ function formatValue(control: Control, value: SimState[keyof SimState]): string 
   return control.format ? `${value} ${control.unit ?? ''} — ${control.format(value as number)}` : `${value}${control.unit ? ' ' + control.unit : ''}`
 }
 
-export function CarSimulator() {
+
+/**
+ * Why the car is stationary, in the reader's terms.
+ *
+ * Moving the speed slider does nothing while the gear is in Park or the parking
+ * brake is set, which is correct behaviour and also indistinguishable from a
+ * broken simulator. The interlock is one of the more useful things on this page
+ * — it is a real dependency between real properties — so it is worth stating
+ * rather than leaving to be discovered.
+ */
+function stationaryReasons(state: SimState): string[] {
+  const reasons: string[] = []
+  if (state.ignition < 3) reasons.push('the ignition is not on (IGNITION_STATE)')
+  if (state.gear !== 0x0008 && state.gear !== 0x0002)
+    reasons.push('the gear is not in Drive or Reverse (GEAR_SELECTION)')
+  if (state.parkingBrake) reasons.push('the parking brake is on (PARKING_BRAKE_ON)')
+  if (state.speed <= 0 && !state.cruiseEnabled) reasons.push('the speed is zero (PERF_VEHICLE_SPEED)')
+  return reasons
+}
+
+export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
   const insideCanvas = useRef<HTMLCanvasElement>(null)
   const insideWrap = useRef<HTMLDivElement>(null)
   const outsideCanvas = useRef<HTMLCanvasElement>(null)
@@ -183,6 +206,8 @@ export function CarSimulator() {
     [],
   )
 
+  const stopped = stationaryReasons(state)
+
   const gated = useCallback(
     (control: Control) => control.requires !== undefined && !state[control.requires],
     [state],
@@ -255,6 +280,16 @@ export function CarSimulator() {
               Cluster, centre screen, steering wheel and its controls, gear selector and the vents.
               The screens are drawn live from the property values.
             </figcaption>
+
+            {stopped.length > 0 && (
+              <p className="mt-3 flex items-start gap-2 rounded-lg border border-l-2 border-line border-l-accent/60 bg-surface p-3 text-xs leading-relaxed text-muted">
+                <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-accent" />
+                <span>
+                  <span className="text-fg">The car is stationary</span> because{' '}
+                  {stopped.join(', and ')}.
+                </span>
+              </p>
+            )}
           </figure>
 
           {/* ---- Outside the car ---- */}
@@ -355,8 +390,11 @@ export function CarSimulator() {
         <div className="mb-5">
           <VehicleInfo />
         </div>
+        {/* min-w-0 on the fieldset: unlike a div it will not shrink below its
+            content by default, and at 320px that pushed the page 4px wider
+            than the viewport. */}
         {grouped.map(({ group, items }) => (
-          <fieldset key={group} className="mb-5">
+          <fieldset key={group} className="mb-5 min-w-0">
             <legend className="mb-2 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
               {group}
             </legend>
@@ -367,6 +405,7 @@ export function CarSimulator() {
                   control={control}
                   value={state[control.key]}
                   gatedBy={gated(control)}
+                  locked={!unlocked && !isFreeControl(control.property)}
                   idPrefix={groupId}
                   onChange={(v) => set(control.key, v as never, control, gated(control))}
                 />
@@ -409,6 +448,7 @@ function ControlRow({
   control,
   value,
   gatedBy,
+  locked = false,
   idPrefix,
   onChange,
 }: {
@@ -416,16 +456,30 @@ function ControlRow({
   value: SimState[keyof SimState]
   /** True when a dependency is unmet — the control still works, it just does nothing. */
   gatedBy: boolean
+  /** True when this control is outside the free trial: shown, but not operable. */
+  locked?: boolean
   idPrefix: string
   onChange: (value: number | boolean) => void
 }) {
   const id = `${idPrefix}-${control.key}-${control.label.replace(/\s+/g, '')}`
   return (
-    <div className={cn('p-3.5', gatedBy && 'bg-difficulty-advanced/[0.04]')}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <label htmlFor={id} className="text-sm font-medium text-fg">
+    <div
+      className={cn(
+        'p-3.5',
+        gatedBy && 'bg-difficulty-advanced/[0.04]',
+        // Locked controls stay visible: the point of the trial is to show what
+        // the panel covers, not to hide it. Marked with a tint and a badge
+        // rather than opacity — fading the row also faded its description and
+        // property link, neither of which is a disabled control, and dropped
+        // them to 2.39 contrast.
+        locked && 'bg-surface-2/70',
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0 flex-1">
+          <label htmlFor={id} className="text-sm font-medium text-fg [overflow-wrap:anywhere]">
             {control.label}
+            {locked && <LockBadge className="ml-2 align-middle" label="" />}
           </label>
           <Link
             href={`/learn/vehicle-properties/${slug(control.property)}/`}
@@ -443,6 +497,7 @@ function ControlRow({
         {control.kind === 'toggle' && (
           <input
             id={id}
+            disabled={locked}
             type="checkbox"
             checked={Boolean(value)}
             onChange={(e) => onChange(e.target.checked)}
@@ -455,6 +510,7 @@ function ControlRow({
         <div className="mt-2">
           <input
             id={id}
+            disabled={locked}
             type="range"
             min={control.min}
             max={control.max}
@@ -474,6 +530,7 @@ function ControlRow({
       {control.kind === 'enum' && (
         <select
           id={id}
+          disabled={locked}
           value={Number(value)}
           onChange={(e) => onChange(Number(e.target.value))}
           className="mt-2 w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 font-mono text-xs text-fg outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"

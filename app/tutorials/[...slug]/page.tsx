@@ -9,6 +9,7 @@ import { OutcomeCard } from '@/components/tutorial/outcome-card'
 import { SourceList } from '@/components/learn/source'
 import { TableOfContents } from '@/components/table-of-contents'
 import { ReadAloud } from '@/components/read-aloud'
+import { Gated } from '@/components/premium/gated'
 import { mdxComponents } from '@/components/mdx-components'
 import { mdxOptions } from '@/lib/mdx'
 import {
@@ -156,9 +157,15 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
             prerequisites={tutorial.prerequisites}
           />
 
-          <article id="topic-body" data-copy-guard className="prose-bm mt-10">
+          <article
+            id="topic-body"
+            data-copy-guard
+            className="prose-bm mt-10"
+          >
             <ReadAloud targetId="topic-body" className="mb-8" />
-            <MDXRemote source={tutorial.content} components={mdxComponents} options={mdxOptions} />
+            <Gated area="tutorials" slug={tutorial.slug} title={tutorial.title}>
+              <MDXRemote source={tutorial.content} components={mdxComponents} options={mdxOptions} />
+            </Gated>
           </article>
 
           <SourceList sources={tutorial.sources} />

@@ -9,6 +9,7 @@ import { MarkRead } from '@/components/paths/mark-read'
 import { SourceList } from '@/components/learn/source'
 import { TableOfContents } from '@/components/table-of-contents'
 import { ReadAloud } from '@/components/read-aloud'
+import { Gated } from '@/components/premium/gated'
 import { mdxComponents } from '@/components/mdx-components'
 import { mdxOptions } from '@/lib/mdx'
 import {
@@ -142,9 +143,15 @@ export default async function SdvTopicPage({ params }: { params: Promise<Params>
             </div>
           </header>
 
-          <article id="topic-body" data-copy-guard className="prose-bm mt-10">
+          <article
+            id="topic-body"
+            data-copy-guard
+            className="prose-bm mt-10"
+          >
             <ReadAloud targetId="topic-body" className="mb-8" />
-            <MDXRemote source={topic.content} components={mdxComponents} options={mdxOptions} />
+            <Gated area="sdv" slug={topic.slug} title={topic.title}>
+              <MDXRemote source={topic.content} components={mdxComponents} options={mdxOptions} />
+            </Gated>
           </article>
 
           <SourceList sources={topic.sources} />

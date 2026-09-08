@@ -7,6 +7,8 @@ import { ListTree, X } from 'lucide-react'
 import { SdvModuleIcon } from '@/components/sdv/module-icon'
 import type { SdvModuleWithTopics } from '@/lib/sdv'
 import { cn } from '@/lib/utils'
+import { isFree } from '@/data/access'
+import { LockBadge, lockedRowClass } from '@/components/premium/lock-badge'
 
 function Tree({
   modules,
@@ -28,10 +30,29 @@ function Tree({
             {m.topics.map((t) => {
               index += 1
               const active = t.slug === currentSlug
+              const locked = !isFree('sdv', t.slug)
               return (
                 <li key={t.slug}>
-                  <Link
-                    href={`/sdv/${t.slug}/`}
+                  {locked ? (
+                    <span
+                      aria-disabled="true"
+                      title="Requires access"
+                    className={cn(
+                      '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
+                      active
+                        ? 'border-accent font-medium text-accent'
+                        : cn('border-transparent text-subtle', lockedRowClass)
+                    )}
+                  >
+                    <span className="font-mono text-[0.68rem] text-subtle tabular-nums">
+                      {String(index).padStart(2, '0')}
+                    </span>
+                    <span className="min-w-0">{t.title}</span>
+                      <LockBadge className="ml-auto" label="" />
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/sdv/${t.slug}/`}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
                       '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
@@ -44,7 +65,8 @@ function Tree({
                       {String(index).padStart(2, '0')}
                     </span>
                     <span className="min-w-0">{t.title}</span>
-                  </Link>
+                    </Link>
+                  )}
                 </li>
               )
             })}

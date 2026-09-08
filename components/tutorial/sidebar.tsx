@@ -7,6 +7,8 @@ import { ListTree, X } from 'lucide-react'
 import { TrackIcon } from '@/components/tutorial/track-icon'
 import type { TrackWithTutorials } from '@/lib/tutorials'
 import { cn } from '@/lib/utils'
+import { isFree } from '@/data/access'
+import { LockBadge, lockedRowClass } from '@/components/premium/lock-badge'
 
 function Tree({ tracks, currentSlug }: { tracks: TrackWithTutorials[]; currentSlug?: string }) {
   let index = 0
@@ -22,10 +24,29 @@ function Tree({ tracks, currentSlug }: { tracks: TrackWithTutorials[]; currentSl
             {track.tutorials.map((t) => {
               index += 1
               const active = t.slug === currentSlug
+              const locked = !isFree('tutorials', t.slug)
               return (
                 <li key={t.slug}>
-                  <Link
-                    href={`/tutorials/${t.slug}/`}
+                  {locked ? (
+                    <span
+                      aria-disabled="true"
+                      title="Requires access"
+                    className={cn(
+                      '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
+                      active
+                        ? 'border-accent font-medium text-accent'
+                        : cn('border-transparent text-subtle', lockedRowClass)
+                    )}
+                  >
+                    <span className="font-mono text-[0.68rem] text-subtle tabular-nums">
+                      {String(index).padStart(2, '0')}
+                    </span>
+                    <span className="min-w-0">{t.title}</span>
+                      <LockBadge className="ml-auto" label="" />
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/tutorials/${t.slug}/`}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
                       '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
@@ -38,7 +59,8 @@ function Tree({ tracks, currentSlug }: { tracks: TrackWithTutorials[]; currentSl
                       {String(index).padStart(2, '0')}
                     </span>
                     <span className="min-w-0">{t.title}</span>
-                  </Link>
+                    </Link>
+                  )}
                 </li>
               )
             })}

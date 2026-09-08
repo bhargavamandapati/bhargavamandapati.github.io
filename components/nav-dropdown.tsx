@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import type { NavChild } from '@/data/site'
 import { cn } from '@/lib/utils'
+import { LockBadge } from '@/components/premium/lock-badge'
 
 /**
  * A disclosure, not a `role="menu"` widget.
@@ -124,6 +125,7 @@ export function NavDropdown({
                   )}
                 >
                   {item.label}
+                  {item.locked && <LockBadge className="ml-2 align-middle" />}
                 </span>
                 <span className="mt-0.5 block text-xs leading-snug text-muted">
                   {item.description}

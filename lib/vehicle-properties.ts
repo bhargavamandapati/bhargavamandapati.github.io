@@ -11,6 +11,7 @@ import {
   valueEnums,
   carPermissions,
 } from '@/data/vehicle-properties'
+import { isFree } from '@/data/access'
 import { csFile, csSearch } from '@/lib/aosp'
 
 export {
@@ -411,8 +412,18 @@ export type PropertyRow = {
   /** Has a relationship that changes how the property must be used. */
   hasDependency: boolean
   relatedCount: number
+  /** True when this property needs a key. Its summary is withheld if so. */
+  locked: boolean
 }
 
+/**
+ * The browsable index.
+ *
+ * Identifiers, areas, types, access and change modes are facts — they are not
+ * anyone's to withhold, and they are what makes the list worth browsing. The
+ * one-line summary is lifted from the AOSP description, so it travels only for
+ * the properties in the trial; the rest of the row is the same either way.
+ */
 export function propertyRows(): PropertyRow[] {
   return vehicleProperties.map((p) => ({
     name: p.name,
@@ -424,7 +435,8 @@ export function propertyRows(): PropertyRow[] {
     access: p.access ?? '—',
     changeMode: p.changeMode ?? '—',
     category: categoryOf(p),
-    summary: summarise(p),
+    summary: isFree('properties', propertySlug(p)) ? summarise(p) : '',
+    locked: !isFree('properties', propertySlug(p)),
     inCarApi: p.javaLine !== undefined,
     deprecated: p.deprecated,
     hasDependency: hasDependency(p),

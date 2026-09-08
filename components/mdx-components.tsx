@@ -3,7 +3,7 @@ import type { MDXComponents } from 'mdx/types'
 import { AlertTriangle, Info, Lightbulb } from 'lucide-react'
 import { CodeWindow } from '@/components/learn/code-window'
 import { Analogy, Plain, Recap, Scenario } from '@/components/learn/explain'
-import { T } from '@/components/learn/term'
+import { T } from '@/components/learn/term-server'
 import { FileTree, Gotcha, Verify } from '@/components/tutorial/blocks'
 import { Doc, Find, SourceList, Src, Sym } from '@/components/learn/source'
 import {

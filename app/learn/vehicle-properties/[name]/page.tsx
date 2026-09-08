@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Gated } from '@/components/premium/gated';
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -178,6 +179,7 @@ export default async function PropertyPage({
   return (
     <CodeLanguageProvider>
       <div className="container-page py-10 md:py-14">
+        <Gated area="properties" slug={propertySlug(property)} title={property.name}>
         <Link
           href="/learn/vehicle-properties/"
           className="inline-flex items-center gap-2 font-mono text-xs text-muted transition-colors hover:text-accent"
@@ -762,6 +764,8 @@ export default async function PropertyPage({
           </Link>
           .
         </p>
+      
+        </Gated>
       </div>
     </CodeLanguageProvider>
   );
