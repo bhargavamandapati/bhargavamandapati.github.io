@@ -53,7 +53,7 @@ export const profile = {
     'vehicle HALs, and the Android Automotive middleware that turns raw CAN and VSS signals ' +
     'into infotainment people actually touch.',
   bio: [
-    'I am a Team Lead at Accenture India with over a decade of experience designing and shipping mobile and automotive software. My work centres on Android, the Android Automotive Framework, Kotlin, Java and IoT — most of it running inside production vehicles.',
+    'I am a Team Lead with over a decade of experience designing and shipping mobile and automotive software. My work centres on Android, the Android Automotive Framework, Kotlin, Java and IoT — most of it running inside production vehicles.',
     'In my current role I lead a team of software engineers across design, development and maintenance, coordinating with cross-functional teams to clear blockers before they stall a sprint. A large part of the job is technical guidance: unblocking engineers, reviewing architecture, and keeping delivery predictable.',
     'I have spearheaded project architecture modifications to align with evolving requirements, and used Java, Kotlin and Android to deliver high-quality software while engaging onsite teams directly. I travelled to Shanghai to support the launch of a major automotive app project — the kind of commitment that turns a hard delivery into a shipped one.',
     'I hold a B.Tech in Electrical, Electronics and Communications Engineering from JNTU Kakinada, where I picked up the fundamentals of embedded systems and network protocols that still underpin my automotive work. I am a certified SAFe® 5 Practitioner, which helps me keep agile practice pragmatic rather than ceremonial.',
@@ -69,12 +69,12 @@ export const profile = {
 
 export const experience: Role[] = [
   {
-    company: 'Accenture',
+    company: 'Global IT services firm',
     title: 'System Developer Associate Manager',
     start: '2026-04',
     end: null,
     summary:
-      'Leading a software engineering team at a global IT services company, owning design, development and maintenance across mobile and automotive applications.',
+      'Leading a software engineering team, owning design, development and maintenance across mobile and automotive applications.',
     highlights: [
       'Lead a team of software engineers through design, development and maintenance of software applications.',
       'Coordinate with cross-functional teams to proactively resolve blockers and keep project progress uninterrupted.',
@@ -83,7 +83,7 @@ export const experience: Role[] = [
     ],
   },
   {
-    company: 'People Tech Group Inc',
+    company: 'Automotive engineering services firm',
     title: 'Team Lead',
     start: '2022-11',
     end: '2026-03',
@@ -100,7 +100,7 @@ export const experience: Role[] = [
     ],
   },
   {
-    company: 'People Tech Group Inc',
+    company: 'Automotive engineering services firm',
     title: 'Senior Software Engineer',
     start: '2021-08',
     end: '2022-11',
@@ -116,7 +116,7 @@ export const experience: Role[] = [
     ],
   },
   {
-    company: 'People Tech Group Inc',
+    company: 'Automotive engineering services firm',
     title: 'Software Engineer',
     start: '2018-07',
     end: '2021-07',
@@ -133,7 +133,7 @@ export const experience: Role[] = [
     ],
   },
   {
-    company: 'People Tech Group Inc',
+    company: 'Automotive engineering services firm',
     title: 'Junior Software Engineer',
     start: '2016-04',
     end: '2018-06',

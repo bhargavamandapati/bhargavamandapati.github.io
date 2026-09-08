@@ -1,6 +1,5 @@
 import { Section, SectionHeading } from '@/components/section'
 import { Reveal } from '@/components/reveal'
-import { CompanyMark } from '@/components/brand-icon'
 import { experience } from '@/data/resume'
 import { durationBetween, formatMonth } from '@/lib/utils'
 
@@ -21,7 +20,6 @@ export function Experience() {
               <article className="card relative p-6 transition-colors hover:border-line-strong sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
                   <div className="flex min-w-0 items-start gap-4">
-                    <CompanyMark name={role.company} className="mt-0.5" />
                     <div className="min-w-0">
                     <h3 className="font-display text-lg font-semibold tracking-tight text-fg">
                       {role.title}

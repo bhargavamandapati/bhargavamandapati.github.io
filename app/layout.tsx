@@ -90,7 +90,6 @@ const personJsonLd = {
     '@type': 'CollegeOrUniversity',
     name: 'Jawaharlal Nehru Technological University, Kakinada',
   },
-  worksFor: { '@type': 'Organization', name: 'Accenture' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

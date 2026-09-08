@@ -34,18 +34,6 @@ export const site = {
   },
   nav: [
     {
-      // The portfolio sections live together so the nav is not half CV and
-      // half curriculum.
-      label: 'About',
-      href: '/#about',
-      children: [
-        { label: 'About', href: '/#about', description: 'Who I am and what I work on.' },
-        { label: 'Experience', href: '/#experience', description: 'Roles, and what each one delivered.' },
-        { label: 'Projects', href: '/projects/', description: 'Selected automotive platform work.' },
-        { label: 'Skills', href: '/#skills', description: 'Languages, platforms and ways of working.' },
-      ],
-    },
-    {
       // The AAOS material outgrew a single nav slot, so the curriculum,
       // the property reference, the tutorials and the glossary sit together.
       label: 'Learn AAOS',
@@ -64,16 +52,19 @@ export const site = {
         {
           label: 'Vehicle property guide',
           href: '/learn/vehicle-properties/',
+          locked: true,
           description: 'Every vehicle property, searchable and linked to AOSP.',
         },
         {
           label: 'Property simulator',
           href: '/learn/vehicle-simulator/',
+          locked: true,
           description: 'Change a property in 3D and watch what it does to the car.',
         },
         {
           label: 'Cockpit & displays',
           href: '/learn/cockpit-displays/',
+          locked: true,
           description: 'Occupant zones, multi-display and UX restrictions, live.',
         },
         {
@@ -84,18 +75,37 @@ export const site = {
         {
           label: 'Glossary',
           href: '/glossary/',
+          locked: true,
           description: 'Plain-language definitions for the vocabulary.',
         },
       ],
     },
     { label: 'SDV', href: '/sdv/' },
     { label: 'Writing', href: '/blog/' },
+    {
+      // The portfolio sections live together so the nav is not half CV and
+      // half curriculum.
+      label: 'About',
+      href: '/about/',
+      children: [
+        { label: 'About', href: '/about/', description: 'Who I am and what I work on.' },
+        { label: 'Experience', href: '/about/#experience', description: 'Roles, and what each one delivered.' },
+        { label: 'Projects', href: '/projects/', description: 'Selected automotive platform work.' },
+        { label: 'Skills', href: '/about/#skills', description: 'Languages, platforms and ways of working.' },
+      ],
+    },
   ],
 } as const
 
 export type Site = typeof site
 
-export type NavChild = { label: string; href: string; description: string }
+export type NavChild = {
+  label: string
+  href: string
+  description: string
+  /** Set when the destination needs an access key, so the menu can say so. */
+  locked?: boolean
+}
 export type NavItem = {
   label: string
   href: string
