@@ -64,6 +64,11 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
           NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.site_url }}
+          # scripts/encrypt-premium.mjs refuses to run without both of these —
+          # better a failed build than a publish that ships 405 locked
+          # articles in plain text because a secret went missing.
+          PREMIUM_PASSPHRASE_LEARN: ${{ secrets.PREMIUM_PASSPHRASE_LEARN }}
+          PREMIUM_PASSPHRASE_SDV: ${{ secrets.PREMIUM_PASSPHRASE_SDV }}
         run: npm run build
 
       - uses: actions/configure-pages@v6
