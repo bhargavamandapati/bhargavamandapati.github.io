@@ -6,6 +6,7 @@ import { Check, Copy, KeyRound, Linkedin, Loader2, Lock } from 'lucide-react'
 import { REALM_LABEL, access, type Realm } from '@/data/access'
 import { site } from '@/data/site'
 import { EmailAccessButton } from '@/components/premium/email-access-button'
+import { decryptPayload, isWrongKeyError, type Payload } from '@/lib/premium-decrypt'
 
 /**
  * The lock on a premium topic, and the machinery that lifts it.
@@ -19,49 +20,6 @@ import { EmailAccessButton } from '@/components/premium/email-access-button'
  * rather than producing plausible nonsense — which is what lets the wrong-key
  * message be a statement rather than a guess.
  */
-
-/** Must match scripts/encrypt-premium.mjs. */
-const KDF_ITERATIONS = 310_000
-
-type Payload = { v: number; salt: string; iv: string; data: string }
-
-/** Returns a plain ArrayBuffer, which is what WebCrypto's BufferSource wants. */
-function fromBase64(value: string): ArrayBuffer {
-  const binary = atob(value)
-  const buffer = new ArrayBuffer(binary.length)
-  const bytes = new Uint8Array(buffer)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return buffer
-}
-
-async function decrypt(payload: Payload, passphrase: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const material = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(passphrase),
-    'PBKDF2',
-    false,
-    ['deriveKey'],
-  )
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: fromBase64(payload.salt),
-      iterations: KDF_ITERATIONS,
-      hash: 'SHA-256',
-    },
-    material,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['decrypt'],
-  )
-  const plain = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: fromBase64(payload.iv) },
-    key,
-    fromBase64(payload.data),
-  )
-  return new TextDecoder().decode(plain)
-}
 
 /**
  * Restores the copy buttons inside decrypted content.
@@ -126,7 +84,7 @@ export function PremiumGate({
         const response = await fetch(`${access.payloadPath}/${source}.json`)
         if (!response.ok) throw new Error(`payload ${response.status}`)
         const payload: Payload = await response.json()
-        const html = await decrypt(payload, candidate)
+        const html = await decryptPayload(payload, candidate)
         if (mode === 'content' && target) {
           target.innerHTML = html
           target.removeAttribute('data-premium')
@@ -144,8 +102,7 @@ export function PremiumGate({
         if (mode === 'key-only') window.location.reload()
       } catch (error) {
         // A decrypt failure means the key is wrong; anything else is the fetch.
-        const wrongKey = error instanceof DOMException || String(error).includes('operation-specific')
-        setStatus(wrongKey ? 'wrong' : 'error')
+        setStatus(isWrongKeyError(error) ? 'wrong' : 'error')
       }
     },
     [contentId, mode, realm],

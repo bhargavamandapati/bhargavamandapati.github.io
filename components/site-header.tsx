@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { LogoMark } from '@/components/brand'
 import { NavDropdown } from '@/components/nav-dropdown'
+import { AccessMenu } from '@/components/premium/access-menu'
 import { SearchDialog } from '@/components/search-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { navItems, site } from '@/data/site'
@@ -90,6 +91,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <SearchDialog />
+          <AccessMenu />
           <ThemeToggle />
           <button
             type="button"
