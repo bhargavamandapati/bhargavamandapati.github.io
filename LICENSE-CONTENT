@@ -1,18 +1,29 @@
 Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International
-(CC BY-NC-ND 4.0)
+(CC BY-NC-ND 4.0) — FREE MATERIAL ONLY
 
 Copyright (c) 2026 Bhargava Mandapati
 
 WHAT THIS COVERS
 
-The written material on this site: the articles under /learn and /sdv, the
-tutorials, the blog posts, the learning paths, and the selection, ordering and
-arrangement of the curriculum as a whole.
+This licence applies only to the free material on this site:
 
-You are free to share it — copy and redistribute it in any medium or format —
-provided you give appropriate credit, link to this licence, and indicate if
-changes were made. You may not use it for commercial purposes, and if you
-remix, transform or build upon it you may not distribute the modified work.
+  * All blog posts (never locked).
+  * The specific trial topics listed as free in data/access.ts at the time of
+    publication — currently:
+      - learn: foundations/what-is-aaos, foundations/architecture-overview,
+        foundations/boot-sequence
+      - sdv: architecture/service-oriented-architecture
+      - tutorials: apps-ui/custom-rro
+      - the free vehicle-property entries and free glossary terms listed in
+        data/access.ts (FREE_TOPICS, FREE_GLOSSARY_TERMS)
+  * The selection, ordering and arrangement of the curriculum as a whole,
+    to the extent that arrangement is reflected in the free material above.
+
+You are free to share this material — copy and redistribute it in any medium
+or format — provided you give appropriate credit, link to this licence, and
+indicate if changes were made. You may not use it for commercial purposes,
+and if you remix, transform or build upon it you may not distribute the
+modified work.
 
 Full licence text: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
 Summary:           https://creativecommons.org/licenses/by-nc-nd/4.0/
@@ -30,6 +41,34 @@ WHAT THIS DOES NOT COVER
    and similar factual data are not subject to copyright by anyone, and nothing
    in this licence should be read as claiming otherwise.
 
+4. Premium material — see below. It is not licensed under CC BY-NC-ND, or
+   under any other public licence.
+
+PREMIUM MATERIAL — NOT PUBLICLY LICENSED
+
+Everything under /learn, /sdv, /tutorials and /glossary that is not listed as
+free above is locked behind a per-realm access key and is made available only
+to the person holding that key, for their own personal use. It is governed by
+the following terms rather than by a Creative Commons licence:
+
+  * Access is personal to the individual it was issued to and is not
+    transferable, shareable or resaleable.
+  * The holder of a key may read the material for their own learning. They
+    may not copy, republish, redistribute, publicly perform, or create and
+    distribute derivative works from it, in whole or in part, in any medium.
+  * Nothing here grants any licence to the public at large. Obtaining a key
+    does not convert this material into freely licensed content, and no
+    portion of it should be treated as available under the free-material
+    licence above merely because it was, at some point, decrypted and read.
+  * These terms are contractual — accepted by requesting and using a key —
+    rather than a copyright licence, and sit alongside (and will be
+    superseded by, where the two conflict) the site's Terms of Service once
+    published.
+  * The copyright holder may revise which topics are free versus premium at
+    any time by updating data/access.ts and this file together; a topic
+    moved from premium to free is licensed under CC BY-NC-ND only from the
+    date of that change onward.
+
 A NOTE ON AUTHORSHIP
 
 Parts of the written material on this site were drafted with the assistance of
@@ -39,4 +78,6 @@ generated without sufficient human authorship may not attract copyright
 protection at all. This licence is therefore asserted over what is protectable
 — principally the selection, arrangement and editorial structure of the work,
 together with the passages authored directly — and is offered in good faith
-rather than as a representation that every sentence is a protected work.
+rather than as a representation that every sentence is a protected work. The
+same caveat applies to the premium material's contractual terms above: those
+terms restrict use of the material regardless of its copyright status.
