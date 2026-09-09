@@ -80,12 +80,26 @@ sustained attention on a file browser with no safe reduced form.
 
 ## What this means for how you build the activity
 
-There is no `CarUxRestrictions` flag to interpret here — the platform's
-answer is binary, checked before the activity is even shown, not a
-restriction level your layout code branches on. The design work happens
-earlier: deciding whether a screen genuinely belongs in this category at
-all, because once it does, there is no partial-credit implementation to
-reach for.
+The actual enforcement mechanism is manifest metadata, not a runtime flag
+your layout code inspects. An activity declares itself fit to run while
+driving with `<meta-data android:name="distractionOptimized"
+android:value="true"/>`; an activity that omits it, or sets it to `false`,
+is exactly what "parked-only" means in platform terms. `CarPackageManagerService`
+is what checks that declaration against the current driving state before the
+activity is allowed to launch or stay in the foreground, swapping in a
+blocking activity if the vehicle starts moving while a non-optimised screen
+is showing. There is no `CarUxRestrictions` flag to interpret on top of that
+— the platform's answer is binary, checked before the activity is even
+shown, not a restriction level your layout code branches on. The design work
+happens earlier: deciding whether a screen genuinely belongs in this
+category at all, because once it does, there is no partial-credit
+implementation to reach for.
+
+Templated apps get the same guarantee through a different door: the Car App
+Library marks `SignInTemplate` and `LongMessageTemplate` parked-only at the
+template level, enforced by the template host rather than by
+`CarPackageManagerService` directly — the same binary gate, applied at the
+point that fits apps with no full Activity of their own to check.
 
 ```text title="Where the decision actually happens"
 driving state changes to Parked
@@ -114,9 +128,11 @@ simply never launching it while driving in the first place.
 - Few apps use it because a properly built driving-optimised layout
   satisfies the real safety requirement for almost everything; parked-only
   is reserved for the small remainder that genuinely cannot degrade.
-- There is no restriction level to branch on in code — the decision is made
-  at design time, and the platform enforces it as a binary reachability
-  gate, not a layout your activity adapts.
+- There is no restriction *level* to branch on in code — the decision is
+  made at design time, and the platform enforces it as a binary reachability
+  gate, not a layout your activity adapts. The lever is the manifest's
+  `distractionOptimized` metadata, checked by `CarPackageManagerService`, not
+  a runtime flag your code inspects.
 </Recap>
 
 ## Next

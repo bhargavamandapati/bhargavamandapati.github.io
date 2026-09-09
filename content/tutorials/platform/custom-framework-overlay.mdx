@@ -43,11 +43,11 @@ A **static overlay** is a resource file that Soong builds *in place of* the
 original at compile time. There is no runtime decision — the value baked
 into the boot image is whichever file the build picked up last. It works on
 any resource in any module, because it is not a feature the target module
-opted into. It is also all-or-nothing: overlaying `config.xml` means
-providing every value the build expects to find there, not just the one you
-want to change, or the ones you omit silently fall back to whatever the base
-file... except the base file is exactly what you replaced, so a missing
-value is a missing resource, not a default.
+opted into. Resolution happens per resource *name*, not per file: a value
+you list here replaces the base file's value outright, but any resource you
+do not repeat is still inherited from the base file individually — you are
+not required to reproduce every entry `config.xml` defines, only the ones
+you actually want to change.
 
 An **RRO** is a real APK, installed and resolved by `ResourceManager` after
 boot, against resources the target explicitly declared overlayable via an
@@ -149,9 +149,14 @@ lunch vega-trunk_staging-userdebug
 m -j
 ```
 
+```bash title="Relaunch on the freshly built image — the running emulator is still on the old one"
+emulator -verbose -no-snapshot &
+adb wait-for-device
+sleep 30
+```
+
 <Verify title="Verify the overridden values, not just that the build succeeded">
 ```bash
-adb shell settings get secure night_display_activated   # should reflect the feature being unavailable
 adb shell dumpsys car_service | grep -i launcher          # sanity: launcher is the one you expect
 
 # Pull the actual compiled resource table and inspect it directly —

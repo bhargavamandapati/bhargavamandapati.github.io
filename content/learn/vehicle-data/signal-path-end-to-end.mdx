@@ -128,12 +128,12 @@ void OnCanFrame(const CanFrame& frame) {
 A supplier implements this and applies the factor. Later, someone adds a
 convenience wrapper that also applies it, because the raw value "looked wrong".
 
-Now `655` becomes `25.5`, then `25.5 × 0.1 − 40` = **−37.5 °C**.
+Now `655` becomes `25.5`, then `25.5 × 0.1 − 40` = **−37.45 °C**.
 
 Nothing crashes. No log line appears. The UI shows a cold cabin on a summer day,
 and three teams each demonstrate that their layer is fine.
 
-`candump` says `655`. The VHAL says `−37.5`. That pair of facts locates the bug
+`candump` says `655`. The VHAL says `−37.45`. That pair of facts locates the bug
 in one layer, in about a minute. Without it, this is a two-week argument.
 </Scenario>
 
@@ -169,7 +169,7 @@ confident, wrong number.
 </Plain>
 
 ```bash title="Checking what the HAL believes"
-adb shell dumpsys car_service --get-property 0x11600203 -a 1
+adb shell dumpsys car_service --get-property 0x15600203 -a 1
 ```
 
 ## Hop 6 — Binder into Car Service

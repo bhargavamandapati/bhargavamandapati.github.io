@@ -119,7 +119,7 @@ framework.
 adb shell dumpsys location | grep -A20 -i gnss
 
 # Are the motion inputs arriving?
-adb shell dumpsys car_service --get-property 0x11400306   # WHEEL_TICK
+adb shell dumpsys car_service --get-property 0x11410306   # WHEEL_TICK
 adb shell dumpsys car_service --get-property 0x11600204   # PERF_ODOMETER
 
 # The GNSS HAL itself

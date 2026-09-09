@@ -112,6 +112,12 @@ app using `android.car` internals needs `platform_apis: true` and no
         android:label="@string/app_name"
         android:theme="@style/Theme.CarUi">
 
+        <!-- android.bp's libs: ["android.car"] only puts this on the
+             compile-time classpath. Without this line too, android.car.*
+             classes resolve at build time and throw ClassNotFoundException
+             at runtime. -->
+        <uses-library android:name="android.car"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -274,6 +280,7 @@ is exactly what it should not be possible to do on a production vehicle.
 | `SecurityException` on a Car API | App installed to `/data/app`, not priv-app |
 | Not in the launcher | Missing `LAUNCHER` category, or installed for another user |
 | Cannot resolve `android.car` | Missing `libs: ["android.car"]` |
+| `ClassNotFoundException` for `android.car.*` at runtime, despite a clean build | Manifest missing `<uses-library android:name="android.car"/>` — `libs: ["android.car"]` is compile-time classpath only |
 | Cannot use a hidden API | Missing `platform_apis: true` |
 | Blocked while driving | No `distractionOptimized` metadata |
 | Build error about `sdk_version` | `platform_apis` and `sdk_version` both set |

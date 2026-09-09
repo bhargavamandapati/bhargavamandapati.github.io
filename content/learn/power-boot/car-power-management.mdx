@@ -68,7 +68,8 @@ Android boot takes tens of seconds; nobody accepts that.
 
 So the head unit almost never fully shuts down. It suspends. S2R resumes in about
 a second — fast enough that the display is up before the driver's seatbelt is on.
-S2D is deeper and slower, used when the vehicle expects a long park.
+S2D is deeper and slower, and in practice the less common choice — most head
+units favour S2R even for a long park, for reasons the next topic covers.
 
 The trade-off is quiescent current. Every milliamp drawn while parked comes out
 of the starting battery, and OEMs set hard budgets — a vehicle that cannot start
@@ -236,4 +237,4 @@ self-inflicted boot-time regression on automotive programmes.
 
 ## Next
 
-Security: the SELinux and permission model that keeps all of this contained.
+Boot time — the milestones an OEM measures, and where the seconds actually go.

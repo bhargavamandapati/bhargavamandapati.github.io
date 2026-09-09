@@ -155,6 +155,13 @@ deliver over a metered vehicle connection.
 **Keep symbols.** A native crash from a vehicle six months from now is
 unreadable without the symbols for that exact build.
 
+**Archive the `repo manifest.xml` snapshot** (`repo manifest -o manifest.xml -r`)
+alongside the target_files. It pins the exact revision of every project that went
+into the build, which target_files alone does not capture. Generate and store a
+**Software Bill of Materials (SBOM)** for the same build — it is what lets you
+answer, years later, exactly which library versions (and which CVEs) shipped in
+a given image.
+
 ## Metrics that keep a programme honest
 <Scenario title="The variant matrix that grows without anyone deciding to">
 A programme starts with two builds. Two years later CI takes eleven hours and

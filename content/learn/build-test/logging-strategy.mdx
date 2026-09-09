@@ -177,6 +177,16 @@ The same thing as a structured event lets you ask "how often does this happen
 across the fleet, and did last month's release make it worse?"
 </Plain>
 
+The event log buffer (`adb logcat -b events`) is still just a buffer on the
+device, though — someone has to be connected with adb to read it, so on its
+own it answers "what happened on this vehicle," not "how often does this
+happen across the fleet." The subsystem actually built for that second
+question is **statsd**: you define an *atom* describing the event, log it
+through `StatsManager`/`StatsLog`, and the platform batches and uploads it so
+it can be queried centrally across every vehicle running the build. Treat the
+event log as internal, per-device diagnostics, and statsd as the real
+fleet-telemetry path.
+
 ## Persistent logging, carefully
 
 Sometimes you genuinely need logs to survive a reboot — an intermittent fault

@@ -33,7 +33,7 @@ device/oem/vega/
 ├── BoardConfig.mk            # BOARD config — hardware and partitions
 ├── overlay/                  # build-time resource overrides
 │   └── frameworks/base/core/res/res/values/config.xml
-└── sepolicy/                 # your SELinux policy (next tutorial)
+└── sepolicy/                 # your SELinux policy (needed once you add the daemon in the next tutorial)
     └── vendor/
 </FileTree>
 
@@ -271,5 +271,5 @@ ready: `PRODUCT_PACKAGES` for modules, `overlay/` for resources, and
 
 ## Next
 
-SELinux — because the moment you add a process of your own, policy is what stops
-it working.
+A native daemon of your own, started by init — and the SELinux denial you
+will hit the moment it tries to do anything real.

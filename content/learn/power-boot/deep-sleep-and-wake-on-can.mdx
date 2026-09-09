@@ -13,11 +13,11 @@ sources:
     href: "https://www.kernel.org/doc/html/latest/networking/can.html"
 ---
 
-The previous topic covered the state machine: `ON`, `SHUTDOWN_PREPARE`,
-`SUSPEND`, and back. This one is about what "suspend" actually does to the
-silicon, and the detail that surprises people coming from phones — the thing
-that wakes the head unit back up is very often not the driver at all. It is a
-CAN frame.
+An earlier topic, car power management, covered the state machine: `ON`,
+`SHUTDOWN_PREPARE`, `SUSPEND`, and back. This one is about what "suspend"
+actually does to the silicon, and the detail that surprises people coming
+from phones — the thing that wakes the head unit back up is very often not
+the driver at all. It is a CAN frame.
 
 <Plain>
 A phone has one low-power state worth knowing: screen off, radio still

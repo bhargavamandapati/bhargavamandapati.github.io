@@ -150,6 +150,12 @@ permission; a programme that needs finer control can declare per-property vendor
 permission categories through the property's `configArray`. Start with the
 default and split later only if you must.
 
+The worked example below is that split-later path. Seat massage is walked
+through a bespoke `CONTROL_SEAT_MASSAGE` permission precisely because it is the
+one with sharp edges worth showing; if the default vendor extension permission
+already covers your property, stop after this paragraph and skip the next two
+blocks.
+
 ```xml title="Declaring an OEM permission (framework overlay)"
 <permission
     android:name="com.oem.car.permission.CONTROL_SEAT_MASSAGE"

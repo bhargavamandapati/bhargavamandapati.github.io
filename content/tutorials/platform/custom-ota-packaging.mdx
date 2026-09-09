@@ -54,10 +54,6 @@ done
 
 ```makefile title="vega-keys/vega-keys.mk"
 PRODUCT_DEFAULT_DEV_CERTIFICATE := vega-keys/releasekey
-PRODUCT_CERTIFICATE_OVERRIDES := \
-    platform=vega-keys/platform \
-    shared=vega-keys/shared \
-    media=vega-keys/media
 ```
 
 <Gotcha title="These keys are now the actual security boundary — treat them that way">
@@ -98,7 +94,7 @@ cp "$ANDROID_PRODUCT_OUT"/obj/PACKAGING/target_files_intermediates/*-target_file
 
 ```bash title="Replace the test-key signatures with the real ones"
 for v in v1 v2; do
-  ./build/target/product/security/sign_target_files_apks \
+  ./build/tools/releasetools/sign_target_files_apks \
     -o \
     -d vega-keys \
     "vega-keys/vega-$v-target-files.zip" \
@@ -111,10 +107,18 @@ done
 unzip -p vega-keys/vega-v2-target-files-signed.zip META/misc_info.txt \
   | grep -i "oem_fingerprint\|mkbootimg_args" # sanity: this is the real archive
 
-apksigner verify --print-certs \
-  vega-keys/vega-v2-target-files-signed.zip 2>/dev/null || \
-  echo "check individual APKs instead — target-files is a container, not a single signed unit"
+# apksigner verifies APKs, not a multi-APK target-files container — pull one
+# out of the signed archive and check its signer directly.
+unzip -p vega-keys/vega-v2-target-files-signed.zip SYSTEM/framework/framework-res.apk \
+  > /tmp/framework-res.apk
+apksigner verify --print-certs /tmp/framework-res.apk | grep "certificate SHA-256"
+
+# Compare against the platform key you actually signed with.
+openssl x509 -noout -fingerprint -sha256 -in vega-keys/platform.x509.pem
 ```
+The two SHA-256 fingerprints should match — that is your platform key, not
+the AOSP test key, signing the image.
+
 The reliable check is on the OTA package itself, in the next step — signing
 the container is necessary but the payload signature is what a device
 actually verifies before installing.

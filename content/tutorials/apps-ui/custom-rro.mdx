@@ -215,12 +215,13 @@ adb shell cmd overlay list | grep night      # expect [ ]
 ## Step 6 — Overlay the Car UI Library too
 
 The system bars are only part of the look. Most of what the driver sees comes
-from `car-ui-lib`, and it is overlaid the same way:
+from `car-ui-lib`, and it is overlaid the same way — with one important
+difference in where the overlay actually lands.
 
 ```xml title="A car-ui-lib overlay manifest"
 <overlay
-    android:targetPackage="com.android.car.ui.paintbooth"
-    android:targetName="car-ui-lib"
+    android:targetPackage="com.android.car.ui"
+    android:targetName="OverlayableResources"
     android:resourcesMap="@xml/overlays"
     android:isStatic="true"
     android:priority="10"/>
@@ -234,9 +235,23 @@ from `car-ui-lib`, and it is overlaid the same way:
 </resources>
 ```
 
-Because every `car-ui-lib` component resolves the same resource names, one
-overlay restyles lists, toolbars, preferences and dialogs across every app that
-uses the library.
+Every `car-ui-lib` component resolves the same resource names, so the values
+above are consistent everywhere the library is used — but `car-ui-lib` is a
+**static** library, compiled into each consuming app's own resource table
+separately. There is no single running process for one overlay to reach.
+
+<Gotcha title="One manifest, one app — reaching every app takes one RRO per app">
+The overlay above restyles exactly the app named in `android:targetPackage`.
+To cover every app on the image that statically links `car-ui-lib`
+(paintbooth, Media, Dialer, and whatever else vega ships), the library's own
+build tooling generates one RRO per target — driven by a package-name list
+(`CAR_UI_RRO_PACKAGE_NAMES`) rather than by hand-writing a manifest per app.
+The alternative is having each app opt into `car-ui-lib`'s runtime **plugin**
+mechanism instead of static linking, at which point a single RRO targeting
+the plugin does restyle every app that opted in — but that is a separate,
+larger decision than an overlay tutorial covers. Either way, "one overlay,
+every app" is not something static linking gives you for free.
+</Gotcha>
 
 ## What can and cannot be overlaid
 

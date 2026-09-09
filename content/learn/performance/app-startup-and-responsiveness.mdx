@@ -61,6 +61,12 @@ adb shell am start -W -n com.example/.MainActivity
 # WaitTime       — includes system overhead
 ```
 
+`TotalTime` only measures to the **first frame drawn** — it says nothing about
+whether the screen is actually usable yet. A list still populating rows, or
+images still decoding, can report a fast `TotalTime` and still feel unfinished
+to the driver. Call `reportFullyDrawn()` once that remaining work is done; it
+logs a separate "Fully drawn" time that captures what `TotalTime` cannot.
+
 ```bash title="Where the time goes inside startup"
 adb shell am start -n com.example/.MainActivity \
   --start-profiler /data/local/tmp/startup.trace --sampling 1000
@@ -217,4 +223,5 @@ arrives.
 
 ## Next
 
-Security — verified boot, and the keys that make an image trustworthy.
+Storage and I/O — the flash write budget that has to last fifteen years, and
+why Garage Mode exists.

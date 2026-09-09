@@ -71,6 +71,17 @@ multipath error and dropout.
 | Sensor fidelity (GNSS, camera, IMU) | Synthetic only | Always |
 | SEPolicy denials on vendor-specific paths | Only for paths the emulator itself exercises | Usually |
 
+<Callout type="note" title="Cuttlefish: a middle ground between AVD and a real board">
+This topic has been framing the choice as emulator versus hardware, but AOSP
+has a third option worth knowing about. **Cuttlefish** is AOSP's virtual
+device — it boots the same system image, but on a different HAL stack and
+composition path than a Studio AVD, closer to how a real device boots and
+renders. It still has no real VHAL and no real sensors, so it does not remove
+the need for hardware verification in the table above, but it is a useful
+rung between the AVD and a physical unit for CI and for catching framework
+and HAL-boundary issues the AVD's more idealised stack does not surface.
+</Callout>
+
 <Analogy title="A flight simulator, not a smaller aeroplane">
 A flight simulator is genuinely excellent at teaching checklist procedure,
 instrument reading, and emergency protocol — all faithfully represented,

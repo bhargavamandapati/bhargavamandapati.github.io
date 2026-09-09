@@ -63,13 +63,14 @@ its own, no proof of anything.
 
 Every vehicle property this curriculum has covered arrives at VHAL having
 already crossed at least one ECU boundary — often several, per the CAN and
-zonal-architecture topics elsewhere in this module. VHAL and Car Service
-have no cryptographic way to verify that the ECU which produced a given
-signal is running unmodified firmware; what they can rely on is that the
-**vehicle network itself** enforces message-level authentication for
-safety-relevant signals, typically via a MAC appended to the frame under a
-scheme like AUTOSAR's Secure Onboard Communication — a mechanism that lives
-entirely below VHAL, and that an app developer never sees directly.
+zonal-architecture topics in the SDV module elsewhere in this curriculum.
+VHAL and Car Service have no cryptographic way to verify that the ECU
+which produced a given signal is running unmodified firmware; what they
+can rely on is that the **vehicle network itself** enforces message-level
+authentication for safety-relevant signals, typically via a MAC appended
+to the frame under a scheme like AUTOSAR's Secure Onboard Communication —
+a mechanism that lives entirely below VHAL, and that an app developer
+never sees directly.
 
 <Analogy title="Trusting a delivery, not the driver">
 Verified Boot is checking that your own kitchen is exactly as you left it.

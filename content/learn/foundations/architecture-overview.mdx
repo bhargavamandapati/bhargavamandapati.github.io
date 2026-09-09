@@ -130,7 +130,7 @@ A colleague says the cabin temperature reads 0 °C on the test vehicle, in July.
 Before opening any code, run:
 
 ```bash
-adb shell dumpsys car_service --list-properties
+adb shell dumpsys car_service --services CarPropertyService
 ```
 
 This asks Car Service: *what vehicle data do you know about?* If
@@ -289,8 +289,8 @@ rather than guessing:
 
 1. Is the app asking for the right property and the right seat?
 2. Does the app hold the permission? (`SecurityException` if not)
-3. Does Car Service know the property exists? (`--list-properties`)
-4. Is the VHAL running at all? (`adb shell lshal | grep vehicle`)
+3. Does Car Service know the property exists? (`--services CarPropertyService`)
+4. Is the VHAL running at all? (`adb shell dumpsys android.hardware.automotive.vehicle.IVehicle/default` — `lshal | grep vehicle` only sees the older HIDL VHAL)
 5. Is the VHAL's cached value correct? (`--get-property`)
 6. Is the raw value from the car being converted correctly?
 
@@ -322,10 +322,13 @@ Worth knowing early, because it shapes what job you are actually doing:
 - **Treble** is the hard boundary between Android's code and the car maker's
   code. It exists so Android can be updated on old vehicles.
 - When a value is wrong, **name the layer before guessing.**
-  `dumpsys car_service --list-properties` and `lshal | grep vehicle` answer more
+  `dumpsys car_service --services CarPropertyService` and
+  `dumpsys android.hardware.automotive.vehicle.IVehicle/default` answer more
   questions faster than reading code.
 </Recap>
 
 ## Next
 
-Getting a build running on your own machine, so you can try all of this.
+What actually happens between the ignition signal and the home screen — the
+boot sequence, and why a missing VHAL stalls the whole platform silently
+rather than throwing an obvious error.

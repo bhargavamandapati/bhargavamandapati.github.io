@@ -89,7 +89,7 @@ dependencies and are actually a boundary violation.
 
 ```json title="A vendor HAL service"
 cc_binary {
-    name: "android.hardware.automotive.vehicle@2.0-oem-service",
+    name: "android.hardware.automotive.vehicle-service",
     vendor: true,                    // /vendor partition
     relative_install_path: "hw",
     init_rc: ["vehicle-oem-service.rc"],

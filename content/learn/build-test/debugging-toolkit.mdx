@@ -201,6 +201,16 @@ echo "captured $OUT.tar.gz"
 Hand this to QA. A defect report with a full state capture attached is worth ten
 that say "the temperature was wrong sometimes".
 
+<Callout type="tip" title="adb bugreport already does most of this">
+`adb bugreport` captures dumpsys output for every registered service, logcat
+across all buffers, dmesg and process state into one archive — a superset of
+what `capture.sh` collects, with no script to maintain. Reach for the custom
+script for a fast, narrow capture of just the automotive-specific state above
+while you are actively triaging; reach for `bugreport` for the complete
+picture, or when handing the incident to someone who was not there to run a
+script.
+</Callout>
+
 ## Symptom → cause
 
 | Symptom | Check first |
@@ -223,3 +233,23 @@ rather than intermittently — it is almost always a missing permission or a
 missing SEPolicy rule, because both fail silently into a default. Intermittent
 faults are timing, threading or a flaky bus. Sorting a defect into one of those
 two buckets in the first minute halves the time to find it.
+
+<Recap>
+- Work **down the stack in a fixed order** — HAL, property, SELinux, HAL value,
+  permission, then your own code — because each step rules out a whole branch.
+- Target `dumpsys car_service` at one service rather than reading the firehose,
+  and raise the logcat buffer size **before** a long reproduction, not after.
+- **`binder_driver`** in a Perfetto trace is the automotive-specific one to
+  remember — Car API jank is very often a saturated thread pool, not a
+  rendering problem.
+- `adb bugreport` already captures most of what a bespoke capture script does;
+  reach for a custom script for fast, narrow captures during active triage.
+- Sort a defect into **wrong but stable** (permission or SEPolicy) versus
+  **intermittent** (timing, threading, a flaky bus) in the first minute — it
+  halves the time to find it.
+</Recap>
+
+## Next
+
+Turning triage into a test suite — Espresso and UI Automator, and the vehicle
+state a test has to fake before it means anything.

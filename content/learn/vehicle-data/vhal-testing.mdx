@@ -77,8 +77,8 @@ The emulator's reference HAL accepts writes for properties a real vehicle would
 own. This lets you test the whole stack above the HAL without hardware.
 
 ```bash title="Driving the vehicle from a shell"
-# Pretend we are doing 50 km/h
-adb shell dumpsys car_service --set-property 0x11600207 50
+# Pretend we are doing 50 km/h (~14 m/s — PERF_VEHICLE_SPEED is in m/s)
+adb shell dumpsys car_service --set-property 0x11600207 14
 
 # Change gear selection
 adb shell dumpsys car_service --inject-vhal-event 0x11400400 4

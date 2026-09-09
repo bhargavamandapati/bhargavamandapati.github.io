@@ -142,6 +142,7 @@ wrong and audio either does not play or plays out of the wrong speakers.
             <context context="navigation"/>
             <context context="voice_command"/>
             <context context="call"/>
+            <context context="call_ring"/>
             <context context="alarm"/>
             <context context="notification"/>
             <context context="system_sound"/>
@@ -160,7 +161,7 @@ wrong and audio either does not play or plays out of the wrong speakers.
 <Callout type="warning" title="Every context must be routed in every zone">
 A zone that omits a context has undefined behaviour for that sound — typically
 silence, discovered when someone finally makes a phone call from the rear seat.
-The rear zone above lists all eleven contexts on one device precisely because of
+The rear zone above lists all twelve contexts on one device precisely because of
 this. Validate exhaustively, not by ear.
 </Callout>
 

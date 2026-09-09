@@ -120,6 +120,11 @@ path.
 Automotive hypervisors are type 1 and deliberately small. A smaller codebase is
 easier to certify to a safety standard, and the hypervisor is the one component
 whose failure affects everything.
+
+Shipping cockpit consolidation runs on a small set of automotive-qualified
+hypervisors — **QNX Hypervisor** and **ACRN** are the two most commonly deployed,
+alongside the Android Virtualization Framework this page draws on for guest
+management above them.
 </Plain>
 
 ## The hard part: sharing a GPU
@@ -201,4 +206,5 @@ layer.
 
 ## Next
 
-The safety framework that all of this exists to satisfy.
+Service-oriented architecture — replacing broadcast signals with services that
+others discover and call.

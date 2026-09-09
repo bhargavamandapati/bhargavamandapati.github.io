@@ -80,9 +80,13 @@ unchanged. Nothing about the app itself was rebuilt.
 Suppose the theme is not enough — vega's launcher needs its own data source
 for the app grid, not just Car Launcher's colours. Replacing it means
 winning **`Intent.CATEGORY_HOME`** at boot, every boot, with no dialog asking
-the driver to choose. That is done through `default-permissions.xml`, not a
-manifest priority trick — a car has no home screen picker, so the platform
-decides this once, at the image level.
+the driver to choose. A car has no home-screen picker, so the platform
+cannot rely on the driver resolving an ambiguity the way a phone's user
+would — the only way to guarantee a single, unambiguous winner is to make
+sure exactly one installed activity resolves `ACTION_MAIN` +
+`CATEGORY_HOME` + `CATEGORY_DEFAULT` in the first place. That means removing
+the stock launcher from the image, not declaring a higher-priority
+intent-filter on top of it.
 
 ```xml title="vendor/oem/vega/apps/VegaLauncher/AndroidManifest.xml (excerpt)"
 <activity android:name=".VegaLauncherActivity"
@@ -95,39 +99,13 @@ decides this once, at the image level.
 </activity>
 ```
 
-```xml title="device/oem/vega/sysconfig/default-permissions.xml"
-<config>
-    <default-permissions>
-        <exception package="com.vega.launcher">
-            <!-- Grants nothing extra here — this file's role is establishing
-                 com.vega.launcher as the platform's chosen HOME resolver,
-                 configured separately below. -->
-        </exception>
-    </default-permissions>
-</config>
-```
-
-```xml title="device/oem/vega/sysconfig/preferred-apps.xml — the piece that actually wins HOME"
-<resources>
-    <preferred-activities>
-        <preferred-activity>
-            <intent-filter>
-                <action name="android.intent.action.MAIN" />
-                <category name="android.intent.category.HOME" />
-            </intent-filter>
-            <component-name value="com.vega.launcher/.VegaLauncherActivity" />
-        </preferred-activity>
-    </preferred-activities>
-</resources>
-```
-
-<Gotcha title="The stock Car Launcher has to be removed from the image, not just outranked">
-Leaving both launchers installed with a `preferred-activity` pointed at
-yours is fragile — a factory reset or a `pm clear` on the preference store
-can drop back to the platform's default resolver, and with two HOME-capable
-apps installed, that default is not guaranteed to be yours. Remove
-`com.android.car.carlauncher` from `PRODUCT_PACKAGES` entirely, so there is
-only ever one candidate for the role.
+<Gotcha title="A higher-priority intent-filter is not the same as being the only candidate">
+Two installed activities both resolving `ACTION_MAIN` + `CATEGORY_HOME` +
+`CATEGORY_DEFAULT` means the platform has to pick one, and on a car — with
+no picker dialog to fall back on — that pick is not guaranteed to be yours,
+priority attribute or not. Remove `com.android.car.carlauncher` from
+`PRODUCT_PACKAGES` entirely, so there is only ever one candidate for the
+role, rather than trying to outrank a launcher that is still on the image.
 </Gotcha>
 
 ```makefile title="device/oem/vega/vega.mk"
@@ -177,7 +155,6 @@ requirement is behavioural, not visual.
 | Theme did not apply | Resource not present in Car Launcher's own `overlayable.xml` — check before assuming the overlay path is wrong |
 | Both launchers still resolve for HOME | Stock launcher only outranked, not removed from `PRODUCT_PACKAGES` |
 | `resolve-activity` returns nothing | Manifest missing `CATEGORY_DEFAULT` alongside `CATEGORY_HOME` |
-| Works after install, reverts after factory reset | Preference relied on `preferred-apps.xml` alone, with the stock launcher still present as a fallback candidate |
 
 ## What you have now
 

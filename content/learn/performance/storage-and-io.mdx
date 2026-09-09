@@ -145,6 +145,10 @@ overuse, and it is almost never necessary.
 
 **Defer bulk work to <T>Garage Mode</T>.** The quota there is far larger,
 deliberately — that is where syncing, compaction and cache warming belong.
+Periodic **TRIM** (`fstrim`) is another idle-maintenance task that belongs
+there: deleting a file only unmarks its blocks at the filesystem level, and
+the flash controller keeps preserving them across erase cycles until a
+`discard`/TRIM command tells it they are actually free.
 
 **Bound every cache.** An unbounded on-disk cache is a slow leak that eventually
 triggers the watchdog.

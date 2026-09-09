@@ -18,6 +18,8 @@ sources:
     href: "https://source.android.com/docs/core/audio/implement-policy"
   - label: "CarAudioService source"
     href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/audio/"
+  - label: "Audio configuration AAOS flags"
+    href: "https://source.android.com/docs/automotive/audio/config-flags"
 ---
 
 Two files describe the same topology in two syntaxes, and they are edited by
@@ -181,17 +183,51 @@ somebody finally takes a call from the rear seat. The rear zone above lists all
 twelve on one device precisely for this reason. Validate exhaustively, not by ear.
 </Gotcha>
 
-## Step 3 — Install both files
+## Step 3 — Install both files, and turn on dynamic routing
 
 ```makefile title="device/oem/vega/vega.mk"
 PRODUCT_COPY_FILES += \
     device/oem/vega/audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_configuration.xml \
     device/oem/vega/car_audio_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/car_audio_configuration.xml
-
-# Multi-zone support must be enabled for the rear zone to exist
-PRODUCT_PROPERTY_OVERRIDES += \
-    audio.deep_buffer.media=true
 ```
+
+Copying the files is not enough — `CarAudioService` is disabled by default.
+It only turns its zone and volume-group logic on when
+`audioUseDynamicRouting`, a boolean resource `CarAudioService` reads out of
+its own module's `config.xml`, resolves to `true`. Leave it at the platform
+default and neither file above does anything: every bus, zone and context
+declared in Steps 1–2 is real in the two files but never reaches
+`CarAudioService`, and the platform quietly falls back to plain
+`AudioService` — one audio stream, no zones, no per-bus routing. There is no
+exception for this; audio simply behaves as if Steps 1 and 2 were never
+written.
+
+```bash title="Mirror the module's own resource path, the same way custom-framework-overlay.mdx does"
+mkdir -p device/oem/vega/overlay-caraudio/packages/services/Car/service/res/values
+```
+
+```xml title="device/oem/vega/overlay-caraudio/packages/services/Car/service/res/values/config.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The actual switch. Without this, CarAudioService's zone and
+         volume-group logic never initializes, regardless of what
+         audio_policy_configuration.xml or car_audio_configuration.xml say. -->
+    <bool name="audioUseDynamicRouting">true</bool>
+</resources>
+```
+
+```makefile title="device/oem/vega/vega.mk"
+DEVICE_PACKAGE_OVERLAYS += device/oem/vega/overlay-caraudio
+```
+
+<Gotcha title="Since Android 13, this can also be a runtime overlay">
+`audioUseDynamicRouting` was made RRO-overlayable starting in Android 13, so
+a platform-signed RRO targeting `com.android.car.updatable` reaches it too —
+toggleable with `cmd overlay` and shippable without a full rebuild. The
+static, build-time form above works on every version and matches the
+pattern the rest of this series uses; reach for the RRO form only if
+runtime toggling is worth the extra moving part.
+</Gotcha>
 
 ## Step 4 — Check the addresses match before you build
 
@@ -239,7 +275,12 @@ adb shell dumpsys media.audio_flinger | grep -i -A5 'Output thread'
 ```
 
 Whichever step fails first tells you which file to fix: 1 fails means the audio
-policy file, 2 fails means the car audio file, 3 fails means grouping.
+policy file, 2 fails means the car audio file, 3 fails means grouping. If step
+2 comes back completely empty — no zones at all, not even a malformed one —
+stop chasing the XML files and check Step 3's overlay instead:
+`audioUseDynamicRouting` resolving `false` looks exactly like this, because
+`CarAudioService` never got far enough to parse `car_audio_configuration.xml`
+in the first place.
 </Verify>
 
 ## Step 6 — Test each context
@@ -262,6 +303,7 @@ are silent.
 
 | Symptom | Cause |
 | --- | --- |
+| No zones or volume groups in `dumpsys` at all, plain stereo everywhere | `audioUseDynamicRouting` still resolves `false` — the Step 3 overlay is missing from `DEVICE_PACKAGE_OVERLAYS`, or a later entry shadows it |
 | No audio anywhere | Bus addresses mismatched between the two files |
 | One app silent | Its context is not routed in that zone |
 | Rear zone silent | Zone missing that context |

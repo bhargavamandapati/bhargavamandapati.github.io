@@ -173,6 +173,15 @@ see, months after the build shipped. Whatever the device recorded at the time is
 all you will ever have.
 </Plain>
 
+What actually detects a hung `system_server` and forces that reboot is the
+system **Watchdog** (`com.android.server.Watchdog`) — a monitor thread inside
+`system_server` that periodically checks core services such as the window
+manager, activity manager and power manager, and triggers a forced reboot if
+one stays blocked past its timeout. It is a different mechanism from
+<T>CarWatchdog</T>, covered in `storage-and-io`, which enforces per-app I/O
+quotas rather than detecting a frozen platform — the two share a name and
+nothing else.
+
 ## Capturing enough to diagnose later
 
 ```bash title="A capture script worth having"

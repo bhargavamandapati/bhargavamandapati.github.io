@@ -12,7 +12,7 @@ sources:
 ---
 
 `complete-feature-walkthrough` followed one signal through one vehicle, from
-a merged PR to a working cluster indicator. This walkthrough follows a
+a signal definition to a working cluster indicator. This walkthrough follows a
 different kind of journey: the same fix, released once, arriving at a fleet
 of vehicles that are not all on the same build, not all online at the same
 time, and not all safe to update at the exact moment the campaign starts.
@@ -32,6 +32,22 @@ the build most of the fleet is already running (`v4.2.0`), and the new one
 (`v4.2.1`). Both are signed, per the OTA-packaging tutorial's mechanics — a
 fleet rollout is the same signing and packaging pipeline, run at scale
 rather than by hand.
+
+<Plain>
+"Signed" is doing a lot of work in that sentence. A single key protecting the
+whole pipeline is a single point of catastrophic failure — if it leaks, an
+attacker can push anything to the fleet, replay an older, already-superseded
+package to a vehicle that has since been patched past its vulnerabilities (a
+rollback attack), or combine a validly-signed piece of one release with a
+validly-signed piece of another (a mix-and-match attack). **Uptane** exists to
+close exactly that gap: it splits trust across multiple roles and
+repositories — a director repository that decides which image a given vehicle
+should get, and a separate image repository that vouches for the images
+themselves — several of those roles requiring a threshold of signatures
+rather than one. Compromising a single key then compromises one role, not the
+fleet. That separation, not the word "signed" alone, is what the pipeline
+described below actually rests on at fleet scale.
+</Plain>
 
 ```text title="What the release pipeline actually produces"
 v4.2.1 target-files (signed)
@@ -87,6 +103,7 @@ parked, not driving (a moving vehicle is never eligible mid-trip)
 Wi-Fi preferred, cellular fallback only if the campaign allows it
 sufficient free space on the inactive A/B slot
 no conflicting campaign already in flight
+driver notified of the pending update, with no active decline or deferral
 ```
 
 <Scenario title="On a real programme">

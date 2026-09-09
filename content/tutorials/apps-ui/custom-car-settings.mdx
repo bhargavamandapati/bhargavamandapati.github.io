@@ -1,6 +1,6 @@
 ---
 title: "Add an entry to Car Settings without forking it"
-description: "ExtraSettingsProvider — the injection point that lets a separate, OEM-owned APK add a real settings screen without a single line of packages/apps/Car/Settings changing."
+description: "The EXTRA_SETTINGS injection point — the same convention phone Settings uses — that lets a separate, OEM-owned APK add a real settings screen without a single line of packages/apps/Car/Settings changing."
 order: 5
 difficulty: "Intermediate"
 time: "1–2 hours"
@@ -10,127 +10,152 @@ prerequisites:
     href: "/tutorials/apps-ui/custom-system-app/"
 tags: ["Car Settings", "Extensibility"]
 sources:
+  - label: "Add Car Settings"
+    href: "https://source.android.com/docs/automotive/hmi/car_settings/add_car_settings"
   - label: "Car Settings source"
     href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Settings/"
-  - label: "Privileged permission allowlisting"
-    href: "https://source.android.com/docs/core/permissions/perms-allowlist"
-  - label: "PreferenceController pattern (AndroidX Preference)"
-    href: "https://developer.android.com/reference/androidx/preference/Preference"
+  - label: "Rearrange Car Settings"
+    href: "https://source.android.com/docs/automotive/hmi/car_settings/rearrange_car_settings"
 ---
 
 Adding one settings entry does not have to mean forking
-`packages/apps/Car/Settings`. The module ships an injection mechanism —
-`ExtraSettingsProvider` — specifically so an OEM app can contribute a real,
-navigable settings screen from outside the module, discovered at runtime by
-metadata rather than compiled in.
+`packages/apps/Car/Settings`. The module honors `EXTRA_SETTINGS` — the same
+injection convention phone Settings has used for years — so an OEM app can
+contribute a real, navigable settings screen from outside the module,
+discovered at runtime from the activity's own manifest rather than compiled
+in.
 
 <FileTree>
 vendor/oem/vega/apps/VegaSettingsExtra/
 ├── Android.bp
 ├── AndroidManifest.xml
-├── res/xml/vega_extra_settings.xml   # the ContentProvider's declared metadata
-└── src/…/VegaDiagnosticsFragment.java
+├── res/values/strings.xml
+└── src/…/VegaDiagnosticsActivity.java
 </FileTree>
 
 ## How the injection point actually works
 
-Car Settings queries every installed package for a `ContentProvider`
-carrying a specific `<meta-data>` marker
-(`com.android.car.settings.category`) at startup, reads a small XML
-resource out of it, and adds one menu entry per row it finds — pointing at
-an `Intent` the provider's own app supplies. Nothing in Car Settings knows
-vega exists at build time; it discovers the entry the same way it would
-discover any other OEM's, purely from what is installed on the device.
+Car Settings queries every installed package for an **`Activity`** whose
+`<intent-filter>` carries the action `com.android.settings.action.EXTRA_SETTINGS`,
+then reads a handful of `<meta-data>` values declared directly on that same
+activity — `com.android.settings.category`, `com.android.settings.title`,
+and optionally `com.android.settings.icon` and `com.android.settings.summary`
+— and adds one menu row per activity it finds this way.
+`ExtraSettingsPreferenceController`, inside Car Settings itself, is what
+does the pulling: it queries `PackageManager` for that action, reads the
+metadata off each match, and drops a `Preference` into whichever
+`LogicalPreferenceGroup` the category resolves to. Tapping the row starts
+the activity the intent already resolved to — nothing is loaded in-process,
+and nothing is fragment-hosted inside Settings' own navigation. There is no
+`ContentProvider` anywhere in this mechanism, and no signature permission to
+hold.
 
 <Plain>
 Car Settings is not asking "did anyone fork me." It is asking, at runtime,
-"does anything installed on this device want to add a row here" — and any
-app holding the right permission and metadata gets a row, without Settings'
-own source ever mentioning that app by name.
+"which installed activities advertise themselves as extra settings" — the
+same question phone Settings has always asked for its own injected tiles.
+Any app whose activity carries the right action and metadata gets a row,
+without Settings' own source ever mentioning that app by name.
 </Plain>
 
-## Step 1 — Declare the provider
+## Step 1 — Declare the activity and its metadata
 
 ```xml title="vendor/oem/vega/apps/VegaSettingsExtra/AndroidManifest.xml"
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.vega.settingsextra">
 
-    <uses-permission android:name="android.car.permission.CAR_DISPLAY_IN_CLUSTER" />
-
     <application>
-        <provider
-            android:name=".VegaExtraSettingsProvider"
-            android:authorities="com.vega.settingsextra.provider"
+        <activity
+            android:name=".VegaDiagnosticsActivity"
             android:exported="true"
-            android:readPermission="com.android.car.settings.permission.EXTRA_SETTINGS">
-            <meta-data
-                android:name="com.android.car.settings.category"
-                android:resource="@xml/vega_extra_settings" />
-        </provider>
+            android:label="@string/vega_diagnostics_title">
 
-        <activity android:name=".VegaDiagnosticsActivity"
-            android:exported="true" />
+            <intent-filter>
+                <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
+            </intent-filter>
+
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.vega_diagnostics" />
+            <meta-data
+                android:name="com.android.settings.title"
+                android:value="@string/vega_diagnostics_title" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_vega_diagnostics" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/vega_diagnostics_summary" />
+        </activity>
     </application>
 </manifest>
 ```
 
-<Gotcha title="readPermission has to be the platform's own permission, not one you define">
-`com.android.car.settings.permission.EXTRA_SETTINGS` is defined by Car
-Settings itself and is signature-protected. If the provider does not
-declare exactly this permission, Car Settings' own query for extra-settings
-providers silently excludes it — there is no error, no log line, the row
-just never appears.
+<Gotcha title="The action string is the entire contract — there is no permission backing it up">
+Unlike the platform's signature permissions elsewhere in this series,
+nothing gates this mechanism. `ExtraSettingsPreferenceController` finds the
+row purely by matching the intent-filter action, byte for byte. A typo in
+`com.android.settings.action.EXTRA_SETTINGS`, or metadata declared on a
+component other than the one carrying that intent-filter, produces the same
+result as not declaring it at all — no error, no log line, the row just
+never appears.
 </Gotcha>
 
-## Step 2 — Describe the row
+## Step 2 — Provide the title, summary and icon it references
 
-```xml title="vendor/oem/vega/apps/VegaSettingsExtra/res/xml/vega_extra_settings.xml"
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-    <Preference
-        android:key="vega_diagnostics"
-        android:title="Vega diagnostics"
-        android:summary="Live VHAL connection status and last sync time"
-        android:fragment="com.vega.settingsextra.VegaDiagnosticsFragment" />
-</PreferenceScreen>
+```xml title="vendor/oem/vega/apps/VegaSettingsExtra/res/values/strings.xml"
+<resources>
+    <string name="vega_diagnostics_title">Vega diagnostics</string>
+    <string name="vega_diagnostics_summary">Live VHAL connection status and last sync time</string>
+</resources>
 ```
 
-Alternatively, a row can launch a plain `Activity` instead of an in-process
-fragment — simpler, at the cost of a visible transition rather than feeling
-like a native part of the Settings flow:
+<Gotcha title="title takes android:value, summary takes android:resource — they are not interchangeable">
+`com.android.settings.title` is read through `android:value` (even though
+the value itself is a `@string/…` reference); `com.android.settings.summary`
+is read through `android:resource`. Swap the two and the failure is silent
+rather than a build error — one field renders correctly and the other does
+not, with nothing pointing at which meta-data element is wrong.
+</Gotcha>
 
-```xml title="A row that launches an Activity instead"
-<Preference
-    android:key="vega_diagnostics"
-    android:title="Vega diagnostics"
-    android:summary="Live VHAL connection status and last sync time">
-    <intent android:action="android.intent.action.MAIN"
-        android:targetPackage="com.vega.settingsextra"
-        android:targetClass="com.vega.settingsextra.VegaDiagnosticsActivity" />
-</Preference>
-```
+## Step 3 — Build the activity it points to
 
-## Step 3 — Build the fragment it points at
+```java title="vendor/oem/vega/apps/VegaSettingsExtra/src/…/VegaDiagnosticsActivity.java (excerpt)"
+public class VegaDiagnosticsActivity extends Activity {
 
-```java title="vendor/oem/vega/apps/VegaSettingsExtra/src/…/VegaDiagnosticsFragment.java (excerpt)"
-public class VegaDiagnosticsFragment extends PreferenceFragmentCompat {
+    private Car mCar;
+
     @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setPreferencesFromResource(R.xml.vega_diagnostics_detail, rootKey);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.vega_diagnostics);
 
-        CarPropertyManager mgr = (CarPropertyManager)
-                getCar().getCarManager(Car.PROPERTY_SERVICE);
-        boolean connected = mgr != null;
+        // Car Service restarts on real hardware; use the lifecycle-listener
+        // form so this activity never holds a manager past a disconnect.
+        mCar = Car.createCar(this, /* handler= */ null,
+                Car.CAR_WAIT_TIMEOUT_DO_NOT_WAIT, (car, ready) -> {
+                    CarPropertyManager mgr = ready
+                            ? (CarPropertyManager) car.getCarManager(Car.PROPERTY_SERVICE)
+                            : null;
+                    TextView status = findViewById(R.id.vhal_status);
+                    status.setText(mgr != null ? "Connected" : "Unavailable");
+                });
+    }
 
-        findPreference("vhal_status")
-                .setSummary(connected ? "Connected" : "Unavailable");
+    @Override
+    protected void onDestroy() {
+        mCar.disconnect();
+        super.onDestroy();
     }
 }
 ```
 
-This is an ordinary `PreferenceFragmentCompat`, loaded into Car Settings'
-own navigation host — it inherits the surrounding app's back stack and
-styling automatically, which is the main advantage over the `Activity`
-variant above.
+This is an ordinary `Activity` — it gets its own window and back stack, and
+the driver sees a normal transition into and out of it, the same as tapping
+into any other Settings screen contributed by a different app. That visible
+transition, not a seamless in-process fragment swap, is what the real
+`EXTRA_SETTINGS` mechanism buys you; no variant of this mechanism hosts
+another app's UI in-process inside Car Settings' own navigation.
 
 ## Step 4 — Build, install, and confirm placement
 
@@ -142,37 +167,41 @@ PRODUCT_PACKAGES += VegaSettingsExtra
 m -j && adb install -r $ANDROID_PRODUCT_OUT/vendor/app/VegaSettingsExtra/VegaSettingsExtra.apk
 ```
 
-<Verify title="Verify Car Settings actually discovered the provider">
+<Verify title="Verify Car Settings actually discovered the activity">
 ```bash
-# Confirm the provider is queryable at all — this is what Car Settings itself does
-adb shell content query --uri content://com.vega.settingsextra.provider
+# Confirm the activity actually advertises EXTRA_SETTINGS — this is the
+# exact query ExtraSettingsPreferenceController itself runs
+adb shell cmd package query-activities -a com.android.settings.action.EXTRA_SETTINGS | grep -i vega
 
 # Open Settings and check where the row landed
 adb shell am start -a android.settings.SETTINGS
 ```
 Navigate to Settings on the emulator. "Vega diagnostics" should appear as a
-top-level row, without Car Settings having been rebuilt at all — confirm
-with `adb shell dumpsys package com.android.car.settings | grep -i
-lastUpdateTime`, which should still show the platform build's original
-timestamp, not today's.
+row, without Car Settings having been rebuilt at all — confirm with `adb
+shell dumpsys package com.android.car.settings | grep -i lastUpdateTime`,
+which should still show the platform build's original timestamp, not
+today's.
 </Verify>
 
-<Gotcha title="A category XML with a syntax error is dropped, not reported">
-If `vega_extra_settings.xml` fails to parse, Car Settings drops that
-provider from its results the same way it would drop one that simply chose
-not to declare a category — there is no distinct "broken injection" state
-visible in the UI. Validate the XML in isolation
-(`aapt2 dump resources` against the built APK) before assuming the
-manifest wiring is the problem.
+<Gotcha title="A category with nowhere to render it is a row query-activities finds and the UI never shows">
+`query-activities` succeeding only proves the activity is discovered — it
+does not prove the row is visible anywhere. `com.android.settings.category`
+has to resolve to a `LogicalPreferenceGroup` that some screen in Car
+Settings' own hierarchy actually declares and binds to
+`ExtraSettingsPreferenceController`. Inventing a brand-new category string
+does not create a new menu section for it — check `CategoryKey` and the
+module's own preference XML for the group tied to the category you chose
+before assuming the manifest wiring is the problem.
 </Gotcha>
 
 ## Troubleshooting
 
 | Symptom | Cause |
 | --- | --- |
-| Row never appears | `readPermission` on the provider is not exactly the platform's `EXTRA_SETTINGS` permission |
-| Row appears, tapping it crashes | `android:fragment` class name does not match the built class exactly, including package |
-| Row appears in the wrong place in the menu | Category metadata resource used the wrong `<PreferenceScreen>` category attribute |
+| Row never appears, `query-activities` finds nothing | Intent-filter action does not exactly match `com.android.settings.action.EXTRA_SETTINGS` |
+| Row appears, tapping it does nothing | Activity is not `android:exported="true"` |
+| Row appears in the wrong place, or nowhere visible | Category value has no `LogicalPreferenceGroup` bound to it in Car Settings' hierarchy |
+| Title shows as a raw resource string | `com.android.settings.title` given `android:resource` instead of `android:value` |
 | Works after `adb install`, gone after reboot | APK not in `PRODUCT_PACKAGES` — the manually installed copy did not survive a fresh flash |
 
 ## What you have now
@@ -184,5 +213,5 @@ injection point, not yet discovered.
 
 ## Next
 
-Down to the hardware a driver's hands actually touch — steering wheel
-buttons, and how a key press becomes an Android keycode.
+The topology no one notices until it's wrong — audio zones, buses, and the
+resource that decides whether a rear seat gets its own zone at all.

@@ -43,10 +43,13 @@ programme gates. Find this out in week one, not during integration.
 
 ## Step 2 — Declare it in the framework
 
-Permissions used by system components are declared in the framework's manifest,
-overlaid from your product:
+Permissions used by system components are declared in the framework's own
+manifest. A static overlay only replaces resource *values* under
+`res/values/` at build time — it has no mechanism for adding new
+`<permission>` elements to a target's `AndroidManifest.xml`, so this one is
+a direct edit to the AOSP source tree:
 
-```xml title="device/oem/vega/overlay/frameworks/base/core/res/AndroidManifest.xml"
+```xml title="frameworks/base/core/res/AndroidManifest.xml — add alongside the existing <permission> declarations"
 <!-- Group so Settings can present them together -->
 <permission-group
     android:name="com.oem.vega.permission-group.COMFORT"
@@ -60,13 +63,13 @@ overlaid from your product:
     android:label="@string/perm_seat_massage_label"
     android:description="@string/perm_seat_massage_desc" />
 
-<!-- Read and write are different risks. Grant them separately. -->
+<!-- Guards VegaFleetService / VegaFleetManager — a system_server service,
+     unrelated to the seat-comfort group above. -->
 <permission
-    android:name="com.oem.vega.permission.READ_SEAT_STATE"
-    android:permissionGroup="com.oem.vega.permission-group.COMFORT"
+    android:name="com.oem.vega.permission.MANAGE_FLEET"
     android:protectionLevel="signature|privileged"
-    android:label="@string/perm_seat_read_label"
-    android:description="@string/perm_seat_read_desc" />
+    android:label="@string/perm_manage_fleet_label"
+    android:description="@string/perm_manage_fleet_desc" />
 ```
 
 ```xml title="device/oem/vega/overlay/frameworks/base/core/res/res/values/strings.xml"
@@ -78,10 +81,20 @@ overlaid from your product:
     <string name="perm_seat_massage_desc">Start and stop seat massage programs and set their
         intensity. Malicious apps could operate seat motors unexpectedly.</string>
 
-    <string name="perm_seat_read_label">read seat state</string>
-    <string name="perm_seat_read_desc">Read the current seat position and comfort settings.</string>
+    <string name="perm_manage_fleet_label">manage fleet enrollment</string>
+    <string name="perm_manage_fleet_desc">Read and change this vehicle's fleet identity and
+        enrollment state. Malicious apps could misreport or de-enroll the vehicle.</string>
 </resources>
 ```
+
+<Gotcha title="This one is a direct AOSP edit, not an overlay">
+`DEVICE_PACKAGE_OVERLAYS` only replaces resource values under `res/values/`
+— it cannot add elements to a target's manifest. Declaring a new permission
+means editing `frameworks/base/core/res/AndroidManifest.xml` directly and
+tracking the diff, the same way the Car Service subservice tutorial forked
+`packages/services/Car`. The string resources above are still fine as a
+static overlay; only the manifest declaration itself needs the real edit.
+</Gotcha>
 
 <Gotcha title="Write the description properly">
 Somebody in a security review will read it, and "internal use" is not an answer.
@@ -97,7 +110,6 @@ A privileged app cannot simply request a signature permission. It must be listed
 <permissions>
   <privapp-permissions package="com.oem.vega.comfort">
     <permission name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"/>
-    <permission name="com.oem.vega.permission.READ_SEAT_STATE"/>
   </privapp-permissions>
 </permissions>
 ```
@@ -118,7 +130,6 @@ after you added a permission, this file is why.
 
 ```xml title="The consuming app's AndroidManifest.xml"
 <uses-permission android:name="com.oem.vega.permission.CONTROL_SEAT_MASSAGE"/>
-<uses-permission android:name="com.oem.vega.permission.READ_SEAT_STATE"/>
 ```
 
 ```json title="…and the app must actually be privileged"
@@ -146,9 +157,10 @@ public void setMassageIntensity(int seatAreaId, int level) {
 
 @Override
 public int getMassageIntensity(int seatAreaId) {
-    // Read uses the READ permission, not the CONTROL one.
+    // Same permission as the write path — this service does not split
+    // read and write access.
     mContext.enforceCallingOrSelfPermission(
-            "com.oem.vega.permission.READ_SEAT_STATE", "getMassageIntensity");
+            "com.oem.vega.permission.CONTROL_SEAT_MASSAGE", "getMassageIntensity");
     // ...
 }
 ```

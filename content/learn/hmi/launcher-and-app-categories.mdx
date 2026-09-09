@@ -43,7 +43,7 @@ intent categories, and an app that does not declare one is invisible.
     android:exported="true">
     <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
-        <!-- This is the one that matters. Not CATEGORY_LAUNCHER. -->
+        <!-- This category is the one that matters — the launcher queries for exactly this. -->
         <category android:name="android.intent.category.LAUNCHER"/>
     </intent-filter>
 </activity>

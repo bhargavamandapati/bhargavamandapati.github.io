@@ -49,11 +49,11 @@ system-privileged vendor service.
   </policyGroups>
 
   <policies>
-    <policy id="policy_id_no_display" other="untouched">
+    <policy id="policy_id_no_display" otherComponents="untouched">
       <component id="DISPLAY">off</component>
       <component id="AUDIO">off</component>
     </policy>
-    <policy id="policy_id_all_on" other="untouched">
+    <policy id="policy_id_all_on" otherComponents="untouched">
       <component id="DISPLAY">on</component>
       <component id="AUDIO">on</component>
     </policy>
@@ -61,7 +61,7 @@ system-privileged vendor service.
 </powerPolicy>
 ```
 
-`other="untouched"` matters: a policy only has to name the components it
+`otherComponents="untouched"` matters: a policy only has to name the components it
 *changes*. Everything else keeps whatever state the previous policy left it
 in — which is convenient, and also exactly how a component gets left on by
 accident when nobody explicitly turns it off in a later policy.
@@ -103,9 +103,9 @@ A vehicle passes every functional test and then fails a parked-current audit:
 after three days on the shelf, current draw is 40 mA higher than spec. The
 root cause is not a leaked wakelock — it is a power policy that turns
 `WIFI` on for a diagnostics feature, and a later policy transition that
-never explicitly turns it back off, so `other="untouched"` quietly carries
-the "on" forward through every subsequent state change. The fix is one line
-in one policy's component list. The lesson is that a parked-current
+never explicitly turns it back off, so `otherComponents="untouched"` quietly
+carries the "on" forward through every subsequent state change. The fix is
+one line in one policy's component list. The lesson is that a parked-current
 regression is a policy-authoring bug far more often than it is a driver bug,
 and it never shows up in a functional test — only in a current-draw
 measurement over days, which is why OEMs run that measurement separately.

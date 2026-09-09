@@ -32,7 +32,7 @@ zone" is the most common way this decision goes wrong.
 | Platform | Answers best | Typical zone |
 | --- | --- | --- |
 | AUTOSAR Classic | Hard real-time, statically configured, ASIL-D capable | Powertrain, braking, steering |
-| AUTOSAR Adaptive / QNX | Safety-relevant but dynamically updatable, POSIX-like | ADAS compute, safety-island cluster rendering |
+| AUTOSAR Adaptive / QNX (QNX as OS, optionally hosting Adaptive on top) | Safety-relevant but dynamically updatable, POSIX-like | ADAS compute, safety-island cluster rendering |
 | Android Automotive | Rich UI, app ecosystem, frequent feature updates | Cockpit, infotainment, non-critical cluster layers |
 | Linux (AGL or a custom Yocto build) | Full control, no licensing constraints, connectivity-heavy workloads | Gateway, telematics control unit, central compute orchestration |
 

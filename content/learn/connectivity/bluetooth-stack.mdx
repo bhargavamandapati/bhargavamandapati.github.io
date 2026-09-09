@@ -42,6 +42,15 @@ When it works, nobody thinks about it. When one of the four fails, the user says
 "the dock is broken" — not "HFP failed to connect".
 </Analogy>
 
+<Plain>
+Underneath those profiles sits an actual Bluetooth stack — in AOSP, the
+Fluoride/Gabeldorsche stack — which implements the profile logic and talks to
+the radio through the Bluetooth HAL. It registers with
+`BluetoothManagerService`, which is what the rest of Android, including the
+profiles above, actually calls. For bring-up and debugging, this is the layer
+underneath the user-facing behaviour the rest of this page describes.
+</Plain>
+
 ## The profiles that matter
 
 | Profile | Carries | Fails as |

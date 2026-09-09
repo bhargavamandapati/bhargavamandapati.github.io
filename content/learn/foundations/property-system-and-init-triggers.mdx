@@ -33,13 +33,25 @@ Property names are not arbitrary strings — their prefix determines who can
 read and write them, enforced by SELinux `property_contexts`, not by
 convention alone.
 
+<Plain>
+**SELinux**, in brief, is Android's mandatory-access-control layer — a set of
+kernel-enforced rules that sit below and independent of ordinary Unix file
+permissions. Every process runs inside a **domain**; every resource it might
+touch, including a property, has a **type**. A policy file explicitly lists
+which domains may do what to which types, and anything not explicitly
+allowed is denied by default, silently, with no exception thrown to the
+caller. That denial is what shows up in the kernel log as an
+**`avc: denied`** line — it is worth learning to recognise on sight, because
+it is the only visible trace of an SELinux-blocked write.
+</Plain>
+
 | Prefix | Meaning | Typical writer |
 | --- | --- | --- |
 | `ro.*` | Read-only after first boot | Set once from build config, immutable after |
 | `persist.*` | Survives a reboot | Written to `/data/property`, settable by privileged processes |
 | `sys.*` | Volatile system state | `init` and system-privileged processes |
 | `vendor.*` | Vendor/HAL-owned state | Vendor HALs and vendor-privileged processes |
-| `ctl.*` | Service control commands | `init` only — writing `ctl.start=<service>` starts it |
+| `ctl.*` | Service control commands | A privileged process such as `system_server` (via `SystemProperties.set`), or shell on userdebug — `init` *enforces and executes* `ctl.start`/`ctl.stop`, it is not usually the one setting the property |
 
 Every one of these is checked against a `property_contexts` file that maps
 a property name (or prefix) to an SELinux type, and a process's own SELinux

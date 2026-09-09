@@ -108,6 +108,30 @@ This is the central difficulty of modern cockpit safety, and it is why
 <T>freedom from interference</T> is a phrase you will hear constantly.
 </Plain>
 
+### "Safe" is not the same claim as "adequate"
+
+<Plain>
+Everything so far is ISO 26262: a system **malfunctions** — a value is wrong, a
+message is late, a component fails — and the standard asks what stops that from
+hurting someone. That framing covers a stuck sensor or a corrupted message
+cleanly. It does not cover a system that is working exactly as designed and
+still gets the situation wrong.
+
+An ADAS perception stack that fails to recognise a pedestrian in fog has not
+malfunctioned in the 26262 sense. Every component did what it was specified to
+do; the specification itself was insufficient for that situation. That is the
+territory of <T>SOTIF</T> (ISO 21448) — the safety of the intended
+functionality. Where 26262 asks "what if this fails", SOTIF asks "what if this
+performs exactly as designed, and that still is not good enough."
+
+As sensor fusion and perception consolidate onto shared compute, both questions
+apply to the same box, and they need different evidence: 26262 wants fault
+injection and freedom-from-interference arguments, SOTIF wants scenario
+coverage, edge-case testing and a case for why the residual performance gaps are
+acceptably rare. Treating SOTIF as "26262 for ADAS" misses the point — it is a
+different kind of hazard, argued a different way.
+</Plain>
+
 ### What must be shown
 
 | Resource | The question to answer |

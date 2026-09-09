@@ -60,7 +60,7 @@ and never duplicated.
 adb shell getprop ro.boot.slot_suffix        # _a or _b
 adb shell bootctl get-current-slot
 adb shell bootctl get-suffix 0
-adb shell dumpsys update_engine
+adb shell dumpsys android.os.UpdateEngineService
 ```
 
 ## Generating an update
@@ -204,7 +204,6 @@ The cases that matter, and the order to run them:
 ```bash title="Driving an update by hand"
 adb shell update_engine_client --payload=file:///data/ota.zip --update
 adb shell update_engine_client --status
-adb shell dumpsys update_engine | grep -i -A5 progress
 ```
 
 Case 5 is the one most often missed and most visible to customers: an update that
@@ -225,4 +224,5 @@ feature it delivered is forgotten.
 
 ## Next
 
-Automated testing that survives contact with real hardware.
+Below Android entirely — the kernel, device tree and display bring-up that a
+board needs before any of this applies.

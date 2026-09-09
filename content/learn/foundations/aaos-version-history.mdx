@@ -41,7 +41,7 @@ Nothing warns you. You simply cannot find the thing the book says is there.
 | --- | --- |
 | **Android 9 (2018)** | AAOS appears in AOSP. Mostly a reference; nobody shipped much yet. |
 | **Android 10 (2019)** | The model settles — headless system user, Car Service subservices, HIDL VHAL. First serious programmes start here. |
-| **Android 11 (2020)** | Car UI Library becomes the standard component vocabulary. Automotive notifications mature. Polestar 2 ships with GAS. |
+| **Android 11 (2020)** | Car UI Library becomes the standard component vocabulary. Automotive notifications mature. Polestar 2, which launched in 2020 on Android 9/10 with GAS, receives an OTA update to 11. |
 | **Android 12 (2021)** | Multi-display and occupant zones become usable rather than theoretical. Rear-seat and passenger screens get real support. |
 | **Android 13 (2022)** | **AIDL VHAL lands** — the single biggest interface change in the platform's history. HIDL enters long-tail maintenance. |
 | **Android 14 onward** | Consolidation. VHAL AIDL versioning, more system properties, tighter compliance requirements, better tooling. |
@@ -95,9 +95,16 @@ adb shell getprop | grep -i car
 ```
 
 ```bash title="Which VHAL interface is in use?"
+adb shell dumpsys android.hardware.automotive.vehicle.IVehicle/default
+# responds only against an AIDL VHAL
+
+adb shell service list | grep vehicle
+# quick check: shows the registered vehicle service either way
+
 adb shell lshal | grep -i vehicle
 # android.hardware.automotive.vehicle@2.0::IVehicle   -> HIDL
-# android.hardware.automotive.vehicle.IVehicle/default -> AIDL
+# lshal only enumerates the legacy HIDL VHAL — on an AIDL VHAL build it can
+# show nothing even when the VHAL is perfectly healthy.
 ```
 
 That one command tells you more about the age and shape of the codebase than any
@@ -106,10 +113,13 @@ document will.
 ```bash title="What does the platform actually expose?"
 adb shell dumpsys car_service --list
 adb shell dumpsys car_service --help
-adb shell dumpsys car_service --list-properties | wc -l
+
+# There is no --list-properties flag. The property catalogue itself comes
+# from CarPropertyService's own dump:
+adb shell dumpsys car_service --services CarPropertyService | wc -l
 ```
 
-The property count is a rough but reliable age signal: the system property
+The line count is a rough but reliable age signal: the system property
 catalogue has grown steadily with every release.
 
 ## Reading AOSP at the right version

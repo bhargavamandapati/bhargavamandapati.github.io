@@ -217,3 +217,26 @@ programme:
 
 Those five cover the defects that actually reach customers. Pixel-perfect layout
 assertions do not, and they break on every theme change.
+
+<Recap>
+- **Own vehicle state explicitly** — set properties and wait for the derived
+  state, never `Thread.sleep`, or the suite is flaky by construction.
+- Test **both** the parked and driving cases for every driver-facing screen,
+  and read UX-restriction limits from the platform rather than hard-coding
+  them.
+- **D-pad reachability** is a cheap, high-value test — it catches "works with
+  a finger, unusable with a knob" as a single assertion.
+- Use **UI Automator** for anything crossing into system UI, the launcher or
+  another app; Espresso only covers your own.
+- Pin the **user** and **display** explicitly, and reconnect when Car Service
+  restarts — the usual sources of flakes that have nothing to do with your
+  code.
+- **Quarantine flaky tests immediately**, or the team learns to ignore red
+  builds.
+</Recap>
+
+## Next
+
+What happens when a test — or a driver — hits something worse than a wrong
+layout: a process that crashes or freezes outright, and the record Android
+leaves behind.

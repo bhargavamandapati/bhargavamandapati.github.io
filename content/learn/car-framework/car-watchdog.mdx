@@ -128,7 +128,6 @@ watchdog.addResourceOveruseListener(
 
 ```bash title="Checking your own consumption"
 adb shell dumpsys car_service --services CarWatchdogService
-adb shell dumpsys car_watchdog
 ```
 
 Run this after a soak test. Teams are routinely surprised — a logging library
@@ -181,7 +180,8 @@ What to do instead:
 - **Keep buffers in memory** and flush on a schedule or at shutdown, not per
   event.
 - **Aggregate before writing.** A count is smaller than the events it counts.
-- **Check your quota** in `dumpsys car_watchdog` rather than guessing.
+- **Check your quota** in `dumpsys car_service --services CarWatchdogService`
+  rather than guessing.
 
 The warning arrives before the kill, in the logs. Nobody reads it, which is why
 the first symptom is usually the termination.
@@ -199,9 +199,9 @@ adb shell dumpsys car_service --services CarWatchdogService | grep -A20 -i overu
 ```
 
 <Callout type="tip" title="Test against the budget, not against your laptop">
-Run a realistic session with `dumpsys car_watchdog` before and after and compare
-written bytes. A feature that looks free on a development machine with fast NVMe
-can be the top consumer on the target.
+Run a realistic session with `dumpsys car_service --services CarWatchdogService`
+before and after and compare written bytes. A feature that looks free on a
+development machine with fast NVMe can be the top consumer on the target.
 </Callout>
 
 <Recap>
@@ -213,8 +213,8 @@ can be the top consumer on the target.
   sustained writes a genuine constraint.
 - Warnings arrive in the log before termination, and are almost always missed.
 - Batch and aggregate writes; keep buffers in memory and flush on a schedule.
-- `dumpsys car_watchdog` shows your quota and current usage — check it rather
-  than guessing.
+- `dumpsys car_service --services CarWatchdogService` shows your quota and
+  current usage — check it rather than guessing.
 </Recap>
 
 ## Next

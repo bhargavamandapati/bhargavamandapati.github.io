@@ -126,7 +126,6 @@ service vendor.vega.telemetryd /vendor/bin/vega-telemetryd
     user system
     group system
     # Restart if it dies, but give up if it dies repeatedly at boot.
-    oneshot false
     disabled
 
 # Start it once the system is up, so it does not compete for CPU during boot.
@@ -208,7 +207,7 @@ adb shell dmesg | grep -i 'avc.*denied' | grep -i telemetry
 ```text
 avc: denied { write } for comm="vega-telemetryd"
   name="vega" dev="dm-3" ino=...
-  scontext=u:r:vendor_vega_telemetryd:s0
+  scontext=u:r:vendor_init:s0
   tcontext=u:object_r:vendor_data_file:s0
   tclass=dir permissive=0
 ```

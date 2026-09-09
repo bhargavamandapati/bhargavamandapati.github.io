@@ -69,6 +69,8 @@ it never touched the base tree at all.
 /dts-v1/;
 /plugin/;
 
+#include <dt-bindings/interrupt-controller/irq.h>
+
 / {
     compatible = "oem,vega-board";
 };
@@ -130,14 +132,29 @@ finds, looks for a driver whose match table contains that exact string. Get
 either string wrong and the node exists with no driver bound to it, which
 `dmesg` reports plainly but nothing else notices.
 
+<Gotcha title="Naming the interface vega-can0 takes extra driver code">
+SocketCAN's `alloc_candev()` names interfaces `can0`, `can1`, … by default.
+Getting `vega-can0` instead means the driver has to set the netdevice name
+explicitly (or a udev/netd rule renames it after the fact) — that naming
+logic is not shown in the probe excerpt above. If you would rather skip it,
+the default `can0` naming is equally correct for everything this tutorial
+verifies; substitute it throughout if you go that route.
+</Gotcha>
+
 ## Step 3 — Wire the overlay into the build
+
+The `.dts` overlay above is source; what `BoardConfig.mk` needs is the
+compiled `.dtbo` binary the vendor kernel build produces from it and
+packages into `dtbo.img` via `mkdtimg`. Point the platform build at that
+built image, not at the source path:
 
 ```makefile title="device/oem/vega/BoardConfig.mk"
 BOARD_KERNEL_CMDLINE += vega.can_enabled=1
 
-# Which overlay(s) apply to this board variant
-BOARD_KERNEL_DEVICETREE_OVERLAYS := \
-    kernel/vega/arch/arm64/boot/dts/vega/vega-can-overlay.dtbo
+# The vendor kernel build compiles vega-can-overlay.dts and packages the
+# result into dtbo.img itself; this points the platform build at that
+# already-built image rather than at the .dts source.
+BOARD_PREBUILT_DTBOIMAGE := kernel/vega/out/dtbo.img
 ```
 
 ```bash title="Build the kernel and the overlay together"
@@ -198,7 +215,7 @@ most common way to lose an afternoon at this layer.
 
 | Symptom | Cause |
 | --- | --- |
-| No node under `/sys/firmware/devicetree/base/` | Overlay not listed in `BOARD_KERNEL_DEVICETREE_OVERLAYS`, or `.dtbo` failed to compile |
+| No node under `/sys/firmware/devicetree/base/` | `BOARD_PREBUILT_DTBOIMAGE` not set, or the vendor kernel build's `.dtbo` failed to compile |
 | Node exists, no `vega-can0` interface | `compatible` strings do not match between overlay and driver |
 | Interface exists, `candump` sees nothing | Wrong SPI bus/CS in the overlay, or `interrupts` line does not match the real wiring |
 | Works on the bench rig, not the real board | Base tree label (`&spi1`) differs between the two boards' device trees |

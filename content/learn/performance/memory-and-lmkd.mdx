@@ -199,6 +199,15 @@ Tuning these is a balance: kill too eagerly and apps restart constantly, killing
 the experience; kill too late and the whole system stalls under pressure. It is a
 per-product measurement exercise, not a value you can copy from another vehicle.
 
+**zram** is the other lever worth knowing on RAM-constrained head units: a
+compressed, RAM-backed swap device the kernel can push colder pages into
+instead of handing them straight to lmkd. It buys time — a page swapped to
+zram is a kill deferred — and PSI-based thresholds (`ro.lmk.use_psi`) already
+account for the stall that reclaiming into zram introduces. It is not free,
+though: decompression costs CPU on every access, so an under-provisioned board
+that leans on zram trades "process killed" for "everything runs slower under
+pressure," which is not obviously the better trade.
+
 <Recap>
 - Vehicle head units have **less RAM and far longer uptime** than phones, so
   memory pressure is normal rather than exceptional.

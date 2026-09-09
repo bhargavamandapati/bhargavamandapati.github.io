@@ -136,13 +136,20 @@ adb shell pm list features | grep automotive
 adb shell dumpsys car_service --help
 
 # 3. The Vehicle HAL must be up
-adb shell lshal | grep -i vehicle
+adb shell dumpsys android.hardware.automotive.vehicle.IVehicle/default
 ```
 
 If check 1 fails, you built a phone image. If check 2 fails, Car Service crashed
 during boot — go read `logcat -b system | grep -i carservice`. If check 3 fails,
 the VHAL did not start and every property read you attempt will fail in a
 confusing way.
+
+<Callout type="note" title="Do not reach for lshal here">
+The branch this page checks out (`android-14.0.0_r30`) ships an AIDL-only VHAL.
+`lshal | grep -i vehicle` enumerates the legacy HIDL VHAL and will show nothing
+even on a perfectly healthy build — it is not a valid sanity check on this
+branch.
+</Callout>
 
 ## The reference VHAL
 
@@ -152,13 +159,16 @@ stack react:
 
 ```bash title="Driving a property by hand"
 # List everything the HAL exposes
-adb shell dumpsys car_service --list-properties
+adb shell dumpsys car_service --services CarPropertyService
 
 # Read one property
-adb shell dumpsys car_service --get-property 0x11600203
+adb shell cmd car_service get-property-value 0x11600203
 
-# Inject a value (reference VHAL only)
-adb shell dumpsys car_service --set-property 0x11600203 50
+# Write one property
+adb shell cmd car_service set-property-value 0x11600203 50
+
+# Inject a value directly at the reference/emulator VHAL
+adb shell cmd car_service inject-vhal-event 0x11600203 50
 ```
 
 The reference implementation lives under
@@ -207,5 +217,5 @@ is the same: a vendor VHAL bridging Android to the real network.
 
 ## Next
 
-With a build running, start on the Vehicle HAL — the interface everything else in
-this curriculum depends on.
+With a build running, work out exactly which AAOS release it is — the version
+history that follows is the map for what your build does and does not have.

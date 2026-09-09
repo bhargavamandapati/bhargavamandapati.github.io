@@ -68,6 +68,20 @@ This is the single most transferable idea in this topic: every rated value needs
 a defined staleness timeout and a visible degraded state.
 </Scenario>
 
+<Plain>
+Not every "wrong" here has the same root cause, and the distinction decides
+which standard you are arguing against. **ISO 26262** covers wrong values that
+come from a fault — a bit flip, a stuck sensor, a corrupted message —
+something broke and the system behaved other than designed. **ISO 21448
+(SOTIF)** covers the harder case: nothing failed, every component did exactly
+what it was designed to do, and the displayed value is still wrong because the
+design did not anticipate the situation it was asked to handle. A
+plausible-but-incorrect value that survives fault-based testing untouched is
+exactly the kind of gap SOTIF exists to find. A cluster safety case has to ask
+both questions — did something fail, and was the design itself sufficient —
+not just the first one.
+</Plain>
+
 ## Freedom from interference, concretely
 
 When rated and unrated software share hardware, <T>freedom from interference</T>

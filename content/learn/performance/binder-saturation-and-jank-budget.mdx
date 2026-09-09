@@ -33,9 +33,12 @@ pressure comes from one slow caller or several fast, concurrent ones.
 
 ## Why cold start is the worst-case window
 
-`system_server`, `carservicehelper`, and any long-running vendor HAL
-implementation each carry their own bounded thread pool — commonly capped
-around 15 threads. Car Service is the process nearly every vehicle-property
+`carservicehelper` and any long-running vendor HAL implementation each carry
+their own bounded thread pool — commonly capped around 15 threads by default.
+`system_server` is the notable exception: it hosts so many system services
+that it raises its own binder thread-pool ceiling well above that default,
+though the ceiling is still finite and can still be exhausted under enough
+concurrent load. Car Service is the process nearly every vehicle-property
 read and every occupant-zone lookup passes through, which makes its pool a
 shared resource across every app on the head unit at once. Cold start is
 when demand on that shared pool peaks hardest: it is the one moment when the

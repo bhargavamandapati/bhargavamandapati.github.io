@@ -58,7 +58,10 @@ regulation" does not.
 ## What the rules actually require
 
 Details vary by market, but the principles converge, and they are worth knowing
-as engineering constraints rather than legal text.
+as engineering constraints rather than legal text. The table below is, concretely,
+the **EU's GDPR** — the most detailed and most-copied version of this model, and
+the one most of the industry's internal engineering checklists are actually built
+against, even when nobody names it out loud.
 
 | Principle | What it means in code |
 |---|---|
@@ -81,6 +84,17 @@ repurposed for a new question. A different purpose needs its own basis.
 Storage limitation means deletion has to be implemented and to work — including
 deletion from backups, from analytics stores, and from the copy somebody pulled
 into a spreadsheet.
+</Plain>
+
+<Plain>
+**Not every market works this way.** California's CCPA/CPRA, for example, is
+built on a different model: instead of requiring a lawful basis before
+processing, it presumes collection is allowed and gives consumers a right to
+**opt out** of "sale or sharing" of their data, with no formal purpose-limitation
+principle of its own. A programme built to satisfy GDPR's consent-and-purpose
+model is not automatically CCPA-compliant, and the reverse is also false — treat
+them as two different regulatory shapes, not the same rules under different
+letters.
 </Plain>
 
 ## The categories, and how to treat them

@@ -205,8 +205,10 @@ rate to the *information* rate, not the frame rate.
 <Recap>
 - Car Service holds **one HAL subscription per property**, at the highest rate any
   subscriber requested, and fans out to all listeners.
-- Your requested rate is a **maximum, not a guarantee** — the HAL may deliver
-  fewer events.
+- Your requested rate is not a guaranteed ceiling — because Car Service fans
+  out **one** HAL subscription at the fastest rate anyone asked for, you may
+  receive events **faster** than you requested. Your callback must tolerate
+  that.
 - `CONTINUOUS` properties are sampled; `ON_CHANGE` properties fire only when the
   value moves.
 - Requesting a high rate imposes cost on the **whole system**, not just your app.

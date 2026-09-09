@@ -58,6 +58,16 @@ Get both right and your app works on every AAOS vehicle, with the OEM's theming
 and distraction handling, without you writing a single automotive-specific
 screen.
 
+<Callout type="note" title="These samples use the support-library compat classes">
+The code below uses `MediaBrowserServiceCompat`, `MediaSessionCompat` and
+`PlaybackStateCompat` because that is still what most existing car media
+apps and AOSP samples are built on. For new development, **Media3**'s
+`androidx.media3.session.MediaLibraryService` and `MediaSession` supersede
+these compat classes and are the currently recommended starting point — the
+browse tree, the session and the transport actions map across directly, only
+the class names and some builder APIs change.
+</Callout>
+
 ## The browse tree
 
 ```kotlin title="MusicService.kt" showLineNumbers
@@ -260,4 +270,5 @@ way to find a malformed tree before the OEM's UI does.
 
 ## Next
 
-Navigation apps, and pushing turn-by-turn guidance to the cluster.
+The Car App Library — building screens from templates the host renders, not
+layouts you draw.

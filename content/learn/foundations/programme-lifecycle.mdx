@@ -43,7 +43,7 @@ against whichever gate the vehicle is at.
 | **A-sample** | Breadboards, dev kits | Prove the concept works at all |
 | **B-sample** | Near-production boards | Features present, stability optional |
 | **C-sample** | Production-intent | Feature complete, defects being closed |
-| **D-sample / PPAP** | Production tooling | Frozen; only critical fixes |
+| **D-sample / PPAP** (Production Part Approval Process) | Production tooling | Frozen; only critical fixes |
 | **SOP** | Start of production | Vehicles are being built |
 
 Each gate has a date fixed years in advance, tied to a factory slot. The factory
@@ -119,8 +119,10 @@ Engineers consistently underestimate the same three things:
 2. **Multi-variant validation.** One feature, six trims, four markets. QA cycles
    are the long pole far more often than development.
 3. **Defect triage across organisations.** A wrong value on screen might be
-   Android, the supplier's HAL, the ECU, or the ARXML. Proving which — with
-   evidence, to another company — is a real and recurring cost.
+   Android, the supplier's HAL, the ECU, or the ARXML (AUTOSAR XML — the
+   standard format suppliers use to describe an ECU's signals and
+   configuration). Proving which — with evidence, to another company — is a
+   real and recurring cost.
 
 <Callout type="tip" title="Invest in evidence, early">
 The teams that hit their gates are the ones that can say "here is the signal on

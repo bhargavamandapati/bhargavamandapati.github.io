@@ -76,12 +76,16 @@ float, a string. It is the escape hatch, and `configArray` describes the layout.
     .access = VehiclePropertyAccess::READ,
     .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
     // configArray convention for MIXED:
-    //  [0] does the value include a String?
-    //  [1] number of Boolean values
-    //  [2] number of Integer values
-    //  [3] number of Integer arrays
-    //  [4] number of Long values      ... and so on
-    .configArray = {1, 1, 2, 0, 1, 0, 1, 0, 0},
+    //  [0] 1 if the property has a String value
+    //  [1] 1 if the property has a Boolean value
+    //  [2] 1 if the property has an Integer value
+    //  [3] number of Integer[] elements
+    //  [4] 1 if the property has a Long value
+    //  [5] number of Long[] elements
+    //  [6] 1 if the property has a Float value
+    //  [7] number of Float[] elements
+    //  [8] number of byte[] elements
+    .configArray = {1, 1, 0, 2, 1, 0, 0, 0, 0},
 }
 ```
 

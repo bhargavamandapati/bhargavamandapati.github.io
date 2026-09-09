@@ -120,8 +120,12 @@ set_prop(vendor_vega_telemetryd, vendor_vega_prop)
 get_prop(vendor_vega_telemetryd, vendor_default_prop)
 
 # --- Logging --------------------------------------------------------------
-# Writing to logd. Most builds grant this via a macro; be explicit if not.
-allow vendor_vega_telemetryd vendor_vega_telemetryd:unix_dgram_socket create_socket_perms;
+# Writing to logd. AOSP's global policy already grants every domain this
+# through write_logd(domain) in system/sepolicy — invoke the macro
+# explicitly for this domain so the grant is visible next to everything
+# else it can do, rather than left implicit in a rule that covers all of
+# them.
+write_logd(vendor_vega_telemetryd)
 ```
 
 Grant the narrowest thing that works. `rw_dir_perms` on one type, not `*` on
@@ -146,12 +150,14 @@ m -j
 
 <Verify title="Verify the policy compiled and your types exist">
 ```bash
-# Your types made it into the built policy
-adb shell su 0 sesearch --allow -s vendor_vega_telemetryd \
-  /sys/fs/selinux/policy 2>/dev/null | head
-
-# Or check the source policy on the build host
+# Check the built policy on the build host — this is the check that works
+# without any extra tooling on the device.
 grep -r "vendor_vega_telemetryd" $ANDROID_PRODUCT_OUT/vendor/etc/selinux/ | head
+
+# sesearch is host-side setools, not shipped on the device — pull the
+# compiled policy first if you want to query it this way instead.
+adb pull /sys/fs/selinux/policy /tmp/sepolicy
+sesearch --allow -s vendor_vega_telemetryd /tmp/sepolicy | head
 ```
 </Verify>
 

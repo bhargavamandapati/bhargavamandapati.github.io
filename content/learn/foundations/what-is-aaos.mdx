@@ -235,9 +235,12 @@ rules, it starts to look like a set of reasonable responses to hard problems.
 A car can kill people. So the platform does not politely ask apps to be
 responsible — it **enforces** limits in the operating system itself.
 
-That is why your scrolling list of 200 albums gets cut to nine items above 5 km/h
-whether you cooperate or not. It is not the platform being awkward. It is the
-platform refusing to let one badly written app create a hazard.
+That is why your scrolling list of 200 albums might get cut to a handful of
+items above some speed threshold whether you cooperate or not — the exact
+item count and speed are values the OEM configures (via
+`CarUxRestrictionsConfiguration`), not fixed platform constants, but the
+enforcement itself is not optional. It is not the platform being awkward. It
+is the platform refusing to let one badly written app create a hazard.
 
 ### Longevity
 

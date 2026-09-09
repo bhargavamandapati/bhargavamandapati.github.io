@@ -62,7 +62,7 @@ Three independent reasons, any one sufficient:
 **Availability.** A telltale must appear within a bounded time of its condition
 occurring, every time. Android can be garbage collecting, updating, or restarting.
 
-**Boot time.** Telltales are typically required within about two seconds of
+**Boot time.** Telltales are commonly targeted within about two seconds of
 ignition. Android takes fifteen or more.
 
 **Certification.** The rated content needs a safety argument. A general-purpose
@@ -114,7 +114,8 @@ cannot affect that one", which is a much larger document.
 
 ## What Android actually sends
 
-Structured content, not pixels.
+In the native-rendering approach, Android sends structured content, not
+pixels — other rendering strategies differ; see the next topic.
 
 ```protobuf title="A cluster content message"
 message ClusterCard {

@@ -107,7 +107,7 @@ If yes, you inherit the permission mapping and CTS coverage.
 A property existing in AOSP says nothing about this trim.
 
 ```bash
-adb shell dumpsys car_service --list-properties | grep -i window
+adb shell dumpsys car_service --services CarPropertyService | grep -i window
 ```
 
 **3. What permission does it need, and can you hold it?**

@@ -148,7 +148,9 @@ The VHAL connects to the vehicle network, reads the initial state of everything
 it cares about, and registers itself so the framework can find it.
 
 ```bash title="Confirming it registered"
-adb shell lshal | grep -i automotive.vehicle
+adb shell dumpsys android.hardware.automotive.vehicle.IVehicle/default
+# on an AIDL VHAL. `lshal | grep -i automotive.vehicle` only shows the
+# legacy HIDL VHAL, and stays empty on an AIDL build even when healthy.
 ```
 
 <Scenario title="Why a slow VHAL is a boot-time problem">
@@ -200,9 +202,11 @@ manifest, Car Service does not start. And because so much of the automotive
 experience depends on Car Service, the symptom is not an error message — it is a
 head unit that boots to a black screen.
 
-**When a new board shows nothing, check `lshal | grep vehicle` before anything
-else.** It takes five seconds and it is the answer far more often than it has any
-right to be.
+**When a new board shows nothing, check
+`dumpsys android.hardware.automotive.vehicle.IVehicle/default` before
+anything else** (`lshal | grep vehicle` only sees the legacy HIDL VHAL, and
+tells you nothing on an AIDL VHAL build). It takes five seconds and it is the
+answer far more often than it has any right to be.
 </Plain>
 
 Once connected, Car Service asks the VHAL for its property configs, caches them,
@@ -257,8 +261,10 @@ adb shell dmesg | head -50
 # 2. Did init get past the early phases?
 adb shell getprop init.svc.servicemanager    # running
 
-# 3. Are the HALs up? (this is the automotive one that catches people)
-adb shell lshal | grep -i vehicle
+# 3. Are the HALs up? (this is the automotive one that catches people —
+#    `lshal | grep -i vehicle` only shows the legacy HIDL VHAL, so it can
+#    look empty on an AIDL VHAL build even when the HAL is healthy)
+adb shell dumpsys android.hardware.automotive.vehicle.IVehicle/default
 
 # 4. Did system_server start?
 adb shell ps -A | grep system_server

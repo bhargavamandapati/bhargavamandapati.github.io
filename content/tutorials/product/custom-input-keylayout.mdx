@@ -115,12 +115,9 @@ The `.idc` file describes *how* the device should be treated, separately
 from what each key means.
 
 ```text title="device/oem/vega/usr/idc/Vega_Steering_Wheel.idc"
-# This is a key-only device — no touch, no cursor.
-device.type = external
-
-# Steering-wheel buttons should work identically regardless of which
-# occupant zone currently has display focus.
-input.orientationAware = 0
+# This is a key-only device — no touch, no cursor. It is wired directly
+# into the vehicle rather than plugged in, so it is internal, not external.
+device.internal = 1
 ```
 
 ## Step 4 — Wire both files into the build

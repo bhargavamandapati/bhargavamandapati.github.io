@@ -304,11 +304,17 @@ case Car.CAR_COMFORT_SERVICE:
 
 ## Step 5 — Build and verify
 
-```bash
+```bash title="Reliable: full rebuild and reflash"
 m -j
-adb install-multiple -r $ANDROID_PRODUCT_OUT/system/priv-app/CarService/*.apk 2>/dev/null \
-  || { m -j && emulator -wipe-data -no-snapshot & }
+emulator -wipe-data -no-snapshot &
 adb wait-for-device && sleep 40
+```
+
+```bash title="Faster, but not dependable — try it first while iterating, fall back above if it does not stick"
+# A priv-app this deep in the platform does not reliably hot-swap this way:
+# the running Car Service process is not restarted, and the install can
+# fail on signature grounds.
+adb install-multiple -r $ANDROID_PRODUCT_OUT/system/priv-app/CarService/*.apk
 ```
 
 <Verify title="Verify the subservice is registered and dumping">
@@ -340,6 +346,14 @@ val car = Car.createCar(context, null, Car.CAR_WAIT_TIMEOUT_DO_NOT_WAIT) { c, re
     comfort.setMassageIntensity(VehicleAreaSeat.SEAT_ROW_1_LEFT, 3)
 }
 ```
+
+<Gotcha title="This call throws until two tutorials from now">
+`setMassageIntensity` enforces `com.oem.vega.permission.CONTROL_SEAT_MASSAGE`,
+and nothing in this tutorial declares that permission — it is defined in the
+permissions tutorial, two steps ahead in this series. Until then, expect a
+`SecurityException` from every caller, including a platform-signed one. That
+is expected, not a bug in what you just built.
+</Gotcha>
 
 ## Should this be a subservice at all?
 

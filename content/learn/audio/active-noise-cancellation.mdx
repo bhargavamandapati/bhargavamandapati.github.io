@@ -118,6 +118,12 @@ independent of the capture-side AEC/NS pipeline; a vehicle can run both
 simultaneously, cancelling road noise on the way out and echo on the way
 in, without either one being aware the other exists.
 
+Unlike AEC/NS, though, ANC has no public AOSP framework API of its own —
+there is no `ANC` entry in CarAudioService's context list the way there is
+for `MUSIC` or `NAVIGATION`. Cabin ANC is almost always a dedicated
+amplifier or DSP feature sitting outside the Android audio HAL's context
+model entirely, not a stream Android routes and ducks like any other.
+
 <Callout type="tip" title="ANC and a driver-facing microphone can interact in a way worth testing explicitly">
 An ANC reference microphone placed near the driver can pick up the driver's
 own voice during a hands-free call, and the call's own AEC pipeline was not

@@ -238,10 +238,15 @@ docker stop seat-comfort-service
 
 # 5. Cluster time-to-live
 #    stop the cockpit app -> the cluster card clears within ttl_ms
+
+# 6. The service is on a version this UI has never seen
+docker compose up -d --build seat-comfort-service   # bumped to 1.1
+#    -> setMassage / massageChanged still work unchanged; version-gated
+#       UI elements simply stay hidden until the UI is updated to expect them
 ```
 
 <Plain>
-Five test cases. Five defects that would otherwise reach customers. Not one of
+Six test cases. Six defects that would otherwise reach customers. Not one of
 them needs a vehicle, a test slot or a driver.
 
 That is the concrete argument for the whole architecture: **the layering is what
@@ -255,7 +260,7 @@ possible.
 VSS overlay              → generated artefacts, committed, checked in CI
 Feeder                   → a container on central compute, updatable
 Access policy            → broker configuration, reviewed like code
-Cockpit UI               → the Android system image, or an OEM store app
+Cockpit UI               → the Android system image only (it writes an actuator)
 Cluster message schema   → shared with the cluster supplier, versioned
 ```
 
@@ -309,7 +314,7 @@ live with it for a decade.
 - The UI **discovers, renders from confirmation, shows pending, degrades
   visibly**.
 - The cluster gets a **description with a time-to-live**, never pixels.
-- Five test cases cover the real defects, and **none of them needs a vehicle**.
+- Six test cases cover the real defects, and **none of them needs a vehicle**.
 - Six months later, one team changes one thing — because every interface was
   versioned.
 </Recap>

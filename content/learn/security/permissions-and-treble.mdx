@@ -7,8 +7,6 @@ tags: ["Permissions", "Treble", "Security"]
 sources:
   - label: "Vendor Interface Object (VINTF)"
     href: "https://source.android.com/docs/core/architecture/vintf"
-  - label: "Vendor Interface Object (VINTF)"
-    href: "https://source.android.com/docs/core/architecture/vintf"
   - label: "Privileged permission allowlisting"
     href: "https://source.android.com/docs/core/permissions/perms-allowlist"
 ---
@@ -125,7 +123,8 @@ Treble split Android into partitions that upgrade independently:
 | `/product` | OEM apps and customisation | OEM |
 | `/odm` | Board-specific overrides | ODM |
 
-They talk only through **versioned, stable interfaces** — AIDL or HIDL, declared
+They talk only through **versioned, stable interfaces** — AIDL or HIDL,
+Android's interface-definition languages for cross-process calls, declared
 in VINTF manifests.
 
 ```xml title="/vendor/etc/vintf/manifest.xml"
@@ -225,4 +224,5 @@ turns out to require the OEM to ship your code and nobody had asked them.
 
 ## Next
 
-The SDV module, where the vehicle network meets the Android middleware.
+Verified Boot — the chain of trust that proves the image running on the AP
+is the one the OEM signed.

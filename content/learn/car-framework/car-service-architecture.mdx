@@ -63,7 +63,9 @@ init
 Car Service waits for the Vehicle HAL during startup. If your HAL fails to
 register, Car Service does not come up — and because so much depends on it, the
 symptom is a head unit that boots to a black screen rather than an obvious error.
-Check `lshal | grep vehicle` before anything else.
+Check `dumpsys android.hardware.automotive.vehicle.IVehicle/default` before
+anything else — `lshal | grep vehicle` only sees the legacy HIDL VHAL and stays
+empty on an AIDL VHAL build even when it is healthy.
 </Callout>
 
 ## The subservices
