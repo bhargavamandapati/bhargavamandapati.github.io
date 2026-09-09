@@ -1,6 +1,6 @@
 ---
 title: "Zonal vs domain E/E architecture"
-description: "Why the vehicle computer AAOS runs on is shaped like it is — the shift from one ECU per function to one controller per physical zone, and what that move costs and buys."
+description: "The SDV track covers why zonal wiring replaces functional domains. This is the shorter, AAOS-specific half: what changes for an app sitting above VHAL when the hardware underneath it does."
 order: 3
 difficulty: "Advanced"
 tags: ["SDV", "E/E Architecture", "Zonal"]
@@ -14,59 +14,21 @@ sources:
 ---
 
 The previous topic assumed a "vehicle computer" running AAOS as one guest
-among several. This one is about why that computer exists at all, and why it
-is wired to the rest of the car so differently from the seventy-plus ECUs a
-premium vehicle carried a decade ago.
+among several. The dedicated SDV track's own architecture module already
+covers *why* zonal wiring replaces functional domains — the harness-weight
+numbers, the Ethernet/TSN requirement, the software-fuse angle. This topic
+assumes that background and asks the question that module never needs to:
+what does this hardware shift actually change for the Android engineer
+sitting above VHAL?
 
 <Plain>
-The old way: one small computer per function — one for windows, one for
-seats, one for the instrument cluster — each wired directly to its own
-sensors and actuators, wherever in the car they happen to sit. The new way:
-a handful of powerful **zone controllers**, one per physical region of the
-car (front, rear, left, right), each wired only to whatever hardware is
-physically nearby. Software that used to run on the function's own ECU now
-runs centrally, and reaches its sensors through the nearest zone controller
-instead of a dedicated wire.
+In one sentence: zone controllers wire to whatever hardware is physically
+nearby regardless of function, forward everything to a small number of
+central computers over a backbone network, and the application logic that
+used to live on a dedicated per-function ECU moves to run as software on
+that central compute — often the very vehicle computer AAOS runs on as one
+guest among several.
 </Plain>
-
-## Domain architecture: organised by function
-
-A domain architecture groups ECUs by what they do — a body domain, a
-powertrain domain, an infotainment domain — each with its own domain
-controller and its own network segment, bridged by a central gateway. This is
-still how most vehicles on the road today are built, and it maps cleanly onto
-org charts: the body team owns the body domain, the powertrain team owns
-theirs, and integration happens mostly at the gateway.
-
-Its cost is wiring. A seat control function needs wires running from wherever
-the seat physically is to wherever the body domain controller lives, which
-might be on the other side of the car. Multiply that by every function and a
-modern vehicle's harness becomes one of the heaviest, most expensive, and
-most failure-prone parts of the car — sometimes over 50 kg of copper with
-thousands of connection points, mostly there to carry signals to a
-functionally organised controller rather than a physically nearby one.
-
-## Zonal architecture: organised by location
-
-A zonal architecture inverts the grouping. Each physical zone of the vehicle
-gets one powerful zone controller wired only to whatever is physically
-nearby — the front-left zone controller talks to the front-left door, seat,
-and window motor over a short local harness, regardless of which "domain"
-those functions conceptually belong to. The zone controllers then connect to
-a small number of high-bandwidth central computers — often exactly the kind
-of multi-guest vehicle computer the previous topic described — over a
-backbone network, frequently Automotive Ethernet.
-
-<Analogy title="Wiring a house by room, not by circuit type">
-Domain architecture is like running a dedicated cable from every lighting
-switch in the house back to one "lighting" panel in the basement, and every
-outlet back to a separate "power" panel, no matter how far each switch or
-outlet actually is from its panel. Zonal architecture is running one cable
-from each room to a box in that room, and letting the boxes talk to each
-other over a single shared backbone. The room-based wiring is shorter and
-cheaper to install; the trade is that a room's box now has to speak for
-several different kinds of function it never used to touch.
-</Analogy>
 
 ## What moves, and what stays
 
@@ -121,10 +83,9 @@ architecture and does not automatically hold on the new one.
 </Callout>
 
 <Recap>
-- **Domain** architecture groups ECUs by function, with long wiring runs back
-  to a function-specific controller; **zonal** architecture groups them by
-  physical location, with short local runs to a zone controller and a
-  backbone network between zones.
+- Zone controllers wire to whatever hardware is physically nearby and
+  forward everything to a small number of central computers — the hardware
+  shift the SDV track's own architecture module covers in depth.
 - Zonal architecture is what makes a single powerful vehicle computer
   practical — it turns application logic that used to be welded to dedicated
   hardware into a deployable service reachable from any zone.
