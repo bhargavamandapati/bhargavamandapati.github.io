@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -32,6 +33,45 @@ const LIBRARY = [
   { icon: Boxes, count: '14', label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.', href: '/tutorials/' },
   { icon: Gauge, count: '2', label: 'Live simulators', note: 'Change a property and watch the car respond.', href: '/learn/vehicle-simulator/' },
   { icon: Search, count: '98', label: 'Glossary terms', note: 'The vocabulary, defined without assuming you know it.', href: '/glossary/' },
+]
+
+const FEATURES = [
+  {
+    src: '/images/screenshots/simulator.png',
+    width: 1700,
+    height: 488,
+    alt: 'The vehicle property simulator: a 3D cabin and top-down exterior view next to a searchable panel of 128 controls, grouped by category.',
+    eyebrow: 'Interactive',
+    title: 'A 3D cabin that answers to real vehicle properties',
+    description:
+      'Move the fan speed slider and the vent icon changes. Every control on the panel is a real AIDL property — 128 of them, searchable by name — and each write lands in a log of exactly what the VHAL received.',
+    cta: 'Open the simulator',
+    href: '/learn/vehicle-simulator/',
+  },
+  {
+    src: '/images/screenshots/property-flow.png',
+    width: 900,
+    height: 969,
+    alt: 'A diagram tracing HVAC_TEMPERATURE_SET across the AAOS stack, from the app through CarService and the VHAL boundary to the vendor bridge and hardware, for both a write request and a change event.',
+    eyebrow: 'Traced, not just described',
+    title: 'Every property, mapped from app to hardware and back',
+    description:
+      '264 reference pages carry a diagram like this one — the exact classes and Binder crossings a value passes through, get and set, generated from the real AIDL rather than drawn from memory.',
+    cta: 'See the full trace',
+    href: '/learn/vehicle-properties/hvac-temperature-set/',
+  },
+  {
+    src: '/images/screenshots/property-browser.png',
+    width: 1700,
+    height: 874,
+    alt: 'The vehicle property reference, searched for "hvac": facets for category, area type, value type, access and change mode, above a filtered list of matching properties.',
+    eyebrow: 'Searchable reference',
+    title: '280 vehicle properties, not a PDF of them',
+    description:
+      'Filter by category, area, value type, access or change mode, and jump straight to the AOSP source for any of them.',
+    cta: 'Browse the reference',
+    href: '/learn/vehicle-properties/',
+  },
 ]
 
 const AUDIENCE = [
@@ -112,6 +152,57 @@ export function Landing() {
                   </Link>
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{item.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---- See it in action --------------------------------------------- */}
+      <section className="border-b border-line">
+        <div className="container-page py-16 md:py-20">
+          <h2 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">
+            Not just prose
+          </h2>
+          <p className="mt-4 max-w-2xl text-muted">
+            A simulator that responds to real properties, a diagram of the exact path each one
+            takes through the stack, and a reference you can actually search.
+          </p>
+
+          <div className="mt-12 space-y-16 md:space-y-20">
+            {FEATURES.map((feature, i) => (
+              <div
+                key={feature.href}
+                className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14"
+              >
+                <div className={i % 2 === 1 ? 'lg:order-2' : undefined}>
+                  <Link href={feature.href} className="block">
+                    <Image
+                      src={feature.src}
+                      alt={feature.alt}
+                      width={feature.width}
+                      height={feature.height}
+                      sizes="(min-width: 1024px) 50vw, 100vw"
+                      className="h-auto w-full rounded-xl border border-line bg-surface shadow-[var(--shadow-card)] transition-opacity hover:opacity-90"
+                    />
+                  </Link>
+                </div>
+                <div className={i % 2 === 1 ? 'lg:order-1' : undefined}>
+                  <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
+                    {feature.eyebrow}
+                  </p>
+                  <h3 className="mt-3 font-display text-xl font-semibold tracking-tight md:text-2xl">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-4 leading-relaxed text-muted">{feature.description}</p>
+                  <Link
+                    href={feature.href}
+                    className="mt-6 inline-flex items-center gap-1.5 text-sm text-accent underline-offset-4 hover:underline"
+                  >
+                    {feature.cta}
+                    <ArrowRight aria-hidden className="size-3.5" />
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
