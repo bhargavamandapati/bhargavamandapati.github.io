@@ -92,7 +92,18 @@ export default function VehiclePropertiesPage() {
 
       <div className="container-page py-10 md:py-14">
         <>
-        <section aria-labelledby="patterns" className="mb-14 max-w-3xl">
+        <p className="mb-8 max-w-3xl text-sm leading-relaxed text-muted">
+          New here?{' '}
+          <a href="#patterns" className="link-underline text-accent">
+            Properties rarely work alone
+          </a>{' '}
+          — read the four patterns that account for most silent failures before you start
+          pulling values.
+        </p>
+
+        <PropertyBrowser rows={rows} />
+
+        <section aria-labelledby="patterns" className="mt-16 max-w-3xl scroll-mt-24">
           <h2 id="patterns" className="font-display text-2xl font-semibold tracking-tight">
             Properties rarely work alone
           </h2>
@@ -103,7 +114,7 @@ export default function VehiclePropertiesPage() {
             successfully and nothing happens.
           </p>
           <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">
-            Every property page below lists its relationships, derived from the AIDL rather than
+            Every property page above lists its relationships, derived from the AIDL rather than
             hand-curated: {linkCount} links in total. Four patterns account for most of them.
           </p>
 
@@ -207,9 +218,6 @@ export default function VehiclePropertiesPage() {
             </ul>
           </div>
         </section>
-
-        <PropertyBrowser rows={rows} />
-      
         </>
       </div>
     </>
