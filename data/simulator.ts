@@ -154,6 +154,44 @@ export type SimState = {
   impact: number // ImpactSensorLocation — IMPACT_DETECTED
   windowLock: boolean // WINDOW_LOCK
   childLock: boolean // DOOR_CHILD_LOCK_ENABLED
+
+  // Display units — the format a value is shown in, not the value itself
+  speedUnits: number // VehicleUnit — VEHICLE_SPEED_DISPLAY_UNITS
+  distanceUnits: number // VehicleUnit — DISTANCE_DISPLAY_UNITS
+  hvacTempUnits: number // VehicleUnit — HVAC_TEMPERATURE_DISPLAY_UNITS
+  tyrePressureUnits: number // VehicleUnit — TIRE_PRESSURE_DISPLAY_UNITS
+  batteryUnits: number // VehicleUnit — EV_BATTERY_DISPLAY_UNITS
+  fuelVolumeUnits: number // VehicleUnit — FUEL_VOLUME_DISPLAY_UNITS
+
+  // Reported companions of an already-covered commanded property
+  currentGear: number // VehicleGear — CURRENT_GEAR
+  turnSignalLight: number // VehicleTurnSignal — TURN_SIGNAL_LIGHT_STATE
+  laneKeepState: number // LaneKeepAssistState — LANE_KEEP_ASSIST_STATE
+  cruiseState: number // CruiseControlState — CRUISE_CONTROL_STATE
+  cabinTempCurrent: number // °C — HVAC_TEMPERATURE_CURRENT
+
+  // Mirrors (more)
+  mirrorLock: boolean // MIRROR_LOCK
+  mirrorAutoFold: boolean // MIRROR_AUTO_FOLD_ENABLED
+  mirrorZ: number // MIRROR_Z_POS
+
+  // Climate (more)
+  hvacMaxDefrost: boolean // HVAC_MAX_DEFROST_ON
+  hvacDual: boolean // HVAC_DUAL_ON
+
+  // Engine and brakes
+  oilTemp: number // °C — ENGINE_OIL_TEMP
+  brakeFluidLow: boolean // BRAKE_FLUID_LEVEL_LOW
+  brakePadWear: number // % — BRAKE_PAD_WEAR_PERCENTAGE
+
+  // Fuel and range
+  fuelLevel: number // mL — FUEL_LEVEL
+  fuelDoorOpen: boolean // FUEL_DOOR_OPEN
+  rangeRemaining: number // m — RANGE_REMAINING
+
+  // Emergency lane keep
+  elkaEnabled: boolean // EMERGENCY_LANE_KEEP_ASSIST_ENABLED
+  elkaState: number // EmergencyLaneKeepAssistState — EMERGENCY_LANE_KEEP_ASSIST_STATE
 }
 
 export const initialState: SimState = {
@@ -235,7 +273,7 @@ export const initialState: SimState = {
   absActive: false,
   tractionActive: false,
 
-  trailer: 2, // NOT_PRESENT
+  trailer: 1, // NOT_PRESENT
 
   hvacAuto: false,
   hvacMaxAc: false,
@@ -281,6 +319,37 @@ export const initialState: SimState = {
   impact: 0,
   windowLock: false,
   childLock: false,
+
+  speedUnits: 0x91, // KILOMETERS_PER_HOUR
+  distanceUnits: 0x23, // KILOMETER
+  hvacTempUnits: 0x30, // CELSIUS
+  tyrePressureUnits: 0x70, // KILOPASCAL
+  batteryUnits: 0x60, // WATT_HOUR
+  fuelVolumeUnits: 0x41, // LITER
+
+  currentGear: 0x0004, // GEAR_PARK, matching the initial commanded gear
+  turnSignalLight: 0, // NONE
+  laneKeepState: 1, // ENABLED
+  cruiseState: 1, // ENABLED
+  cabinTempCurrent: 21,
+
+  mirrorLock: false,
+  mirrorAutoFold: false,
+  mirrorZ: 0,
+
+  hvacMaxDefrost: false,
+  hvacDual: false,
+
+  oilTemp: 90,
+  brakeFluidLow: false,
+  brakePadWear: 35,
+
+  fuelLevel: 0,
+  fuelDoorOpen: false,
+  rangeRemaining: 302000, // 420 km, matching the range already implied by batteryLevel
+
+  elkaEnabled: false,
+  elkaState: 1, // ENABLED
 }
 
 export type ControlKind = 'toggle' | 'range' | 'enum'
@@ -1556,6 +1625,332 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Body',
     affects: 'Rear doors cannot be opened from inside.',
+  },
+
+  // ---- Units & display -------------------------------------------------
+  // The value and its display unit are always two separate properties — the
+  // vehicle speed control above already says so. These are that second half,
+  // made real: change one and the cluster reformats the value it already had.
+  {
+    key: 'speedUnits',
+    property: 'VEHICLE_SPEED_DISPLAY_UNITS',
+    label: 'Speed units',
+    kind: 'enum',
+    group: 'Units & display',
+    affects: 'Reformats the cluster speed readout. PERF_VEHICLE_SPEED itself does not change.',
+    options: [
+      { value: 0x91, label: 'KILOMETERS_PER_HOUR' },
+      { value: 0x90, label: 'MILES_PER_HOUR' },
+      { value: 0x01, label: 'METER_PER_SEC' },
+    ],
+  },
+  {
+    key: 'distanceUnits',
+    property: 'DISTANCE_DISPLAY_UNITS',
+    label: 'Distance units',
+    kind: 'enum',
+    group: 'Units & display',
+    affects: 'Reformats the odometer and range readouts.',
+    options: [
+      { value: 0x23, label: 'KILOMETER' },
+      { value: 0x24, label: 'MILE' },
+    ],
+  },
+  {
+    key: 'hvacTempUnits',
+    property: 'HVAC_TEMPERATURE_DISPLAY_UNITS',
+    label: 'Temperature units',
+    kind: 'enum',
+    group: 'Units & display',
+    affects: 'Reformats every temperature on the cluster and centre screen — target, cabin, outside.',
+    options: [
+      { value: 0x30, label: 'CELSIUS' },
+      { value: 0x31, label: 'FAHRENHEIT' },
+    ],
+  },
+  {
+    key: 'tyrePressureUnits',
+    property: 'TIRE_PRESSURE_DISPLAY_UNITS',
+    label: 'Tyre pressure units',
+    kind: 'enum',
+    group: 'Units & display',
+    affects: 'Reformats the tyre pressure line on the cluster.',
+    options: [
+      { value: 0x70, label: 'KILOPASCAL' },
+      { value: 0x71, label: 'PSI' },
+      { value: 0x72, label: 'BAR' },
+    ],
+  },
+  {
+    key: 'batteryUnits',
+    property: 'EV_BATTERY_DISPLAY_UNITS',
+    label: 'Battery units',
+    kind: 'enum',
+    group: 'Units & display',
+    affects: 'Adds a raw-energy figure beside the battery percentage.',
+    note: 'Assumes the 58 kWh pack from INFO_EV_BATTERY_CAPACITY, shown beside the 3D view.',
+    options: [
+      { value: 0x60, label: 'WATT_HOUR' },
+      { value: 0x65, label: 'KILOWATT_HOUR' },
+      { value: 0x64, label: 'AMPERE_HOURS' },
+    ],
+  },
+  {
+    key: 'fuelVolumeUnits',
+    property: 'FUEL_VOLUME_DISPLAY_UNITS',
+    label: 'Fuel volume units',
+    kind: 'enum',
+    group: 'Units & display',
+    affects: 'Reformats the fuel level line on the cluster.',
+    options: [
+      { value: 0x41, label: 'LITER' },
+      { value: 0x42, label: 'US_GALLON' },
+      { value: 0x43, label: 'IMPERIAL_GALLON' },
+    ],
+  },
+
+  // ---- Reported companions ----------------------------------------------
+  {
+    key: 'currentGear',
+    property: 'CURRENT_GEAR',
+    label: 'Current gear (actual)',
+    kind: 'enum',
+    group: 'Motion & powertrain',
+    affects: 'What the transmission is really in — the cluster shows both if they differ.',
+    reported: true,
+    note: 'GEAR_SELECTION is the driver\'s lever position; this is what the gearbox did about it. Set them apart to see a shift in progress.',
+    options: [
+      { value: 0x0004, label: 'GEAR_PARK' },
+      { value: 0x0002, label: 'GEAR_REVERSE' },
+      { value: 0x0001, label: 'GEAR_NEUTRAL' },
+      { value: 0x0008, label: 'GEAR_DRIVE' },
+      { value: 0x0010, label: 'GEAR_1' },
+      { value: 0x0020, label: 'GEAR_2' },
+    ],
+  },
+  {
+    key: 'turnSignalLight',
+    property: 'TURN_SIGNAL_LIGHT_STATE',
+    label: 'Turn signal light (actual)',
+    kind: 'enum',
+    group: 'Lights',
+    affects: 'What the bulb is really doing, independent of the switch.',
+    reported: true,
+    note: 'TURN_SIGNAL_STATE is the stalk position. In a real car these normally agree; a value that disagrees is what a bulb-out fault looks like in the log.',
+    options: [
+      { value: 0, label: 'NONE' },
+      { value: 1, label: 'RIGHT' },
+      { value: 2, label: 'LEFT' },
+    ],
+  },
+  {
+    key: 'laneKeepState',
+    property: 'LANE_KEEP_ASSIST_STATE',
+    label: 'Lane keep state',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'ENABLED means armed; ACTIVATED_STEER_* means it is actually turning the wheel right now.',
+    reported: true,
+    requires: 'laneKeepEnabled',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'ENABLED' },
+      { value: 2, label: 'ACTIVATED_STEER_LEFT' },
+      { value: 3, label: 'ACTIVATED_STEER_RIGHT' },
+      { value: 4, label: 'USER_OVERRIDE' },
+    ],
+  },
+  {
+    key: 'cruiseState',
+    property: 'CRUISE_CONTROL_STATE',
+    label: 'Cruise control state',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'ACTIVATED means it is actually holding the target speed; ENABLED alone just means it is armed.',
+    reported: true,
+    requires: 'cruiseEnabled',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'ENABLED' },
+      { value: 2, label: 'ACTIVATED' },
+      { value: 3, label: 'USER_OVERRIDE' },
+      { value: 4, label: 'SUSPENDED' },
+      { value: 5, label: 'FORCED_DEACTIVATION_WARNING' },
+    ],
+  },
+  {
+    key: 'cabinTempCurrent',
+    property: 'HVAC_TEMPERATURE_CURRENT',
+    label: 'Cabin temperature (actual)',
+    kind: 'range',
+    group: 'Climate',
+    affects: 'What the cabin sensor actually reads.',
+    reported: true,
+    min: -10,
+    max: 45,
+    step: 0.5,
+    unit: '°C',
+    note: 'HVAC_TEMPERATURE_SET is the target you asked for; this is what the sensor sees. The panel already shows a simulated CABIN reading driven by the target and elapsed time — this control is the property behind that number, adjustable on its own to show it is a separate write.',
+  },
+
+  // ---- Mirrors (more) ----------------------------------------------------
+  {
+    key: 'mirrorLock',
+    property: 'MIRROR_LOCK',
+    label: 'Mirror controls locked',
+    kind: 'toggle',
+    group: 'Body',
+    affects: 'A parental-control style lock — the angle and fold controls stop responding.',
+  },
+  {
+    key: 'mirrorAutoFold',
+    property: 'MIRROR_AUTO_FOLD_ENABLED',
+    label: 'Auto-fold on lock',
+    kind: 'toggle',
+    group: 'Body',
+    affects: 'Enables the behaviour; MIRROR_FOLD above is still the property that actually folds them.',
+  },
+  {
+    key: 'mirrorZ',
+    property: 'MIRROR_Z_POS',
+    label: 'Mirror tilt',
+    kind: 'range',
+    group: 'Body',
+    affects: 'Tilts the mirror glass up and down — the same glass MIRROR_Y_POS swings side to side.',
+    min: -20,
+    max: 20,
+    step: 5,
+    unit: '°',
+    note: 'Two axes, two properties, one piece of glass.',
+  },
+
+  // ---- Climate (more) -----------------------------------------------------
+  {
+    key: 'hvacMaxDefrost',
+    property: 'HVAC_MAX_DEFROST_ON',
+    label: 'Max defrost',
+    kind: 'toggle',
+    group: 'Climate',
+    affects: 'Forces fan and defrost to maximum to clear the windscreen as fast as possible.',
+    requires: 'hvacPower',
+    note: 'A SEAT-area property, not GLOBAL — every seat can in principle have its own.',
+  },
+  {
+    key: 'hvacDual',
+    property: 'HVAC_DUAL_ON',
+    label: 'Dual zone',
+    kind: 'toggle',
+    group: 'Climate',
+    affects: 'Lets the passenger side hold a different target temperature from the driver side.',
+    requires: 'hvacPower',
+    note: 'Also a SEAT-area property, for the same reason.',
+  },
+
+  // ---- Engine and brakes --------------------------------------------------
+  {
+    key: 'oilTemp',
+    property: 'ENGINE_OIL_TEMP',
+    label: 'Oil temperature',
+    kind: 'range',
+    group: 'Engine & chassis',
+    affects: 'A second temperature line beside coolant — the two do not move together.',
+    reported: true,
+    min: 20,
+    max: 150,
+    step: 1,
+    unit: '°C',
+  },
+  {
+    key: 'brakeFluidLow',
+    property: 'BRAKE_FLUID_LEVEL_LOW',
+    label: 'Brake fluid low',
+    kind: 'toggle',
+    group: 'Engine & chassis',
+    affects: 'Lights a cluster telltale — this one has no safe way to ignore.',
+    reported: true,
+  },
+  {
+    key: 'brakePadWear',
+    property: 'BRAKE_PAD_WEAR_PERCENTAGE',
+    label: 'Brake pad wear',
+    kind: 'range',
+    group: 'Engine & chassis',
+    affects: 'Above 80% worn, the cluster flags it.',
+    reported: true,
+    min: 0,
+    max: 100,
+    step: 5,
+    unit: '%',
+    note: 'A WHEEL-area property — a real vehicle reports one value per wheel. This stands in for all four.',
+  },
+
+  // ---- Fuel and range ------------------------------------------------------
+  {
+    key: 'fuelLevel',
+    property: 'FUEL_LEVEL',
+    label: 'Fuel level',
+    kind: 'range',
+    group: 'Engine & chassis',
+    affects: 'A second energy store, independent of the EV battery above.',
+    reported: true,
+    min: 0,
+    max: 60000,
+    step: 1000,
+    unit: 'mL',
+    format: (ml) => `${(ml / 1000).toFixed(0)} L`,
+    note: 'This simulated vehicle is electric, so it stays at zero unless you move it — the property exists on any vehicle with a combustion component, hybrids included.',
+  },
+  {
+    key: 'fuelDoorOpen',
+    property: 'FUEL_DOOR_OPEN',
+    label: 'Fuel door open',
+    kind: 'toggle',
+    group: 'Body',
+    affects: 'Its own flap, its own property — not the one EV_CHARGE_PORT_OPEN already opens.',
+    note: 'A hybrid reports both properties for two separate doors. This vehicle only really has the charge port; the control is here so the property is not missing from the reference.',
+  },
+  {
+    key: 'rangeRemaining',
+    property: 'RANGE_REMAINING',
+    label: 'Range remaining',
+    kind: 'range',
+    group: 'Electric',
+    affects: 'The distance estimate shown on the cluster next to the battery percentage.',
+    min: 0,
+    max: 600000,
+    step: 5000,
+    unit: 'm',
+    format: (m) => `${Math.round(m / 1000)} km`,
+    note: 'The cluster derives a range from EV_BATTERY_LEVEL by default; drag this to show the real property overriding that estimate.',
+  },
+
+  // ---- Emergency lane keep --------------------------------------------------
+  {
+    key: 'elkaEnabled',
+    property: 'EMERGENCY_LANE_KEEP_ASSIST_ENABLED',
+    label: 'Emergency lane keep',
+    kind: 'toggle',
+    group: 'Driver assistance',
+    affects: 'A harder intervention than ordinary lane keep — steers you back only when a collision is otherwise likely.',
+  },
+  {
+    key: 'elkaState',
+    property: 'EMERGENCY_LANE_KEEP_ASSIST_STATE',
+    label: 'Emergency lane keep state',
+    kind: 'enum',
+    group: 'Driver assistance',
+    affects: 'WARNING_LEFT/RIGHT lights the cluster before steering is actually applied.',
+    reported: true,
+    requires: 'elkaEnabled',
+    options: [
+      { value: 0, label: 'OTHER' },
+      { value: 1, label: 'ENABLED' },
+      { value: 2, label: 'WARNING_LEFT' },
+      { value: 3, label: 'WARNING_RIGHT' },
+      { value: 4, label: 'ACTIVATED_STEER_LEFT' },
+      { value: 5, label: 'ACTIVATED_STEER_RIGHT' },
+      { value: 6, label: 'USER_OVERRIDE' },
+    ],
   },
 ]
 

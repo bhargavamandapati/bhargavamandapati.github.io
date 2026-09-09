@@ -557,6 +557,9 @@ export function createExteriorScene(
     for (const [side, m] of [[1, mirrors.left], [-1, mirrors.right]] as const) {
       m.arm.rotation.y = THREE.MathUtils.damp(m.arm.rotation.y, state.mirrorFold ? side * 1.5 : 0, 6, delta)
       m.glass.rotation.y = THREE.MathUtils.damp(m.glass.rotation.y, (state.mirrorY / 30) * 0.5, 6, delta)
+      // MIRROR_Y_POS swings the glass left/right; MIRROR_Z_POS tilts it up/down —
+      // two properties, the same piece of glass, on a second rotation axis.
+      m.glass.rotation.x = THREE.MathUtils.damp(m.glass.rotation.x, (state.mirrorZ / 20) * 0.4, 6, delta)
       const heat = m.glass.material as THREE.MeshStandardMaterial
       heat.emissive.setHex(0xfb7185)
       heat.emissiveIntensity = THREE.MathUtils.damp(heat.emissiveIntensity, (state.mirrorHeat / 3) * 0.8, 5, delta)

@@ -344,6 +344,21 @@ export function createInteriorScene(
   const dummy = new THREE.Object3D()
 
   // ---- Drawing the cluster ------------------------------------------------
+  /**
+   * Formats a value already held in a fixed internal unit into whatever the
+   * matching *_DISPLAY_UNITS property currently asks for. Every reading on
+   * this cluster is stored once, in one unit, and reformatted here — the same
+   * relationship the property guide describes between a value and its unit.
+   */
+  const fmtSpeed = (ms: number, units: number) =>
+    units === 0x90 ? `${Math.round(ms * 2.237)} mph` : units === 0x01 ? `${ms.toFixed(1)} m/s` : `${Math.round(ms * 3.6)} km/h`
+  const fmtDistanceKm = (km: number, units: number) => (units === 0x24 ? `${Math.round(km * 0.621)} mi` : `${Math.round(km)} km`)
+  const fmtTemp = (c: number, units: number) => (units === 0x31 ? `${Math.round(c * 1.8 + 32)}°F` : `${c.toFixed(1)}°C`)
+  const fmtPressure = (kpa: number, units: number) =>
+    units === 0x71 ? `${Math.round(kpa * 0.145)} psi` : units === 0x72 ? `${(kpa / 100).toFixed(1)} bar` : `${Math.round(kpa)} kPa`
+  const fmtVolume = (l: number, units: number) =>
+    units === 0x42 ? `${(l * 0.264).toFixed(0)} gal` : units === 0x43 ? `${(l * 0.220).toFixed(0)} gal(UK)` : `${l.toFixed(0)} L`
+
   function drawCluster(state: SimState, readout: Readout, elapsed: number) {
     const { ctx, canvas: c } = cluster
     const w = c.width
@@ -363,6 +378,8 @@ export function createInteriorScene(
     }
 
     const kmh = Math.round(readout.effectiveSpeed * 3.6)
+    const speedText = fmtSpeed(readout.effectiveSpeed, state.speedUnits)
+    const [speedNum, speedUnit] = speedText.split(' ')
 
     // Speed arc.
     const cx = w * 0.28
@@ -380,10 +397,10 @@ export function createInteriorScene(
     ctx.fillStyle = '#e6edf6'
     ctx.textAlign = 'center'
     ctx.font = '700 78px ui-sans-serif, system-ui'
-    ctx.fillText(String(kmh), cx, cy + 16)
+    ctx.fillText(speedNum, cx, cy + 16)
     ctx.fillStyle = '#7d8ea6'
     ctx.font = '500 22px ui-monospace, monospace'
-    ctx.fillText('km/h', cx, cy + 52)
+    ctx.fillText(speedUnit, cx, cy + 52)
 
     // RPM arc.
     const rx = w * 0.72
@@ -405,25 +422,57 @@ export function createInteriorScene(
     ctx.font = '500 22px ui-monospace, monospace'
     ctx.fillText('rpm', rx, cy + 48)
 
-    // Gear.
+    // Gear. CURRENT_GEAR is the reported companion of GEAR_SELECTION — the
+    // gearbox's actual state, which can briefly disagree with the lever.
     ctx.fillStyle = '#22d3ee'
     ctx.font = '700 54px ui-monospace, monospace'
-    ctx.fillText(GEAR_LABEL[state.gear] ?? '-', w / 2, h * 0.44)
+    const gearText =
+      state.currentGear !== state.gear
+        ? `${GEAR_LABEL[state.gear] ?? '-'}→${GEAR_LABEL[state.currentGear] ?? '-'}`
+        : (GEAR_LABEL[state.gear] ?? '-')
+    ctx.fillText(gearText, w / 2, h * 0.44)
     ctx.fillStyle = '#4a5568'
     ctx.font = '500 18px ui-monospace, monospace'
-    ctx.fillText(`${state.batteryLevel}%  ·  ${Math.round((state.batteryLevel / 100) * 420)} km`, w / 2, h * 0.62)
-    ctx.fillText(`OUT ${state.outsideTemp}°C   CABIN ${readout.cabinTemp.toFixed(1)}°C`, w / 2, h * 0.72)
+    // RANGE_REMAINING overrides the estimate derived from EV_BATTERY_LEVEL once
+    // it has been set to something other than the default that mirrors it.
+    const rangeKm = state.rangeRemaining !== 302000 ? state.rangeRemaining / 1000 : (state.batteryLevel / 100) * 420
+    const energyText =
+      state.batteryUnits === 0x60
+        ? ` · ${Math.round((state.batteryLevel / 100) * 58000)} Wh`
+        : state.batteryUnits === 0x65
+          ? ` · ${((state.batteryLevel / 100) * 58).toFixed(1)} kWh`
+          : ''
     ctx.fillText(
-      `ODO ${Math.round(state.odometer).toLocaleString('en-GB')} km · CHG LIMIT ${state.chargeLimit}%`,
+      `${state.batteryLevel}%${energyText}  ·  ${fmtDistanceKm(rangeKm, state.distanceUnits)}`,
       w / 2,
-      h * 0.98,
+      h * 0.60,
+    )
+    ctx.fillText(
+      `OUT ${fmtTemp(state.outsideTemp, state.hvacTempUnits)}   CABIN ${fmtTemp(readout.cabinTemp, state.hvacTempUnits)}`,
+      w / 2,
+      h * 0.665,
+    )
+    ctx.fillText(
+      `ODO ${fmtDistanceKm(state.odometer, state.distanceUnits)} · CHG LIMIT ${state.chargeLimit}%`,
+      w / 2,
+      h * 0.86,
+    )
+    // Tyre pressure and fuel had no readout of their own to reformat, so
+    // TIRE_PRESSURE_DISPLAY_UNITS and FUEL_VOLUME_DISPLAY_UNITS had nothing to
+    // act on. This line exists so they do.
+    const minTyre = Math.min(state.tyreFrontLeft, state.tyreFrontRight, state.tyreRearLeft, state.tyreRearRight)
+    ctx.fillText(
+      `TYRES min ${fmtPressure(minTyre, state.tyrePressureUnits)}` +
+        (state.fuelLevel > 0 ? ` · FUEL ${fmtVolume(state.fuelLevel / 1000, state.fuelVolumeUnits)}` : ''),
+      w / 2,
+      h * 0.925,
     )
     const STOPPING = ['OTHER', 'CREEP', 'ROLL', 'HOLD']
     const REGEN = ['UNKNOWN', 'OFF', 'PARTIAL', 'FULL']
     ctx.fillText(
       `${STOPPING[state.stoppingMode] ?? '—'} · REGEN ${REGEN[state.regenState] ?? '—'}`,
       w / 2,
-      h * 0.9,
+      h * 0.73,
     )
     ctx.fillText(
       state.leadDistance > 500
@@ -432,7 +481,7 @@ export function createInteriorScene(
           ? `${(state.chargeRate / 1000).toFixed(0)} W · ${state.chargeCurrentLimit} A · ${Math.round(state.chargeTimeRemaining / 60)} min left`
           : `COOLANT ${Math.round(state.coolantTemp)}°C · BATT ${Math.round(state.batteryTemp)}°C`,
       w / 2,
-      h * 0.82,
+      h * 0.795,
     )
 
     // Telltales. Warnings first, so the row reads worst-first.
@@ -455,8 +504,11 @@ export function createInteriorScene(
       [state.headlights, state.highBeam ? '≡D' : '≡', '#38bdf8'],
       [state.fogLights, 'FOG', '#38bdf8'],
       [state.cabinLights === 1 || state.readingLights === 1, 'LAMP', '#38bdf8'],
-      [state.cruiseEnabled, 'CC', '#5eead4'],
-      [state.laneKeepEnabled, 'LKA', '#5eead4'],
+      // CRUISE_CONTROL_STATE and LANE_KEEP_ASSIST_STATE are the reported
+      // companions of the two ENABLED booleans above: armed is not the same as
+      // actively intervening, and only the state property can tell them apart.
+      [state.cruiseEnabled, state.cruiseState === 2 ? 'CC •' : 'CC', state.cruiseState === 2 ? '#5eead4' : '#38bdf8'],
+      [state.laneKeepEnabled, state.laneKeepState === 2 || state.laneKeepState === 3 ? 'LKA •' : 'LKA', state.laneKeepState === 2 || state.laneKeepState === 3 ? '#5eead4' : '#38bdf8'],
       [state.hvacAc && state.hvacPower, state.hvacMaxAc ? 'MAX A/C' : 'A/C', '#5eead4'],
       [state.regenState > 1, 'REGEN', '#5eead4'],
       [state.chargeState === 1, 'CHG', '#5eead4'],
@@ -471,6 +523,14 @@ export function createInteriorScene(
       [state.wheelLocked, 'LOCKED', '#fbbf24'],
       [state.idleAutoStop && readout.effectiveSpeed < 0.5 && powered, 'AUTO-STOP', '#5eead4'],
       [state.autonomyLevel >= 4, `L${state.autonomyLevel - 1}`, '#5eead4'],
+      [state.brakeFluidLow, 'BRAKE FLUID', '#f87171'],
+      [state.brakePadWear >= 80, 'PADS', '#fbbf24'],
+      [state.oilTemp > 130, 'OIL TEMP', '#f87171'],
+      [state.mirrorLock, 'MIRRORS LOCKED', '#38bdf8'],
+      [state.elkaEnabled && state.elkaState >= 2 && state.elkaState <= 3 && flash, 'ELKA', '#fbbf24'],
+      [state.elkaEnabled && state.elkaState >= 4, 'ELKA', '#f87171'],
+      [state.fuelDoorOpen, 'FUEL DOOR', '#38bdf8'],
+      [state.currentGear !== state.gear, 'SHIFTING', '#fbbf24'],
     ]
     let tx = 34
     let ty = 42
@@ -569,6 +629,8 @@ export function createInteriorScene(
       ['A/C', state.hvacAc],
       ['RECIRC', state.hvacRecirc || state.hvacMaxAc],
       ['AUTO', state.hvacAuto],
+      ['MAX DEFROST', state.hvacMaxDefrost],
+      ['DUAL', state.hvacDual],
     ]
     let x = 40
     ctx.font = '600 20px ui-monospace, monospace'
