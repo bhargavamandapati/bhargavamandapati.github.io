@@ -1,7 +1,7 @@
 /**
  * Guided routes through the curriculum.
  *
- * 128 topics with no entry point is a reference, not a course. Each path is an
+ * 139 topics with no entry point is a reference, not a course. Each path is an
  * ordered walk through material that already exists, with a line on why each
  * step follows the last — the value is the ordering and the reasoning, not new
  * content.
@@ -61,12 +61,17 @@ export const paths: LearningPath[] = [
       { section: 'learn', slug: 'platform-build/soong-and-the-build-system', why: 'How anything gets compiled and into the image.' },
       { section: 'learn', slug: 'platform-build/device-target-configuration', why: 'Product, board and overlays — where a setting belongs.' },
       { section: 'learn', slug: 'car-framework/binder-and-aidl', why: 'The IPC everything above the HAL is built on.' },
+      { section: 'learn', slug: 'performance/binder-saturation-and-jank-budget', why: 'The IPC you just learned, under real load — this is what you will actually be debugging.' },
       { section: 'learn', slug: 'vehicle-data/vhal-fundamentals', why: 'The boundary your work will sit on.' },
       { section: 'learn', slug: 'vehicle-data/writing-a-custom-vhal', why: 'End to end, including the two steps that fail silently.' },
+      { section: 'learn', slug: 'sdv/can-signal-bridging', why: 'The CAN background you already have, mapped onto what VHAL actually reads.' },
       { section: 'learn', slug: 'security/sepolicy-automotive', why: 'The reason your correct service will not start.' },
       { section: 'learn', slug: 'security/permissions-and-treble', why: 'The vendor boundary, and why it constrains you.' },
+      { section: 'learn', slug: 'security/secure-boot-chain-across-ecus', why: 'The trust boundary does not stop at the SoC — neither should your threat model.' },
       { section: 'learn', slug: 'foundations/boot-sequence', why: 'What runs when, and what the camera deadline forces.' },
+      { section: 'learn', slug: 'foundations/property-system-and-init-triggers', why: 'The mechanism every one of those boot stages actually runs on.' },
       { section: 'learn', slug: 'power-boot/car-power-management', why: 'Suspend, resume and Garage Mode — “off” is not off.' },
+      { section: 'learn', slug: 'power-boot/deep-sleep-and-wake-on-can', why: 'What “off” is actually doing, and why a CAN frame — not a button — wakes it back up.' },
       { section: 'learn', slug: 'build-test/debugging-toolkit', why: 'Triage in the order that saves the most time.' },
     ],
   },
@@ -83,8 +88,10 @@ export const paths: LearningPath[] = [
       { section: 'learn', slug: 'vehicle-data/signal-path-end-to-end', why: 'Sensor to pixel, named layer by layer.' },
       { section: 'learn', slug: 'car-framework/car-service-architecture', why: 'What Car Service is, and what happens when it dies.' },
       { section: 'learn', slug: 'car-framework/binder-and-aidl', why: 'Expect to be asked how the IPC works.' },
+      { section: 'learn', slug: 'performance/binder-saturation-and-jank-budget', why: 'The natural follow-up question: what happens when that IPC is under load.' },
       { section: 'learn', slug: 'security/sepolicy-automotive', why: 'Reading an AVC denial out loud is a common exercise.' },
       { section: 'learn', slug: 'security/permissions-and-treble', why: 'Signature vs privileged, and why the allowlist exists.' },
+      { section: 'learn', slug: 'security/secure-boot-chain-across-ecus', why: 'A good interviewer asks what happens past the SoC — have an answer ready.' },
       { section: 'learn', slug: 'car-framework/multi-user', why: 'The headless user model separates people who have shipped from people who have read.' },
       { section: 'learn', slug: 'power-boot/boot-time-optimisation', why: 'Where the seconds really go.' },
       { section: 'learn', slug: 'compliance/functional-safety', why: 'Know why Android is QM and what that implies.' },
