@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ChevronDown } from 'lucide-react'
 
 /**
  * Static vehicle identity.
@@ -24,13 +25,23 @@ const slug = (p: string) => p.toLowerCase().replace(/_/g, '-')
 
 export function VehicleInfo() {
   return (
-    <div className="card p-5">
-      <h2 className="font-mono text-xs uppercase tracking-wider text-subtle">This vehicle</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted">
-        Static properties, read once and cached. They have nothing to animate, which is exactly why
-        they sit outside the 3D view.
-      </p>
-      <dl className="mt-4 space-y-2.5">
+    // Collapsed by default: none of this is a control you came here to set,
+    // and at ten rows it used to be the first thing between you and one that
+    // is.
+    <details className="group card overflow-hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="font-mono text-xs uppercase tracking-wider text-subtle">This vehicle</span>
+          <span className="mt-1 block text-sm leading-relaxed text-muted">
+            Static properties, read once and cached — {INFO.length} of them.
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden
+          className="size-4 shrink-0 text-subtle transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <dl className="space-y-2.5 px-5 pb-5">
         {INFO.map((row) => (
           <div key={row.property} className="border-b border-line pb-2.5 last:border-b-0 last:pb-0">
             <dt>
@@ -48,6 +59,6 @@ export function VehicleInfo() {
           </div>
         ))}
       </dl>
-    </div>
+    </details>
   )
 }

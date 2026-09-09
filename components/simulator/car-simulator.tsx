@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Pause, Play, RotateCcw,
-  Info } from 'lucide-react'
+import { ChevronDown, ExternalLink, Pause, Play, RotateCcw,
+  Info, Search, X } from 'lucide-react'
 import { isFreeControl } from '@/data/access'
 import { LockBadge } from '@/components/premium/lock-badge'
 import {
@@ -19,6 +19,13 @@ import { VehicleInfo } from './vehicle-info'
 import { cn } from '@/lib/utils'
 
 const slug = (property: string) => property.toLowerCase().replace(/_/g, '-')
+const groupSlug = (group: string) => group.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+/** True when a control's label or the property it stands for matches the search. */
+function controlMatches(control: Control, query: string): boolean {
+  if (!query) return true
+  return control.label.toLowerCase().includes(query) || control.property.toLowerCase().includes(query)
+}
 
 const GEAR: Record<number, string> = { 0x0004: 'P', 0x0002: 'R', 0x0001: 'N', 0x0008: 'D' }
 
@@ -83,6 +90,41 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
   const [failed, setFailed] = useState(false)
   const logId = useRef(0)
   const groupId = useId()
+  const searchId = useId()
+
+  // 128 controls across 12 groups is a lot to scroll past to set one thing —
+  // search filters by label or property name, and groups stay collapsed
+  // until opened (or until they hold a search match) rather than all being
+  // expanded at once.
+  const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query.trim().toLowerCase())
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set())
+  const searching = deferredQuery !== ''
+
+  const toggleGroup = useCallback((group: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }, [])
+
+  const jumpToGroup = useCallback(
+    (group: string) => {
+      setQuery('')
+      setExpandedGroups((prev) => new Set(prev).add(group))
+      // Let the details element open before scrolling to it, or the target
+      // is measured at its collapsed height and the scroll falls short.
+      requestAnimationFrame(() => {
+        document.getElementById(`${groupId}-group-${groupSlug(group)}`)?.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'start',
+        })
+      })
+    },
+    [groupId],
+  )
 
   // Keep a ref in sync so the animation loop never closes over stale state.
   useEffect(() => {
@@ -201,10 +243,39 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
     return () => cancelAnimationFrame(rafRef.current)
   }, [ready, running])
 
-  const grouped = useMemo(
+  const allGrouped = useMemo(
     () => controlGroups.map((group) => ({ group, items: controls.filter((c) => c.group === group) })),
     [],
   )
+  const grouped = useMemo(
+    () =>
+      allGrouped
+        .map(({ group, items }) => ({
+          group,
+          total: items.length,
+          items: items.filter((c) => controlMatches(c, deferredQuery)),
+        }))
+        .filter(({ items }) => items.length > 0),
+    [allGrouped, deferredQuery],
+  )
+  const matchCount = useMemo(() => grouped.reduce((n, g) => n + g.items.length, 0), [grouped])
+
+  // A group with a match opens for the length of the search — kept open
+  // afterwards too, rather than snapping shut the moment the query clears.
+  useEffect(() => {
+    if (!searching) return
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      let changed = false
+      for (const { group } of grouped) {
+        if (!next.has(group)) {
+          next.add(group)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [searching, grouped])
 
   const stopped = stationaryReasons(state)
 
@@ -387,32 +458,111 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
 
       {/* ---- Controls ---- */}
       <div className="min-w-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
-        <div className="mb-5">
+        <div className="sticky top-0 z-10 -mx-px bg-bg pb-3">
+          <label htmlFor={searchId} className="sr-only">
+            Search the {controls.length} simulator controls by label or property
+          </label>
+          <div className="relative">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle"
+            />
+            <input
+              id={searchId}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Search ${controls.length} controls — label or property`}
+              className="w-full rounded-lg border border-line bg-surface py-2.5 pl-9 pr-9 text-sm text-fg outline-none placeholder:text-subtle focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer rounded p-1 text-subtle hover:text-fg"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-3" aria-live="polite">
+            {searching ? (
+              <p className="font-mono text-xs text-muted">
+                {matchCount} of {controls.length} controls match &ldquo;{query.trim()}&rdquo;
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {allGrouped.map(({ group, items }) => (
+                  <button
+                    key={group}
+                    type="button"
+                    onClick={() => jumpToGroup(group)}
+                    className="chip cursor-pointer transition-colors hover:border-accent/50 hover:text-accent"
+                  >
+                    {group}
+                    <span className="text-subtle">· {items.length}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 mb-5">
           <VehicleInfo />
         </div>
-        {/* min-w-0 on the fieldset: unlike a div it will not shrink below its
+
+        {/* min-w-0 on details: unlike a div it will not shrink below its
             content by default, and at 320px that pushed the page 4px wider
             than the viewport. */}
-        {grouped.map(({ group, items }) => (
-          <fieldset key={group} className="mb-5 min-w-0">
-            <legend className="mb-2 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
-              {group}
-            </legend>
-            <div className="card divide-y divide-line">
-              {items.map((control) => (
-                <ControlRow
-                  key={`${control.key}-${control.label}`}
-                  control={control}
-                  value={state[control.key]}
-                  gatedBy={gated(control)}
-                  locked={!unlocked && !isFreeControl(control.property)}
-                  idPrefix={groupId}
-                  onChange={(v) => set(control.key, v as never, control, gated(control))}
+        {grouped.length === 0 && (
+          <p className="rounded-lg border border-line bg-surface p-4 text-sm text-muted">
+            Nothing matches &ldquo;{query.trim()}&rdquo;. Try the property name instead of the label,
+            or clear the search to browse by group.
+          </p>
+        )}
+        {grouped.map(({ group, items, total }) => {
+          const open = expandedGroups.has(group)
+          return (
+            <details
+              key={group}
+              id={`${groupId}-group-${groupSlug(group)}`}
+              open={open}
+              onToggle={(e) => {
+                if (e.currentTarget.open !== open) toggleGroup(group)
+              }}
+              className="group mb-3 min-w-0 scroll-mt-4"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3.5 py-2.5 font-mono text-[0.7rem] uppercase tracking-wider text-subtle transition-colors hover:border-line-strong hover:text-fg [&::-webkit-details-marker]:hidden">
+                <span>
+                  {group}
+                  <span className="ml-1.5 text-subtle">
+                    · {searching ? `${items.length} of ${total}` : total}
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="size-3.5 shrink-0 transition-transform group-open:rotate-180"
                 />
-              ))}
-            </div>
-          </fieldset>
-        ))}
+              </summary>
+              <div className="card mt-2 divide-y divide-line">
+                {items.map((control) => (
+                  <ControlRow
+                    key={`${control.key}-${control.label}`}
+                    control={control}
+                    value={state[control.key]}
+                    gatedBy={gated(control)}
+                    locked={!unlocked && !isFreeControl(control.property)}
+                    idPrefix={groupId}
+                    onChange={(v) => set(control.key, v as never, control, gated(control))}
+                  />
+                ))}
+              </div>
+            </details>
+          )
+        })}
       </div>
     </div>
   )
