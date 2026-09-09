@@ -1,0 +1,131 @@
+---
+title: "Echo cancellation and noise suppression in the cabin"
+description: "Ducking decides who gets to play. Routing decides where it comes out. Neither one explains why the person on the other end of a hands-free call can hear their own voice a beat later — that is a different layer entirely."
+order: 4
+difficulty: "Advanced"
+tags: ["Audio", "AEC", "Hands-free"]
+sources:
+  - label: "Audio policy configuration"
+    href: "https://source.android.com/docs/core/audio/implement-policy"
+  - label: "Audio pre-processing effects source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/av/media/libeffects/preprocessing/"
+  - label: "audiofx framework source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/media/java/android/media/audiofx/"
+---
+
+A hands-free call sounds fine to the driver and terrible to the person on the
+other end, who keeps hearing their own words echoed back a fraction of a
+second late over road noise. Routing is correct — the mic is picking up the
+right signal, on the right bus, at the right gain. The problem this topic
+covers sits one layer below all of that: what happens to the signal between
+the microphone and the network, before routing ever gets involved.
+
+<Plain>
+In a cabin, the call's own output is playing on the same speakers the
+microphone can hear. Without correction, the far end hears themselves
+delayed by however long it took the sound to leave the speaker, bounce
+around the cabin, and re-enter the mic — a classic echo. **Acoustic echo
+cancellation (AEC)** models that acoustic path and subtracts the predicted
+echo from the mic signal before it is ever sent. **Noise suppression (NS)**
+is a separate, unrelated step that reduces road, wind and HVAC noise picked
+up by the same microphone.
+</Plain>
+
+## Where this sits in the signal path
+
+AEC and NS are **pre-processing effects** applied to the *capture* path —
+between the microphone HAL and whatever consumes the signal (the modem stack
+for a cellular call, the voice-assistant pipeline for wake-word detection) —
+not the playback path that routing and ducking govern. They run as an
+`AudioEffect` chain attached to an `AudioRecord` session, most commonly
+implemented in native code in the platform's pre-processing effects bundle
+and exposed to apps through the public `AcousticEchoCanceler` and
+`NoiseSuppressor` effect classes.
+
+```text title="Capture-side processing, roughly"
+speaker output  ──────────────┐
+                               │ (acoustic path: bounces around the cabin)
+microphone  ── raw capture ──►│
+                               ▼
+                    AEC: subtract predicted echo
+                         (needs a copy of what the speaker is playing)
+                               │
+                               ▼
+                    NS: suppress road/wind/HVAC noise
+                               │
+                               ▼
+                    processed signal → modem stack / voice pipeline
+```
+
+The detail worth sitting with: **AEC needs to know what the speaker is
+playing**, at the same time it is processing what the mic heard, in order to
+subtract it. That reference signal has to be routed to the effect
+correctly and with the right timing — which is exactly the kind of thing
+that is invisible until it is wrong.
+
+## Why AEC is the one that breaks quietly
+
+Noise suppression failing produces an obviously noisy call — easy to notice,
+easy to report. AEC failing produces something much harder to self-diagnose:
+the *driver* hears nothing wrong, because they are not the one hearing the
+echo. Only the far-end party experiences it, and by the time that feedback
+reaches an engineer it has passed through a support ticket, a vague
+description, and often weeks of delay.
+
+<Analogy title="A one-way mirror on the wrong wall">
+Echo cancellation is like a soundproofed booth: from inside, everything
+sounds normal, because the booth is doing its job of stopping the sound from
+looping back. If the booth's seal is broken, the person inside genuinely
+cannot tell — they hear their own voice exactly once, same as always. It is
+only the person listening from outside who hears it twice.
+</Analogy>
+
+## Common bring-up failures
+
+| Symptom | Usual cause |
+| --- | --- |
+| Far end hears a full, undamped echo | AEC reference signal not routed to the effect at all |
+| Echo present only above a certain volume | Reference path clipping or gain mismatch between actual playback level and what AEC is told the level is |
+| Echo returns after a media-to-call handoff | Reference signal still pointing at the previous audio source after routing changed |
+| Voice sounds robotic or clipped | NS tuned too aggressively for cabin noise floor, suppressing speech along with noise |
+| Wake-word detection works in a quiet cabin, fails at speed | NS or AEC not applied to the assistant's capture session at all — a different `AudioRecord` than the call's |
+
+<Scenario title="On a real programme">
+A call-quality regression appears only after a media-playback-to-call
+handoff, never on a call placed from an idle cabin. The call's AEC is
+correctly configured; the reference signal it receives is simply the wrong
+one — still wired to the media stream that was routing to the speakers a
+moment earlier, because the handoff swapped the *audible* output but nobody
+updated which stream the effect chain treats as its echo reference. The two
+routing decisions — what plays, and what AEC is told is playing — are
+configured in different places, and it is entirely possible to get one right
+and the other stale.
+</Scenario>
+
+<Callout type="tip" title="Test with a real acoustic loop, not a synthetic signal">
+AEC tuning that looks perfect against a directly-injected test tone can still
+fail in the vehicle, because the actual acoustic path — cabin geometry,
+speaker placement, seat foam absorption — is what the algorithm has to model.
+Validate with a real microphone hearing a real speaker in the actual cabin,
+not a wire-level loopback.
+</Callout>
+
+<Recap>
+- AEC and NS are pre-processing effects on the **capture** path, separate
+  from the routing and ducking decisions covered earlier in this module.
+- AEC needs an accurate, correctly-timed copy of what is currently playing
+  to subtract it from the mic signal — get that reference signal wrong and
+  cancellation silently fails.
+- The driver cannot self-diagnose a broken AEC — only the far-end party
+  hears the echo — which is why this class of bug tends to arrive as a
+  vague, delayed complaint rather than an obvious local symptom.
+- A stream-routing change (like a media-to-call handoff) can leave the AEC
+  reference pointing at the wrong source even when the audible routing is
+  correct.
+- Tune and validate against the real acoustic path in the vehicle; a
+  synthetic test-tone loopback will not reveal cabin-specific echo.
+</Recap>
+
+## Next
+
+Bluetooth — where audio, telephony and contacts all arrive at once.

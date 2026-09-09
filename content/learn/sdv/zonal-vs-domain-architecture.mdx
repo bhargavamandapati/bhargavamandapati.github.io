@@ -1,0 +1,142 @@
+---
+title: "Zonal vs domain E/E architecture"
+description: "Why the vehicle computer AAOS runs on is shaped like it is — the shift from one ECU per function to one controller per physical zone, and what that move costs and buys."
+order: 3
+difficulty: "Advanced"
+tags: ["SDV", "E/E Architecture", "Zonal"]
+sources:
+  - label: "Android Virtualization Framework"
+    href: "https://source.android.com/docs/core/virtualization"
+  - label: "COVESA — automotive connectivity"
+    href: "https://covesa.global/"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+---
+
+The previous topic assumed a "vehicle computer" running AAOS as one guest
+among several. This one is about why that computer exists at all, and why it
+is wired to the rest of the car so differently from the seventy-plus ECUs a
+premium vehicle carried a decade ago.
+
+<Plain>
+The old way: one small computer per function — one for windows, one for
+seats, one for the instrument cluster — each wired directly to its own
+sensors and actuators, wherever in the car they happen to sit. The new way:
+a handful of powerful **zone controllers**, one per physical region of the
+car (front, rear, left, right), each wired only to whatever hardware is
+physically nearby. Software that used to run on the function's own ECU now
+runs centrally, and reaches its sensors through the nearest zone controller
+instead of a dedicated wire.
+</Plain>
+
+## Domain architecture: organised by function
+
+A domain architecture groups ECUs by what they do — a body domain, a
+powertrain domain, an infotainment domain — each with its own domain
+controller and its own network segment, bridged by a central gateway. This is
+still how most vehicles on the road today are built, and it maps cleanly onto
+org charts: the body team owns the body domain, the powertrain team owns
+theirs, and integration happens mostly at the gateway.
+
+Its cost is wiring. A seat control function needs wires running from wherever
+the seat physically is to wherever the body domain controller lives, which
+might be on the other side of the car. Multiply that by every function and a
+modern vehicle's harness becomes one of the heaviest, most expensive, and
+most failure-prone parts of the car — sometimes over 50 kg of copper with
+thousands of connection points, mostly there to carry signals to a
+functionally organised controller rather than a physically nearby one.
+
+## Zonal architecture: organised by location
+
+A zonal architecture inverts the grouping. Each physical zone of the vehicle
+gets one powerful zone controller wired only to whatever is physically
+nearby — the front-left zone controller talks to the front-left door, seat,
+and window motor over a short local harness, regardless of which "domain"
+those functions conceptually belong to. The zone controllers then connect to
+a small number of high-bandwidth central computers — often exactly the kind
+of multi-guest vehicle computer the previous topic described — over a
+backbone network, frequently Automotive Ethernet.
+
+<Analogy title="Wiring a house by room, not by circuit type">
+Domain architecture is like running a dedicated cable from every lighting
+switch in the house back to one "lighting" panel in the basement, and every
+outlet back to a separate "power" panel, no matter how far each switch or
+outlet actually is from its panel. Zonal architecture is running one cable
+from each room to a box in that room, and letting the boxes talk to each
+other over a single shared backbone. The room-based wiring is shorter and
+cheaper to install; the trade is that a room's box now has to speak for
+several different kinds of function it never used to touch.
+</Analogy>
+
+## What moves, and what stays
+
+The physical sensor and actuator interfaces do not change — a seat motor
+still needs a local controller close enough to drive it in real time. What
+moves is the **application logic**: "is the seat allowed to move while a
+child lock is active" is no longer decided on a dedicated seat ECU, it runs
+as software on a central compute node, reachable from any zone controller
+over the backbone. This is the precondition for the whole software-defined
+vehicle idea in the earlier topics: logic that used to be welded to one piece
+of hardware becomes a deployable, updatable service, because it no longer
+lives on hardware dedicated to that one function.
+
+```text title="Where a seat-position update travels, roughly"
+seat motor position sensor
+  → local zone controller (front-left), reads it over a short local bus
+  → backbone network (Ethernet) to central compute
+  → seat control service (software, not a dedicated ECU) applies logic
+  → command sent back down the same path to the seat motor driver
+```
+
+<Scenario title="On a real programme">
+A supplier delivers a zone controller that is functionally correct in
+isolation but adds nine milliseconds of round-trip latency to what used to be
+a same-board control loop on the old domain ECU. Nobody notices in unit
+testing. It shows up as a barely perceptible lag in seat memory recall — a
+feature nobody thought of as latency-sensitive, because on the old
+architecture it never had to travel anywhere. Zonal architectures move
+control loops that used to be entirely local onto a shared network, and any
+function that was implicitly relying on "same board, no meaningful delay"
+needs its timing budget re-checked, not assumed.
+</Scenario>
+
+## Why this matters for an AAOS engineer specifically
+
+AAOS itself does not care which architecture the vehicle uses — the VHAL
+boundary already abstracts "how do I get this value" away from "which ECU
+physically owns it," which is exactly what makes the transition possible
+without rewriting the app layer. What changes for you is *reliability
+expectations*: a zonal architecture means a single central compute failure
+can affect functions that used to be isolated on entirely separate ECUs, so
+the software layer picks up more of the responsibility for degrading
+gracefully — the same responsibility that mixed-criticality virtualization
+was designed to contain.
+
+<Callout type="note" title="Zonal is a wiring decision, not a software one">
+Nothing about VHAL, Car Service, or the app layer changes based on which E/E
+architecture sits underneath. What changes is where latency and failure
+domains sit — worth checking explicitly for any feature that assumes a
+same-board response time, because that assumption quietly held on the old
+architecture and does not automatically hold on the new one.
+</Callout>
+
+<Recap>
+- **Domain** architecture groups ECUs by function, with long wiring runs back
+  to a function-specific controller; **zonal** architecture groups them by
+  physical location, with short local runs to a zone controller and a
+  backbone network between zones.
+- Zonal architecture is what makes a single powerful vehicle computer
+  practical — it turns application logic that used to be welded to dedicated
+  hardware into a deployable service reachable from any zone.
+- VHAL already hides "which physical ECU owns this" from app code, which is
+  exactly why the app layer does not need to change when the underlying
+  wiring topology does.
+- What does change is latency and failure-domain assumptions — control loops
+  that used to be same-board now cross a network, and anything relying on
+  that used to be free now needs its budget checked.
+</Recap>
+
+## Next
+
+The signals underneath the service mesh — bridging classic CAN and LIN into
+that same Android world.

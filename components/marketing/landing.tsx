@@ -26,12 +26,12 @@ import { EmailAccessButton } from '@/components/premium/email-access-button'
  */
 
 const LIBRARY = [
-  { icon: BookOpen, count: '78', label: 'Learn AAOS topics', note: 'Foundations to homologation, in reading order.' },
-  { icon: Layers, count: '36', label: 'SDV topics', note: 'Service-oriented architecture, data, cloud and cluster.' },
-  { icon: Car, count: '280', label: 'Vehicle properties', note: 'Every property, its enums, permissions and dependencies.' },
-  { icon: Boxes, count: '14', label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.' },
-  { icon: Gauge, count: '2', label: 'Live simulators', note: 'Change a property and watch the car respond.' },
-  { icon: Search, count: '98', label: 'Glossary terms', note: 'The vocabulary, defined without assuming you know it.' },
+  { icon: BookOpen, count: '89', label: 'Learn AAOS topics', note: 'Foundations to homologation, in reading order.', href: '/learn/' },
+  { icon: Layers, count: '36', label: 'SDV topics', note: 'Service-oriented architecture, data, cloud and cluster.', href: '/sdv/' },
+  { icon: Car, count: '280', label: 'Vehicle properties', note: 'Every property, its enums, permissions and dependencies.', href: '/learn/vehicle-properties/' },
+  { icon: Boxes, count: '14', label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.', href: '/tutorials/' },
+  { icon: Gauge, count: '2', label: 'Live simulators', note: 'Change a property and watch the car respond.', href: '/learn/vehicle-simulator/' },
+  { icon: Search, count: '98', label: 'Glossary terms', note: 'The vocabulary, defined without assuming you know it.', href: '/glossary/' },
 ]
 
 const AUDIENCE = [
@@ -100,10 +100,17 @@ export function Landing() {
           </h2>
           <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
             {LIBRARY.map((item) => (
-              <div key={item.label} className="bg-bg p-6">
+              <div
+                key={item.label}
+                className="group relative bg-bg p-6 transition-colors hover:bg-bg-subtle"
+              >
                 <item.icon aria-hidden className="size-5 text-accent" />
                 <p className="mt-4 font-display text-3xl font-semibold tabular-nums">{item.count}</p>
-                <p className="mt-1 text-sm font-medium text-fg">{item.label}</p>
+                <p className="mt-1 text-sm font-medium text-fg">
+                  <Link href={item.href} className="after:absolute after:inset-0">
+                    {item.label}
+                  </Link>
+                </p>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{item.note}</p>
               </div>
             ))}
@@ -149,7 +156,7 @@ export function Landing() {
                 Full access
               </p>
               <ul className="mt-5 space-y-3 text-sm text-muted">
-                <li>All 78 Learn AAOS topics and all 36 SDV topics</li>
+                <li>All 89 Learn AAOS topics and all 36 SDV topics</li>
                 <li>The complete vehicle property reference, all 280 of them</li>
                 <li>
                   <span className="inline-flex items-center gap-1.5">

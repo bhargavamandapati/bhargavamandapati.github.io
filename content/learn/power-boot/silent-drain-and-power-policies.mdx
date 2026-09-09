@@ -1,0 +1,138 @@
+---
+title: "Power policies, power components and the silent-drain budget"
+description: "CarPowerManagementService does not just decide on or off — it decides which components stay powered in between, and an OEM will fail a vehicle for a few extra milliamps left running overnight."
+order: 4
+difficulty: "Advanced"
+tags: ["Power", "CPMS", "Power Policy"]
+sources:
+  - label: "Power policy"
+    href: "https://source.android.com/docs/automotive/power/power_policy"
+  - label: "Garage Mode"
+    href: "https://source.android.com/docs/automotive/power/garage_mode"
+  - label: "Power management for automotive"
+    href: "https://source.android.com/docs/automotive/power"
+---
+
+A suspended head unit is not a head unit drawing zero current. Something has
+to hold DRAM in self-refresh, something has to listen for the CAN wakeup
+covered in the previous topic, and depending on the power policy in force,
+something else might be holding a display controller or an audio DSP awake
+for a feature the driver asked for. Every milliamp of that adds up over a
+parked vehicle's lifetime, against a 12 V battery that also has to reliably
+crank a starter motor after three weeks in long-term parking.
+
+<Plain>
+"Power state" is a single value: on, suspended, off. A **power policy** is a
+much finer-grained thing layered on top of it — a named list of which
+individual components (display, audio, Wi-Fi, Bluetooth, cellular, NFC…) are
+allowed to be powered, independent of whether the overall system state is on
+or off. Two vehicles can both be "suspended" and draw very different current,
+because they are running different power policies.
+</Plain>
+
+## Power components, not power states
+
+`CarPowerManagementService` (CPMS) defines a fixed set of **power
+components** — `AUDIO`, `MEDIA`, `DISPLAY`, `BLUETOOTH`, `WIFI`, `CELLULAR`,
+`LOCATION`, `MICROPHONE`, `CPU`, and more — each independently switchable. A
+**power policy** is simply a named on/off vector across that set, defined in
+XML and applied by the vehicle's power state logic, VHAL, or a
+system-privileged vendor service.
+
+```xml title="A representative power_policy configuration"
+<powerPolicy>
+  <policyGroups>
+    <policyGroup id="wake_up_config">
+      <policy state="WaitForVHAL" id="policy_id_no_display"/>
+      <policy state="On" id="policy_id_all_on"/>
+    </policyGroup>
+  </policyGroups>
+
+  <policies>
+    <policy id="policy_id_no_display" other="untouched">
+      <component id="DISPLAY">off</component>
+      <component id="AUDIO">off</component>
+    </policy>
+    <policy id="policy_id_all_on" other="untouched">
+      <component id="DISPLAY">on</component>
+      <component id="AUDIO">on</component>
+    </policy>
+  </policies>
+</powerPolicy>
+```
+
+`other="untouched"` matters: a policy only has to name the components it
+*changes*. Everything else keeps whatever state the previous policy left it
+in — which is convenient, and also exactly how a component gets left on by
+accident when nobody explicitly turns it off in a later policy.
+
+## Where policies are actually applied
+
+Policies are usually driven by VHAL or a system-privileged vendor service
+reacting to the vehicle's own power-state signal, not chosen by an app.
+`CarPowerManager` lets a privileged component request or listen for policy
+changes, but the common flow looks like this:
+
+```text title="A wake-with-no-display flow"
+ignition off, door sensor still armed
+  → VHAL reports a low-power wake reason to CPMS
+  → CPMS applies "policy_id_no_display": DISPLAY off, AUDIO off, WIFI on
+  → the AP is technically "awake" but shows nothing and plays nothing —
+    it exists only to watch for the next relevant CAN frame
+  → a real unlock event arrives → CPMS applies "policy_id_all_on"
+  → display and audio components power back up together
+```
+
+This is the mechanism behind features like "listen for a remote-start
+request without lighting up the cluster" — the system runs, briefly, with
+almost everything electrically off except what that one feature needs.
+
+## Garage Mode: the other reason the AP stays up
+
+`SHUTDOWN_PREPARE` is also when **Garage Mode** runs — a bounded maintenance
+window where the vehicle looks off to the driver but the platform is
+deliberately kept alive to install OTA updates, run idle-time app
+maintenance, and flush anything that needed the vehicle to be stationary.
+Garage Mode is not free: every minute it runs is a minute of standing
+current draw that the power-policy budget has to account for, which is why
+OEMs cap it with a hard timeout rather than letting it run until the work is
+done.
+
+<Scenario title="On a real programme">
+A vehicle passes every functional test and then fails a parked-current audit:
+after three days on the shelf, current draw is 40 mA higher than spec. The
+root cause is not a leaked wakelock — it is a power policy that turns
+`WIFI` on for a diagnostics feature, and a later policy transition that
+never explicitly turns it back off, so `other="untouched"` quietly carries
+the "on" forward through every subsequent state change. The fix is one line
+in one policy's component list. The lesson is that a parked-current
+regression is a policy-authoring bug far more often than it is a driver bug,
+and it never shows up in a functional test — only in a current-draw
+measurement over days, which is why OEMs run that measurement separately.
+</Scenario>
+
+<Callout type="tip" title="Test policies with a current probe, not a stopwatch">
+A policy that "looks right" in the XML can still leave a component powered
+if a later policy in the same group forgets to override it. The only test
+that actually catches this class of bug is measuring quiescent current
+across every reachable state transition, not reading the config.
+</Callout>
+
+<Recap>
+- A power **policy** is a named on/off vector across a fixed set of power
+  **components** — finer-grained than the overall power state, and it is
+  what actually determines parked current draw.
+- Policies only need to name what they change; unnamed components keep
+  whatever the previous policy left them at, which is the most common source
+  of a component silently staying on.
+- Garage Mode is deliberately kept alive during `SHUTDOWN_PREPARE` for OTA
+  and maintenance work, and is capped with a hard timeout precisely because
+  every extra minute costs standing current.
+- Parked-current regressions are found with a current probe over days, not a
+  functional test — treat that measurement as a required gate, not a nice
+  to have.
+</Recap>
+
+## Next
+
+The performance module — what happens after boot, when memory runs out.

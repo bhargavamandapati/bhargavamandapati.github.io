@@ -1,0 +1,130 @@
+---
+title: "Surround view and multi-camera stitching"
+description: "One EVS camera gets you a rear-view image under a legal deadline. Four of them, stitched into a single top-down view, is a much harder problem — and the deadline does not get any more forgiving."
+order: 7
+difficulty: "Advanced"
+tags: ["EVS", "Camera", "Surround View"]
+sources:
+  - label: "Exterior View System"
+    href: "https://source.android.com/docs/automotive/camera-hal"
+  - label: "EVS HAL interface"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/evs/"
+---
+
+`evs-rear-view-camera` covered why a single mandated rear-view feed has to
+bypass the framework entirely to hit its boot-time deadline. Surround view —
+a synthetic top-down image built from four or more cameras — starts from
+that same EVS foundation and adds a genuinely different problem on top: the
+four feeds are not shown side by side, they are combined into one image that
+never existed as a single camera's output.
+
+<Plain>
+A rear-view camera shows you what one lens sees, undistorted. A surround-view
+system shows you a virtual bird's-eye view of the vehicle from directly
+above — an image no physical camera ever captured. It is built by warping
+four wide-angle images to a shared ground-plane coordinate system and
+blending them together where their fields of view overlap.
+</Plain>
+
+## Where the four feeds come from, and why they are wide-angle
+
+Surround view typically uses four cameras — front, rear, and one in each
+door mirror or fender — each with a wide (often 180°+) fisheye lens, chosen
+specifically so that four cameras can cover the full 360° around the vehicle
+with generous overlap at the corners. Each feed still enters the platform
+through the same `IEvsCamera` HAL interface `evs-rear-view-camera` already
+covered; surround view is a consumer of multiple simultaneous EVS streams,
+not a different capture path.
+
+## The stitching pipeline
+
+```text title="From four raw feeds to one synthetic image"
+front camera ─┐
+rear camera ──┤
+left camera ──┼─► per-camera lens undistortion (fisheye correction)
+right camera ─┘        │
+                        ▼
+              perspective warp onto a shared ground-plane mesh
+              (calibrated per-vehicle: camera position, angle, lens model)
+                        │
+                        ▼
+              blend overlapping regions (where two cameras see
+              the same patch of ground, from different angles)
+                        │
+                        ▼
+              composite top-down image → displayed, same EVS
+              boot-time and handover rules as the single-camera case
+```
+
+The blend step is where most of the visible quality problems live. Two
+cameras seeing the same patch of ground from different angles will disagree
+about anything that has *height* — a curb, a pole, another vehicle's
+bumper — because the ground-plane assumption the warp is built on is only
+correct for things that are actually flat on the ground. An object with
+height appears doubled, smeared, or cut off exactly at the seam between two
+cameras' contributions, an artefact inherent to the technique rather than a
+tuning mistake.
+
+<Analogy title="Four photographs taped into one map">
+Four aerial photographs of the same intersection, each taken from directly
+above four different corners and taped together where their edges line up
+on the *road surface*, will match perfectly for the road markings and
+disagree wherever something tall — a lamppost, a tree — appears in more than
+one photo from a different angle, because the tape job only accounts for
+things at ground height. Surround-view stitching has exactly the same
+inherent seam.
+</Analogy>
+
+## Calibration is per-vehicle, not per-model
+
+Every camera's exact position, tilt, and lens distortion is measured and
+baked into the warp mesh at the factory or a service centre, because
+manufacturing tolerances in where a camera physically sits are large enough,
+relative to how close the vehicle is to the ground, to visibly misalign the
+seams if two vehicles of the same model use the same generic calibration.
+This calibration data typically lives with the vehicle, not the software
+build — a windshield or bumper replacement that moves a camera by even a few
+millimetres can require recalibration, which is a service-centre workflow
+the platform has to support, not just a factory step.
+
+<Scenario title="On a real programme">
+A fleet reports that surround view "looks fine" on vehicles straight from
+the factory and develops a visible seam misalignment on vehicles that have
+had front-bumper collision repairs. The camera itself is undamaged and
+reports a healthy feed; the repair simply reseated the bumper a few
+millimetres differently than the factory calibration assumed, and nothing in
+the repair workflow triggered a recalibration. The fix is a service
+procedure, not a software one — but the platform still has to expose a way
+to trigger recalibration and to detect an obviously wrong result (a check
+pattern parked in front of the vehicle, imaged and compared against
+expected geometry), because there is no way for software alone to know a
+camera has been physically nudged.
+</Scenario>
+
+<Callout type="warning" title="The same boot-time budget applies, multiplied">
+Surround view inherits every constraint `evs-rear-view-camera` already
+described — bypass the framework, hit the deadline, hand over to Android
+cleanly — except now four camera streams and a real-time stitching pipeline
+all have to be ready inside the same window that used to budget for one.
+Treat surround view's timing budget as a harder version of the same
+problem, not a separate one.
+</Callout>
+
+<Recap>
+- Surround view builds a synthetic top-down image from multiple EVS camera
+  feeds warped onto a shared ground-plane mesh and blended at their overlaps
+  — it reuses the same `IEvsCamera` HAL as the single rear-view case.
+- Objects with height distort or double at the seam between two cameras,
+  because the ground-plane warp assumption only holds for things that are
+  actually flat — this is inherent to the technique, not a defect to tune
+  away.
+- Calibration is measured per physical vehicle, not shared per model, and a
+  body repair can invalidate it without damaging the camera itself.
+- The same boot-time-deadline discipline from single-camera EVS applies,
+  now across four simultaneous feeds and a real-time stitching pipeline.
+</Recap>
+
+## Next
+
+Audio next — the other sense the cockpit has to get right, and a routing
+problem before it is ever a playback one.

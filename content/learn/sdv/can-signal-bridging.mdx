@@ -1,0 +1,137 @@
+---
+title: "Bridging CAN and LIN signals into the Android world"
+description: "Underneath every VSS path and every VHAL property is, very often, still a raw CAN or LIN signal defined in a DBC file decades before Android was involved. How that translation actually happens, and where it breaks."
+order: 4
+difficulty: "Advanced"
+tags: ["SDV", "CAN", "LIN", "Signal Mapping"]
+sources:
+  - label: "SocketCAN"
+    href: "https://www.kernel.org/doc/html/latest/networking/can.html"
+  - label: "COVESA Vehicle Signal Specification"
+    href: "https://covesa.github.io/vehicle_signal_specification/"
+  - label: "Vehicle HAL (source.android.com)"
+    href: "https://source.android.com/docs/automotive/vhal"
+---
+
+VSS gives you a clean tree of signal paths. VHAL gives you a clean list of
+typed properties. Neither of those things exists on the wire. What exists on
+the wire is a CAN frame with an 11-bit or 29-bit arbitration ID and eight
+bytes of payload, defined years earlier by a body-electronics supplier in a
+DBC file that has never heard of Android. Everything upstream of that frame
+is a translation layer, and translation layers are where signal bridging
+bugs live.
+
+<Plain>
+A CAN frame does not know it represents "vehicle speed." It is just an ID and
+some bytes. A **DBC file** (or an ARXML equivalent) is the separate document
+that says "ID 0x123, bytes 2 and 3, big-endian, scale 0.01, offset 0, unit
+km/h, means vehicle speed." Reading that frame correctly requires that
+document — reading it *wrong* silently produces a number that looks
+plausible and is not what you think it is.
+</Plain>
+
+## What a DBC entry actually specifies
+
+A single CAN signal definition carries far more than "which bits":
+
+```text title="A representative DBC signal definition"
+BO_ 291 SPEED_STATUS: 8 CHASSIS_ECU
+ SG_ VehicleSpeed : 16|16@1+ (0.01,0) [0|655.35] "km/h" ABS_ECU,GATEWAY
+```
+
+That single line encodes: message ID `291`, an 8-byte payload from node
+`CHASSIS_ECU`; the `VehicleSpeed` signal starts at bit 16, is 16 bits wide,
+little-endian (`@1`), unsigned (`+`); the raw integer is scaled by `0.01`
+with an offset of `0`; the physical range is `0`–`655.35 km/h`; and it is
+consumed by `ABS_ECU` and `GATEWAY`. Get the byte order, the scale, or the
+signed/unsigned flag wrong, and you get a value that is off by a factor of
+256, or negative when it should not be, or plausible-looking garbage that
+passes a smoke test and fails a review two months later.
+
+## The bridging path, end to end
+
+```text title="From wire to app"
+CAN frame (ID 0x123, 8 raw bytes)
+  → gateway ECU or SocketCAN-capable Linux node decodes using the DBC
+  → signal published on an internal bus (often a databroker, e.g. Kuksa)
+    as a VSS path: Vehicle.Speed = 87.3
+  → a mapping layer converts VSS path → AIDL vehicle property
+    (Vehicle.Speed → PERF_VEHICLE_SPEED)
+  → VHAL reports the property; CarPropertyManager delivers it to your app
+```
+
+Three separate translations happen between "electrical signal on a wire" and
+"value your app reads" — DBC decode, VSS mapping, VHAL property mapping —
+and each one is maintained by a different team, on a different release
+cadence, in a different file format. None of them individually looks wrong
+when it is the *pairing* that has drifted.
+
+<Analogy title="Three translators in a row">
+A message passed through three translators, each fluent in only two adjacent
+languages, arrives changed if any one of them mistranslates a single word —
+and the two translators either side of them have no way to notice, because
+each only ever sees their own neighbouring language. A wrong scale factor in
+the DBC-to-VSS step looks completely correct to the VSS-to-VHAL step; it
+just faithfully forwards the wrong number.
+</Analogy>
+
+## Where this actually breaks
+
+| Symptom | Usual cause |
+| --- | --- |
+| Value is exactly 256× or 65536× too large/small | Wrong scale factor, or a byte-order (endianness) mismatch |
+| Value is negative when it should never be | Signed/unsigned mismatch on the raw signal |
+| Value updates on the CAN trace but never reaches the app | DBC decode is fine, but the VSS-to-VHAL mapping table has no entry for that path |
+| Value is fine on the bench rig, wrong on the real vehicle | Bench DBC and vehicle DBC have quietly diverged versions |
+| Two teams report different units for "the same" signal | One is reading pre-VSS (raw, whatever the DBC says) and one post-VSS (normalised SI units) |
+
+<Scenario title="On a real programme">
+An HVAC feature reads ambient temperature and behaves correctly in every
+bench test, then reports temperatures roughly 40 degrees too high on the
+first integration vehicle. The DBC used on the bench rig defines the signal
+in tenths of a degree Celsius with a 40-degree offset baked in — a common
+trick to represent negative temperatures in an unsigned field — and the
+integration vehicle's supplier shipped a DBC revision that removed the
+offset. Both DBCs are individually valid; they disagree with each other. The
+fix is a version-pinned DBC in CI that fails the build on drift, not a
+runtime check, because by the time the wrong value is in the app it already
+looks like a plausible number.
+</Scenario>
+
+## Why VSS is the layer that is supposed to absorb this
+
+The entire reason a shared signal specification exists — as the previous
+topic covered — is so that "which DBC revision, which scale factor, which
+byte order" stays a concern of the CAN-decoding layer alone. Once a value is
+published as `Vehicle.Speed` in VSS's normalised units, every consumer above
+that point, including VHAL and your app, should never need to know a DBC
+file was ever involved. When that boundary is respected, a supplier
+revising their DBC only requires updating one mapping table, not every
+consumer downstream of it. When it is not respected — when an app or a HAL
+implementation reaches around VSS to read a raw signal directly, "because
+it's faster" — the whole point of the abstraction is lost, and that shortcut
+is exactly what re-introduces the DBC-version coupling this layer exists to
+remove.
+
+<Recap>
+- A CAN frame is just an ID and bytes; a DBC (or ARXML) file is the separate
+  document that gives those bytes meaning — scale, offset, byte order,
+  signed-ness — and it is external to the frame itself.
+- The path from wire to app usually crosses three independent translations:
+  DBC decode, VSS mapping, VHAL property mapping — each maintained
+  separately, so a drift between any two of them looks correct to its
+  neighbours.
+- Off-by-a-power-of-two and unexpectedly-signed values are the two most
+  common symptoms of a scale, offset, or endianness mismatch.
+- Pin DBC versions in CI and fail the build on drift — this class of bug
+  produces a plausible-looking wrong number, which a runtime check will not
+  reliably catch.
+- Reaching around VSS to read a raw CAN signal directly defeats the reason
+  the abstraction exists; every consumer above the DBC-decode layer should
+  never need to know a DBC was involved at all.
+</Recap>
+
+## Next
+
+The build system underneath all of this — Soong, Android.bp, and how a
+change here ripples through every image on the vehicle.

@@ -1,0 +1,130 @@
+---
+title: "Data privacy regulation for a connected vehicle"
+description: "Cybersecurity regulation asks whether the vehicle can be attacked. Privacy regulation asks a completely different question: who gets to know where it has been, and it lands on the platform layer just as directly."
+order: 5
+difficulty: "Intermediate"
+tags: ["Privacy", "GDPR", "CCPA", "Compliance"]
+sources:
+  - label: "General Data Protection Regulation — full text"
+    href: "https://gdpr-info.eu/"
+  - label: "California Consumer Privacy Act (California DOJ)"
+    href: "https://oag.ca.gov/privacy/ccpa"
+---
+
+`cybersecurity-regulation` covered UN R155 — a process requirement about
+whether the vehicle can be attacked. This topic is about a different, older
+body of law that also lands squarely on the platform layer: whether the
+vehicle is allowed to collect what it collects, tell the driver about it, and
+hand it over on request. The connectivity module's telemetry checklist gave
+the practical rules; this is the regulatory reasoning underneath them, and
+why the checklist looks the way it does.
+
+<Plain>
+Cybersecurity regulation asks "can someone break in." Privacy regulation
+asks "should we have that data at all, and does the person it's about know
+we have it." A vehicle can be perfectly secure and still be non-compliant —
+security and privacy are two separate legal obligations, checked by
+different people, and a fix for one does not automatically satisfy the
+other.
+</Plain>
+
+## What makes a vehicle a privacy problem at all
+
+A modern connected vehicle continuously produces location, driving-behaviour
+and usage data — much of which counts as **personal data** under GDPR or
+**personal information** under CCPA the moment it can be linked to an
+identifiable person, which a VIN, an account, or even a consistent driving
+pattern usually can. That reclassifies what looks like ordinary telemetry
+into data with legal obligations attached: a lawful basis for collecting it,
+a stated purpose it may only be used for, a retention limit, and — under
+GDPR specifically — rights the data subject can exercise, including access,
+correction, and erasure.
+
+| Regime | Applies when | What it grants the driver |
+| --- | --- | --- |
+| GDPR (EU/EEA) | Vehicle or fleet operator processes data of an EU resident | Access, correction, erasure, portability, objection to processing |
+| CCPA/CPRA (California) | Business meets state thresholds and processes a California resident's data | Right to know, delete, correct, opt out of sale/sharing |
+| Sector-specific (varies) | Some markets treat vehicle location/telemetry as a distinct regulated category | Often stricter consent and localisation rules than the general law |
+
+## The distinction that actually drives the design work
+
+GDPR separates a **data controller** (decides why data is processed) from a
+**data processor** (processes it on the controller's behalf). An OEM is
+almost always the controller; a supplier providing, say, the telematics
+platform is often a processor. This is not abstract legal structuring — it
+determines who has to answer a subject-access or erasure request, and
+therefore who the platform's data-handling code has to be able to actually
+serve. A "delete my data" request that legally has thirty days to be
+fulfilled is worthless if the vehicle's software has no mechanism to locate
+and delete a specific driver's data across every place it has landed —
+on-device caches, uploaded telemetry, and any downstream analytics store.
+
+<Analogy title="A tenant's request to a landlord who used a contractor">
+If a tenant asks a landlord to remove their information from a system, the
+landlord (controller) is legally on the hook to make it happen — even if the
+actual data sits in a contractor's (processor's) database. The landlord has
+to already know exactly where that contractor put it, or the promise made to
+the tenant cannot be kept. A vehicle programme that has not mapped every
+place a piece of personal data ends up is in the landlord's position without
+having asked the contractor where anything is.
+</Analogy>
+
+## Where this touches AAOS specifically
+
+Two things on the platform side matter more than anything else here.
+**Per-profile isolation** — the headless system user and multi-user model
+covered in the framework module — is a genuine privacy asset, not just a
+UX feature: it is what makes it technically possible to delete one driver's
+data without touching a co-driver's. Building a feature on the *shared*
+system user because it is simpler quietly removes that option later.
+**On-device aggregation before upload** — summarising rather than
+transmitting raw location traces — is the single most effective thing a
+platform can do to reduce what counts as personal data in the first place,
+because data that never leaves the vehicle in identifiable form was never
+exposed to most of the compliance burden that applies once it does.
+
+<Scenario title="On a real programme">
+A fleet-analytics feature ships correctly from a security standpoint —
+encrypted in transit, access-controlled at rest — and still fails a privacy
+review, because it uploads raw per-second GPS traces tagged by VIN with no
+retention limit and no mechanism to delete one vehicle's history on request.
+Nothing about the implementation was insecure. The problem is that the
+feature was designed to answer "is this data protected," when the question
+that needed answering first was "should this data exist in this form at
+all, for this long." Aggregating to per-trip summaries and adding a
+retention job addresses both the legal exposure and, incidentally, the
+storage cost the earlier performance topic in this curriculum would also
+have flagged.
+</Scenario>
+
+<Callout type="note" title="Consent has to be revocable at runtime, not just given once">
+A driver who consented to location sharing when the vehicle was purchased
+has to be able to withdraw it later, and the withdrawal has to actually stop
+new collection — a setting that only affects future units sold, not the
+running software on vehicles already in the field, does not satisfy either
+GDPR or CCPA.
+</Callout>
+
+<Recap>
+- Privacy regulation and cybersecurity regulation are separate legal
+  obligations answering different questions; passing one says nothing about
+  the other.
+- Telemetry becomes regulated personal data the moment it can be linked to
+  an identifiable person — which a VIN or a consistent driving pattern
+  usually can, even without a name attached.
+- The controller/processor split determines who is legally on the hook for
+  a deletion or access request, and therefore what the platform's
+  data-handling code actually has to be capable of doing on demand.
+- Per-profile isolation and on-device aggregation before upload are the two
+  platform-level decisions that most directly reduce privacy exposure —
+  building around the shared system user, or uploading raw rather than
+  aggregated data, quietly removes that option later.
+- Consent must be revocable at runtime and actually stop collection
+  immediately — a setting that only applies to future builds does not meet
+  the bar.
+</Recap>
+
+## Next
+
+VSS and Kuksa — a shared signal contract, and how SDV teams test it without
+a vehicle.

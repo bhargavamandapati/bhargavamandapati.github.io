@@ -1,0 +1,129 @@
+---
+title: "The secure boot chain across ECUs, not just the SoC"
+description: "Verified Boot proves the AP is running its own software. It says nothing about the thirty other controllers on the vehicle network the AP has to trust to do its job — and each of those needs its own root of trust."
+order: 5
+difficulty: "Advanced"
+tags: ["Security", "Secure Boot", "HSM"]
+sources:
+  - label: "Verified Boot"
+    href: "https://source.android.com/docs/security/features/verifiedboot"
+  - label: "ISO/SAE 21434 — road vehicles cybersecurity engineering"
+    href: "https://www.iso.org/standard/70918.html"
+  - label: "UN Regulation No. 155 — cyber security"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-155-cyber-security-and-cyber-security"
+---
+
+Verified Boot answers one specific question: is the software running on
+*this* AP the software the OEM shipped? It is a complete answer to that
+question. It is not an answer to the question a vehicle actually needs
+answered, which is whether every ECU the AP takes instructions from —
+the gateway, the body controller, the ADAS domain — is also running what it
+should be. AAOS trusts vehicle data it never independently verifies, because
+verifying it is not the AP's job. It is a separate, parallel chain of trust,
+built the same way, rooted somewhere the AP cannot see.
+
+<Plain>
+The AP's Verified Boot chain is one link: bootloader trusts AVB, AVB trusts
+the signed system image, dm-verity keeps trusting it at runtime. A vehicle
+has one of *those chains per ECU*, each independently rooted, and none of
+them delegates trust to the AP — the AP is just one more node that other
+ECUs decide whether to trust, not the authority that decides for everyone
+else.
+</Plain>
+
+## Where the root of trust actually lives
+
+On the AP, the root of trust is a small piece of immutable code (or an
+OTP-burned public key) baked into the SoC at manufacture — this is what
+Verified Boot's chain is ultimately rooted in. Other ECUs on the vehicle
+network almost never have anything as capable as an AP's secure boot ROM;
+instead they typically carry a dedicated **Hardware Security Module (HSM)**
+or **Secure Hardware Extension (SHE)** — a small, isolated coprocessor whose
+entire job is holding keys and performing cryptographic operations that the
+main microcontroller core is never trusted to do itself, even if it has been
+compromised.
+
+```text title="Two independently rooted chains, side by side"
+AP (SoC)                              Peripheral ECU (e.g. gateway)
+─────────                             ──────────────────────────────
+SoC boot ROM (immutable, OTP key)     HSM/SHE boot ROM (immutable, own key)
+  → verifies bootloader                 → verifies ECU firmware
+  → bootloader verifies AVB/vbmeta      → HSM unlocks/attests to main core
+  → AVB verifies system image           → main core runs firmware, trusting
+  → dm-verity keeps checking at            the HSM's attestation, not its
+    runtime                                own judgement of itself
+```
+
+Neither chain trusts the other by default. A vehicle-level architecture has
+to explicitly decide how much the AP's software should trust a signal
+arriving from another ECU — and "arriving over the vehicle network" is, on
+its own, no proof of anything.
+
+## Why this matters for VHAL specifically
+
+Every vehicle property this curriculum has covered arrives at VHAL having
+already crossed at least one ECU boundary — often several, per the CAN and
+zonal-architecture topics elsewhere in this module. VHAL and Car Service
+have no cryptographic way to verify that the ECU which produced a given
+signal is running unmodified firmware; what they can rely on is that the
+**vehicle network itself** enforces message-level authentication for
+safety-relevant signals, typically via a MAC appended to the frame under a
+scheme like AUTOSAR's Secure Onboard Communication — a mechanism that lives
+entirely below VHAL, and that an app developer never sees directly.
+
+<Analogy title="Trusting a delivery, not the driver">
+Verified Boot is checking that your own kitchen is exactly as you left it.
+It says nothing about whether the ingredients someone else's kitchen sent
+over were tampered with in transit — that requires a seal on the package
+itself, checked at the door, independent of whether your own kitchen is
+secure. A vehicle's inter-ECU authentication is that seal; Verified Boot on
+the AP and message authentication on the network are two separate
+mechanisms, solving two separate trust problems.
+</Analogy>
+
+## What actually gets audited, and by whom
+
+`cybersecurity-regulation` in the compliance module covers UN R155 as a
+process requirement: a Cybersecurity Management System covering the whole
+vehicle lifecycle. This topic is the technical shape that requirement
+produces on the hardware side — an auditor under R155/ISO 21434 is
+specifically looking for evidence that *every* ECU with a route to a
+safety-relevant function has its own root of trust and its own verified
+update path, not just the AP running Android. A programme that has hardened
+Verified Boot on the AP to a high standard and left a body-control ECU with
+an unauthenticated bootloader has not met that bar — the vehicle's security
+posture is set by its weakest independently-rooted chain, not its strongest.
+
+<Scenario title="On a real programme">
+A security audit passes the AP's boot chain without comment and flags a
+gateway ECU whose bootloader accepts any correctly-formatted firmware image,
+signed or not — a supplier component that predates the programme's own
+security requirements and was integrated without anyone re-checking its
+boot chain, because "it is not the part that runs Android." The finding is
+correct: an attacker with physical or diagnostic access to that gateway
+could run arbitrary firmware there, and the gateway is exactly the ECU
+positioned to feed VHAL a stream of signals the AP has no way to
+independently verify. The AP being secure is necessary and, on its own,
+not sufficient.
+</Scenario>
+
+<Recap>
+- Verified Boot proves the AP is running its own intended software; it says
+  nothing about any other ECU on the vehicle network, each of which needs
+  its own independently rooted chain of trust.
+- Peripheral ECUs typically root their chain in a dedicated HSM/SHE
+  coprocessor rather than anything resembling the AP's boot ROM — a
+  different mechanism, not a smaller version of the same one.
+- VHAL has no cryptographic way to verify the ECU that produced a signal;
+  that trust is established below VHAL, at the vehicle-network level,
+  typically through message authentication rather than anything visible to
+  app code.
+- A regulatory audit (UN R155 / ISO 21434) checks the *whole vehicle's*
+  chain of trust, not just the AP's — the weakest independently-rooted ECU
+  sets the vehicle's actual security posture.
+</Recap>
+
+## Next
+
+Compliance — the suites and standards that decide whether any of this can
+ship.
