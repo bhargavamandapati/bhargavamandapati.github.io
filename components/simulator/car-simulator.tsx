@@ -15,6 +15,19 @@ import {
 } from '@/data/simulator'
 import type { ExteriorScene } from './exterior-scene'
 import type { InteriorScene, Readout } from './interior-scene'
+import {
+  fmtSpeed,
+  fmtDistanceKm,
+  fmtTemp,
+  fmtPressure,
+  fmtVolume,
+  STOPPING_MODE_LABEL,
+  REGEN_STATE_LABEL,
+  clusterConditionalLine,
+  clusterTelltales,
+  hvacShownFan,
+  hvacChips,
+} from './interior-scene'
 import { VehicleInfo } from './vehicle-info'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +41,16 @@ function controlMatches(control: Control, query: string): boolean {
 }
 
 const GEAR: Record<number, string> = { 0x0004: 'P', 0x0002: 'R', 0x0001: 'N', 0x0008: 'D' }
+
+// clusterTelltales() reuses the canvas's own hex colours, tuned for its dark
+// texture background. The HTML chips sit on --surface-2 instead, so each one
+// maps to a themed, AA-contrast-checked CSS variable of the same meaning.
+const TELLTALE_VAR: Record<string, string> = {
+  '#f87171': 'var(--danger)',
+  '#fbbf24': 'var(--difficulty-advanced)',
+  '#38bdf8': 'var(--info)',
+  '#5eead4': 'var(--accent)',
+}
 
 /** One line in the event log, mirroring what a VHAL write looks like. */
 type LogEntry = {
@@ -297,6 +320,26 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
     state.doorRearRight,
   ].filter(Boolean).length
 
+  // The exact values and functions drawCluster()/drawIvi() use to paint the
+  // 3D cluster and centre screen — reformatted here as plain, zoomable text,
+  // at whatever size the reader's own browser and eyesight need, rather than
+  // a separately-organised summary that could drift from what the 3D view
+  // actually shows.
+  const rangeKm = state.rangeRemaining !== 302000 ? state.rangeRemaining / 1000 : (state.batteryLevel / 100) * 420
+  const energyText =
+    state.batteryUnits === 0x60
+      ? ` · ${Math.round((state.batteryLevel / 100) * 58000)} Wh`
+      : state.batteryUnits === 0x65
+        ? ` · ${((state.batteryLevel / 100) * 58).toFixed(1)} kWh`
+        : ''
+  const minTyre = Math.min(state.tyreFrontLeft, state.tyreFrontRight, state.tyreRearLeft, state.tyreRearRight)
+  const gearText =
+    state.currentGear !== state.gear
+      ? `${GEAR[state.gear] ?? '—'} → ${GEAR[state.currentGear] ?? '—'}`
+      : (GEAR[state.gear] ?? '—')
+  const conditionalLabel = state.leadDistance > 500 ? 'Lead vehicle / gap' : state.chargeState === 1 ? 'Charging' : 'Coolant / battery temp'
+  const telltales = clusterTelltales(state, readout, true)
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
       <div className="min-w-0">
@@ -389,8 +432,12 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
         {/* ---- Cluster readout ---- */}
         <div className="card mt-4 p-5">
           <h2 className="font-mono text-xs uppercase tracking-wider text-subtle">
-            Vehicle state, in text
+            Live vehicle data
           </h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            The same values the cluster and centre screen draw at dashboard scale, in a size a
+            screen — not a driver&rsquo;s eyes at a glance — is actually meant to be read at.
+          </p>
           <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Readouts label="Speed" value={`${kmh}`} unit="km/h" />
             <Readouts label="Gear" value={GEAR[state.gear] ?? '—'} unit="" />
@@ -414,6 +461,86 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
             {state.cruiseEnabled && <Telltale tone="ok">CRUISE</Telltale>}
             {state.laneKeepEnabled && <Telltale tone="ok">LANE KEEP</Telltale>}
             {state.hvacPower && state.hvacAc && <Telltale tone="ok">A/C</Telltale>}
+          </div>
+
+          <div className="mt-5 border-t border-line pt-4">
+            <h3 className="font-mono text-[0.68rem] uppercase tracking-wider text-subtle">
+              Cluster
+            </h3>
+            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+              <DetailRow label="Speed" value={fmtSpeed(readout.effectiveSpeed, state.speedUnits)} />
+              <DetailRow label="RPM" value={`${Math.round(Math.max(state.engineRpm, state.accelerator * 62))}`} />
+              <DetailRow label="Gear" value={gearText} />
+              <DetailRow
+                label="Battery / range"
+                value={`${state.batteryLevel}%${energyText}  ·  ${fmtDistanceKm(rangeKm, state.distanceUnits)}`}
+              />
+              <DetailRow
+                label="Outside / cabin"
+                value={`OUT ${fmtTemp(state.outsideTemp, state.hvacTempUnits)}   CABIN ${fmtTemp(readout.cabinTemp, state.hvacTempUnits)}`}
+              />
+              <DetailRow
+                label="Stopping / regen"
+                value={`${STOPPING_MODE_LABEL[state.stoppingMode] ?? '—'} · REGEN ${REGEN_STATE_LABEL[state.regenState] ?? '—'}`}
+              />
+              <DetailRow label={conditionalLabel} value={clusterConditionalLine(state)} />
+              <DetailRow
+                label="Odometer / charge limit"
+                value={`ODO ${fmtDistanceKm(state.odometer, state.distanceUnits)} · CHG LIMIT ${state.chargeLimit}%`}
+              />
+              <DetailRow
+                label="Tyres / fuel"
+                value={
+                  `TYRES min ${fmtPressure(minTyre, state.tyrePressureUnits)}` +
+                  (state.fuelLevel > 0 ? ` · FUEL ${fmtVolume(state.fuelLevel / 1000, state.fuelVolumeUnits)}` : '')
+                }
+              />
+            </dl>
+            {telltales.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {telltales.map((t, i) => {
+                  const color = TELLTALE_VAR[t.color]
+                  return (
+                    <span
+                      key={`${t.label}-${i}`}
+                      className="chip"
+                      style={{ color, borderColor: `color-mix(in srgb, ${color} 50%, transparent)` }}
+                    >
+                      {t.label}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+
+            <h3 className="mt-4 font-mono text-[0.68rem] uppercase tracking-wider text-subtle">
+              Centre screen
+            </h3>
+            {!state.hvacPower ? (
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                HVAC_POWER_ON is false — every control below is inert.
+              </p>
+            ) : (
+              <>
+                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+                  <DetailRow
+                    label="Target / cabin"
+                    value={`${state.hvacTemp.toFixed(1)}°C target  ·  cabin ${readout.cabinTemp.toFixed(1)}°C`}
+                  />
+                  <DetailRow
+                    label="Fan"
+                    value={`${hvacShownFan(state, readout.cabinTemp)}/6${state.hvacMaxAc ? ' · MAX' : state.hvacAuto ? ' · AUTO' : ''}`}
+                  />
+                </dl>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {hvacChips(state).map((c) => (
+                    <span key={c.label} className={cn('chip', c.on ? 'border-accent/50 text-accent' : 'text-subtle')}>
+                      {c.label}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -576,6 +703,18 @@ function Readouts({ label, value, unit }: { label: string; value: string; unit: 
         {value}
         <span className="ml-1 text-sm font-normal text-muted">{unit}</span>
       </p>
+    </div>
+  )
+}
+
+/** A smaller labelled value for the detail sections — legible, but not a headline number. */
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="font-mono text-[0.62rem] uppercase tracking-wider text-subtle">{label}</dt>
+      <dd className="mt-0.5 font-display text-sm font-medium tabular-nums text-fg [overflow-wrap:anywhere]">
+        {value}
+      </dd>
     </div>
   )
 }

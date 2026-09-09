@@ -14,6 +14,131 @@ const DASH = 0x161b24
 const DASH_LIGHT = 0x222a36
 const TRIM = 0x2f6f8f
 
+/**
+ * Formats a value already held in a fixed internal unit into whatever the
+ * matching *_DISPLAY_UNITS property currently asks for. Every reading on
+ * the cluster is stored once, in one unit, and reformatted here — the same
+ * relationship the property guide describes between a value and its unit.
+ *
+ * Exported so the clear, off-canvas data readout can format a value exactly
+ * the way the in-scene cluster does, rather than a second implementation
+ * quietly drifting from the first.
+ */
+export const fmtSpeed = (ms: number, units: number) =>
+  units === 0x90 ? `${Math.round(ms * 2.237)} mph` : units === 0x01 ? `${ms.toFixed(1)} m/s` : `${Math.round(ms * 3.6)} km/h`
+export const fmtDistanceKm = (km: number, units: number) => (units === 0x24 ? `${Math.round(km * 0.621)} mi` : `${Math.round(km)} km`)
+export const fmtTemp = (c: number, units: number) => (units === 0x31 ? `${Math.round(c * 1.8 + 32)}°F` : `${c.toFixed(1)}°C`)
+export const fmtPressure = (kpa: number, units: number) =>
+  units === 0x71 ? `${Math.round(kpa * 0.145)} psi` : units === 0x72 ? `${(kpa / 100).toFixed(1)} bar` : `${Math.round(kpa)} kPa`
+export const fmtVolume = (l: number, units: number) =>
+  units === 0x42 ? `${(l * 0.264).toFixed(0)} gal` : units === 0x43 ? `${(l * 0.220).toFixed(0)} gal(UK)` : `${l.toFixed(0)} L`
+
+/** EvStoppingMode and EvRegenerativeBrakingState labels, in enum order. */
+export const STOPPING_MODE_LABEL = ['OTHER', 'CREEP', 'ROLL', 'HOLD']
+export const REGEN_STATE_LABEL = ['UNKNOWN', 'OFF', 'PARTIAL', 'FULL']
+
+/**
+ * The cluster's third text line — lead-vehicle gap, charging detail, or
+ * engine/battery temperature, in that priority order. Exported so an
+ * off-canvas readout shows exactly the one the cluster is currently
+ * showing, rather than re-deriving the same three-way choice separately
+ * and risking a different priority order.
+ */
+export function clusterConditionalLine(state: SimState): string {
+  return state.leadDistance > 500
+    ? `LEAD ${(state.leadDistance / 1000).toFixed(0)} m · GAP ${(state.timeGap / 1000).toFixed(1)} s`
+    : state.chargeState === 1
+      ? `${(state.chargeRate / 1000).toFixed(0)} W · ${state.chargeCurrentLimit} A · ${Math.round(state.chargeTimeRemaining / 60)} min left`
+      : `COOLANT ${Math.round(state.coolantTemp)}°C · BATT ${Math.round(state.batteryTemp)}°C`
+}
+
+export type ClusterTelltale = { label: string; color: string }
+
+/**
+ * Every telltale the cluster can show, filtered to the ones currently on —
+ * the exact list, order and colours drawn onto the canvas texture, reused
+ * here so an off-canvas readout can never drift from what the cluster is
+ * actually displaying. `flash` stands in for the canvas's own blink clock;
+ * pass `true` to show every telltale that would be visible mid-blink.
+ */
+export function clusterTelltales(state: SimState, readout: Readout, flash: boolean): ClusterTelltale[] {
+  const tells: [boolean, string, string][] = [
+    [!state.beltDriver, 'BELT', '#f87171'],
+    [!state.beltPassenger && state.seatOccupancy === 2, 'BELT-P', '#f87171'],
+    [state.coolantTemp > 110, 'TEMP', '#f87171'],
+    [state.oilLevel < 2, 'OIL', '#f87171'],
+    [state.fuelLow, 'LOW', '#fbbf24'],
+    [state.forwardCollision === 2 && flash, 'FCW', '#f87171'],
+    [state.aeb === 2, 'AEB', '#f87171'],
+    [state.laneDeparture > 1 && flash, 'LDW', '#fbbf24'],
+    [state.blindSpot === 2 && flash, 'BSW', '#fbbf24'],
+    [state.absActive && flash, 'ABS', '#fbbf24'],
+    [state.tractionActive && flash, 'TCS', '#fbbf24'],
+    [state.parkingBrake, 'P', '#f87171'],
+    [readout.lowTyres > 0, '(!)', '#fbbf24'],
+    [state.trailer === 2, 'TOW', '#38bdf8'],
+    [state.headlights, state.highBeam ? '≡D' : '≡', '#38bdf8'],
+    [state.fogLights, 'FOG', '#38bdf8'],
+    [state.cabinLights === 1 || state.readingLights === 1, 'LAMP', '#38bdf8'],
+    [state.cruiseEnabled, state.cruiseState === 2 ? 'CC •' : 'CC', state.cruiseState === 2 ? '#5eead4' : '#38bdf8'],
+    [state.laneKeepEnabled, state.laneKeepState === 2 || state.laneKeepState === 3 ? 'LKA •' : 'LKA', state.laneKeepState === 2 || state.laneKeepState === 3 ? '#5eead4' : '#38bdf8'],
+    [state.hvacAc && state.hvacPower, state.hvacMaxAc ? 'MAX A/C' : 'A/C', '#5eead4'],
+    [state.regenState > 1, 'REGEN', '#5eead4'],
+    [state.chargeState === 1, 'CHG', '#5eead4'],
+    [!state.seatAirbag, 'AIRBAG OFF', '#fbbf24'],
+    [!state.escEnabled, 'ESC OFF', '#fbbf24'],
+    [state.handsOnEnabled && state.handsOnState === 2 && flash, 'HANDS OFF', '#f87171'],
+    [state.drowsinessEnabled && state.drowsinessState >= 8, 'REST', '#fbbf24'],
+    [state.lowSpeedCollision === 2 && flash, 'LSC', '#fbbf24'],
+    [state.crossTrafficEnabled && state.crossTrafficWarning > 1 && flash, 'CTM', '#fbbf24'],
+    [state.impact !== 0, 'IMPACT', '#f87171'],
+    [state.batteryTemp > 45, 'BATT TEMP', '#f87171'],
+    [state.wheelLocked, 'LOCKED', '#fbbf24'],
+    [state.idleAutoStop && readout.effectiveSpeed < 0.5 && state.ignition >= 3, 'AUTO-STOP', '#5eead4'],
+    [state.autonomyLevel >= 4, `L${state.autonomyLevel - 1}`, '#5eead4'],
+    [state.brakeFluidLow, 'BRAKE FLUID', '#f87171'],
+    [state.brakePadWear >= 80, 'PADS', '#fbbf24'],
+    [state.oilTemp > 130, 'OIL TEMP', '#f87171'],
+    [state.mirrorLock, 'MIRRORS LOCKED', '#38bdf8'],
+    [state.elkaEnabled && state.elkaState >= 2 && state.elkaState <= 3 && flash, 'ELKA', '#fbbf24'],
+    [state.elkaEnabled && state.elkaState >= 4, 'ELKA', '#f87171'],
+    [state.fuelDoorOpen, 'FUEL DOOR', '#38bdf8'],
+    [state.currentGear !== state.gear, 'SHIFTING', '#fbbf24'],
+  ]
+  return tells.filter(([on]) => on).map(([, label, color]) => ({ label, color }))
+}
+
+/**
+ * How many of the IVI screen's six fan bars are lit — AUTO derives it from
+ * how far the cabin is from target, MAX pins it to full, otherwise it is
+ * the driver's own fan-speed setting. Exported so the same number appears
+ * off-canvas without a second copy of the AUTO-mode formula to keep in sync.
+ */
+export function hvacShownFan(state: SimState, cabinTemp: number): number {
+  return state.hvacMaxAc
+    ? 6
+    : state.hvacAuto
+      ? Math.max(1, Math.min(6, Math.round(Math.abs(state.hvacTemp - cabinTemp) * 1.6)))
+      : state.hvacFanSpeed
+}
+
+export type HvacChip = { label: string; on: boolean }
+
+/** The IVI screen's mode chips, in the order the screen itself draws them. */
+export function hvacChips(state: SimState): HvacChip[] {
+  const dir = state.hvacFanDirection
+  return [
+    { label: 'FACE', on: (dir & 0x1) !== 0 },
+    { label: 'FLOOR', on: (dir & 0x2) !== 0 },
+    { label: 'DEFROST', on: (dir & 0x4) !== 0 },
+    { label: 'A/C', on: state.hvacAc },
+    { label: 'RECIRC', on: state.hvacRecirc || state.hvacMaxAc },
+    { label: 'AUTO', on: state.hvacAuto },
+    { label: 'MAX DEFROST', on: state.hvacMaxDefrost },
+    { label: 'DUAL', on: state.hvacDual },
+  ]
+}
+
 export type InteriorScene = {
   update: (state: SimState, readout: Readout, delta: number, elapsed: number) => void
   render: () => void
@@ -344,20 +469,6 @@ export function createInteriorScene(
   const dummy = new THREE.Object3D()
 
   // ---- Drawing the cluster ------------------------------------------------
-  /**
-   * Formats a value already held in a fixed internal unit into whatever the
-   * matching *_DISPLAY_UNITS property currently asks for. Every reading on
-   * this cluster is stored once, in one unit, and reformatted here — the same
-   * relationship the property guide describes between a value and its unit.
-   */
-  const fmtSpeed = (ms: number, units: number) =>
-    units === 0x90 ? `${Math.round(ms * 2.237)} mph` : units === 0x01 ? `${ms.toFixed(1)} m/s` : `${Math.round(ms * 3.6)} km/h`
-  const fmtDistanceKm = (km: number, units: number) => (units === 0x24 ? `${Math.round(km * 0.621)} mi` : `${Math.round(km)} km`)
-  const fmtTemp = (c: number, units: number) => (units === 0x31 ? `${Math.round(c * 1.8 + 32)}°F` : `${c.toFixed(1)}°C`)
-  const fmtPressure = (kpa: number, units: number) =>
-    units === 0x71 ? `${Math.round(kpa * 0.145)} psi` : units === 0x72 ? `${(kpa / 100).toFixed(1)} bar` : `${Math.round(kpa)} kPa`
-  const fmtVolume = (l: number, units: number) =>
-    units === 0x42 ? `${(l * 0.264).toFixed(0)} gal` : units === 0x43 ? `${(l * 0.220).toFixed(0)} gal(UK)` : `${l.toFixed(0)} L`
 
   function drawCluster(state: SimState, readout: Readout, elapsed: number) {
     const { ctx, canvas: c } = cluster
@@ -467,77 +578,20 @@ export function createInteriorScene(
       w / 2,
       h * 0.925,
     )
-    const STOPPING = ['OTHER', 'CREEP', 'ROLL', 'HOLD']
-    const REGEN = ['UNKNOWN', 'OFF', 'PARTIAL', 'FULL']
     ctx.fillText(
-      `${STOPPING[state.stoppingMode] ?? '—'} · REGEN ${REGEN[state.regenState] ?? '—'}`,
+      `${STOPPING_MODE_LABEL[state.stoppingMode] ?? '—'} · REGEN ${REGEN_STATE_LABEL[state.regenState] ?? '—'}`,
       w / 2,
       h * 0.73,
     )
-    ctx.fillText(
-      state.leadDistance > 500
-        ? `LEAD ${(state.leadDistance / 1000).toFixed(0)} m · GAP ${(state.timeGap / 1000).toFixed(1)} s`
-        : state.chargeState === 1
-          ? `${(state.chargeRate / 1000).toFixed(0)} W · ${state.chargeCurrentLimit} A · ${Math.round(state.chargeTimeRemaining / 60)} min left`
-          : `COOLANT ${Math.round(state.coolantTemp)}°C · BATT ${Math.round(state.batteryTemp)}°C`,
-      w / 2,
-      h * 0.795,
-    )
+    ctx.fillText(clusterConditionalLine(state), w / 2, h * 0.795)
 
     // Telltales. Warnings first, so the row reads worst-first.
     const flash = Math.sin(elapsed * 9) > 0
-    const tells: [boolean, string, string][] = [
-      [!state.beltDriver, 'BELT', '#f87171'],
-      [!state.beltPassenger && state.seatOccupancy === 2, 'BELT-P', '#f87171'],
-      [state.coolantTemp > 110, 'TEMP', '#f87171'],
-      [state.oilLevel < 2, 'OIL', '#f87171'],
-      [state.fuelLow, 'LOW', '#fbbf24'],
-      [state.forwardCollision === 2 && flash, 'FCW', '#f87171'],
-      [state.aeb === 2, 'AEB', '#f87171'],
-      [state.laneDeparture > 1 && flash, 'LDW', '#fbbf24'],
-      [state.blindSpot === 2 && flash, 'BSW', '#fbbf24'],
-      [state.absActive && flash, 'ABS', '#fbbf24'],
-      [state.tractionActive && flash, 'TCS', '#fbbf24'],
-      [state.parkingBrake, 'P', '#f87171'],
-      [readout.lowTyres > 0, '(!)', '#fbbf24'],
-      [state.trailer === 2, 'TOW', '#38bdf8'],
-      [state.headlights, state.highBeam ? '≡D' : '≡', '#38bdf8'],
-      [state.fogLights, 'FOG', '#38bdf8'],
-      [state.cabinLights === 1 || state.readingLights === 1, 'LAMP', '#38bdf8'],
-      // CRUISE_CONTROL_STATE and LANE_KEEP_ASSIST_STATE are the reported
-      // companions of the two ENABLED booleans above: armed is not the same as
-      // actively intervening, and only the state property can tell them apart.
-      [state.cruiseEnabled, state.cruiseState === 2 ? 'CC •' : 'CC', state.cruiseState === 2 ? '#5eead4' : '#38bdf8'],
-      [state.laneKeepEnabled, state.laneKeepState === 2 || state.laneKeepState === 3 ? 'LKA •' : 'LKA', state.laneKeepState === 2 || state.laneKeepState === 3 ? '#5eead4' : '#38bdf8'],
-      [state.hvacAc && state.hvacPower, state.hvacMaxAc ? 'MAX A/C' : 'A/C', '#5eead4'],
-      [state.regenState > 1, 'REGEN', '#5eead4'],
-      [state.chargeState === 1, 'CHG', '#5eead4'],
-      [!state.seatAirbag, 'AIRBAG OFF', '#fbbf24'],
-      [!state.escEnabled, 'ESC OFF', '#fbbf24'],
-      [state.handsOnEnabled && state.handsOnState === 2 && flash, 'HANDS OFF', '#f87171'],
-      [state.drowsinessEnabled && state.drowsinessState >= 8, 'REST', '#fbbf24'],
-      [state.lowSpeedCollision === 2 && flash, 'LSC', '#fbbf24'],
-      [state.crossTrafficEnabled && state.crossTrafficWarning > 1 && flash, 'CTM', '#fbbf24'],
-      [state.impact !== 0, 'IMPACT', '#f87171'],
-      [state.batteryTemp > 45, 'BATT TEMP', '#f87171'],
-      [state.wheelLocked, 'LOCKED', '#fbbf24'],
-      [state.idleAutoStop && readout.effectiveSpeed < 0.5 && powered, 'AUTO-STOP', '#5eead4'],
-      [state.autonomyLevel >= 4, `L${state.autonomyLevel - 1}`, '#5eead4'],
-      [state.brakeFluidLow, 'BRAKE FLUID', '#f87171'],
-      [state.brakePadWear >= 80, 'PADS', '#fbbf24'],
-      [state.oilTemp > 130, 'OIL TEMP', '#f87171'],
-      [state.mirrorLock, 'MIRRORS LOCKED', '#38bdf8'],
-      [state.elkaEnabled && state.elkaState >= 2 && state.elkaState <= 3 && flash, 'ELKA', '#fbbf24'],
-      [state.elkaEnabled && state.elkaState >= 4, 'ELKA', '#f87171'],
-      [state.fuelDoorOpen, 'FUEL DOOR', '#38bdf8'],
-      [state.currentGear !== state.gear, 'SHIFTING', '#fbbf24'],
-    ]
     let tx = 34
     let ty = 42
     ctx.textAlign = 'left'
     ctx.font = '700 22px ui-monospace, monospace'
-    for (const [on, label, color] of tells) {
-      if (!on) continue
+    for (const { label, color } of clusterTelltales(state, readout, flash)) {
       const tw = ctx.measureText(label).width
       if (tx + tw > w - 34) {
         tx = 34
@@ -604,11 +658,7 @@ export function createInteriorScene(
     ctx.fillStyle = '#7d8ea6'
     ctx.font = '600 22px ui-monospace, monospace'
     ctx.fillText('FAN', 40, 330)
-    const shownFan = state.hvacMaxAc
-      ? 6
-      : state.hvacAuto
-        ? Math.max(1, Math.min(6, Math.round(Math.abs(state.hvacTemp - readout.cabinTemp) * 1.6)))
-        : state.hvacFanSpeed
+    const shownFan = hvacShownFan(state, readout.cabinTemp)
     for (let i = 0; i < 6; i++) {
       ctx.fillStyle = i < shownFan ? '#22d3ee' : '#1a2431'
       ctx.fillRect(120 + i * 58, 306 + (5 - i) * 3, 44, 30 + i * 6)
@@ -621,20 +671,9 @@ export function createInteriorScene(
     }
 
     // Direction and modes.
-    const dir = state.hvacFanDirection
-    const chips: [string, boolean][] = [
-      ['FACE', (dir & 0x1) !== 0],
-      ['FLOOR', (dir & 0x2) !== 0],
-      ['DEFROST', (dir & 0x4) !== 0],
-      ['A/C', state.hvacAc],
-      ['RECIRC', state.hvacRecirc || state.hvacMaxAc],
-      ['AUTO', state.hvacAuto],
-      ['MAX DEFROST', state.hvacMaxDefrost],
-      ['DUAL', state.hvacDual],
-    ]
     let x = 40
     ctx.font = '600 20px ui-monospace, monospace'
-    for (const [label, on] of chips) {
+    for (const { label, on } of hvacChips(state)) {
       const tw = ctx.measureText(label).width + 26
       ctx.fillStyle = on ? '#0e7490' : '#141c26'
       ctx.fillRect(x, 400, tw, 40)

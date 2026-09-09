@@ -27,6 +27,11 @@
   /* Difficulty labels — AA against --surface-2, the lightest surface they sit on. */
   --difficulty-beginner: #047857;
   --difficulty-advanced: #b45309;
+  /* Telltale severity, for the simulator's text mirror of the cluster's warning
+     colours — the canvas hex values are tuned for its dark texture background,
+     not for --surface-2, so the HTML chips need their own AA-safe pair. */
+  --danger: #b91c1c;
+  --info: #0369a1;
 }
 
 .dark {
@@ -49,6 +54,8 @@
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.7);
   --difficulty-beginner: #34d399;
   --difficulty-advanced: #fbbf24;
+  --danger: #f87171;
+  --info: #38bdf8;
 }
 
 @theme inline {
