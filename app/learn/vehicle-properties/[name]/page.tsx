@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { DiagramFrame } from "@/components/diagrams/primitives";
 import { PropertyRelationMap } from "@/components/diagrams/property-relations";
+import { PropertyFlowDiagram, type FlowRow } from "@/components/diagrams/property-flow";
 import {
   CodeSample,
   CodeLanguageProvider,
@@ -161,6 +162,16 @@ export default async function PropertyPage({
   const rules = valueRules(property);
   const samples = codeSamples(property);
   const perms = permissionSnippets(property);
+  // Scoped to one property for review before the hardware-label mapping is
+  // designed and this rolls out to the rest of the reference.
+  const flowRows =
+    property.name === "HVAC_TEMPERATURE_SET"
+      ? propertyFlowRows(property, {
+          ecu: "HVAC ECU",
+          writeSub: "moves the blend-door actuator",
+          readSub: "cabin temperature sensor",
+        })
+      : null;
   const dependencies = groups.filter((g) => g.strength === "dependency");
 
   // Split the diagram by direction: what this needs, versus what needs this.
@@ -524,6 +535,14 @@ export default async function PropertyPage({
                   {property.area !== "GLOBAL" &&
                     ` Values are per ${property.area.toLowerCase()}, so every call takes an area ID.`}
                 </p>
+                {flowRows && (
+                  <DiagramFrame
+                    title={`How ${property.name} crosses the stack`}
+                    caption="Left: a write request travels down, numbered in the order it actually happens. Right: the change event it — or the sensor on its own — produces travels back up, lettered the same way."
+                  >
+                    <PropertyFlowDiagram rows={flowRows} />
+                  </DiagramFrame>
+                )}
                 {samples.map((snippet) => (
                   <CodeSample
                     key={snippet.title}
@@ -872,6 +891,89 @@ export type Snippet = {
   code?: string;
   language?: string;
 };
+
+/**
+ * The get/set path for one property, app to hardware and back, as rows for
+ * PropertyFlowDiagram — every hop this property's value actually crosses,
+ * with only the write column (an unwritable property) or the read column (an
+ * unreadable one) dropped where it does not apply.
+ *
+ * `hardware` is the one part this cannot derive from the AIDL: which ECU
+ * physically owns the property, and what it does at each end. That mapping
+ * is still being designed for the full 280-property rollout, so for now it
+ * is passed in per call rather than guessed from the property name.
+ */
+function propertyFlowRows(
+  property: VehicleProperty,
+  hardware: { ecu: string; writeSub: string; readSub: string },
+): FlowRow[] {
+  const { set } = accessors(property);
+  const canRead = property.access !== "WRITE";
+  const canWrite = property.access === "READ_WRITE" || property.access === "WRITE";
+  const areaArg = property.area === "GLOBAL" ? "" : ", areaId";
+
+  return [
+    {
+      layer: "Application layer",
+      process: "app process",
+      write: canWrite ? { label: "Your app", sub: `mgr.${set}(propertyId${areaArg}, value)` } : undefined,
+      read: canRead ? { label: "Your app", sub: "callback.onChangeEvent(value)" } : undefined,
+    },
+    {
+      layer: "Car API — car-lib",
+      process: "app process",
+      write: canWrite ? { label: "CarPropertyManager.java", sub: `${set}()` } : undefined,
+      read: canRead
+        ? { label: "ICarPropertyEventListener.aidl", sub: "binder callback stub" }
+        : undefined,
+    },
+    {
+      layer: "System services — CarService",
+      process: "system_server process",
+      boundaryAbove: "Binder — app process to system_server",
+      write: canWrite
+        ? { label: "CarPropertyService.java", sub: "checks permission, calls the HAL" }
+        : undefined,
+      read: canRead
+        ? { label: "CarPropertyService.java", sub: "fans out to every subscriber" }
+        : undefined,
+    },
+    {
+      layer: "HAL boundary — AIDL / Binder",
+      process: "process crossing",
+      write: canWrite ? { label: "IVehicle.aidl", sub: "setValues()" } : undefined,
+      read: canRead ? { label: "IVehicleCallback.aidl", sub: "onPropertyEvent()" } : undefined,
+    },
+    {
+      layer: "VHAL process",
+      process: "android.hardware.automotive.vehicle-service",
+      boundaryAbove: "Binder — system_server to the VHAL process",
+      write: canWrite
+        ? { label: "Vehicle HAL implementation", sub: "IVehicleHardware.setValues()" }
+        : undefined,
+      read: canRead
+        ? { label: "Vehicle HAL implementation", sub: "IVehicleHardware callback" }
+        : undefined,
+    },
+    {
+      layer: "Vendor HAL / ECU bridge",
+      process: "OEM code — not AOSP",
+      vendor: true,
+      write: canWrite ? { label: "Vendor bridge", sub: `${property.name} to a CAN signal` } : undefined,
+      read: canRead ? { label: "Vendor bridge", sub: `a CAN signal to ${property.name}` } : undefined,
+    },
+    {
+      layer: "Kernel & drivers",
+      write: canWrite ? { label: "SocketCAN driver", sub: "write() on the vehicle CAN bus" } : undefined,
+      read: canRead ? { label: "SocketCAN driver", sub: "interrupt on the vehicle CAN bus" } : undefined,
+    },
+    {
+      layer: "Physical hardware",
+      write: canWrite ? { label: hardware.ecu, sub: hardware.writeSub } : undefined,
+      read: canRead ? { label: hardware.ecu, sub: hardware.readSub } : undefined,
+    },
+  ];
+}
 
 /**
  * Runnable snippets for this property, shaped to its own type, access and
