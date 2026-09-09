@@ -40,15 +40,28 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-line pt-6 text-xs text-subtle sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © {new Date().getFullYear()} {site.name}. Code under MIT; free articles under
-            CC BY-NC-ND 4.0; premium content under separate terms.{' '}
-            <Link href="/licence/" className="underline transition-colors hover:text-accent">
-              Licence and attribution
-            </Link>
-            .
-          </p>
+        <div className="mt-12 flex flex-col gap-4 border-t border-line pt-6 text-xs text-subtle">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {new Date().getFullYear()} {site.name}. Code under MIT; free articles under
+              CC BY-NC-ND 4.0; premium content under separate terms.{' '}
+              <Link href="/licence/" className="underline transition-colors hover:text-accent">
+                Licence and attribution
+              </Link>
+              .
+            </p>
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono">
+              <Link href="/privacy/" className="transition-colors hover:text-accent">
+                Privacy
+              </Link>
+              <Link href="/terms/" className="transition-colors hover:text-accent">
+                Terms
+              </Link>
+              <Link href="/refunds/" className="transition-colors hover:text-accent">
+                Refunds
+              </Link>
+            </p>
+          </div>
           <p className="font-mono">Built with Next.js · Deployed on GitHub Pages</p>
         </div>
       </div>
