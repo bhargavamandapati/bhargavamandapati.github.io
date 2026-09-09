@@ -162,16 +162,7 @@ export default async function PropertyPage({
   const rules = valueRules(property);
   const samples = codeSamples(property);
   const perms = permissionSnippets(property);
-  // Scoped to one property for review before the hardware-label mapping is
-  // designed and this rolls out to the rest of the reference.
-  const flowRows =
-    property.name === "HVAC_TEMPERATURE_SET"
-      ? propertyFlowRows(property, {
-          ecu: "HVAC ECU",
-          writeSub: "moves the blend-door actuator",
-          readSub: "cabin temperature sensor",
-        })
-      : null;
+  const flowRows = propertyFlowRows(property);
   const dependencies = groups.filter((g) => g.strength === "dependency");
 
   // Split the diagram by direction: what this needs, versus what needs this.
@@ -535,14 +526,12 @@ export default async function PropertyPage({
                   {property.area !== "GLOBAL" &&
                     ` Values are per ${property.area.toLowerCase()}, so every call takes an area ID.`}
                 </p>
-                {flowRows && (
-                  <DiagramFrame
-                    title={`How ${property.name} crosses the stack`}
-                    caption="Left: a write request travels down, numbered in the order it actually happens. Right: the change event it — or the sensor on its own — produces travels back up, lettered the same way."
-                  >
-                    <PropertyFlowDiagram rows={flowRows} />
-                  </DiagramFrame>
-                )}
+                <DiagramFrame
+                  title={`How ${property.name} crosses the stack`}
+                  caption="Left: a write request travels down, numbered in the order it actually happens. Right: how a read reaches the app — a subscribed callback firing, or a one-time read for a static property — travels back up, lettered the same way."
+                >
+                  <PropertyFlowDiagram rows={flowRows} />
+                </DiagramFrame>
                 {samples.map((snippet) => (
                   <CodeSample
                     key={snippet.title}
@@ -893,38 +882,151 @@ export type Snippet = {
 };
 
 /**
+ * What "physical hardware" plausibly means for a property in each of
+ * lib/vehicle-properties.ts's PREFIX_GROUPS categories — the one thing the
+ * AIDL genuinely cannot tell you, since it names a property, not a part.
+ *
+ * `platform: true` marks a category that is not backed by a vehicle-network
+ * signal at all — VHAL introspection, a stored user preference, Android's
+ * own user/session management — so that property's diagram stops at the
+ * VHAL process rather than inventing a CAN hop that does not exist.
+ */
+const CATEGORY_HARDWARE: Record<
+  string,
+  { ecu: string; writeSub: string; readSub: string } | { platform: true }
+> = {
+  "Vehicle information": {
+    ecu: "Body control module",
+    writeSub: "written once, at manufacture",
+    readSub: "read from non-volatile memory",
+  },
+  "Electric vehicle": {
+    ecu: "EV battery management system",
+    writeSub: "charge / port control command",
+    readSub: "battery and charge-port sensors",
+  },
+  "HVAC & climate": {
+    ecu: "HVAC ECU",
+    writeSub: "blend-door / compressor actuator",
+    readSub: "cabin and ambient temperature sensor",
+  },
+  Seats: {
+    ecu: "Seat control module",
+    writeSub: "seat motor actuator",
+    readSub: "seat position sensor",
+  },
+  "Steering & pedals": {
+    ecu: "Steering & pedal sensor module",
+    writeSub: "steering / pedal actuator",
+    readSub: "steering angle and pedal position sensor",
+  },
+  "ADAS & driver assistance": {
+    ecu: "ADAS domain controller",
+    writeSub: "enable / disable command",
+    readSub: "radar, camera and ultrasonic sensors",
+  },
+  "Performance & motion": {
+    ecu: "Wheel-speed / IMU sensor module",
+    writeSub: "calibration command",
+    readSub: "wheel-speed and inertial sensors",
+  },
+  "Engine & powertrain": {
+    ecu: "Engine control unit (ECU)",
+    writeSub: "gear / throttle actuator",
+    readSub: "engine and transmission sensor",
+  },
+  "Fuel & energy": {
+    ecu: "Fuel system module",
+    writeSub: "fuel door / pump actuator",
+    readSub: "fuel level sensor",
+  },
+  "Tyres, brakes & chassis": {
+    ecu: "Chassis control module",
+    writeSub: "brake / traction actuator",
+    readSub: "tire pressure and brake sensor",
+  },
+  "Doors, windows & mirrors": {
+    ecu: "Body control module",
+    writeSub: "door / window / mirror motor",
+    readSub: "door / window / mirror position sensor",
+  },
+  "Windshield & wipers": {
+    ecu: "Body control module",
+    writeSub: "wiper motor",
+    readSub: "rain sensor",
+  },
+  Lights: {
+    ecu: "Body control module",
+    writeSub: "light driver circuit",
+    readSub: "light status sensor",
+  },
+  "Displays & HMI": {
+    ecu: "Display / camera controller",
+    writeSub: "display driver command",
+    readSub: "camera and display sensor",
+  },
+  "Power & shutdown": {
+    ecu: "Body control module",
+    writeSub: "power-state relay",
+    readSub: "ignition and power-state sensor",
+  },
+  "Diagnostics & OBD2": {
+    ecu: "Diagnostic gateway",
+    writeSub: "diagnostic command",
+    readSub: "OBD2 / engine diagnostic bus",
+  },
+  "External conditions": {
+    ecu: "Environment sensor module",
+    writeSub: "sensor calibration command",
+    readSub: "ambient light, rain and location sensor",
+  },
+  "Time & clocks": { platform: true },
+  "Users & security": { platform: true },
+  "Vehicle Map Service": { platform: true },
+  "Platform & VHAL internals": { platform: true },
+  "Units & display settings": { platform: true },
+  Other: {
+    ecu: "Vehicle ECU",
+    writeSub: "ECU actuator",
+    readSub: "ECU sensor",
+  },
+};
+
+/**
  * The get/set path for one property, app to hardware and back, as rows for
  * PropertyFlowDiagram — every hop this property's value actually crosses,
  * with only the write column (an unwritable property) or the read column (an
- * unreadable one) dropped where it does not apply.
- *
- * `hardware` is the one part this cannot derive from the AIDL: which ECU
- * physically owns the property, and what it does at each end. That mapping
- * is still being designed for the full 280-property rollout, so for now it
- * is passed in per call rather than guessed from the property name.
+ * unreadable one) dropped where it does not apply. A static property reads
+ * once rather than subscribing, so its read column says that instead of
+ * describing a callback that will never fire.
  */
-function propertyFlowRows(
-  property: VehicleProperty,
-  hardware: { ecu: string; writeSub: string; readSub: string },
-): FlowRow[] {
-  const { set } = accessors(property);
+function propertyFlowRows(property: VehicleProperty): FlowRow[] {
+  const { get, set } = accessors(property);
   const canRead = property.access !== "WRITE";
   const canWrite = property.access === "READ_WRITE" || property.access === "WRITE";
   const areaArg = property.area === "GLOBAL" ? "" : ", areaId";
+  const staticValue = property.changeMode === "STATIC";
+  const hardware = CATEGORY_HARDWARE[categoryOf(property)] ?? CATEGORY_HARDWARE.Other;
 
-  return [
+  const rows: FlowRow[] = [
     {
       layer: "Application layer",
       process: "app process",
       write: canWrite ? { label: "Your app", sub: `mgr.${set}(propertyId${areaArg}, value)` } : undefined,
-      read: canRead ? { label: "Your app", sub: "callback.onChangeEvent(value)" } : undefined,
+      read: canRead
+        ? staticValue
+          ? { label: "Your app", sub: `mgr.${get}(propertyId${areaArg}) — read once` }
+          : { label: "Your app", sub: "callback.onChangeEvent(value)" }
+        : undefined,
     },
     {
       layer: "Car API — car-lib",
       process: "app process",
       write: canWrite ? { label: "CarPropertyManager.java", sub: `${set}()` } : undefined,
       read: canRead
-        ? { label: "ICarPropertyEventListener.aidl", sub: "binder callback stub" }
+        ? staticValue
+          ? { label: "CarPropertyManager.java", sub: `${get}() — no subscription needed` }
+          : { label: "ICarPropertyEventListener.aidl", sub: "binder callback stub" }
         : undefined,
     },
     {
@@ -935,14 +1037,20 @@ function propertyFlowRows(
         ? { label: "CarPropertyService.java", sub: "checks permission, calls the HAL" }
         : undefined,
       read: canRead
-        ? { label: "CarPropertyService.java", sub: "fans out to every subscriber" }
+        ? staticValue
+          ? { label: "CarPropertyService.java", sub: "checks permission, calls the HAL" }
+          : { label: "CarPropertyService.java", sub: "fans out to every subscriber" }
         : undefined,
     },
     {
       layer: "HAL boundary — AIDL / Binder",
       process: "process crossing",
       write: canWrite ? { label: "IVehicle.aidl", sub: "setValues()" } : undefined,
-      read: canRead ? { label: "IVehicleCallback.aidl", sub: "onPropertyEvent()" } : undefined,
+      read: canRead
+        ? staticValue
+          ? { label: "IVehicle.aidl", sub: "getValues()" }
+          : { label: "IVehicleCallback.aidl", sub: "onPropertyEvent()" }
+        : undefined,
     },
     {
       layer: "VHAL process",
@@ -952,9 +1060,16 @@ function propertyFlowRows(
         ? { label: "Vehicle HAL implementation", sub: "IVehicleHardware.setValues()" }
         : undefined,
       read: canRead
-        ? { label: "Vehicle HAL implementation", sub: "IVehicleHardware callback" }
+        ? staticValue
+          ? { label: "Vehicle HAL implementation", sub: "IVehicleHardware.getValues()" }
+          : { label: "Vehicle HAL implementation", sub: "IVehicleHardware callback" }
         : undefined,
     },
+  ];
+
+  if ("platform" in hardware) return rows;
+
+  rows.push(
     {
       layer: "Vendor HAL / ECU bridge",
       process: "OEM code — not AOSP",
@@ -972,7 +1087,9 @@ function propertyFlowRows(
       write: canWrite ? { label: hardware.ecu, sub: hardware.writeSub } : undefined,
       read: canRead ? { label: hardware.ecu, sub: hardware.readSub } : undefined,
     },
-  ];
+  );
+
+  return rows;
 }
 
 /**
