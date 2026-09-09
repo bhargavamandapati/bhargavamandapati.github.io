@@ -10,11 +10,16 @@ import {
   type ReactNode,
 } from 'react'
 import { Check, Copy } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export type CodeLanguage = 'java' | 'kotlin'
 
-const STORAGE_KEY = 'bm:code-language'
+/**
+ * Shared with components/premium/gate.tsx, which restores this same
+ * preference — and rewires the toggle by hand — for a block that arrives as
+ * decrypted markup rather than a hydrated React tree.
+ */
+export const CODE_LANGUAGE_STORAGE_KEY = 'bm:code-language'
+const STORAGE_KEY = CODE_LANGUAGE_STORAGE_KEY
 
 type Ctx = { language: CodeLanguage; setLanguage: (l: CodeLanguage) => void }
 const LanguageContext = createContext<Ctx | undefined>(undefined)
@@ -72,14 +77,10 @@ function LanguageToggle() {
         <button
           key={option}
           type="button"
+          data-lang-btn={option}
           onClick={() => setLanguage(option)}
           aria-pressed={language === option}
-          className={cn(
-            'cursor-pointer px-2 py-0.5 font-mono text-[0.62rem] uppercase tracking-[0.08em] transition-colors',
-            language === option
-              ? 'bg-accent font-medium text-accent-fg'
-              : 'text-subtle hover:text-fg',
-          )}
+          className="code-window__lang-btn cursor-pointer px-2 py-0.5 font-mono text-[0.62rem] uppercase tracking-[0.08em] transition-colors"
         >
           {option}
         </button>
@@ -160,6 +161,13 @@ export function CodeSample({
         ref={ref}
         tabIndex={0}
         className="overflow-x-auto p-4 font-mono text-[0.8rem] leading-relaxed text-fg"
+        // A locked page's body is decrypted straight into the DOM as markup, not
+        // hydrated React (see components/premium/gate.tsx) — the language that
+        // was picked at build time (always Java; SSR has no interactivity) is
+        // the only text that would otherwise survive. Carrying both here is
+        // what lets that gate rewire a real Kotlin switch after unlock.
+        data-java-code={switchable ? java : undefined}
+        data-kotlin-code={switchable ? kotlin : undefined}
       >
         <code>{body}</code>
       </pre>

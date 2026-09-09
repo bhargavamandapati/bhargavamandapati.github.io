@@ -506,6 +506,23 @@
   border-color: var(--accent);
 }
 
+/*
+ * Styled off [aria-pressed] rather than a JS-computed class so the same look
+ * applies whether React set the attribute or components/premium/gate.tsx did,
+ * rewiring a decrypted, non-hydrated code block by hand after unlock.
+ */
+.code-window__lang-btn {
+  color: var(--fg-subtle);
+}
+.code-window__lang-btn:hover {
+  color: var(--fg);
+}
+.code-window__lang-btn[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 500;
+}
+
 /* The plugin still emits a figcaption for non-window contexts; hide the dupe. */
 .prose-bm .code-window figcaption[data-rehype-pretty-code-title] {
   display: none;

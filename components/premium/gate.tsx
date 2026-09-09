@@ -7,6 +7,7 @@ import { REALM_LABEL, access, type Realm } from '@/data/access'
 import { site } from '@/data/site'
 import { EmailAccessButton } from '@/components/premium/email-access-button'
 import { decryptPayload, isWrongKeyError, type Payload } from '@/lib/premium-decrypt'
+import { CODE_LANGUAGE_STORAGE_KEY, type CodeLanguage } from '@/components/properties/code-sample'
 
 /**
  * The lock on a premium topic, and the machinery that lifts it.
@@ -46,6 +47,54 @@ function rewireCopyButtons(root: HTMLElement) {
       })
     })
   }
+}
+
+/**
+ * Restores the Java/Kotlin switch inside decrypted content.
+ *
+ * A `<pre>` that was switchable carries both variants as data attributes
+ * (see components/properties/code-sample.tsx) precisely so this has something
+ * to switch to — the SSR pass that produced this markup only ever ran with
+ * Java selected, so Kotlin's text would otherwise never have shipped at all.
+ */
+function rewireLanguageToggles(root: HTMLElement) {
+  const blocks = root.querySelectorAll<HTMLPreElement>('pre[data-java-code]')
+  if (blocks.length === 0) return
+
+  const apply = (language: CodeLanguage) => {
+    for (const pre of blocks) {
+      const code = pre.querySelector('code')
+      const text = language === 'kotlin' ? pre.dataset.kotlinCode : pre.dataset.javaCode
+      if (code && text !== undefined) code.textContent = text
+    }
+    for (const button of root.querySelectorAll<HTMLButtonElement>('[data-lang-btn]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.langBtn === language))
+    }
+  }
+
+  for (const button of root.querySelectorAll<HTMLButtonElement>('[data-lang-btn]')) {
+    if (button.dataset.wired) continue
+    button.dataset.wired = 'true'
+    button.addEventListener('click', () => {
+      const language = button.dataset.langBtn as CodeLanguage
+      try {
+        window.localStorage.setItem(CODE_LANGUAGE_STORAGE_KEY, language)
+      } catch {
+        /* storage blocked — the choice still applies for this page view */
+      }
+      apply(language)
+    })
+  }
+
+  // A reader who already picked Kotlin elsewhere on the site should not see
+  // this freshly-unlocked block quietly reset to Java.
+  let saved: string | null = null
+  try {
+    saved = window.localStorage.getItem(CODE_LANGUAGE_STORAGE_KEY)
+  } catch {
+    /* storage blocked — Java, the default the markup already shows, is fine */
+  }
+  if (saved === 'kotlin') apply('kotlin')
 }
 
 export function PremiumGate({
@@ -89,6 +138,7 @@ export function PremiumGate({
           target.innerHTML = html
           target.removeAttribute('data-premium')
           rewireCopyButtons(target)
+          rewireLanguageToggles(target)
         }
         if (remember) {
           try {
