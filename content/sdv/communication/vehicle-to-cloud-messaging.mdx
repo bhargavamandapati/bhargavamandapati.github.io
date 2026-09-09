@@ -1,0 +1,136 @@
+---
+title: "Vehicle-to-cloud messaging: MQTT and the transports above the vehicle network"
+description: "SOME/IP and DDS answer how signals move inside the vehicle. This is the different question: how a signal that already reached the databroker gets to a backend, over a link that is slow, expensive and sometimes simply absent."
+order: 6
+difficulty: "Intermediate"
+tags: ["MQTT", "Cloud", "Telemetry"]
+sources:
+  - label: "MQTT — official site"
+    href: "https://mqtt.org/"
+  - label: "OASIS MQTT 5.0 specification"
+    href: "https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html"
+---
+
+`some-ip` and `dds` both answer the same question from different angles:
+how do two software components *inside* the vehicle exchange signals. This
+topic is a different question entirely — once a signal has reached the
+databroker this curriculum has already covered, how does it get to a
+backend at all, over a cellular link that is metered, intermittent, and
+sometimes simply not there.
+
+<Plain>
+Inside the vehicle, the network is fast, mostly reliable, and the OEM
+controls every hop. Outside it, none of that holds — cellular data costs
+money per byte, connections drop mid-transfer, and the vehicle may be in a
+tunnel or a car park for the exact minute a message needed to send. A
+protocol built for a data centre's back-end assumes none of these problems;
+a protocol built for this has to assume all of them.
+</Plain>
+
+## Why MQTT specifically
+
+**MQTT** is a publish/subscribe protocol designed from the start for
+constrained, unreliable links — it predates "IoT" as a marketing term by a
+decade, originally built for oil-pipeline telemetry over expensive satellite
+links, which is a closer analogue to a connected vehicle than almost
+anything else in mainstream use. Three properties make it the default
+choice for vehicle-to-cloud telemetry specifically:
+
+| Property | What it buys |
+| --- | --- |
+| Tiny fixed header (2 bytes minimum) | Meaningful over a metered, low-bandwidth cellular connection |
+| Three QoS levels, chosen per message | A brake-adjacent alert and a routine odometer reading do not need the same delivery guarantee |
+| Persistent session, survives a reconnect | A message queued while the vehicle was in a tunnel is not simply lost |
+
+```text title="Where MQTT sits relative to what this curriculum already covers"
+in-vehicle signal (VSS path, via the databroker)
+  → a bridge process subscribes to the signals worth exporting
+  → publishes each one to an MQTT topic, e.g. vehicle/{vin}/telemetry/speed
+  → broker (cloud-side, or a regional edge node) fans it out to whichever
+    backend services have subscribed to that topic
+```
+
+## Quality of Service is the decision that actually matters
+
+MQTT's three QoS levels are the whole design surface a vehicle integration
+has to get right, and they trade reliability for exactly the bandwidth and
+battery cost a metered cellular link cannot spend carelessly.
+
+- **QoS 0 — at most once.** Fire and forget. Correct for a value that will
+  simply be superseded by the next reading anyway — a speed sample sent
+  every second does not need retry logic; a dropped one is invisible by the
+  time a retry could land.
+- **QoS 1 — at least once.** Acknowledged, retried until confirmed,
+  possibly duplicated. Correct for anything a backend needs to have
+  received, where a duplicate is harmless — an odometer reading, deduplicated
+  downstream by timestamp.
+- **QoS 2 — exactly once.** The most expensive, requiring a four-part
+  handshake. Reserved for anything where a duplicate would be actively
+  wrong — a billing event for a paid feature, or an OTA-campaign
+  acknowledgement that must not be counted twice.
+
+<Analogy title="A postcard, a signed-for letter, and a bank transfer">
+QoS 0 is a postcard — cheap, sent and forgotten, fine to lose the odd one.
+QoS 1 is a signed-for letter — you will get a copy even if the courier has
+to try twice, and receiving two copies by accident does no harm. QoS 2 is a
+bank transfer — the extra steps exist specifically so it cannot happen
+twice by accident, because a duplicate here is not a nuisance, it is a real
+error.
+</Analogy>
+
+## What this is not a replacement for
+
+MQTT is not a substitute for VSS, SOME/IP, or the databroker pattern this
+curriculum already covers — it sits *after* all of them, carrying signals
+that have already been normalised into VSS's shared vocabulary out to a
+backend. A common design mistake is having individual ECUs or apps publish
+directly to MQTT topics with their own ad hoc naming, which quietly
+recreates the exact signal-vs-service inconsistency the VSS topic already
+warned about, just one layer further out.
+
+<Scenario title="On a real programme">
+A telemetry rollout ships with every subsystem team choosing its own MQTT
+topic naming — `vehicle/speed`, `telematics/vhcl_spd`, `v1/spd_kmh` — each
+technically working, each requiring its own backend parser. Six months
+later, adding a new signal means a new backend integration every time,
+because there was never a shared naming convention, only a shared
+transport. The fix is treating the MQTT topic hierarchy as an extension of
+VSS's own namespace — `vehicle/{vin}/Vehicle/Speed`, mirroring the VSS path
+exactly — so a new signal only ever needs a new subscription, never a new
+parser.
+</Scenario>
+
+## Reliability at the edges, not just the middle
+
+A session that survives a reconnect is only useful if the client actually
+uses that feature — MQTT's persistent session and "clean start" flag are an
+explicit choice, not a default a client gets for free. A vehicle client
+that reconnects with `clean start = true` after every tunnel discards
+exactly the queued messages the protocol exists to protect; getting this
+one flag wrong quietly turns a reliable transport into an unreliable one,
+with no error anywhere to reveal it.
+
+<Callout type="tip" title="Test the actual failure mode, not the happy path">
+A telemetry pipeline that works perfectly on a Wi-Fi-connected bench rig has
+not been tested against the failure mode it actually exists for. Validate
+against a deliberately interrupted cellular connection — a real tunnel, or
+a network-conditioning tool that drops the link mid-session — before
+trusting QoS 1 or 2 to behave as designed.
+</Callout>
+
+<Recap>
+- MQTT solves a different problem than SOME/IP or DDS: getting an
+  already-normalised signal from the vehicle to a backend over a metered,
+  unreliable cellular link, not moving signals inside the vehicle.
+- Its three QoS levels are the actual design decision — match the level to
+  what a duplicate or a dropped message really costs, not by habit.
+- Treat the MQTT topic hierarchy as an extension of VSS's own naming, or
+  every new signal quietly becomes a new backend integration.
+- A persistent session only protects queued messages if the client actually
+  keeps its session alive across a reconnect — test against a real dropped
+  connection, not a stable bench-rig link.
+</Recap>
+
+## Next
+
+The platforms this all runs on — AUTOSAR, Android, Linux and QNX.

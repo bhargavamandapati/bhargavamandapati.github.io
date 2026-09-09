@@ -27,10 +27,10 @@ import { EmailAccessButton } from '@/components/premium/email-access-button'
  */
 
 const LIBRARY = [
-  { icon: BookOpen, count: '89', label: 'Learn AAOS topics', note: 'Foundations to homologation, in reading order.', href: '/learn/' },
-  { icon: Layers, count: '36', label: 'SDV topics', note: 'Service-oriented architecture, data, cloud and cluster.', href: '/sdv/' },
+  { icon: BookOpen, count: '93', label: 'Learn AAOS topics', note: 'Foundations to homologation, in reading order.', href: '/learn/' },
+  { icon: Layers, count: '40', label: 'SDV topics', note: 'Service-oriented architecture, data, cloud and cluster.', href: '/sdv/' },
   { icon: Car, count: '280', label: 'Vehicle properties', note: 'Every property, its enums, permissions and dependencies.', href: '/learn/vehicle-properties/' },
-  { icon: Boxes, count: '14', label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.', href: '/tutorials/' },
+  { icon: Boxes, count: '21', label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.', href: '/tutorials/' },
   { icon: Gauge, count: '2', label: 'Live simulators', note: 'Change a property and watch the car respond.', href: '/learn/vehicle-simulator/' },
   { icon: Search, count: '98', label: 'Glossary terms', note: 'The vocabulary, defined without assuming you know it.', href: '/glossary/' },
 ]
@@ -247,7 +247,7 @@ export function Landing() {
                 Full access
               </p>
               <ul className="mt-5 space-y-3 text-sm text-muted">
-                <li>All 89 Learn AAOS topics and all 36 SDV topics</li>
+                <li>All 93 Learn AAOS topics and all 40 SDV topics</li>
                 <li>The complete vehicle property reference, all 280 of them</li>
                 <li>
                   <span className="inline-flex items-center gap-1.5">

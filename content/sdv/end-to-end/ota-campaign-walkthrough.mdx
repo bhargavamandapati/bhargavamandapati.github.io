@@ -1,0 +1,162 @@
+---
+title: "End to end: an OTA campaign across a fleet"
+description: "The first walkthrough followed one feature through one vehicle. This one follows a single software fix from a merged commit to a rollback decision, across a hundred thousand vehicles that are not all in the same state."
+order: 2
+difficulty: "Advanced"
+tags: ["OTA", "Fleet", "End-to-end"]
+sources:
+  - label: "UNECE R156 — software update management"
+    href: "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update"
+  - label: "Uptane — automotive software update security"
+    href: "https://uptane.org/"
+---
+
+`complete-feature-walkthrough` followed one signal through one vehicle, from
+a merged PR to a working cluster indicator. This walkthrough follows a
+different kind of journey: the same fix, released once, arriving at a fleet
+of vehicles that are not all on the same build, not all online at the same
+time, and not all safe to update at the exact moment the campaign starts.
+
+<Plain>
+Shipping a feature is a software problem. Shipping it to a *fleet* is a
+scheduling and consent problem wearing a software costume — the code that
+matters least here is the fix itself; the code that matters most is the
+part that decides which vehicle gets it, when, and what happens if that
+vehicle was mid-way through something else at the time.
+</Plain>
+
+## Step 1 — The fix, and the two builds it has to work against
+
+A cockpit crash is fixed and merged. Two target-files archives now exist:
+the build most of the fleet is already running (`v4.2.0`), and the new one
+(`v4.2.1`). Both are signed, per the OTA-packaging tutorial's mechanics — a
+fleet rollout is the same signing and packaging pipeline, run at scale
+rather than by hand.
+
+```text title="What the release pipeline actually produces"
+v4.2.1 target-files (signed)
+  → full OTA package (works from any prior build)
+  → incremental OTA package, diffed against v4.2.0 specifically
+    (smaller, but only valid for vehicles already on exactly v4.2.0)
+```
+
+<Gotcha title="A fleet is never on one build — plan the incremental accordingly">
+By the time a campaign ships, the fleet is a mix of `v4.2.0`, `v4.1.3`
+(vehicles that missed the last campaign), and a handful still on `v4.0.x`.
+An incremental package diffed against only the newest prior build silently
+fails for everyone else, who then need the full package regardless — this
+is why a full package is generated and kept available for every campaign,
+never treated as a fallback nobody expects to use.
+</Gotcha>
+
+## Step 2 — The campaign, not the package, decides eligibility
+
+A campaign definition is a separate artifact from the package itself — it
+describes *which* vehicles are eligible and under *what* conditions, so the
+same signed package can roll out gradually rather than everywhere at once.
+
+```json title="A representative campaign definition"
+{
+  "campaignId": "cockpit-crash-fix-2026-03",
+  "package": "v4.2.1-full-and-incremental",
+  "eligibility": {
+    "minBuild": "v4.0.0",
+    "regions": ["EU", "UK"],
+    "excludeIf": ["activeRecall", "inServiceBay"]
+  },
+  "rollout": {
+    "stage1Percent": 1,
+    "stage1DurationHours": 48,
+    "haltOnErrorRateAbove": 0.5
+  }
+}
+```
+
+The `rollout` block is doing the actual risk management: 1% of eligible
+vehicles first, held for 48 hours, with an automatic halt if the error rate
+crosses a threshold — the fleet-scale equivalent of the canary deployment
+pattern this curriculum's CI/CD topic already covers for backend services,
+applied to hardware nobody can immediately SSH into if something goes
+wrong.
+
+## Step 3 — What has to be true on the vehicle before it even starts
+
+```text title="Preconditions checked before download, not just before install"
+sufficient battery / not actively charging-critical
+parked, not driving (a moving vehicle is never eligible mid-trip)
+Wi-Fi preferred, cellular fallback only if the campaign allows it
+sufficient free space on the inactive A/B slot
+no conflicting campaign already in flight
+```
+
+<Scenario title="On a real programme">
+A campaign is scheduled to begin at 2 a.m. local time, reasoning that most
+vehicles are parked and idle then. The rollout's actual eligible population
+turns out far smaller than expected in one region — because a large
+fraction of the fleet there is fleet-operated delivery vehicles, actively
+on shift at 2 a.m. local time in that market. The fix is not a smarter
+default time; it is exposing the eligibility window as campaign
+configuration per fleet segment, because "when is the vehicle idle" is a
+fleet-composition question, not a universal constant the platform can
+assume.
+</Scenario>
+
+## Step 4 — Download, stage, and the boundary this curriculum already named
+
+The package downloads to the **inactive** A/B slot while the vehicle
+continues running normally on the active one — the mechanics are exactly
+what the OTA-and-A/B-partitions topic already covered, just now happening
+across a fleet with staggered timing rather than one vehicle on a bench.
+
+```text title="Per-vehicle state, as the campaign's own telemetry sees it"
+vehicle_1284: downloaded, staged, awaiting reboot window
+vehicle_1285: download failed twice, cellular-only market, retry scheduled
+vehicle_1286: ineligible — activeRecall flag set
+vehicle_1287: installed, verified, reporting healthy
+```
+
+## Step 5 — The rollback decision, made from evidence, not panic
+
+```text title="The halt condition from Step 2, actually firing"
+stage 1 (1% of fleet): 4,200 vehicles updated
+  → 31 report a post-update crash loop within 6 hours (0.74% error rate)
+  → 0.74% > haltOnErrorRateAbove (0.5%)
+  → campaign automatically pauses; no further vehicles receive the package
+```
+
+<Verify title="What a fleet operator actually checks before deciding what happens next">
+- Is the elevated error rate isolated to one hardware variant, one region,
+  or genuinely fleet-wide? (Segment the 31 reports before assuming the fix
+  itself is bad.)
+- Do the crash-loop vehicles share anything — a specific prior build, a
+  specific dealer-installed accessory, a specific SoC revision?
+- Is a rollback (reverting the affected vehicles to the previous slot)
+  faster and safer than a hotfix package, given the numbers involved?
+</Verify>
+
+The staged, small-percentage rollout is precisely what makes this decision
+survivable — 31 affected vehicles, caught within the 48-hour hold window,
+is a contained incident. The same defect shipped to the whole fleet at once
+is a headline.
+
+<Callout type="warning" title="Rollback has to be tested as its own path, not assumed to work because forward updates do">
+An A/B system is capable of reverting to the previous slot, but only if the
+previous slot's boot data and app data remain compatible with a downgrade —
+a database migration that ran during `v4.2.1`'s first boot may not be
+safely reversible by simply booting `v4.2.0` again. Rollback is a release
+gate to test explicitly, not a property that follows automatically from
+having A/B partitions at all.
+</Callout>
+
+<Recap>
+- Shipping to a fleet is a scheduling and eligibility problem layered on
+  top of the packaging mechanics — the hard part is deciding which vehicle,
+  when, not building the package itself.
+- A fleet is never on one prior build; a full package has to stay available
+  alongside every incremental, not as an afterthought.
+- Staged rollout with an automatic halt condition is what turns a defect
+  into a contained incident instead of a fleet-wide one — size the first
+  stage and the halt threshold deliberately, not by habit.
+- Rollback has to be tested as its own release gate — a downgrade is not
+  guaranteed safe just because the forward update was.
+</Recap>

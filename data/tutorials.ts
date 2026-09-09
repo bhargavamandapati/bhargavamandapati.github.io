@@ -84,13 +84,13 @@ export const surfaces: Surface[] = [
   { name: 'CarSystemUI', what: 'System bars, HVAC panel, keyguard', where: 'packages/apps/Car/SystemUI + RRO', tutorial: 'apps-ui/custom-system-ui' },
   { name: 'Audio topology', what: 'Zones, buses, volume groups', where: 'car_audio_configuration.xml', tutorial: 'product/custom-audio-config' },
   { name: 'Boot animation', what: 'What the driver sees first', where: 'bootanimation.zip', tutorial: 'product/custom-boot-animation' },
-  { name: 'Framework resources', what: 'Build-time config overrides', where: 'DEVICE_PACKAGE_OVERLAYS' },
-  { name: 'Launcher', what: 'The app grid and home screen', where: 'packages/apps/Car/Launcher' },
-  { name: 'Car Settings', what: 'Settings entries and preferences', where: 'packages/apps/Car/Settings' },
-  { name: 'Key layout / input', what: 'Steering wheel and rotary mapping', where: '*.kl and *.idc files' },
-  { name: 'Locale & region', what: 'Languages, units, regional behaviour', where: 'Product config + resources' },
-  { name: 'Kernel & device tree', what: 'Drivers, display ports, CAN interfaces', where: 'kernel/ — outside AOSP' },
-  { name: 'OTA packaging', what: 'How updates are built and signed', where: 'ota_from_target_files' },
+  { name: 'Framework resources', what: 'Build-time config overrides', where: 'DEVICE_PACKAGE_OVERLAYS', tutorial: 'platform/custom-framework-overlay' },
+  { name: 'Launcher', what: 'The app grid and home screen', where: 'packages/apps/Car/Launcher', tutorial: 'apps-ui/custom-launcher' },
+  { name: 'Car Settings', what: 'Settings entries and preferences', where: 'packages/apps/Car/Settings', tutorial: 'apps-ui/custom-car-settings' },
+  { name: 'Key layout / input', what: 'Steering wheel and rotary mapping', where: '*.kl and *.idc files', tutorial: 'product/custom-input-keylayout' },
+  { name: 'Locale & region', what: 'Languages, units, regional behaviour', where: 'Product config + resources', tutorial: 'product/custom-locale-region' },
+  { name: 'Kernel & device tree', what: 'Drivers, display ports, CAN interfaces', where: 'kernel/ — outside AOSP', tutorial: 'platform/custom-kernel-devicetree' },
+  { name: 'OTA packaging', what: 'How updates are built and signed', where: 'ota_from_target_files', tutorial: 'platform/custom-ota-packaging' },
 ]
 
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced'

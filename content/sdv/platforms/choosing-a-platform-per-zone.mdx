@@ -1,0 +1,138 @@
+---
+title: "Choosing a platform per zone: a decision framework"
+description: "Four platform topics, each from its own vantage point. This one puts them side by side — which OS actually goes where in a zonal architecture, and the questions that decide it, before a single line of code is written."
+order: 5
+difficulty: "Advanced"
+tags: ["Platforms", "Architecture", "Decision-making"]
+sources:
+  - label: "COVESA — automotive connectivity"
+    href: "https://covesa.global/"
+  - label: "AUTOSAR Adaptive Platform"
+    href: "https://www.autosar.org/standards/adaptive-platform"
+---
+
+Each platform topic in this module makes its own case from its own vantage
+point — AAOS explains where Android fits, AUTOSAR explains Classic versus
+Adaptive, QNX explains the safety-island pattern, Linux/AGL explains the
+build-your-own-distribution option. None of them is wrong; none of them, on
+its own, tells you which one to put in a given zone. That question only has
+an answer once all four are on the table together, against one vehicle's
+actual zone map.
+
+<Plain>
+A modern vehicle is not "an OS" — a zonal or domain architecture typically
+runs three to five *different* operating systems simultaneously, one per
+zone or domain, each chosen for what that specific zone needs to be good
+at. Asking "which platform should we use" without first asking "for which
+zone" is the most common way this decision goes wrong.
+</Plain>
+
+## The four candidates, and the one question each answers best
+
+| Platform | Answers best | Typical zone |
+| --- | --- | --- |
+| AUTOSAR Classic | Hard real-time, statically configured, ASIL-D capable | Powertrain, braking, steering |
+| AUTOSAR Adaptive / QNX | Safety-relevant but dynamically updatable, POSIX-like | ADAS compute, safety-island cluster rendering |
+| Android Automotive | Rich UI, app ecosystem, frequent feature updates | Cockpit, infotainment, non-critical cluster layers |
+| Linux (AGL or a custom Yocto build) | Full control, no licensing constraints, connectivity-heavy workloads | Gateway, telematics control unit, central compute orchestration |
+
+No zone is forced to pick exactly one of these in isolation — the cluster
+topic already covers a genuinely common pattern where a **safety-island**
+running QNX or AUTOSAR renders the ASIL-relevant telltales while Android
+renders everything else on the same physical panel, composited together.
+The decision framework below is for the boundary itself: which parts of a
+zone's workload belong on which side of that split.
+
+## Four questions, asked per zone, not per vehicle
+
+**Does anything in this zone need a certified safety case?** If yes, that
+part is AUTOSAR Classic or a certified RTOS (QNX, or AUTOSAR Adaptive on a
+certified base), full stop — Android's own architecture explicitly
+disclaims this territory, and the AAOS topic on where Android is a poor fit
+covers exactly why forcing it there does not work.
+
+**How often does this zone's software need to change after the vehicle
+ships?** A powertrain control loop is validated once and rarely touched
+again; an infotainment recommendation engine changes monthly. The former
+tolerates AUTOSAR Classic's static configuration; the latter needs a
+platform built around frequent, safe updates, which is precisely Android
+Automotive's and AUTOSAR Adaptive's shared design goal, from opposite
+starting points.
+
+**Does this zone need a broad third-party app ecosystem, or a small,
+audited set of first-party services?** An app ecosystem is Android's
+entire reason for existing in a vehicle at all. A zone with no third-party
+app story — a gateway routing CAN and Ethernet traffic, say — gains nothing
+from Android's weight and gains real value from Linux's minimalism or
+AUTOSAR Adaptive's service-oriented model.
+
+**What does the team actually have deep expertise in already?** The
+"correct" architectural answer that a team cannot operate safely is worse
+than a slightly less optimal one they can. This is the least technical
+question and the one most often skipped in favour of the first three — and
+skipping it is how a programme ends up running a platform nobody on the
+team has shipped before, on a schedule that assumed otherwise.
+
+<Analogy title="Choosing a vehicle for a delivery route, not a vehicle for the fleet">
+Choosing "our platform" for the whole vehicle is like choosing one vehicle
+type for a company's entire delivery fleet regardless of route — a van for
+motorway freight and a van for last-mile city drops are not the same
+correct choice, even though both are technically "a van you could use."
+Choosing per zone is choosing per route: the powertrain's route needs a
+certified, predictable vehicle; the cockpit's route needs one built for
+frequent stops and a lot of cargo variety.
+</Analogy>
+
+## Where this actually gets decided badly
+
+<Scenario title="On a real programme">
+A programme standardises on "one RTOS everywhere" early, before the
+infotainment requirements are even fully scoped, reasoning that a single
+platform simplifies tooling and hiring. Eighteen months later the
+infotainment team is reimplementing a media-session framework, a
+notification system, and a third-party app sandbox that Android Automotive
+already provides for free — because the platform decision was made at the
+vehicle level, once, before anyone had asked the four questions above about
+the cockpit zone specifically. The fix is not switching platforms
+mid-programme; it is treating "one platform for tooling simplicity" and
+"one platform per zone for technical fit" as a trade-off made consciously,
+not a default arrived at by skipping the analysis.
+</Scenario>
+
+## The boundary is where the real engineering work is
+
+Whichever split a program lands on, the boundary between zones running
+different platforms is where most of the actual integration effort goes —
+the topics on service-oriented architecture, SOME/IP, and the cluster's
+own safety-island pattern all cover pieces of exactly this boundary. Picking
+the platforms is a one-time decision, made early. Designing the interface
+between them is ongoing work for the life of the programme, and it is worth
+weighting the platform decision partly by how clean that boundary will be,
+not only by which platform is individually the best fit for each zone in
+isolation.
+
+<Callout type="note" title="This decision is expensive to reverse — treat it that way">
+Moving a workload from one platform to another after a programme is well
+underway costs far more than the original decision did — every driver,
+every integration, every certified artifact tied to the old platform has to
+be redone. Spend real time on this framework before committing, because
+the cost of getting it wrong is not symmetric with the cost of taking an
+extra week to decide.
+</Callout>
+
+<Recap>
+- A vehicle runs several platforms at once, one per zone — the question is
+  never "which platform," it is "which platform, for this specific zone."
+- Certification need, update frequency, app-ecosystem requirements, and
+  actual team expertise are the four questions that decide it — in that
+  order of how hard they are to change later.
+- The boundary between platforms, not the platforms themselves, is where
+  most of the ongoing engineering effort lives — weight the decision partly
+  by how clean that boundary will be.
+- This decision is expensive to reverse; treat the time spent deciding as
+  cheap by comparison.
+</Recap>
+
+## Next
+
+The cluster — where all of this has to be safe as well as correct.

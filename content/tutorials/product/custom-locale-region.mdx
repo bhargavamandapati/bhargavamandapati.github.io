@@ -1,0 +1,212 @@
+---
+title: "Ship the same product to two regions"
+description: "PRODUCT_LOCALES, a region-keyed overlay, and the property that actually decides whether the cluster shows km/h or mph — one build definition, two genuinely different vehicles at the flash step."
+order: 4
+difficulty: "Intermediate"
+time: "1–2 hours"
+outcome: "One vega build definition producing an EU variant (metric, EU languages) and a US variant (imperial, US English default) from the same source tree, selected at flash time rather than maintained as two branches."
+prerequisites:
+  - label: "Build-time resource overrides"
+    href: "/tutorials/platform/custom-framework-overlay/"
+  - label: "The property that actually drives displayed units"
+    href: "/learn/vehicle-properties/vehicle-speed-display-units/"
+tags: ["Locale", "Regionalisation", "Product config"]
+sources:
+  - label: "Locales — Android configuration"
+    href: "https://developer.android.com/guide/topics/resources/providing-resources"
+  - label: "Adding a new device — resource overlays"
+    href: "https://source.android.com/docs/setup/create/new-device"
+  - label: "Homologation and regional variation"
+    href: "/learn/compliance/homologation/"
+---
+
+Two vehicles built from the same source, sold in different markets, need
+different languages available, a different default unit system, and often
+different regulatory text — and a real programme needs this without
+maintaining two forked product trees that drift apart on everything else.
+AOSP's own product-inheritance model handles it cleanly, once the pieces are
+in the right place.
+
+<FileTree>
+device/oem/vega/
+├── vega.mk                  # shared base — everything both regions have in common
+├── vega_eu.mk                # inherits vega.mk, adds EU-only config
+├── vega_us.mk                 # inherits vega.mk, adds US-only config
+└── overlay-region/
+    ├── eu/…/config.xml       # region-specific resource values
+    └── us/…/config.xml
+</FileTree>
+
+## The three things that actually vary
+
+Regionalisation is usually three separate mechanisms wearing one name, and
+conflating them is the most common way this goes wrong:
+
+1. **Which languages ship at all** — `PRODUCT_LOCALES`, a build-time list.
+   The device only carries translations for locales in this list; a locale
+   not listed is not selectable, no matter what the driver's phone is set
+   to.
+2. **Which unit system is the default** — not a build flag at all. It is an
+   ordinary, writable vehicle property, `VEHICLE_SPEED_DISPLAY_UNITS` and its
+   siblings, exactly like every other property this curriculum has covered.
+   The build can set a sensible *default* for it; the driver can still
+   change it afterward.
+3. **Regulatory and legal text** — a resource override, because it is the
+   one thing that genuinely must not be changeable at runtime.
+
+<Plain>
+It is tempting to treat "which region" as one flag that controls everything.
+It does not, because a driver's *language* preference and a market's
+*regulatory* requirements are not the same kind of decision — one belongs to
+the person in the seat, the other belongs to the vehicle's homologation.
+Keeping them as separate mechanisms is what lets the driver change one
+without the build having gotten the other wrong.
+</Plain>
+
+## Step 1 — The shared base
+
+```makefile title="device/oem/vega/vega.mk — unchanged from earlier tutorials"
+PRODUCT_NAME := vega
+PRODUCT_PACKAGES += VegaLauncher VegaSettingsExtra vega-telemetryd
+# ...everything common to both regions stays exactly here
+```
+
+## Step 2 — A region-specific product definition per market
+
+```makefile title="device/oem/vega/vega_eu.mk"
+$(call inherit-product, device/oem/vega/vega.mk)
+
+PRODUCT_NAME := vega_eu
+PRODUCT_LOCALES := en_GB de_DE fr_FR es_ES it_IT nl_NL
+
+DEVICE_PACKAGE_OVERLAYS += device/oem/vega/overlay-region/eu
+
+# A sensible default only — still an ordinary writable property afterward.
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.vega.default_speed_units=km/h
+```
+
+```makefile title="device/oem/vega/vega_us.mk"
+$(call inherit-product, device/oem/vega/vega.mk)
+
+PRODUCT_NAME := vega_us
+PRODUCT_LOCALES := en_US es_US
+
+DEVICE_PACKAGE_OVERLAYS += device/oem/vega/overlay-region/us
+
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.vega.default_speed_units=mph
+```
+
+<Gotcha title="PRODUCT_LOCALES controls what ships, not what is active">
+Adding a locale here makes its translations available on the device; it
+does not select it. The active locale is whatever the platform's own
+locale resolution picks (usually the first entry, or a locale explicitly
+set through Settings). A common mistake is putting only one locale in this
+list assuming it "sets the language" — it does, but only because it also
+happens to be the only option, not because this field is a default
+selector.
+</Gotcha>
+
+## Step 3 — A resource that genuinely must not be user-changeable
+
+```bash
+mkdir -p device/oem/vega/overlay-region/eu/packages/apps/Car/Settings/res/values
+mkdir -p device/oem/vega/overlay-region/us/packages/apps/Car/Settings/res/values
+```
+
+```xml title="device/oem/vega/overlay-region/eu/…/res/values/config.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EU type-approval text — regulatory, not a preference -->
+    <string name="vega_regulatory_notice">EU type-approval no. e11*2024/1234*00001</string>
+</resources>
+```
+
+```xml title="device/oem/vega/overlay-region/us/…/res/values/config.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vega_regulatory_notice">FMVSS-compliant — see owner\'s manual</string>
+</resources>
+```
+
+## Step 4 — Where the default unit actually takes effect
+
+The property override in Step 2 is only a starting value. What actually
+decides what the cluster shows is the same
+`VEHICLE_SPEED_DISPLAY_UNITS` property the simulator and every property
+reference page in this curriculum already cover — a normal, writable,
+per-vehicle property, not a build-time constant.
+
+```java title="Read at boot by whatever seeds the VHAL's initial state"
+int defaultUnits = SystemProperties.get("ro.vega.default_speed_units", "km/h")
+        .equals("mph") ? VehicleUnit.MPH : VehicleUnit.KILOMETERS_PER_HOUR;
+
+mgr.setIntProperty(
+        VehiclePropertyIds.VEHICLE_SPEED_DISPLAY_UNITS,
+        /* areaId= */ 0,
+        defaultUnits);
+```
+
+<Gotcha title="This is a seed value, not a lock — do not enforce it as one">
+Some regional requirements do mandate a fixed unit system, but most do not
+— a US-market driver is generally still allowed to switch their own cluster
+to metric. Setting the default from `ro.vega.default_speed_units` and then
+also rejecting writes to `VEHICLE_SPEED_DISPLAY_UNITS` conflates "sensible
+starting point" with "regulatory requirement," which are not the same thing
+for most markets and most properties.
+</Gotcha>
+
+## Step 5 — Build both variants and verify they actually diverge
+
+```bash title="Build the EU variant"
+cd ~/aosp && source build/envsetup.sh
+lunch vega_eu-trunk_staging-userdebug
+m -j
+```
+
+<Verify title="Verify locale and default units for the EU build">
+```bash
+adb shell getprop persist.sys.locale         # should show an EU locale
+adb shell getprop ro.vega.default_speed_units  # km/h
+adb shell settings get system locale
+adb shell dumpsys car_service | grep -i "VEHICLE_SPEED_DISPLAY_UNITS"
+```
+</Verify>
+
+```bash title="Build the US variant, from the same source tree"
+lunch vega_us-trunk_staging-userdebug
+m -j
+```
+
+<Verify title="Verify the same checks now return the US values">
+```bash
+adb shell getprop persist.sys.locale         # en-US
+adb shell getprop ro.vega.default_speed_units  # mph
+```
+Both should build from the identical `vega.mk` base with no source edits
+between the two `lunch` commands — only the product definition changed.
+</Verify>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Locale list looks right, wrong language is active | `PRODUCT_LOCALES` controls availability, not selection — check the platform's default locale resolution |
+| Regulatory string identical on both builds | Overlay path typo, or `DEVICE_PACKAGE_OVERLAYS` for the region file missing from that variant's `.mk` |
+| Unit default correct at first boot, wrong after a factory reset | Property seeding reads the system property at first boot only; confirm the seeding code actually runs on every fresh boot, not just OOBE |
+| `lunch` cannot find `vega_eu-trunk_staging-userdebug` | Product not registered — check `PRODUCT_NAME` inside `vega_eu.mk` matches the lunch combo exactly |
+
+## What you have now
+
+Two shipping variants of vega, diverging only in locale list, default
+units, and regulatory text, built from one source tree with no forked
+files — and a property-versus-resource distinction that keeps a driver's
+preference and a market's legal requirement from ever being the same
+switch.
+
+## Next
+
+That is every customisation surface this curriculum set out to cover — from
+a product target with nothing in it, to a signed OTA a fleet would actually
+accept.

@@ -1,0 +1,199 @@
+---
+title: "Sign and package your first OTA update"
+description: "The concepts from the OTA topic, actually run once: a target-files.zip, a real release key instead of the test key every build starts with, and a package that installs on a booted device."
+order: 6
+difficulty: "Advanced"
+time: "2–3 hours"
+outcome: "A signed, full OTA package built from two vega builds, applied to a running emulator with a verified signature and a successful A/B switch."
+prerequisites:
+  - label: "How A/B updates and rollback actually work"
+    href: "/learn/platform-build/ota-and-ab-partitions/"
+  - label: "Your own lunch target"
+    href: "/tutorials/platform/custom-lunch-target/"
+tags: ["OTA", "Signing", "Release"]
+sources:
+  - label: "OTA updates"
+    href: "https://source.android.com/docs/core/ota"
+  - label: "Signing builds"
+    href: "https://source.android.com/docs/security/features/apksigning"
+  - label: "Generate signing keys"
+    href: "https://source.android.com/docs/core/architecture/bootloader/signing-builds"
+---
+
+Every `m -j` you have run across this series produced a device signed with
+the AOSP **test keys** — public, checked into the tree, and rejected by any
+vehicle actually configured to trust only its OEM's own signature. This
+tutorial generates real release keys for vega, builds two versions of the
+product, and packages the difference into an OTA update signed the way a
+fleet would actually accept it.
+
+<FileTree>
+vega-keys/
+├── releasekey.pk8 / releasekey.x509.pem
+├── platform.pk8 / platform.x509.pem
+├── shared.pk8 / shared.x509.pem
+├── media.pk8 / media.x509.pem
+└── vega-keys.mk                  # PRODUCT_DEFAULT_DEV_CERTIFICATE
+</FileTree>
+
+## Step 1 — Generate a real key set
+
+AOSP signs four roles separately — platform, shared, media, and a general
+release key — rather than one key for everything, so that compromising an
+app's signing key does not also compromise the ability to sign a system
+image.
+
+```bash title="Generate the four key pairs"
+mkdir -p vega-keys && cd vega-keys
+
+for key in releasekey platform shared media; do
+  development/tools/make_key "$key" \
+    "/C=US/ST=California/L=Mountain View/O=Vega Automotive/OU=Android/CN=vega/emailAddress=security@vega.example"
+done
+```
+
+```makefile title="vega-keys/vega-keys.mk"
+PRODUCT_DEFAULT_DEV_CERTIFICATE := vega-keys/releasekey
+PRODUCT_CERTIFICATE_OVERRIDES := \
+    platform=vega-keys/platform \
+    shared=vega-keys/shared \
+    media=vega-keys/media
+```
+
+<Gotcha title="These keys are now the actual security boundary — treat them that way">
+Anything signed with `platform` runs with platform-level trust on every
+device that accepts these keys. This is deliberately a tutorial with
+throwaway keys for a fictional product; on a real programme these are
+generated once, backed up offline, and the private halves never touch a
+laptop that also has network access.
+</Gotcha>
+
+## Step 2 — Build once, keep the target-files archive
+
+The OTA tooling does not work from a flashable image — it works from
+`target-files.zip`, an intermediate archive containing every partition
+image *and* the metadata needed to sign and diff them later. This has to be
+requested explicitly; a normal `m -j` does not produce it.
+
+```bash title="Build 1: the version already in the field"
+cd ~/aosp && source build/envsetup.sh
+lunch vega-trunk_staging-userdebug
+m -j target-files-package
+
+# Keep this — the next build will overwrite $ANDROID_PRODUCT_OUT
+cp "$ANDROID_PRODUCT_OUT"/obj/PACKAGING/target_files_intermediates/*-target_files*.zip \
+   vega-keys/vega-v1-target-files.zip
+```
+
+Make one meaningful change — bump a version string, change the boot
+animation you built in an earlier tutorial, anything visible — then repeat:
+
+```bash title="Build 2: the version you are about to ship"
+m -j target-files-package
+cp "$ANDROID_PRODUCT_OUT"/obj/PACKAGING/target_files_intermediates/*-target_files*.zip \
+   vega-keys/vega-v2-target-files.zip
+```
+
+## Step 3 — Sign both target-files archives
+
+```bash title="Replace the test-key signatures with the real ones"
+for v in v1 v2; do
+  ./build/target/product/security/sign_target_files_apks \
+    -o \
+    -d vega-keys \
+    "vega-keys/vega-$v-target-files.zip" \
+    "vega-keys/vega-$v-target-files-signed.zip"
+done
+```
+
+<Verify title="Verify the archive is actually signed with your keys, not the test keys">
+```bash
+unzip -p vega-keys/vega-v2-target-files-signed.zip META/misc_info.txt \
+  | grep -i "oem_fingerprint\|mkbootimg_args" # sanity: this is the real archive
+
+apksigner verify --print-certs \
+  vega-keys/vega-v2-target-files-signed.zip 2>/dev/null || \
+  echo "check individual APKs instead — target-files is a container, not a single signed unit"
+```
+The reliable check is on the OTA package itself, in the next step — signing
+the container is necessary but the payload signature is what a device
+actually verifies before installing.
+</Verify>
+
+## Step 4 — Generate the OTA package
+
+```bash title="A full OTA package, from the signed v2 archive"
+./build/tools/releasetools/ota_from_target_files \
+  --package_key vega-keys/releasekey \
+  vega-keys/vega-v2-target-files-signed.zip \
+  vega-keys/vega-v1-to-v2-ota.zip
+```
+
+An **incremental** package — smaller, but only valid against the exact
+build it was diffed from — takes both archives:
+
+```bash title="An incremental package instead, if bandwidth matters more than simplicity"
+./build/tools/releasetools/ota_from_target_files \
+  --package_key vega-keys/releasekey \
+  -i vega-keys/vega-v1-target-files-signed.zip \
+  vega-keys/vega-v2-target-files-signed.zip \
+  vega-keys/vega-v1-to-v2-incremental.zip
+```
+
+<Gotcha title="An incremental package silently refuses a device on the wrong starting build">
+If the device is not exactly the build the incremental was diffed against —
+including a fingerprint mismatch from a hand-applied debug change — the
+update either rejects outright or, on an older client, fails mid-apply. A
+full package always works from any prior state; keep one available even
+when incrementals are the default, as the fallback path.
+</Gotcha>
+
+## Step 5 — Install it on a running device
+
+```bash title="Boot v1, then apply the OTA that moves it to v2"
+emulator -verbose -no-snapshot &
+adb wait-for-device
+
+adb reboot sideload
+adb wait-for-device
+adb sideload vega-keys/vega-v1-to-v2-ota.zip
+```
+
+<Verify title="Verify the signature was checked, and the update actually applied">
+```bash
+# During sideload, watch for the signature step explicitly
+adb -s <device> sideload vega-keys/vega-v1-to-v2-ota.zip 2>&1 | grep -i verif
+
+# After reboot, confirm the slot actually switched
+adb wait-for-device
+adb shell getprop ro.boot.slot_suffix
+adb shell getprop ro.build.fingerprint    # should now show the v2 build
+```
+A package signed with the wrong key fails the verification step before any
+partition is touched — the device stays on v1, cleanly, which is the
+correct failure mode. A successful sideload followed by a fingerprint that
+still reads v1 usually means the reboot landed back on the old slot; check
+`ro.boot.slot_suffix` before assuming the update itself failed.
+</Verify>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `target-files-package` target not found | Wrong lunch combo, or a very old branch without the releasetools scripts at this path |
+| Sideload rejects immediately, no signature message at all | Package built with `--package_key` pointing at the wrong key pair |
+| Incremental fails, full package works | Base build does not exactly match what the incremental was diffed from |
+| Fingerprint unchanged after a "successful" sideload | Update applied to the inactive slot; the reboot did not switch to it |
+| `sign_target_files_apks` errors on a specific APK | A prebuilt APK in the tree is already signed with a different key and cannot be re-signed |
+
+## What you have now
+
+A real release key set for vega, two signed builds, and an OTA package that
+a device only accepts because the signature actually matches — the same
+mechanism, run once by hand, that a fleet's build pipeline runs on every
+release after this one.
+
+## Next
+
+Back to the application layer — theming and extending the parts of the
+platform a driver actually looks at every day.

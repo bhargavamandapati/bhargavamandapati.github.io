@@ -1,7 +1,7 @@
 /**
  * Guided routes through the curriculum.
  *
- * 139 topics with no entry point is a reference, not a course. Each path is an
+ * 154 topics with no entry point is a reference, not a course. Each path is an
  * ordered walk through material that already exists, with a line on why each
  * step follows the last — the value is the ordering and the reasoning, not new
  * content.

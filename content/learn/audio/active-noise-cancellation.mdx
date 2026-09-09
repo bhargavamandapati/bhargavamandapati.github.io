@@ -1,0 +1,147 @@
+---
+title: "Active noise cancellation: cancelling road noise, not echo"
+description: "Echo cancellation removes a copy of what the cabin's own speakers just played. ANC removes something the cabin never played at all — engine and road noise, cancelled before the driver's ear hears it."
+order: 5
+difficulty: "Advanced"
+tags: ["Audio", "ANC", "DSP"]
+sources:
+  - label: "Audio policy configuration"
+    href: "https://source.android.com/docs/core/audio/implement-policy"
+  - label: "Car audio sources"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/services/Car/service/src/com/android/car/audio/"
+---
+
+`echo-cancellation-and-noise-suppression` covered a capture-side problem:
+removing a copy of the cabin's own playback from what the microphone picks
+up. Active Noise Cancellation solves a completely different problem, on the
+playback side — cancelling a noise source the cabin's audio system never
+produced at all, and never has a clean reference copy of, because it comes
+from the engine and the road rather than from a speaker.
+
+<Plain>
+ANC generates an **anti-noise** waveform — the inverse of the noise it is
+trying to cancel — and plays it through the cabin's speakers so it destructively
+interferes with the real noise at the point it reaches an ear. It requires
+constant, real-time knowledge of what the noise actually sounds like right
+now, which is the entire difficulty: unlike echo cancellation's reference
+signal (the exact audio the platform just told a speaker to play), road
+noise has no clean source signal to subtract — it has to be *measured*,
+continuously, and predicted just far enough ahead to cancel it before it
+arrives.
+</Plain>
+
+## Why this is a harder problem than it sounds
+
+Echo cancellation has an enormous advantage: the reference signal is exact
+and known in advance, because the platform itself generated it. ANC has
+none of that. Road and engine noise is measured by microphones placed near
+where cancellation needs to happen, and by the time that measurement is
+processed and an anti-noise waveform is generated and played, the real
+noise has moved on — sound travels fast enough that even a few milliseconds
+of processing latency can mean the anti-noise waveform arrives out of phase
+with the noise it was meant to cancel, at which point it does not reduce
+the noise, it adds to it.
+
+```text title="The latency budget ANC has to beat"
+noise generated at its source (tyre, road surface, engine)
+  → travels to the reference microphone
+  → DSP predicts what it will sound like at the driver's ear
+  → generates the inverse waveform
+  → plays it through the cabin speakers
+  → must arrive at the ear within a few milliseconds of the real noise,
+    or the cancellation is wrong more than it is right
+```
+
+## Feedforward and feedback: two different microphone strategies
+
+**Feedforward** ANC places a reference microphone near the noise source
+(inside a wheel arch, for engine-adjacent noise near the firewall) and
+predicts what that noise will sound like once it reaches the cabin,
+generating anti-noise ahead of time. It reacts faster because the
+microphone hears the noise before it reaches the driver, but its prediction
+model has to account for how the noise changes as it travels from that
+microphone's location to the ear.
+
+**Feedback** ANC places a microphone close to where cancellation actually
+needs to happen — near the headrest — and continuously adjusts the
+anti-noise signal based on what is still audible there. It measures the
+result directly rather than predicting it, which is more accurate but
+reacts to noise that has, by definition, already partially arrived.
+
+<Analogy title="Predicting rain versus watching the puddle form">
+Feedforward is checking the weather radar upwind and opening an umbrella
+before the rain reaches you — fast, but only as good as the prediction.
+Feedback is watching a puddle already forming at your feet and reacting to
+it directly — accurate, but by definition after the fact. Most real ANC
+systems combine both, the way a good umbrella habit combines checking the
+forecast with noticing the first drops.
+</Analogy>
+
+## Why it works well on engine drone and poorly on road roar
+
+ANC is highly effective against **low-frequency, periodic** noise — engine
+drone at a fairly stable RPM is close to a predictable waveform, which is
+exactly the case the anti-noise math handles well. It is far less effective
+against **broadband, chaotic** noise — road roar over coarse asphalt is
+closer to random noise across a wide frequency range, with no stable
+waveform to predict or cancel cleanly. This is why cabin ANC marketing
+tends to demonstrate engine noise or a specific droning frequency rather
+than a poor road surface at speed: the physics genuinely favours one case
+over the other, not a limitation of any particular implementation.
+
+| Noise type | ANC effectiveness | Why |
+| --- | --- | --- |
+| Engine drone, steady RPM | High | Low-frequency, near-periodic, predictable |
+| Road roar, coarse surface | Low to moderate | Broadband, chaotic, poorly predictable |
+| Wind noise at speed | Low | Broadband and highly variable with speed and window seals |
+| A single resonant frequency (e.g. a drivetrain harmonic) | High | Narrowband and stable — the easiest case for ANC |
+
+<Scenario title="On a real programme">
+A cabin ANC feature is validated on a smooth test track and ships with
+strong measured noise reduction. Customer feedback after launch describes
+the feature as "barely noticeable" on the actual roads most owners drive.
+The test track's surface noise is close to periodic at a steady speed —
+exactly the case ANC handles best — while everyday roads are the broadband,
+chaotic case it handles worst. The fix is not a DSP bug; it is validating
+against representative road surfaces from the start, and setting the
+feature's own marketing and UX copy to reflect what the physics can
+actually promise, rather than the test track's best case.
+</Scenario>
+
+## Where this sits relative to everything else in this module
+
+ANC is a **playback-side, speaker-driven** feature — it uses the same
+output buses `car-audio-architecture` already covers, and its anti-noise
+signal has to be mixed and routed like any other audio context, correctly
+ducked or not ducked depending on what else is playing. It is entirely
+independent of the capture-side AEC/NS pipeline; a vehicle can run both
+simultaneously, cancelling road noise on the way out and echo on the way
+in, without either one being aware the other exists.
+
+<Callout type="tip" title="ANC and a driver-facing microphone can interact in a way worth testing explicitly">
+An ANC reference microphone placed near the driver can pick up the driver's
+own voice during a hands-free call, and the call's own AEC pipeline was not
+designed with an anti-noise signal from a *different* system also playing
+through the same speakers. Test hands-free call quality specifically with
+ANC active, not only with it disabled, since the two systems were very
+likely developed and validated independently.
+</Callout>
+
+<Recap>
+- ANC cancels noise the audio system never produced — engine and road noise
+  — by generating a real-time inverse waveform, unlike echo cancellation's
+  exact, pre-known reference signal.
+- Latency is the entire difficulty: an anti-noise waveform that arrives
+  even a few milliseconds late adds to the noise instead of cancelling it.
+- Feedforward microphones near the noise source react faster but predict;
+  feedback microphones near the ear react slower but measure directly —
+  most real systems combine both.
+- ANC is strong against steady, low-frequency noise like engine drone and
+  weak against broadband, chaotic noise like road roar — a physics
+  limitation, not an implementation gap, and worth validating against real
+  road surfaces rather than a smooth test track.
+</Recap>
+
+## Next
+
+Bluetooth — where audio, telephony and contacts all arrive at once.

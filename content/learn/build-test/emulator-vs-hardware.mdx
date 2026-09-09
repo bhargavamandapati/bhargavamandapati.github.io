@@ -1,0 +1,129 @@
+---
+title: "Emulator versus real hardware: what each one can and cannot tell you"
+description: "The AAOS emulator is not a smaller version of the truth — it is a genuinely different environment, faithful about some things and structurally unable to be faithful about others."
+order: 5
+difficulty: "Intermediate"
+tags: ["Emulator", "Testing", "Bring-up"]
+sources:
+  - label: "Set up an Android Automotive emulator"
+    href: "https://source.android.com/docs/automotive/start/avd/create_avd"
+  - label: "Vehicle HAL"
+    href: "https://source.android.com/docs/automotive/vhal"
+---
+
+Every earlier tutorial and topic in this curriculum that says "verify on
+the emulator" is quietly making a claim: that what the emulator shows you
+is representative of what a real vehicle would show you. For most of the
+framework, that claim holds well. For a specific, predictable set of
+things, it does not — and knowing which is which in advance is worth more
+than any individual debugging technique.
+
+<Plain>
+The emulator runs the exact same framework, Car Service, and app layer a
+real vehicle runs. What it does not run is the exact same hardware,
+timing, or vehicle HAL implementation — those are simulated, deliberately,
+because the alternative is requiring a real board for every test. The
+question this topic answers is not "is the emulator good," it is "good at
+representing which layer."
+</Plain>
+
+## What the emulator is faithful to
+
+Everything at and above the framework boundary behaves identically to real
+hardware, because it *is* identical — the same `system.img`, the same Car
+Service, the same app APKs. A bug in `CarPropertyManager`'s permission
+check, a crash in an app's activity lifecycle handling, a UX-restriction
+layout bug — all of these reproduce on the emulator exactly as they would
+on a vehicle, because none of them depend on anything the emulator
+simulates differently.
+
+## What the emulator cannot be faithful to, and why
+
+**The Vehicle HAL is a reference implementation, not the vendor's.** The
+emulator ships `DefaultVehicleHal`, a software implementation that answers
+property reads instantly and accepts writes unconditionally. A vendor VHAL
+bridging to a real CAN network has latency, can reject a write the vehicle
+network itself refuses, and can report `UNAVAILABLE` for reasons that never
+occur in software. Code that assumes every property read completes in
+under a millisecond, because that is what the emulator always shows, will
+be the code that surprises you first on real hardware.
+
+**Boot timing is not comparable.** The camera-in-under-two-seconds deadline,
+boot-time optimisation work, and anything measuring cold-start latency are
+measuring the emulator's own virtualised boot path, which shares almost
+nothing with a real SoC's boot ROM, bootloader, and kernel init timeline.
+A boot-time regression can be entirely invisible on the emulator and severe
+on target, or the reverse.
+
+**Real sensors do not exist.** GNSS, wheel-speed sensors, cameras, the
+in-cabin driver-monitoring feed — the emulator supplies synthetic or
+extension-provided values for these, not anything derived from physical
+measurement. Code that behaves correctly against a smooth, idealised GNSS
+trace can behave very differently against a real signal with genuine
+multipath error and dropout.
+
+| Layer | Emulator represents it | Needs real hardware to verify |
+| --- | --- | --- |
+| Framework, Car Service, app logic | Faithfully — it is the same code | Rarely |
+| Permission checks, UX restrictions | Faithfully | Rarely |
+| VHAL response latency and rejection behaviour | Not at all — reference HAL is idealised | Always |
+| Boot timing | Not at all — different boot path entirely | Always |
+| Sensor fidelity (GNSS, camera, IMU) | Synthetic only | Always |
+| SEPolicy denials on vendor-specific paths | Only for paths the emulator itself exercises | Usually |
+
+<Analogy title="A flight simulator, not a smaller aeroplane">
+A flight simulator is genuinely excellent at teaching checklist procedure,
+instrument reading, and emergency protocol — all faithfully represented,
+because they are software regardless of which side they run on. It cannot
+teach you what real turbulence, a real engine's actual response curve, or a
+real crosswind landing feels like, not because the simulator is bad, but
+because those things are not the kind of thing a simulator running on the
+ground can represent at all. The emulator is the same kind of tool, for the
+same kind of reason.
+</Analogy>
+
+## A practical rule for where to test what
+
+<Scenario title="On a real programme">
+A subscription-rate change to a vehicle property passes every emulator test
+and every code review, then produces visible cluster lag on the first
+integration vehicle. The emulator's `DefaultVehicleHal` serves every
+subscription instantly regardless of rate, so a change that quietly
+doubled the effective polling load never showed up as latency in any
+emulator run — there was no real HAL round-trip time for the extra load to
+compete with. The fix is not distrusting the emulator generally; it is
+recognising that anything touching HAL call *volume* or *timing*
+specifically needed a hardware pass before merge, which the review checklist
+had not called out as a distinct risk category from "does the feature work."
+</Scenario>
+
+<Callout type="tip" title="Use the emulator to isolate, hardware to confirm">
+When a bug reproduces on both, debug it on the emulator — faster iteration,
+better tooling, no risk to a physical unit. When a bug reproduces only on
+hardware, the cause is very likely one of the rows in the table above; start
+there rather than re-reading the framework code, which is usually not where
+a hardware-only symptom originates.
+</Callout>
+
+## Troubleshooting
+
+| Symptom | Likely explanation |
+| --- | --- |
+| Works on emulator, hangs or times out on target | Real VHAL latency the reference implementation never exhibits |
+| Works on emulator, `UNAVAILABLE` on target | A real dependency (gate property, sensor) the emulator always reports satisfied |
+| Boot-time change looks neutral on emulator | Different boot path entirely; measure on target only |
+| SEPolicy denial only on target | Vendor-specific file or property path the emulator's generic policy never exercises |
+
+<Recap>
+- The emulator runs the real framework and app layer — bugs there reproduce
+  identically on real hardware, and the emulator is the faster, safer place
+  to find them.
+- The Vehicle HAL, boot timing, and sensor fidelity are the three places the
+  emulator is structurally unable to represent real hardware, not just
+  imperfectly approximating it.
+- A change that alters HAL call volume, timing, or rejection behaviour needs
+  a hardware pass specifically — passing on the emulator says nothing about
+  it, because the reference HAL cannot exhibit the failure mode at all.
+- When a bug reproduces only on target, start with VHAL timing, boot
+  sequencing, or sensor fidelity before re-reading framework code.
+</Recap>

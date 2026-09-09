@@ -1,0 +1,216 @@
+---
+title: "Add a device tree overlay for a new peripheral"
+description: "The one boundary this whole tutorial series has stayed above until now — where AOSP stops and the kernel begins, and how a CAN transceiver gets from silicon to a device node."
+order: 5
+difficulty: "Advanced"
+time: "2–3 hours (plus a kernel build)"
+outcome: "A CAN transceiver enabled through a device tree overlay rather than a full device tree rebuild, producing a real /dev/vega-can0 node the SocketCAN stack can open."
+prerequisites:
+  - label: "Your own lunch target"
+    href: "/tutorials/platform/custom-lunch-target/"
+  - label: "How the vehicle network reaches the kernel"
+    href: "/learn/sdv/can-signal-bridging/"
+tags: ["Kernel", "Device tree", "Bring-up"]
+sources:
+  - label: "Android kernel architecture"
+    href: "https://source.android.com/docs/core/architecture/kernel"
+  - label: "SocketCAN"
+    href: "https://www.kernel.org/doc/html/latest/networking/can.html"
+  - label: "Kernel documentation — Devicetree"
+    href: "https://www.kernel.org/doc/html/latest/devicetree/usage-model.html"
+---
+
+Everything so far has lived above the kernel — `Android.bp`, `.rc` files,
+SEPolicy, resource overlays. All of it assumes the hardware underneath
+already exists as a device node. This tutorial is the one layer below that
+assumption: what actually has to happen for `/dev/vega-can0` to exist before
+any of the software above it has anything to open.
+
+<FileTree>
+kernel/vega/
+├── arch/arm64/boot/dts/vega/
+│   └── vega-can-overlay.dts       # device tree overlay, not the base tree
+├── drivers/net/can/vega/
+│   └── vega_can_transceiver.c     # the driver the overlay binds to
+└── BoardConfig.mk (device/oem/vega/)
+    BOARD_KERNEL_CMDLINE           # kernel command line additions
+</FileTree>
+
+## Where the kernel actually lives
+
+Unlike everything else in this series, the kernel is not part of the AOSP
+superproject tree at all. It is built from `kernel/common` (the Android
+Common Kernel — an upstream LTS kernel plus Android's own patches) combined
+with a **vendor kernel tree** carrying the SoC vendor's and your own
+out-of-tree drivers and device tree sources. `kernel/vega/` in the tree
+above is that vendor tree, checked out and built separately from the
+`repo sync` that pulls in `packages/`, `frameworks/`, and everything this
+series has touched until now.
+
+<Plain>
+A **device tree** is a data structure, not code — it describes what hardware
+exists on a board (which bus a chip sits on, which interrupt line it uses,
+which GPIO enables it) so the same kernel binary can run on different boards
+without a recompile for each one. The kernel reads it at boot and matches
+each node against a driver that knows how to bind to it.
+</Plain>
+
+## Why an overlay, not a new base device tree
+
+A full device tree describes the entire board — every bus, every existing
+peripheral — and vega's reference board already has one, shipped by the SoC
+vendor. Editing it directly means carrying a diff against every future
+vendor kernel update, forever. A **device tree overlay** is a small,
+separate fragment that is applied on top of the base tree at boot,
+describing only what you are adding. It survives a base-tree update because
+it never touched the base tree at all.
+
+```dts title="kernel/vega/arch/arm64/boot/dts/vega/vega-can-overlay.dts"
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "oem,vega-board";
+};
+
+&spi1 {
+    status = "okay";
+
+    can_transceiver: can@0 {
+        compatible = "oem,vega-can-transceiver";
+        reg = <0>;                       // chip select 0 on spi1
+        spi-max-frequency = <10000000>;  // 10 MHz, per the transceiver datasheet
+        interrupt-parent = <&gpio_intc>;
+        interrupts = <42 IRQ_TYPE_LEVEL_LOW>;
+        vega,can-clock-frequency = <20000000>;
+    };
+};
+```
+
+The pieces that matter:
+
+| Field | Why |
+| --- | --- |
+| `/plugin/` | Marks this as an overlay, not a complete device tree |
+| `&spi1` | References an existing bus node from the *base* tree by label — this is what makes it an overlay rather than a redefinition |
+| `compatible = "oem,vega-can-transceiver"` | The string the kernel matches against a driver's own `of_match_table` |
+| `interrupts` | Which GPIO line the transceiver pulls when a CAN frame arrives, and its polarity |
+
+<Gotcha title="The label in &spi1 has to exist in the base tree you are building against">
+An overlay that references `&spi1` when the base board's device tree calls
+that node something else fails silently at the device-tree compiler step,
+or worse, applies to the wrong bus. Check the base tree's own `.dts` (or ask
+the SoC vendor for its labelled node names) before writing the overlay —
+this is the single most common reason an overlay "does nothing."
+</Gotcha>
+
+## Step 2 — Write the driver it binds to
+
+```c title="kernel/vega/drivers/net/can/vega/vega_can_transceiver.c (excerpt)"
+static const struct of_device_id vega_can_of_match[] = {
+    { .compatible = "oem,vega-can-transceiver" },
+    { }
+};
+MODULE_DEVICE_TABLE(of, vega_can_of_match);
+
+static struct spi_driver vega_can_driver = {
+    .driver = {
+        .name = "vega-can-transceiver",
+        .of_match_table = vega_can_of_match,
+    },
+    .probe = vega_can_probe,
+    .remove = vega_can_remove,
+};
+module_spi_driver(vega_can_driver);
+```
+
+`of_match_table` is the other half of the `compatible` string in the
+overlay — the kernel walks the device tree at boot, and for every node it
+finds, looks for a driver whose match table contains that exact string. Get
+either string wrong and the node exists with no driver bound to it, which
+`dmesg` reports plainly but nothing else notices.
+
+## Step 3 — Wire the overlay into the build
+
+```makefile title="device/oem/vega/BoardConfig.mk"
+BOARD_KERNEL_CMDLINE += vega.can_enabled=1
+
+# Which overlay(s) apply to this board variant
+BOARD_KERNEL_DEVICETREE_OVERLAYS := \
+    kernel/vega/arch/arm64/boot/dts/vega/vega-can-overlay.dtbo
+```
+
+```bash title="Build the kernel and the overlay together"
+cd ~/aosp && source build/envsetup.sh
+lunch vega-trunk_staging-userdebug
+m -j
+```
+
+<Verify title="Verify the overlay applied and the driver bound">
+```bash
+# The overlay is present in the boot chain
+adb shell cat /proc/device-tree/chosen/overlays 2>/dev/null || \
+  adb shell ls /sys/firmware/devicetree/base/spi1/can@0
+
+# The driver actually bound to it, not just that the node exists
+adb shell dmesg | grep -i vega-can
+
+# SocketCAN registered a real network interface for it
+adb shell ip link show vega-can0
+```
+A device tree node with no bound driver still shows up in the first two
+checks. Only the third one — a real `vega-can0` link — confirms the whole
+chain worked end to end.
+</Verify>
+
+## Step 4 — Bring the interface up and prove a frame moves
+
+```bash title="Bring the CAN interface up at the kernel level"
+adb shell ip link set vega-can0 type can bitrate 500000
+adb shell ip link set vega-can0 up
+```
+
+<Verify title="A frame really crosses the transceiver">
+```bash
+# From a second terminal: listen
+adb shell candump vega-can0
+
+# From the first: send a test frame
+adb shell cansend vega-can0 123#DEADBEEF
+```
+If `candump` shows the frame, everything from the SPI bus up through
+SocketCAN is correctly wired. If it does not, work down from the top: is the
+interface `UP` (`ip -d link show vega-can0`)? Is the driver bound (Step 3)?
+Is the overlay's `spi-max-frequency` actually inside what the transceiver
+supports?
+</Verify>
+
+<Gotcha title="This is below the AOSP tree, and below the SELinux boundary too">
+Everything the SEPolicy tutorial covered governs Android userspace processes
+talking to device nodes — it has no opinion on whether the kernel itself
+finds and binds a driver. A `vega-can0` interface that never appears is a
+device tree or kernel driver problem, full stop; `dmesg` and `avc: denied`
+are two completely different failure classes, and confusing them is the
+most common way to lose an afternoon at this layer.
+</Gotcha>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| No node under `/sys/firmware/devicetree/base/` | Overlay not listed in `BOARD_KERNEL_DEVICETREE_OVERLAYS`, or `.dtbo` failed to compile |
+| Node exists, no `vega-can0` interface | `compatible` strings do not match between overlay and driver |
+| Interface exists, `candump` sees nothing | Wrong SPI bus/CS in the overlay, or `interrupts` line does not match the real wiring |
+| Works on the bench rig, not the real board | Base tree label (`&spi1`) differs between the two boards' device trees |
+
+## What you have now
+
+A real peripheral, added without touching the vendor's base device tree —
+from a `.dts` overlay, through a driver bound by `compatible` string, to a
+SocketCAN interface a userspace daemon (or the vendor VHAL bridge covered
+earlier in this curriculum) can open like any other network device.
+
+## Next
+
+Everything you have built across this series, packaged into an update a
+vehicle already in the field can actually install.

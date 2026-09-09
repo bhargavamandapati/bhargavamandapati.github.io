@@ -1,0 +1,188 @@
+---
+title: "Add an entry to Car Settings without forking it"
+description: "ExtraSettingsProvider — the injection point that lets a separate, OEM-owned APK add a real settings screen without a single line of packages/apps/Car/Settings changing."
+order: 5
+difficulty: "Intermediate"
+time: "1–2 hours"
+outcome: "A vega diagnostics screen appearing inside Car Settings' own menu, contributed entirely from a separate app — Settings itself rebuilt with zero source changes."
+prerequisites:
+  - label: "A system app to hold the injected settings"
+    href: "/tutorials/apps-ui/custom-system-app/"
+tags: ["Car Settings", "Extensibility"]
+sources:
+  - label: "Car Settings source"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:packages/apps/Car/Settings/"
+  - label: "Privileged permission allowlisting"
+    href: "https://source.android.com/docs/core/permissions/perms-allowlist"
+  - label: "PreferenceController pattern (AndroidX Preference)"
+    href: "https://developer.android.com/reference/androidx/preference/Preference"
+---
+
+Adding one settings entry does not have to mean forking
+`packages/apps/Car/Settings`. The module ships an injection mechanism —
+`ExtraSettingsProvider` — specifically so an OEM app can contribute a real,
+navigable settings screen from outside the module, discovered at runtime by
+metadata rather than compiled in.
+
+<FileTree>
+vendor/oem/vega/apps/VegaSettingsExtra/
+├── Android.bp
+├── AndroidManifest.xml
+├── res/xml/vega_extra_settings.xml   # the ContentProvider's declared metadata
+└── src/…/VegaDiagnosticsFragment.java
+</FileTree>
+
+## How the injection point actually works
+
+Car Settings queries every installed package for a `ContentProvider`
+carrying a specific `<meta-data>` marker
+(`com.android.car.settings.category`) at startup, reads a small XML
+resource out of it, and adds one menu entry per row it finds — pointing at
+an `Intent` the provider's own app supplies. Nothing in Car Settings knows
+vega exists at build time; it discovers the entry the same way it would
+discover any other OEM's, purely from what is installed on the device.
+
+<Plain>
+Car Settings is not asking "did anyone fork me." It is asking, at runtime,
+"does anything installed on this device want to add a row here" — and any
+app holding the right permission and metadata gets a row, without Settings'
+own source ever mentioning that app by name.
+</Plain>
+
+## Step 1 — Declare the provider
+
+```xml title="vendor/oem/vega/apps/VegaSettingsExtra/AndroidManifest.xml"
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.vega.settingsextra">
+
+    <uses-permission android:name="android.car.permission.CAR_DISPLAY_IN_CLUSTER" />
+
+    <application>
+        <provider
+            android:name=".VegaExtraSettingsProvider"
+            android:authorities="com.vega.settingsextra.provider"
+            android:exported="true"
+            android:readPermission="com.android.car.settings.permission.EXTRA_SETTINGS">
+            <meta-data
+                android:name="com.android.car.settings.category"
+                android:resource="@xml/vega_extra_settings" />
+        </provider>
+
+        <activity android:name=".VegaDiagnosticsActivity"
+            android:exported="true" />
+    </application>
+</manifest>
+```
+
+<Gotcha title="readPermission has to be the platform's own permission, not one you define">
+`com.android.car.settings.permission.EXTRA_SETTINGS` is defined by Car
+Settings itself and is signature-protected. If the provider does not
+declare exactly this permission, Car Settings' own query for extra-settings
+providers silently excludes it — there is no error, no log line, the row
+just never appears.
+</Gotcha>
+
+## Step 2 — Describe the row
+
+```xml title="vendor/oem/vega/apps/VegaSettingsExtra/res/xml/vega_extra_settings.xml"
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <Preference
+        android:key="vega_diagnostics"
+        android:title="Vega diagnostics"
+        android:summary="Live VHAL connection status and last sync time"
+        android:fragment="com.vega.settingsextra.VegaDiagnosticsFragment" />
+</PreferenceScreen>
+```
+
+Alternatively, a row can launch a plain `Activity` instead of an in-process
+fragment — simpler, at the cost of a visible transition rather than feeling
+like a native part of the Settings flow:
+
+```xml title="A row that launches an Activity instead"
+<Preference
+    android:key="vega_diagnostics"
+    android:title="Vega diagnostics"
+    android:summary="Live VHAL connection status and last sync time">
+    <intent android:action="android.intent.action.MAIN"
+        android:targetPackage="com.vega.settingsextra"
+        android:targetClass="com.vega.settingsextra.VegaDiagnosticsActivity" />
+</Preference>
+```
+
+## Step 3 — Build the fragment it points at
+
+```java title="vendor/oem/vega/apps/VegaSettingsExtra/src/…/VegaDiagnosticsFragment.java (excerpt)"
+public class VegaDiagnosticsFragment extends PreferenceFragmentCompat {
+    @Override
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        setPreferencesFromResource(R.xml.vega_diagnostics_detail, rootKey);
+
+        CarPropertyManager mgr = (CarPropertyManager)
+                getCar().getCarManager(Car.PROPERTY_SERVICE);
+        boolean connected = mgr != null;
+
+        findPreference("vhal_status")
+                .setSummary(connected ? "Connected" : "Unavailable");
+    }
+}
+```
+
+This is an ordinary `PreferenceFragmentCompat`, loaded into Car Settings'
+own navigation host — it inherits the surrounding app's back stack and
+styling automatically, which is the main advantage over the `Activity`
+variant above.
+
+## Step 4 — Build, install, and confirm placement
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_PACKAGES += VegaSettingsExtra
+```
+
+```bash
+m -j && adb install -r $ANDROID_PRODUCT_OUT/vendor/app/VegaSettingsExtra/VegaSettingsExtra.apk
+```
+
+<Verify title="Verify Car Settings actually discovered the provider">
+```bash
+# Confirm the provider is queryable at all — this is what Car Settings itself does
+adb shell content query --uri content://com.vega.settingsextra.provider
+
+# Open Settings and check where the row landed
+adb shell am start -a android.settings.SETTINGS
+```
+Navigate to Settings on the emulator. "Vega diagnostics" should appear as a
+top-level row, without Car Settings having been rebuilt at all — confirm
+with `adb shell dumpsys package com.android.car.settings | grep -i
+lastUpdateTime`, which should still show the platform build's original
+timestamp, not today's.
+</Verify>
+
+<Gotcha title="A category XML with a syntax error is dropped, not reported">
+If `vega_extra_settings.xml` fails to parse, Car Settings drops that
+provider from its results the same way it would drop one that simply chose
+not to declare a category — there is no distinct "broken injection" state
+visible in the UI. Validate the XML in isolation
+(`aapt2 dump resources` against the built APK) before assuming the
+manifest wiring is the problem.
+</Gotcha>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Row never appears | `readPermission` on the provider is not exactly the platform's `EXTRA_SETTINGS` permission |
+| Row appears, tapping it crashes | `android:fragment` class name does not match the built class exactly, including package |
+| Row appears in the wrong place in the menu | Category metadata resource used the wrong `<PreferenceScreen>` category attribute |
+| Works after `adb install`, gone after reboot | APK not in `PRODUCT_PACKAGES` — the manually installed copy did not survive a fresh flash |
+
+## What you have now
+
+A settings screen a driver reaches through the platform's own Settings app,
+contributed entirely from a separate, independently updatable package —
+proof that most "we need to fork Settings" requirements are actually this
+injection point, not yet discovered.
+
+## Next
+
+Down to the hardware a driver's hands actually touch — steering wheel
+buttons, and how a key press becomes an Android keycode.
