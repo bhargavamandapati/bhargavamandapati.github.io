@@ -26,6 +26,14 @@ already exists as a device node. This tutorial is the one layer below that
 assumption: what actually has to happen for `/dev/vega-can0` to exist before
 any of the software above it has anything to open.
 
+<Callout type="warning" title="Development hardware, not a vehicle's live CAN network">
+This wires a CAN transceiver into a development board's device tree, for
+learning how the platform reaches real hardware. Any change that touches a
+vehicle's actual CAN network is safety-critical: it belongs in your
+organisation's engineering and functional-safety process (for example,
+ISO 26262), never applied to a vehicle in service or on public roads.
+</Callout>
+
 <FileTree>
 kernel/vega/
 ├── arch/arm64/boot/dts/vega/

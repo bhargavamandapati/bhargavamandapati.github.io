@@ -22,6 +22,12 @@ Most vendor code that talks to hardware is a native daemon started by init. This
 builds the smallest useful one, and then deliberately walks into the SELinux wall
 so the next tutorial has something real to fix.
 
+<Callout type="warning" title="Development target, not a production vehicle">
+This runs against the `vega` emulator target from the previous tutorial. A
+vendor daemon that ships on a real vehicle goes through its OEM's own review,
+signing and functional-safety process before it reaches production hardware.
+</Callout>
+
 <FileTree>
 vendor/oem/vega/telemetryd/
 ├── Android.bp                # Soong module

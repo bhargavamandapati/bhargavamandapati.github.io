@@ -27,6 +27,14 @@ tutorial generates real release keys for vega, builds two versions of the
 product, and packages the difference into an OTA update signed the way a
 fleet would actually accept it.
 
+<Callout type="warning" title="Development target, not a production vehicle">
+The keys and package built here are for the fictional `vega` device, to
+learn the signing mechanics. Producing and deploying an OTA update for a
+real fleet uses that OEM's own release keys and release process — signing
+and pushing an update is a safety- and security-relevant action that
+doesn't belong outside it.
+</Callout>
+
 <FileTree>
 vega-keys/
 ├── releasekey.pk8 / releasekey.x509.pem

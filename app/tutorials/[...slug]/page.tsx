@@ -7,6 +7,7 @@ import { TutorialSidebar } from '@/components/tutorial/sidebar'
 import { TrackIcon } from '@/components/tutorial/track-icon'
 import { OutcomeCard } from '@/components/tutorial/outcome-card'
 import { SourceList } from '@/components/learn/source'
+import { ContentProvenance } from '@/components/learn/content-provenance'
 import { TableOfContents } from '@/components/table-of-contents'
 import { ReadAloud } from '@/components/read-aloud'
 import { Gated } from '@/components/premium/gated'
@@ -169,6 +170,7 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
           </article>
 
           <SourceList sources={tutorial.sources} />
+          <ContentProvenance />
 
           {(previous || next) && (
             <nav aria-label="Tutorial navigation" className="mt-12 grid gap-4 border-t border-line pt-8 sm:grid-cols-2">

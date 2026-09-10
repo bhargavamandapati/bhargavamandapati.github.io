@@ -7,6 +7,7 @@ import { SdvSidebar } from '@/components/sdv/sidebar'
 import { SdvModuleIcon } from '@/components/sdv/module-icon'
 import { MarkRead } from '@/components/paths/mark-read'
 import { SourceList } from '@/components/learn/source'
+import { ContentProvenance } from '@/components/learn/content-provenance'
 import { TableOfContents } from '@/components/table-of-contents'
 import { ReadAloud } from '@/components/read-aloud'
 import { Gated } from '@/components/premium/gated'
@@ -155,6 +156,7 @@ export default async function SdvTopicPage({ params }: { params: Promise<Params>
           </article>
 
           <SourceList sources={topic.sources} />
+          <ContentProvenance />
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <MarkRead href={`/sdv/${topic.slug}/`} />

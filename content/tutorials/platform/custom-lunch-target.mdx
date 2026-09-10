@@ -26,6 +26,14 @@ they will be lost on the next sync.
 
 So the first thing to build is your own product.
 
+<Callout type="warning" title="Development target, not a production vehicle">
+`vega` is a fictional device built to run in the AAOS emulator, for learning
+how a product is put together. Building a product for an OEM's actual
+vehicle uses that OEM's own build process, device configuration and signing
+keys, and goes through their functional-safety and homologation sign-off —
+never treat these steps as something to run against a fielded vehicle.
+</Callout>
+
 <FileTree>
 device/oem/vega/
 ├── AndroidProducts.mk        # declares the product to the build system

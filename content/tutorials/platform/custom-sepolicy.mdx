@@ -23,6 +23,13 @@ sources:
 Your daemon runs and cannot do its job. This fixes that properly — a domain of
 its own, a labelled data directory, and the narrowest set of rules that works.
 
+<Callout type="warning" title="Development target, not a production vehicle">
+This is SEPolicy for the fictional `vega` emulator target, written to show
+the mechanics. Security policy for a real vehicle's software is safety- and
+security-relevant in its own right, and belongs to that OEM's own review
+process, not a change made outside it.
+</Callout>
+
 <FileTree>
 device/oem/vega/sepolicy/vendor/
 ├── file_contexts             # which label goes on which path

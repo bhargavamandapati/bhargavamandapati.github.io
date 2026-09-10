@@ -7,6 +7,7 @@ import { LearnSidebar } from '@/components/learn/sidebar'
 import { CategoryIcon } from '@/components/learn/category-icon'
 import { MarkRead } from '@/components/paths/mark-read'
 import { SourceList } from '@/components/learn/source'
+import { ContentProvenance } from '@/components/learn/content-provenance'
 import { TableOfContents } from '@/components/table-of-contents'
 import { ReadAloud } from '@/components/read-aloud'
 import { Gated } from '@/components/premium/gated'
@@ -158,6 +159,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
           </article>
 
           <SourceList sources={topic.sources} />
+          <ContentProvenance />
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <MarkRead href={`/learn/${topic.slug}/`} />

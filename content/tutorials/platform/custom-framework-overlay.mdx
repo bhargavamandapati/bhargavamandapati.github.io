@@ -26,6 +26,12 @@ resources that trick stops working on: anything a target module never marked
 overlayable, and anything read before the overlay manager is even running.
 For those, the fix is older, cruder, and unavoidable — a build-time overlay.
 
+<Callout type="warning" title="Development target, not a production vehicle">
+These overrides apply to the fictional `vega` build for learning purposes.
+Overriding framework behaviour on a real vehicle's software is a change to a
+shipped product and belongs in that OEM's own build and review process.
+</Callout>
+
 <FileTree>
 device/oem/vega/
 ├── overlay/
