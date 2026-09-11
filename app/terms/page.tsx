@@ -20,7 +20,7 @@ export default function TermsPage() {
       <PageHeader
         eyebrow="Legal"
         title="Terms of Service"
-        description="Last updated 9 September 2026. These terms apply whenever you read this site or request access to a locked topic."
+        description="Last updated 11 September 2026. These terms apply whenever you read this site or request access to a locked topic."
       />
 
       <div className="container-page py-14 md:py-16">
@@ -30,7 +30,30 @@ export default function TermsPage() {
             This site is operated by Bhargava Mandapati, an individual based in India, as a
             personal project. There is no separate company behind it. &ldquo;We,&rdquo;
             &ldquo;us&rdquo; and &ldquo;the site&rdquo; below mean the same thing as
-            &ldquo;I&rdquo; and &ldquo;me.&rdquo;
+            &ldquo;I&rdquo; and &ldquo;me.&rdquo; That&rsquo;s a deliberate choice rather
+            than an oversight: at this site&rsquo;s current size it&rsquo;s simpler to run
+            as an individual than behind a separate legal entity, and it means I&rsquo;m
+            personally responsible for it — there&rsquo;s no corporate shield between you
+            and me.
+          </p>
+
+          <h2>Eligibility</h2>
+          <p>
+            To request or pay for an access key you need to be able to enter into a binding
+            contract where you live — generally 18, or the age of majority in your
+            jurisdiction if that&rsquo;s different. If you&rsquo;re younger than that, a
+            parent or legal guardian needs to make the purchase and accept these terms on
+            your behalf. Reading the free material doesn&rsquo;t require this, but see the{' '}
+            <a href="/privacy/">Privacy Policy</a> for how the site treats visitors who are
+            children.
+          </p>
+          <p>
+            Access keys aren&rsquo;t offered to anyone located in, or ordinarily resident
+            in, a country or region subject to comprehensive trade sanctions administered
+            by the United Nations, the European Union, the United Kingdom or the United
+            States (including OFAC-administered programmes), or to anyone on a
+            restricted-party list maintained by those authorities. Requesting or paying for
+            a key is your confirmation that neither applies to you.
           </p>
 
           <h2>What&rsquo;s free and what&rsquo;s locked</h2>
@@ -41,6 +64,19 @@ export default function TermsPage() {
             set out in full on the{' '}
             <a href="/licence/">licence and attribution page</a>; these Terms cover the
             contract around getting and using a key, not the copyright position itself.
+          </p>
+          <p>
+            The vehicle property reference is a partial exception to the &ldquo;locked
+            means personal and non-redistributable&rdquo; rule below. The underlying
+            property descriptions are Android Open Source Project material under the
+            Apache License 2.0, and that licence isn&rsquo;t mine to narrow — see{' '}
+            <a href="/licence/">the licence page</a> for exactly what it covers. A key is
+            still required to unlock those pages, the same as anything else in Learn AAOS,
+            but doing so doesn&rsquo;t convert that specific AOSP-derived text into
+            personal, non-transferable, no-redistribution premium material. Everything
+            else on those pages — the surrounding prose, diagrams, code samples and the
+            simulator — is original to this site and is ordinary premium material like the
+            rest of this section.
           </p>
 
           <h2>Access keys</h2>
@@ -62,9 +98,11 @@ export default function TermsPage() {
           <h2>Cancelling recurring access</h2>
           <p>
             If you&rsquo;re on a recurring plan, you can cancel at any time before your next
-            renewal by contacting us — see below. Cancelling stops future charges; it
-            doesn&rsquo;t retroactively refund the current period except as described in the{' '}
-            <a href="/refunds/">Refund &amp; Cancellation Policy</a>.
+            renewal by contacting us — see below. We&rsquo;ll confirm the cancellation by
+            reply within 5 business days and no further charge will be taken. Cancelling
+            stops future charges; it doesn&rsquo;t retroactively refund the current period
+            except as described in the <a href="/refunds/">Refund &amp; Cancellation
+            Policy</a>.
           </p>
 
           <h2>Refunds</h2>
@@ -72,7 +110,8 @@ export default function TermsPage() {
             See the <a href="/refunds/">Refund &amp; Cancellation Policy</a> for the full
             terms. In short: because unlocking a topic delivers the full content
             immediately, purchases are final once a key has been issued or content has
-            been unlocked, other than for billing errors or non-delivery.
+            been unlocked, other than for billing errors or non-delivery, and an approved
+            refund is processed within 10 business days.
           </p>
 
           <h2>Acceptable use</h2>

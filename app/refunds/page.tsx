@@ -14,7 +14,7 @@ export default function RefundsPage() {
       <PageHeader
         eyebrow="Legal"
         title="Refund & Cancellation Policy"
-        description="Last updated 9 September 2026. Read this before you pay for a key — it explains what you're agreeing to."
+        description="Last updated 11 September 2026. Read this before you pay for a key — it explains what you're agreeing to."
       />
 
       <div className="container-page py-14 md:py-16">
@@ -34,10 +34,12 @@ export default function RefundsPage() {
             <li>A charge on your account wasn&rsquo;t authorised by you.</li>
           </ul>
           <p>
-            If one of these applies, contact us and we&rsquo;ll refund the charge. Outside
-            of these cases, we don&rsquo;t offer refunds for change of mind or because the
-            material wasn&rsquo;t what you expected — the free trial topics in each track
-            exist specifically so you can judge that before paying.
+            If one of these applies, contact us and we&rsquo;ll refund the charge — approved
+            refunds are processed within 10 business days of confirmation, back to your
+            original payment method. Outside of these cases, we don&rsquo;t offer refunds
+            for change of mind or because the material wasn&rsquo;t what you expected — the
+            free trial topics in each track exist specifically so you can judge that before
+            paying.
           </p>
 
           <h2>If you&rsquo;re in the EU or UK</h2>
@@ -53,12 +55,12 @@ export default function RefundsPage() {
 
           <h2>Cancelling a recurring plan</h2>
           <p>
-            You can cancel future renewals at any time by contacting us — see below.
-            Cancelling stops the <em>next</em> charge; it doesn&rsquo;t refund the period
-            you&rsquo;ve already paid for and already have access to, consistent with the
-            &ldquo;no refunds once unlocked&rdquo; rule above. Once self-service billing
-            management exists on the site, cancelling will move there instead of requiring
-            an email.
+            You can cancel future renewals at any time by contacting us — see below. We&rsquo;ll
+            confirm by reply within 5 business days. Cancelling stops the <em>next</em>{' '}
+            charge; it doesn&rsquo;t refund the period you&rsquo;ve already paid for and
+            already have access to, consistent with the &ldquo;no refunds once
+            unlocked&rdquo; rule above. Once self-service billing management exists on the
+            site, cancelling will move there instead of requiring an email.
           </p>
 
           <h2>How to request a refund or cancel</h2>
