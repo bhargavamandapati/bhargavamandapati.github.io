@@ -28,7 +28,6 @@ export const site = {
   ],
   // Social profiles only — no phone, email or postal address is published anywhere on this site.
   socials: {
-    github: 'https://github.com/bhargavamandapati',
     linkedin: 'https://www.linkedin.com/in/bhargavamandapati/',
     medium: 'https://medium.com/@bhargavamandapati',
   },

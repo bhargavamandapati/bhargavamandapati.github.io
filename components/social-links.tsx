@@ -1,4 +1,4 @@
-import { Github, Linkedin } from 'lucide-react'
+import { Linkedin } from 'lucide-react'
 import { site } from '@/data/site'
 import { cn } from '@/lib/utils'
 
@@ -13,7 +13,6 @@ function MediumIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export const socialLinks = [
   { name: 'LinkedIn', href: site.socials.linkedin, Icon: Linkedin },
-  { name: 'GitHub', href: site.socials.github, Icon: Github },
   { name: 'Medium', href: site.socials.medium, Icon: MediumIcon },
 ] as const
 

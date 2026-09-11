@@ -85,7 +85,7 @@ const personJsonLd = {
   jobTitle: profile.headline,
   description: site.description,
   knowsAbout: site.keywords,
-  sameAs: [site.socials.linkedin, site.socials.github, site.socials.medium],
+  sameAs: [site.socials.linkedin, site.socials.medium],
   alumniOf: {
     '@type': 'CollegeOrUniversity',
     name: 'Jawaharlal Nehru Technological University, Kakinada',
