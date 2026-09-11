@@ -63,6 +63,7 @@ it is the authoritative list of what exists on your platform version.
 | `CarInfoManager` | Static vehicle info (make, model, year) | `CAR_INFO` |
 | `CarSensorManager` | Legacy sensor wrapper — prefer properties | varies |
 | `CarNavigationStatusManager` | Push turn-by-turn to the cluster | `CAR_NAVIGATION_MANAGER` |
+| `CarAppFocusManager` | Exclusive ownership of navigation or voice-command | none to request |
 
 ## Permissions, and the two-tier reality
 
@@ -93,6 +94,35 @@ Reading speed is a normal permission. Moving a window is not. If your feature
 writes a property that physically moves something, your app must be part of the
 system image — which means the OEM ships it, and your release cadence becomes
 theirs. Find this out during scoping, not during integration.
+</Callout>
+
+<Callout type="note" title="Four legacy managers are the exact same service under different names">
+`CarCabinManager`, `CarSensorManager`, `CarInfoManager` and
+`CarVendorExtensionManager` all resolve, through `Car.getCarManager()`'s own
+service-name dispatch, to the identical `CarPropertyService` binder object
+`CarPropertyManager` uses — not a separate implementation kept loosely in
+sync, one live store with several typed views onto it. A write through any
+one of them is visible instantly through any other, with no polling delay
+and no translation step, confirmed both directions on a real property. Old
+code still targeting a `@Deprecated` manager from this group is reading and
+writing the platform's real, current state, not a frozen legacy snapshot —
+there's no correctness reason to migrate it, only a documentation one.
+</Callout>
+
+<Callout type="note" title="CarAppFocusManager arbitrates two things only, and foreground wins">
+Exactly two focus types exist — `APP_FOCUS_TYPE_NAVIGATION` and
+`APP_FOCUS_TYPE_VOICE_COMMAND` — each with one owner at a time, system-wide.
+A foreground owner can only be displaced by another foreground requester (or
+a caller holding `CAR_DISPLAY_IN_CLUSTER`, an exception meant for cluster
+navigation renderers); a request from a background component fails outright
+against a foreground owner, and the loser's still-running process gets a
+real `onAppFocusOwnershipLost()` callback the instant it's displaced, not a
+silent state change. Note that "foreground" here is Activity-visibility-specific
+(`isInForeground`) — a plain `startService()`-launched background service
+doesn't qualify even if it's doing active work, and a cold app needs
+`am start-foreground-service` rather than `start-service` just to launch at
+all, since Android's own background-service-start restriction blocks the
+latter unconditionally.
 </Callout>
 
 ## Deciding whether something is possible

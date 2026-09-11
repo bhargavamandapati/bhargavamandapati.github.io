@@ -205,6 +205,23 @@ file under `/data/system/car/`; deleting that file and rebooting reverts
 cleanly to the compiled-in stock default.
 </Callout>
 
+<Callout type="tip" title="Two speed bands with the same bitmask is a distinction without a difference">
+It's worth actually reading a stock config rather than assuming the speed
+bands it declares are meaningful: one real product's `get-uxr-config` output
+declared two separate moving-speed buckets — under and over 5 m/s — but gave
+both the identical restriction bitmask. Structurally there were two tiers;
+behaviorally there was one, since nothing distinguished crawling from
+highway speed. A custom config only proves it changed anything once the
+bitmask actually differs across the bands you define, and confirming that
+live needs a genuinely continuous speed source — the same VHAL-injector
+gap that affects other read-only sensor properties can affect
+`PERF_VEHICLE_SPEED` too, inconsistently: it worked earlier in one session
+for a live cutover test and failed on a later, otherwise-identical attempt,
+with no confirmed cause. Confirm a config actually took effect via
+`get-uxr-config` and the service's own dump, which don't depend on the
+injector at all, before trusting a live speed sweep that does.
+</Callout>
+
 ## Testing without a road
 
 ```bash title="Faking driving state"

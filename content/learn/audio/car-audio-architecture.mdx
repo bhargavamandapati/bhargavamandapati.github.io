@@ -226,6 +226,20 @@ directly-pinned UIDs, never a mix of the two, so pick one at configuration time
 rather than expecting to combine them.
 </Callout>
 
+<Callout type="warning" title="The shell volume command and the app API use two different scales">
+`cmd car_service set-group-volume [zoneId] [groupId] [volume]` takes a
+**percentage**, 0–100, mapped internally onto the group's real index range
+before being applied. `CarAudioManager.setGroupVolume()` — the API an app
+actually calls — takes the **raw index** directly, with no percentage
+conversion. A group with range `[0,38]` and a shell request of `25` lands
+around index 9, not 25; going back to a specific index from the shell means
+working out the reverse percentage rather than re-entering the number you
+read from `getGroupVolume()`. Both tools accept "just an integer," which is
+exactly what makes mixing them up easy — when a shell-driven volume change
+doesn't match what the app reads back, check which scale each side is
+actually using before suspecting a bug.
+</Callout>
+
 ## Getting your audio into the right context
 
 Your app controls its context through `AudioAttributes`. This is the single most

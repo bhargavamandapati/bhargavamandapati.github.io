@@ -168,6 +168,21 @@ adb shell am instrument -e displayId 0 -w com.example.test/...
 between tests. A test that passes alone and fails in a suite is almost always
 this.
 
+<Callout type="tip" title="CarTestManager can tear down and restart car_service itself, for genuine isolation">
+For leftover state that lives inside Car Service's own singletons rather than
+in any one property or user, `CarTestManager` (`@TestApi`,
+`signature|privileged`) can fully stop and restart `car_service` in-process —
+the same real teardown/reinit path (`ICarImpl.release()`/`init()`) a normal
+process shutdown uses, not a test-only stand-in. A token tied to the calling
+process via `linkToDeath` means the service auto-restarts if the app holding
+it dies while `car_service` is down, so this can't easily strand a device
+off. One rough edge worth expecting rather than debugging: a property read
+attempted in the window between stop and start surfaces as a raw
+`NullPointerException` from deep inside the relevant sub-service, not a
+documented `IllegalStateException` — treat any crash in that exact window as
+expected, not a new bug.
+</Callout>
+
 ## Running the suite
 
 ```bash title="Local and CI"

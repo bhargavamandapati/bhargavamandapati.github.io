@@ -165,8 +165,47 @@ fix.
 | Overlay rejected with a `targetName` mismatch | The target has a named `<overlayable>` — match it exactly, don't leave it blank |
 | `avc: denied { find }` on the service, after the feature is enabled | The client domain was never assigned the HAL's own client attribute — add the `typeattribute` line |
 
+## Confirming real data actually flows
+
+A successful connection only proves the wiring — process discovery,
+sepolicy, the AIDL handshake. It says nothing about whether a real
+detection event, carrying real occupant and gaze data, actually reaches an
+app's own callback. The mock HAL's `DetectionGenerator` produces a genuine,
+if deliberately fixed rather than randomized, test payload:
+
+```cpp title="hardware/interfaces/automotive/occupant_awareness/aidl/mock/DetectionGenerator.cpp"
+presenceDetection.isOccupantDetected = true;
+// role == DRIVER:
+driverMonitoringDetection.confidenceScore = ConfidenceLevel::HIGH;
+driverMonitoringDetection.isLookingOnRoad = 0;
+```
+
+<Verify title="Register a listener and watch real events arrive">
+```java
+int capability = oaManager.getCapabilityForRole(VEHICLE_OCCUPANT_DRIVER);
+oaManager.registerChangeCallback(callback);
+```
+```bash
+# driver capability flags: 5  (presence + driver-monitoring, as bits)
+# onDetectionEvent: role=2, isPresent=true, driverMonitoringDetection=(null)
+# onDetectionEvent: role=4, isPresent=true,
+#   driverMonitoringDetection=DriverMonitoringDetection{confidenceLevel=2,
+#     isLookingOnRoad=false, gazeDurationMillis=28316}
+```
+`role=2`/`role=4` match `VEHICLE_OCCUPANT_FRONT_PASSENGER`/`_DRIVER`'s real
+bit values (`1<<1`, `1<<2`) — events are correctly separated by occupant
+role, with the structured `DriverMonitoringDetection` payload present only
+on the driver-role event, exactly as it should be for a detection type that
+only makes sense for the driver's seat. `isLookingOnRoad=false` matches the
+generator's hardcoded source value exactly, confirming the data arrives
+unmodified through the entire stack rather than being stray or corrupted.
+Force-stopping the listening app drops the service's own subscriber count
+back to zero immediately, while the underlying HAL connection stays up,
+untouched by one client coming and going.
+</Verify>
+
 ## Next
 
-A detection-result HAL like this one is only useful once a real consumer
-subscribes to its events — worth pairing with a look at how CarService fans
-a property or event out to more than one listener at once.
+Cross-zone messaging is the other half of a multi-occupant feature — worth
+pairing with a look at how an app running for one occupant sends data to the
+same app running for another.

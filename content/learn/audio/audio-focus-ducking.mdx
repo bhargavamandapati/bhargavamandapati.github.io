@@ -195,6 +195,21 @@ current focus holders in `dumpsys car_service --services CarAudioService`
 before assuming your own request logic is at fault.
 </Callout>
 
+<Callout type="note" title="An OEM can hand focus and ducking decisions to a whole separate app">
+`CarOemProxyService` defines a real extension point beyond the interaction
+matrix above: a separate, OEM-authored app implementing `OemCarService` that
+CarService discovers and binds to at boot, then consults for focus, ducking
+and volume decisions in place of the built-in logic — a genuinely different
+shape of extensibility than a config value or an overlay resource. It ships
+disabled by default (an empty `config_oemCarService` resource string, the
+same "OEM fills this in" pattern as other unconfigured extension points), but
+a non-`user`-build system property
+(`persist.com.android.car.internal.debug.oem_car_service`) can redirect the
+proxy at a custom component for testing, no rebuild of the resource needed —
+useful for exercising your own `OemCarService` implementation before an OEM
+build exists to host it.
+</Callout>
+
 ## Sounds that must never be ducked
 
 Safety chimes, collision warnings, seatbelt reminders. These use

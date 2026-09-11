@@ -184,6 +184,26 @@ moment it stops being the foreground user, independent of this AAOS-specific
 hook — so a guest can disappear on a plain user switch too, not only sleep.
 </Callout>
 
+<Callout type="warning" title="CarDevicePolicyManager's own permission annotation overstates what it covers">
+`CarDevicePolicyManager.createUser()`/`removeUser()` are annotated
+`@RequiresPermission(anyOf = {MANAGE_USERS, CREATE_USERS})`, which reads as
+"either permission covers every call this method can make." It doesn't.
+`CREATE_USERS` — plain `signature`-level, no priv-app build needed — is
+genuinely sufficient for regular, guest, ephemeral, restricted, managed-profile
+and demo users, but `FLAG_ADMIN` is deliberately excluded from the flag set
+that permission alone can create; requesting an admin user under only
+`CREATE_USERS` throws a `SecurityException` the annotation gives no hint of.
+The restriction is a real security boundary, not a bug — an app that could
+mint arbitrary admins under the lighter permission would be a privilege-escalation
+risk — but treat `CREATE_USERS` as sufficient for non-admin user types only,
+and declare the full `MANAGE_USERS` permission if admin-user creation is ever
+a real possibility. Separately, a multi-step call sequence against this
+manager is slow enough (a plain user creation alone can take several hundred
+milliseconds of real storage-key and system-service work) to trip Android's
+own main-thread responsiveness watchdog if run synchronously from
+`onCreate()` — run it on a background thread.
+</Callout>
+
 ## Occupant zones tie users to seats
 
 On a multi-display vehicle, `CarOccupantZoneManager` maps users to displays and
