@@ -253,6 +253,18 @@ val canSetLimit = properties.propertyList.any {
 adb shell dumpsys car_service --list-properties | grep -i EV_
 ```
 
+<Callout type="note" title="Propulsion type is CarInfoManager's job, not CarProjectionManager's">
+Whether the vehicle is gas, electric or something else is a separate concern
+from Android Auto/projection: `CarProjectionService` has no code path that
+reads or branches on fuel type or EV state at all — a gas car and an EV hand
+off to a projecting phone identically. `CarInfoManager.getFuelTypes()`,
+`getEvBatteryCapacity()` and `getEvConnectorTypes()` are the actual answer,
+each backed by its own vehicle property. Like the properties above, they
+degrade gracefully rather than failing: `getFuelTypes()` returns an empty
+array, and `getEvBatteryCapacity()` returns `0f`, on a vehicle that hasn't
+declared either — genuinely undeclared, not an error to handle specially.
+</Callout>
+
 <Recap>
 - EV properties **only exist on an EV**, and not all EVs have all of them. Detect,
   do not assume.

@@ -179,6 +179,27 @@ private fun publishState(state: Int, position: Long) {
 `setActions` is what enables buttons in the car's UI and on the steering wheel.
 An action you do not declare is a control the driver does not get.
 
+<Callout type="note" title="A power policy can pause you, and only resumes if you were really playing">
+`CarMediaService` remembers, per user, whether your session was genuinely in
+`STATE_PLAYING` at the moment a power policy disabled the media component —
+not just whether the policy is currently off. On re-enable it only resumes
+playback if that remembered flag was true. A session left in `STATE_PAUSED`
+or `STATE_NONE` when the component was disabled stays paused when it comes
+back, which is correct behaviour, not a bug to work around.
+</Callout>
+
+<Callout type="warning" title="A media source needs no MediaBrowserService, but some platform code assumes one">
+`CarMediaManager.setMediaSource()` only requires a valid `MediaSession` — the
+API doesn't require a companion `MediaBrowserService`, and a session-only
+source is legitimate. Some platform-side helpers that classify a media source
+(for example, deciding whether it's an "audio" source) still assume at least
+one `MediaBrowserService` component resolves for it, and can crash with an
+`IndexOutOfBoundsException` if none does. If a session-only source's resume
+appears to silently do nothing after a power-policy toggle, check logcat for
+a crash loop in the platform's media-connector process before assuming your
+own app is at fault.
+</Callout>
+
 ## Errors the driver can act on
 
 When playback fails — no network, sign-in expired, region-locked — say so through
