@@ -117,6 +117,18 @@ adb push myfile /system/etc/
 Every one of those commands is a development convenience that must not be
 possible on a shipped vehicle.
 
+<Callout type="warning" title="adb root on userdebug is not the same as verity actually being off">
+Having root over `adb` on a `userdebug` build does not by itself mean a
+partition is writable. Check `adb shell getprop ro.boot.veritymode` first: if
+it reports `enforcing`, `/system` and `/vendor` are genuine dm-verity
+device-mapper targets on this boot, and `adb remount` or `adb disable-verity`
+will fail even with root, for the same reason they fail on a locked device —
+until `disable-verity` actually succeeds and the device is rebooted, verity is
+still enforcing regardless of build variant or root access. A tutorial that
+assumes the "unlocked, verity off" path as the default is assuming a state
+worth confirming, not one every `userdebug` image starts in.
+</Callout>
+
 **Overlays and RROs are the supported way to change resources.** They live in a
 writable, signed location rather than requiring you to modify `/system` — which
 is another reason the theming architecture exists.

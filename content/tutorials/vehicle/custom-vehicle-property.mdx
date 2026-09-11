@@ -337,6 +337,17 @@ A `SecurityException` here means the permission is declared but not granted —
 check the `privapp-permissions` file actually landed in the image.
 </Verify>
 
+<Gotcha title="SecurityException fires at the call site, not at install">
+Calling `CarPropertyManager` for a property your app lacks permission for
+throws a real `SecurityException` right where you called
+`getIntProperty`/`setIntProperty` — not at install time, and not silently.
+Always verify the permission is both declared in the manifest **and**, for a
+`Dangerous`-level permission, actually granted at runtime. A
+`Signature|Privileged` permission like the one above is a different case
+entirely: an ordinary app cannot obtain it no matter what it declares — only a
+platform-signed or allowlisted privileged app can hold it.
+</Gotcha>
+
 ## The six-point checklist
 
 When a property does not work, walk this in order. It resolves almost every case:

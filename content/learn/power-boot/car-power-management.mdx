@@ -142,6 +142,15 @@ adb shell cmd car_service garage-mode off
 adb shell cmd car_service garage-mode query
 ```
 
+<Callout type="note" title="garage-mode on can print the wrong state for a moment">
+`garage-mode on` starts the real work by posting it to a handler rather than
+flipping a flag inline, so the shell command's own status line — which reads
+`isGarageModeActive()` synchronously right after issuing the command — can
+print `false` immediately after you just turned it on. A `garage-mode query`
+a moment later shows the correct, active state. It is a timing quirk in the
+CLI's own status line, not a functional bug in Garage Mode itself.
+</Callout>
+
 ## Reacting to power transitions
 
 ```kotlin title="CarPowerManager listener"
@@ -164,6 +173,16 @@ power.setListenerWithCompletion(executor) { state, future ->
 The `WithCompletion` variant gives you a bounded window to finish. Complete the
 future promptly — the platform proceeds on timeout regardless, and everything you
 had not written is lost.
+
+<Callout type="warning" title="A cancelled suspend can skip SUSPEND_EXIT entirely">
+`adb shell cmd car_service suspend --simulate --cancel-after N` is a useful way
+to test cancellation, but `N` counts seconds from when the command was issued,
+not from a specific power-state boundary. A short cancel window can land after
+the vehicle has already reported `SUSPEND_ENTER`, in which case the sequence
+goes straight to `SHUTDOWN_CANCELLED` and `SUSPEND_EXIT` never fires. Code that
+assumes every `SUSPEND_ENTER` is followed by a normal exit needs to handle a
+cancelled one too — exact timing may vary by build.
+</Callout>
 
 ## Boot time is a contract
 <Scenario title="Why the media app must handle a resume it never asked for">

@@ -131,6 +131,17 @@ Declaring this is a claim that the activity meets the driver-distraction
 guidelines. `CarPackageManager` checks the flag and blocks activities that lack
 it while driving, replacing them with a "not available while driving" screen.
 
+<Callout type="note" title="An allowlist is checked before the manifest flag, and the block is a real activity swap">
+`CarPackageManagerService` evaluates a config-driven `activityAllowlist` /
+`activityBlocklist` before it ever looks at an activity's own
+`distractionOptimized` metadata — an entry there can permit or block an
+activity independently of what the manifest declares. When an activity is
+blocked, the platform does not just refuse the launch: it substitutes the
+foreground activity for a concrete component, `ActivityBlockingActivity`
+(shipped inside `com.android.systemui`), the same activity shown for every
+blocked app.
+</Callout>
+
 <Callout type="warning" title="The flag is a safety claim, not a workaround">
 Setting `distractionOptimized=true` on an activity that is not actually safe is
 how you fail OEM acceptance — and it is the wrong thing to do regardless. If your
@@ -169,6 +180,16 @@ differ by market.
 Note the speed bands. "Moving" is not one state — crawling in traffic and
 motorway speed have different rules in most markets.
 
+<Callout type="note" title="A custom ruleset is staged, not applied live">
+Authoring a ruleset like this one programmatically, via
+`CarUxRestrictionsConfiguration.Builder` and
+`saveUxRestrictionsConfigurationForNextBoot()`, does not take effect
+immediately — it stages the configuration and promotes it to the active
+ruleset only on the next boot while parked. The staged config persists to a
+file under `/data/system/car/`; deleting that file and rebooting reverts
+cleanly to the compiled-in stock default.
+</Callout>
+
 ## Testing without a road
 
 ```bash title="Faking driving state"
@@ -195,6 +216,16 @@ result for an automotive UI.
     onView(withId(R.id.search)).check(matches(not(isEnabled())))
 }
 ```
+
+<Callout type="tip" title="One driving-state change can log two transitions, not one">
+Gear and speed arrive as separate VHAL properties (`GEAR_SELECTION`,
+`PERF_VEHICLE_SPEED`) set independently. Shifting into drive before
+accelerating briefly resolves to `IDLING` — gear has left `PARK`, speed is
+still zero — before the next update lands and the state resolves to `MOVING`.
+A test expecting one callback (parked → moving) can correctly observe two
+(parked → idling → moving) instead; that intermediate state is a real
+transition, not a race to fix.
+</Callout>
 
 ## Designing for it from the start
 <Scenario title="A screen that has to survive the car starting to move">

@@ -230,6 +230,25 @@ adb shell bootstat --print
 across builds is how you notice a regression before it reaches a requirement
 review.
 
+<Callout type="tip" title="Two more instruments: /dev/kmsg and ro.boottime">
+The three real `init` triggers this page describes — `late-init`,
+`zygote-start`, and `property:sys.boot_completed=1` — are directly observable
+live: an `on <trigger>` action that writes to `/dev/kmsg` shows up in
+`adb shell dmesg` at the moment the trigger actually fires. `/dev/kmsg` is a
+small, fixed-size ring buffer, though — on a verbose boot it can overflow
+before a later `dmesg` read catches an early line, so a marker near
+`early-init` can genuinely go missing from the capture even though it fired
+correctly; `logcat -b kernel` has more headroom if that matters.
+
+Separately, `init` sets a `ro.boottime.<service>` property for every service it
+starts, an absolute kernel-boottime timestamp — `adb shell getprop | grep
+ro.boottime` (or grep one service name) pinpoints exactly when a given service
+came up, without any instrumentation of your own. On one cold-booted emulator
+instance this was timed at roughly 21 seconds from launch to
+`sys.boot_completed=1` — a single observed data point, not a number to expect
+on any particular build.
+</Callout>
+
 ## The part most people miss: this usually does not happen
 
 Everything above describes a **cold boot** — the car has been fully off.

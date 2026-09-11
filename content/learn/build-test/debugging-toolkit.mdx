@@ -211,6 +211,16 @@ picture, or when handing the incident to someone who was not there to run a
 script.
 </Callout>
 
+<Callout type="warning" title="Bugreport authorization can be a build-variant no-op">
+`CarBugreportManager.requestBugreport()` is gated by an allowlist
+(`config_car_bugreport_applications`) that ships empty by default, which
+should block every caller. On some builds that check runs only on `user`
+variants — on `userdebug`/`eng` it can be skipped entirely, so a security
+check that appears to "work" while testing on a non-`user` build may never
+have actually been exercised. Verify allowlist enforcement on an actual
+`user` build before relying on it.
+</Callout>
+
 ## Symptom → cause
 
 | Symptom | Check first |

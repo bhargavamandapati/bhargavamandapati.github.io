@@ -187,6 +187,18 @@ adb shell am start --display 2 -n com.example/.PassengerActivity
 Simulated overlay displays are crude but they catch the whole class of "assumed
 display 0" bugs before hardware exists.
 
+<Callout type="warning" title="An overlay display does not automatically join a zone">
+`CarOccupantZoneService` matches displays against the static
+`config_occupant_display_mapping` table it parses once at boot, and never
+re-reads it at runtime. A display added later with `overlay_display_devices`
+gets a synthetic `uniqueId` that was never in that table, so it stays
+permanently unmatched to any occupant zone for the rest of that boot — no
+listener callback or shell command will bind it. Testing multi-display code
+this way is still useful for display-only bugs, but genuinely mapping a second
+user to a second zone needs the display declared in product configuration
+ahead of time, not added live.
+</Callout>
+
 <Recap>
 - An occupant zone ties a **seat, its displays and a user** together.
 - It is what lets the platform know a screen belongs to a passenger rather than

@@ -68,6 +68,25 @@ you which part of the program to look at.
 called it.
 </Plain>
 
+<Callout type="tip" title="A crash you expected but didn't get">
+Not every null dereference crashes, and the case where it doesn't is worth
+knowing before it wastes an afternoon. `char* p = nullptr; ... << *p` compiled
+to code that never actually loaded from address zero: the compiler proved the
+loaded byte was never observed (here, only fed to a stream operator with no
+further use) and, since dereferencing a null pointer is undefined behaviour in
+C++, it was legally free to eliminate the memory access entirely. The
+surrounding log line still printed — the branch ran — but nothing crashed, no
+tombstone appeared, and the process kept its original pid. The fix was marking
+the pointer `volatile`, which forces a real, observable memory access the
+compiler cannot optimise away. Deliberately testing a crash path with a "should
+obviously crash" line of code can silently test nothing at all.
+
+Separately, `adb shell debuggerd -b <pid>` dumps a live process's backtrace
+without harming it — the target keeps running, and its pid does not change —
+useful for "what is this process doing right now" versus a tombstone's "what
+actually killed it".
+</Callout>
+
 ### Making it readable
 
 Without symbols, a backtrace is addresses. With them, it is function names and

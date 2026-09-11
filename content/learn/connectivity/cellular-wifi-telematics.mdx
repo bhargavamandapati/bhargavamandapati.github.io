@@ -136,6 +136,22 @@ consumes the data allowance and is usually a paid feature.
 **Projection.** Wireless Android Auto or CarPlay uses a direct Wi-Fi link to the
 phone, entirely separate from internet connectivity.
 
+<Callout type="note" title="CarWifiManager is narrower than the name suggests">
+`CarWifiManager`'s entire public surface is one capability check — whether the
+vehicle may remember and restore hotspot/tethering state across a reboot. It
+is gated by a resource config flag, not a user-facing Settings toggle, and
+many builds ship it off. It has nothing to do with everyday Wi-Fi client or
+scan behaviour.
+
+That persistence feature exists because switching radio roles has a real
+cost: starting the hotspot (AP mode) and being a Wi-Fi client (STA mode) are
+mutually exclusive on a typical single-radio chip. Starting a SoftAP forces
+the STA connection down — visible in the platform's own Wi-Fi state machine
+log as a `CMD_STA_STOPPED` transition — and stopping the SoftAP brings the
+client connection back. Persisting hotspot state across a reboot is what lets
+that trade-off survive a power cycle without the driver noticing.
+</Callout>
+
 ```bash title="Which role is active"
 adb shell dumpsys wifi | grep -iE 'mNetworkInfo|Wi-Fi is|SoftAp'
 adb shell dumpsys connectivity | grep -A5 -i 'Active default network'

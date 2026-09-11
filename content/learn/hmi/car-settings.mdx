@@ -132,6 +132,16 @@ This is the same "never render optimistically" rule from the vehicle data
 module, applied to a settings screen.
 </Plain>
 
+<Callout type="warning" title="A returned 0 can mean 'unavailable' or a real value — check first">
+`CarPropertyManager.getIntProperty()` falls back to `0` whenever the
+underlying property can't be read, rather than throwing. For a VHAL unit or
+enum property, `0` can also be a genuine value — it happens to match
+`VehicleUnit.SHOULD_NOT_USE` on properties like the display-units group above.
+A missing property and a real "not applicable" response are indistinguishable
+from the returned int alone. Call `isPropertyAvailable()` before trusting a
+`0`, rather than treating it as a value.
+</Callout>
+
 ## Settings while driving
 
 Most of Settings should not be reachable while moving, and the platform will

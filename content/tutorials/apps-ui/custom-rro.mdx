@@ -60,6 +60,26 @@ the resource name still exists in the target on your platform version. Names do
 get renamed between releases.
 </Gotcha>
 
+For a quick check of a resource name and value before committing to a full
+overlay build, `cmd overlay fabricate` registers an override directly with the
+Overlay Manager, no APK required.
+
+<Gotcha title="A fabricated overlay needs an overlayable public policy, and behaves differently from a build-time RRO">
+A build-time RRO like the ones below can overlay a target with no
+`<overlayable>` declared at all, because a platform-signed, partition-installed
+APK already satisfies the default signature/partition policies. `cmd overlay
+fabricate` cannot rely on that: it is always registered under package
+`com.android.shell` — never the target's own package — and stored on disk as a
+`.frro` file rather than an APK, so it only ever gets the `PUBLIC` overlay
+policy automatically. If the target resource isn't inside a
+`<overlayable><policy type="public">` block, a fabricate attempt fails
+silently even though a signed RRO overlaying the same resource works fine.
+Fabricated overlays also default to priority `Integer.MAX_VALUE`, outranking
+every static RRO on the device — and, like the static overlay below, an
+overlay declared `android:isStatic="true"` rejects `cmd overlay set-priority`
+with no error and no effect, whether it was fabricated or installed.
+</Gotcha>
+
 ## Step 2 — Build the static brand overlay
 
 ```xml title="VegaSystemUIRRO/AndroidManifest.xml"

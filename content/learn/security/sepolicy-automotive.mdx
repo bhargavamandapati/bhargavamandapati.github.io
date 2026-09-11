@@ -59,6 +59,18 @@ adb shell ls -Z /vendor/bin/hw/
 Your vehicle HAL runs in `hal_vehicle_default`. Out of the box that domain can do
 almost nothing. Every capability it needs must be granted explicitly.
 
+<Callout type="note" title="An expanded attribute vanishes from the compiled policy">
+Attributes declared with `expandattribute <name> true` (used by AOSP's own
+`hal_attribute()` macro for the client/server halves of a HAL attribute, for
+instance) are fully expanded into their member types at compile time — every
+rule written against the attribute is rewritten in terms of the concrete types
+that carried it, and the attribute name itself is discarded from the binary
+policy. Querying for it afterward, e.g. `sepolicy-analyze <policy> attribute
+<name>`, reports it as not defined, even though it worked correctly as a
+build-time macro. This is expected, deliberate behaviour, not a bug — only
+attributes marked `expandattribute ... false` persist as queryable groups.
+</Callout>
+
 ## Reading a denial
 
 ```text title="A typical AVC denial"

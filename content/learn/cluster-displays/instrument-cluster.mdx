@@ -67,6 +67,18 @@ clusterHome.registerClusterStateListener(executor) { state ->
 clusterHome.startFixedActivityModeAsUser(intent, options, userId)
 ```
 
+<Callout type="note" title="Three cluster API generations can coexist">
+A real device can carry a deprecated cluster manager with literal no-op
+method bodies, a genuinely running renderer/HAL stack underneath that is
+still what actually drives the display, and a newer, non-deprecated API such
+as `ClusterHomeManager` above with no backing service at all — all at the
+same time. Deprecation in the API surface does not mean the old path was
+removed from the running system, and a current API existing does not mean it
+is wired up on a given product; confirm with `dumpsys car_service --services
+ClusterHomeService` rather than assuming from the API surface alone. See the
+architecture diagram above for how the layers relate.
+</Callout>
+
 Simple, cheap, and entirely dependent on Android staying up. Suitable when the
 cluster's *critical* content — telltales, warning lamps — is drawn by something
 else, typically a hardware overlay or a small MCU compositing on top.

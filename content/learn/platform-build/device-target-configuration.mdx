@@ -135,10 +135,19 @@ This is the question that comes up daily. A rough decision order:
 | Add or remove an app from the image | `PRODUCT_PACKAGES` |
 | Change a framework resource value | `DEVICE_PACKAGE_OVERLAYS` (build-time) |
 | Change a resource that must be switchable at runtime | An RRO in `PRODUCT_PACKAGES` |
-| A runtime flag read by code | `PRODUCT_PROPERTY_OVERRIDES` |
+| A runtime flag read by code | `PRODUCT_PROPERTY_OVERRIDES` (deprecated alias for `PRODUCT_VENDOR_PROPERTIES` — lands in `vendor/build.prop`, not `system/build.prop`) |
 | A config file the platform reads | `PRODUCT_COPY_FILES` |
 | Partition sizes, architecture, kernel | `BoardConfig.mk` |
 | SELinux rules | `BOARD_VENDOR_SEPOLICY_DIRS` |
+
+<Callout type="note" title="PRODUCT_PROPERTY_OVERRIDES is not a general properties mechanism">
+The name suggests a generic override list, but it is a deprecated alias of
+`PRODUCT_VENDOR_PROPERTIES` (`build/make/core/product.mk`) — properties set
+through it are written to `vendor/build.prop` specifically, via a different
+pipeline than `PRODUCT_SYSTEM_PROPERTIES`. Which `PRODUCT_*_PROPERTIES`
+variable a line uses decides which partition's `build.prop` it lands in; the
+`.mk` file's own name or location is not a reliable guide.
+</Callout>
 
 <Callout type="tip" title="Prefer RROs over build-time overlays where you can">
 A `DEVICE_PACKAGE_OVERLAYS` change requires a full rebuild and reflash to test. An
@@ -210,6 +219,14 @@ adb shell cmd overlay list
 
 The four `adb` checks take ten seconds and confirm the product config actually
 took effect — which is not the same as the build succeeding.
+
+<Callout type="note" title="get_build_var is gone">
+Older guides check a product variable with the shell function `get_build_var`.
+Current `envsetup.sh` explicitly unsets it; the replacement is `get_build_vars`
+(plural), a standalone script under `build/soong/bin/` that takes one or more
+variable names at once. A script written against the old singular name will
+fail on a current tree.
+</Callout>
 
 <Recap>
 - Three layers: **product** (what software), **board** (what hardware),

@@ -56,6 +56,17 @@ right camera ─┘        │
               boot-time and handover rules as the single-camera case
 ```
 
+<Callout type="warning" title="Enabling a service type doesn't confirm the camera works">
+Wiring up an additional camera service type (surround view, front view, and
+similar) through a shell command such as `enable-camera-service-type` is
+bookkeeping-only — it records the service-type-to-camera-id mapping and
+reports success without ever opening the camera device to check it exists.
+The real failure, an `ERROR_UNAVAILABLE` result, only surfaces later when an
+app actually calls `startVideoStream()` for that service type. Treat a
+shell "successfully enabled" message as unverified until something actually
+streams from it.
+</Callout>
+
 The blend step is where most of the visible quality problems live. Two
 cameras seeing the same patch of ground from different angles will disagree
 about anything that has *height* — a curb, a pole, another vehicle's

@@ -132,6 +132,17 @@ This needs `android.car.permission.CAR_PROJECTION` — signature-level, because 
 projection host takes over the screen and audio. It is a system app, not
 something a third party ships.
 
+<Callout type="warning" title="A permission name that breaks its own pattern">
+`Car.PERMISSION_CAR_PROJECTION` resolves to the predictable
+`"android.car.permission.CAR_PROJECTION"`. Its sibling permission, which
+guards projection status listeners, does not follow that pattern:
+`Car.PERMISSION_CAR_PROJECTION_STATUS` is actually the string
+`"android.car.permission.ACCESS_CAR_PROJECTION_STATUS"` — an `ACCESS_` prefix
+that appears nowhere else in the pair. Declare the exact string in your
+manifest; guessing at `CAR_PROJECTION_STATUS` fails at runtime with a
+`SecurityException`.
+</Callout>
+
 ```bash title="Inspecting projection state"
 adb shell dumpsys car_service --services CarProjectionService
 adb shell dumpsys media_session | grep -i projection

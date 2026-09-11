@@ -163,6 +163,24 @@ If you make that call on your UI thread and the other process is busy, your app
 stops drawing.
 </Plain>
 
+<Callout type="tip" title="Confirmed with a live trace, not just the source">
+Enabling the kernel's `binder_transaction`/`binder_transaction_received`
+ftrace events (or `atrace binder_driver aidl`) around a real AIDL call shows
+exactly the model above, with matching transaction IDs on both the send and
+the reply, and the same PID/thread on each side of the hop: a `dest_proc`
+matching the server's real PID, a `code` matching the method's generated
+`TRANSACTION_*` constant, and a final `reply=1` transaction landing back on
+the calling process's PID. It is a genuine confirmation that the generated
+Proxy/Stub code does exactly what it appears to do, not just a plausible
+description.
+
+The same capture is also a reminder to read a trace carefully: it commonly
+shows extra, unrelated transactions interleaved with the one being traced —
+an incidental `servicemanager` lookup on the server's binder thread is a
+normal occurrence, not part of the interface being investigated. Don't assume
+every transaction near the one you're looking for belongs to your own call.
+</Callout>
+
 ## The two limits that cause real bugs
 
 ### The thread pool is finite

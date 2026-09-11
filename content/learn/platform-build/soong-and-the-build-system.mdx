@@ -132,8 +132,34 @@ adb sync product
 adb reboot
 ```
 
+<Callout type="warning" title="A targeted image build doesn't always repack what the emulator boots">
+`m vendorimage` or `m systemimage` rebuilds that partition's raw `.img` file,
+but on the emulator that is not necessarily what actually gets booted: with
+dynamic partitions, the emulator boots from `-qemu.img` variants built through
+a separate `super.img` packaging step, which only a full `m` (no target)
+triggers. If a change to a baked-in file does not seem to take effect after a
+targeted image build, compare `md5sum` on the rebuilt image against what is
+actually inside the booted image before assuming the change itself is wrong —
+a plain `m` and relaunch is the reliable fix.
+</Callout>
+
 `m <module>` is the habit worth forming. Rebuilding the world to test a one-line
 change is the most common self-inflicted productivity loss on AOSP.
+
+<Callout type="tip" title="Inspecting the real dependency graph with ninja -t query">
+Soong's declarative model still bottoms out in an ordinary Ninja file
+(`out/combined-<product>.ninja`), and Ninja's own query mode reads it directly —
+useful for "why did/didn't this rebuild" questions a `.bp` file alone cannot
+answer:
+
+```bash
+ninja -f out/combined-<product>.ninja -t query <module-or-output-path>
+```
+
+This prints the real inputs and outputs Soong generated for that target,
+including intermediate steps (stripping, linker config generation) that never
+appear in the `Android.bp` source itself.
+</Callout>
 
 ## Visibility
 

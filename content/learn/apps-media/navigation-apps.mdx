@@ -123,6 +123,17 @@ instructions; you do not control the presentation, and you should not assume any
 particular one exists.
 </Callout>
 
+<Callout type="note" title="Two possible paths to the cluster, usually only one wired up">
+`sendNavigationStateChange()` reaches the cluster through
+`ClusterNavigationService`, which on some products still routes to the older
+`InstrumentClusterService` renderer path rather than the newer VHAL-based
+`ClusterHomeService` / `CLUSTER_NAVIGATION_STATE` property. Both can exist in
+the same build, but usually only one has a real renderer behind it —
+`dumpsys car_service --services InstrumentClusterService` showing a non-null
+navigation proxy (or `ClusterHomeService` reporting "No such service!") tells
+you which path is actually live on a given device.
+</Callout>
+
 ## Maneuver types are an enumeration, not free text
 
 The cluster cannot render your arrow bitmap — it has its own icon set, often

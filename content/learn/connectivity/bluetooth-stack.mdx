@@ -92,6 +92,25 @@ initiate manually and reconnects 90% of the time on ignition will be reported as
 "Bluetooth doesn't work". The remaining 10% is the entire user experience.
 </Callout>
 
+<Callout type="note" title="Turning Bluetooth off by policy is not the same as the user turning it off">
+A power policy that disables the `BLUETOOTH` component calls the adapter's
+disable API with `persist=false` — the radio genuinely powers off, but the
+user's own persisted Bluetooth preference is left untouched. Re-applying a
+policy that turns Bluetooth back on restores exactly the state the user had
+before the policy stepped in. This split is intentional, confirmed on a real
+build: "the platform silenced you for now" and "the user turned you off" are
+different states, and a policy is not allowed to overwrite the second one.
+</Callout>
+
+<Callout type="note" title="No app-facing API for auto-connect logic">
+Unlike most other Car subsystems, there is no public `CarBluetoothManager` —
+`Car.java` has no `BLUETOOTH_SERVICE` constant at all. The decision of which
+paired device to reconnect, and when, lives entirely inside CarService's own
+Bluetooth classes with no manager, AIDL surface, or shell command exposed to
+apps. The real triggers are the adapter turning on, or — on builds that wire
+it up — the driver's seat becoming occupied while the vehicle is parked.
+</Callout>
+
 ## Pairing while driving
 
 Pairing requires reading a code and confirming it — precisely the kind of

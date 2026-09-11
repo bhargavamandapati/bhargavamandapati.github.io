@@ -138,6 +138,16 @@ write_logd(vendor_vega_telemetryd)
 Grant the narrowest thing that works. `rw_dir_perms` on one type, not `*` on
 `file_type`. A reviewer should be able to read each line and say what it permits.
 
+<Gotcha title="add_service() also emits a hidden neverallow">
+If your daemon publishes a Binder service, the `add_service(domain, service_type)`
+macro (from `te_macros`) does not just grant the add/find permission — it also
+generates `neverallow { domain -<domain> } <service_type>:service_manager add;`
+alongside it, making "only this domain may register this service name" a
+build-enforced invariant from that point on. A `neverallow` build failure that
+names a service type you added can come from that macro rather than from any
+`neverallow` you wrote yourself.
+</Gotcha>
+
 ## Step 5 — Point your product at the policy
 
 You added this line when you created the target. Confirm it is there:
@@ -238,6 +248,27 @@ granting far more than intended. Use it to understand *what* was blocked, then
 write the narrowest rule yourself. Unexplained `audit2allow` blocks should be
 rejected in review.
 </Gotcha>
+
+## A diagnostic toolkit: sepolicy-analyze
+
+`sesearch` above answers "what does this rule set allow." `sepolicy-analyze`,
+built at `system/sepolicy/tools/sepolicy-analyze/`, answers a handful of other
+questions against the same compiled policy and takes no other subcommands than
+these six:
+
+| Subcommand | Answers |
+| --- | --- |
+| `neverallow -w -n "<rule>"` | Does the compiled policy hold a specific neverallow? |
+| `permissive` | Which types are running permissive (should be empty on a shipping build) |
+| `typecmp -e` | Which type pairs are equivalent — every type resolves to the same rules |
+| `attribute -r <type>` | Which attributes a type carries (or `-l` to list all) |
+| `booleans` | Any policy booleans present — always empty on Android; any output fails CTS |
+| `dups` | Rule pairs that turned out identical once expanded — coalescing candidates, not necessarily bugs |
+
+```bash title="Run any of them against a pulled policy"
+adb pull /sys/fs/selinux/policy ./live_policy
+sepolicy-analyze ./live_policy attribute -r vendor_vega_telemetryd
+```
 
 ## Troubleshooting
 

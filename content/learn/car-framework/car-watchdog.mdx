@@ -87,6 +87,16 @@ because it is called on a healthy binder thread while your actual worker thread 
 deadlocked. Check the thing that can hang, not the thing doing the checking.
 </Callout>
 
+<Callout type="note" title="The kill signal is SIGSYS, not SIGKILL">
+A client that misses its deadline is ended with `SIGSYS`, not `SIGKILL` —
+deliberately, since `SIGSYS` can be caught by a signal handler, giving
+`debuggerd`/`tombstoned` a chance to write a full backtrace before the process
+actually dies. `onPrepareProcessTermination()` runs on the same executor as
+`onCheckHealthStatus()`, so in rare cases it can be delayed, or never get a
+chance to run, if that thread is still the one that's hung. Give the two
+callbacks separate executors if the termination warning matters to you.
+</Callout>
+
 ## Resource overuse
 
 The second job is I/O. Flash storage in a vehicle has a finite write budget and
@@ -126,12 +136,35 @@ watchdog.addResourceOveruseListener(
 }
 ```
 
+<Callout type="warning" title="A stale killable flag in the listener's own stats">
+Marking a package non-killable (via the shell's
+`watchdog-control-package-killable-state`, or the equivalent system API)
+genuinely blocks a manual overuse kill — the enforcement path checks a
+correctly-updated record. But that same package's own
+`IoOveruseStats.isKillableOnOveruse()`, as delivered through this listener, can
+keep reporting the old value for tens of seconds afterward: the kill path and
+the listener-facing snapshot are backed by two separate internal caches that
+do not reconcile immediately. Do not treat the listener's killable flag as
+live — query the authoritative killable-state API if a decision depends on it.
+</Callout>
+
 ```bash title="Checking your own consumption"
 adb shell dumpsys car_service --services CarWatchdogService
 ```
 
 Run this after a soak test. Teams are routinely surprised — a logging library
 writing a few kilobytes per second is 300 MB a day.
+
+<Callout type="note" title="Boot-time writes may not trip onOveruse() right away">
+I/O accounting runs in distinct collection phases with different intervals:
+short boot-time, wake-up and user-switch windows near those events, and a
+periodic window (around 60 seconds in steady state) otherwise. A write
+recorded during one of the short, event-driven windows is captured in the byte
+count but does not reliably trigger `onOveruse()` immediately — the callback
+fires once a later periodic collection picks it up. If a listener seems to
+miss an overuse right after boot, check again once the system has settled
+into steady-state periodic collection.
+</Callout>
 
 ## Writing less
 

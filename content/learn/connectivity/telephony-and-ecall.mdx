@@ -74,6 +74,16 @@ play media, receive a call, end the call, assert playback resumed at the right
 position. It fails far more often than teams expect.
 </Callout>
 
+<Callout type="note" title="One call, several independent UI surfaces">
+`InCallService` is designed to fan out, not hand off: several independent
+implementations can bind to the exact same call at once. On a typical build
+that means Car SystemUI's status-bar chip, Car Launcher's own in-call card,
+and Android's built-in call-tracking service can all be notified of, and
+display, one active call simultaneously. If two surfaces disagree about a
+call's state, look for a second `InCallService` rather than assuming the
+first one is stale.
+</Callout>
+
 ## eCall
 
 The other kind. eCall places an emergency call automatically after a severe

@@ -120,6 +120,18 @@ anyone suspected — it is usually logging, an analytics library, or a cache tha
 nobody set a bound on.
 </Plain>
 
+<Callout type="note" title="CarStorageMonitoringManager bundles two unrelated things">
+`CarStorageMonitoringManager` offers a flash-wear estimate via
+`getWearEstimate()` — but it is marked `@Deprecated` in the platform's own
+source with a comment stating the data is unreliable, and it commonly reports
+`UNKNOWN` on virtualized or emulated storage that has no real wear-leveling
+hardware behind it. Separately, and still fully live, its `IoStatsListener`
+delivers a periodic per-UID I/O snapshot (`onSnapshot()`) on a documented
+~60-second schedule (`ioStatsRefreshRateSeconds`), independent of the wear
+estimate — a genuinely useful way to watch per-process write behavior over
+time even though the wear number next to it should not be trusted.
+</Callout>
+
 ## Writing less
 
 **Batch.** Accumulate in memory, write once. One transaction of 200 records

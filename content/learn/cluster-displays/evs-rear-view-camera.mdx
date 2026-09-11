@@ -130,6 +130,16 @@ camera fault rather than an app bug.
 the system reversing view — wants the camera. Yield promptly; the platform will
 take it regardless, and holding on produces a torn handover.
 
+<Callout type="tip" title="Buffer pool size, and what happens if you skip cleanup">
+On the reference EVS HAL used in the emulator, the frame buffer pool is a
+small, fixed size and frames arrive at a fixed, modest rate — worth knowing
+as a baseline when a real product's stream feels slow, though a vendor HAL
+may configure a different pool size and rate. Separately, killing the
+consuming app without calling `stopVideoStream()` still tears the stream
+down cleanly: the service detects the binder death and releases the camera
+on its own, so an app crash there is not a leak.
+</Callout>
+
 ## Requires `CAR_EVS` permissions
 
 Camera access on a vehicle is signature-level. An EVS client is a system app,

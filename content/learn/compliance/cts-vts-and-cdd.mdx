@@ -165,6 +165,16 @@ atest VtsHalAutomotiveVehicle_TargetTest
 atest CarServiceUnitTest
 ```
 
+<Callout type="warning" title="atest only works from $ANDROID_BUILD_TOP — and fails silently otherwise">
+`atest module:pkg.ClassName#methodName` narrows a run to one class or one method
+instead of the whole module — useful for the fast, per-change checks above. But
+`atest` must be run from under `$ANDROID_BUILD_TOP`: run it from anywhere else
+and it prints `Atest must always work under $ANDROID_BUILD_TOP!`, runs nothing,
+and still **exits 0**. A CI step that only checks the exit code reads that as a
+pass. `cd $ANDROID_BUILD_TOP` (or wherever `lunch` was run from) before invoking
+`atest` in any script.
+</Callout>
+
 <Callout type="tip" title="Compliance failures are almost never surprising in hindsight">
 Ask any team after a failed run and they will tell you which modification caused
 it. The information existed the whole time; only the feedback was late. Moving

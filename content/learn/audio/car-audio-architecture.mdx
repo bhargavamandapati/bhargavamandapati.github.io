@@ -205,6 +205,27 @@ audio.setGroupVolume(zoneId, groupId, current + 1, /* flags = */ 0)
 is signature-level. Ordinary apps change their own stream volume; only system
 apps drive the vehicle's volume model.
 
+<Callout type="tip" title="Enumerating every zone from an app">
+`CarAudioManager` also gives a read-only view of the whole topology, not just
+one zone. `getAudioZoneIds()` lists every zone the config declared;
+`getVolumeGroupInfosForZone(zoneId)` returns a `CarVolumeGroupInfo` per group,
+carrying its current index, min/max gain and mute state. Register a
+`CarVolumeCallback` on the manager to be notified of volume and mute changes as
+they happen, rather than polling.
+</Callout>
+
+<Callout type="warning" title="UID-based routing and occupant-zone mapping are mutually exclusive — for the whole product">
+`CarAudioManager` also exposes `setZoneIdForUid()`, which pins a specific app's
+UID directly to a zone. But the moment *any* zone on the product declares an
+`occupantZoneId` — zone 0 above does — <Sym name="CarAudioService" /> disables
+UID-based routing for the entire product, not just the mapped zone. Attempting
+it throws `IllegalStateException: UID based routing is not supported while
+using occupant zone mapping`, confirmed on a real build. This is a deliberate
+either/or: a product routes audio by occupant-zone membership or by
+directly-pinned UIDs, never a mix of the two, so pick one at configuration time
+rather than expecting to combine them.
+</Callout>
+
 ## Getting your audio into the right context
 
 Your app controls its context through `AudioAttributes`. This is the single most

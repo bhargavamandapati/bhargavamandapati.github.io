@@ -78,6 +78,16 @@ adb shell dumpsys car_service --services CarTelemetryService
 adb shell cmd car_service telemetry list
 ```
 
+<Callout type="warning" title="Config acceptance doesn't guarantee execution">
+`addMetricsConfig()` and the `dumpsys`/`cmd car_service telemetry list` surface
+can accept, validate and track a metrics config successfully even when the
+separate process that actually executes the Lua script is missing from that
+build. Configuration management and script execution are split across two
+components, and only the former responds to these calls — check that the
+executor component is actually installed before assuming an accepted config
+will ever produce a report.
+</Callout>
+
 ## CarDiagnosticManager — OBD-II
 
 The other kind. `CarDiagnosticManager` exposes **live frames** (current sensor
@@ -108,6 +118,18 @@ diagnostics.freezeFrameTimestamps.forEach { ts ->
     Log.d(TAG, "DTC ${frame?.dtc} at $ts")
 }
 ```
+
+<Callout type="note" title="Live frames may never update after boot">
+A freeze frame is a one-time snapshot captured when a fault code sets; a live
+frame is meant to update continuously with current sensor readings. On some
+OBD-II sources — a simulated implementation that only builds its snapshot once
+at startup — the live frame is generated exactly once and never refreshed, so
+a listener registered for `FRAME_TYPE_LIVE` can succeed and simply never fire
+again. From the app side this looks identical to "no live data support," so
+confirm against the source before assuming the API itself is broken.
+`clearFreezeFrames()` is a genuine, working call that clears stored codes
+through the documented API.
+</Callout>
 
 This needs `android.car.permission.CAR_DIAGNOSTICS` — signature-level, because
 freeze frames reveal a great deal about how a vehicle has been driven.

@@ -413,6 +413,10 @@ interface you define, and it will be easier to evolve.
 | Build fails after an interface edit | You changed a frozen version — bump instead |
 | `@VintfStability` build error | A parcelable in the interface is not itself VintfStability |
 | Callback list grows forever | Comparing `shared_ptr` instead of `asBinder().get()` |
+| `attribute hal_vega_comfort_server is not declared` | `hal_attribute_service()` only grants permissions to an existing `hal_$name_client`/`hal_$name_server` pair — it doesn't declare them. Add `hal_attribute(vega_comfort);` to `system/sepolicy/public/attributes` first |
+| sepolicy build fails citing a fuzzer binding for your new service | A new `service_contexts` entry needs an exception added to `EXCEPTION_NO_FUZZER` in `system/sepolicy/build/soong/service_fuzzer_bindings.go`, same as any other newly-named service |
+| `public types were found added to the policy without an entry into the compatibility mapping file(s)` naming your new service type | A new public SELinux type needs an entry in the current `private/compat/<version>/<version>.ignore.cil`'s `new_objects` list |
+| `files are incompatible: ... in the device manifest but not specified in framework compatibility matrix` | The framework doesn't know the interface exists yet. Add a `<hal>` entry to the shared `hardware/interfaces/compatibility_matrices/compatibility_matrix.<latest>.xml` — not a device-local `DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE`, which is for genuinely OEM-proprietary HALs and installs to the wrong partition for one meant to sit alongside AOSP's own |
 
 ## Next
 

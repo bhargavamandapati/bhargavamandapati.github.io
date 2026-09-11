@@ -61,6 +61,28 @@ domain determines which types it may set. A vendor HAL trying to set a
 check `dmesg` for an `avc: denied` line, the symptom just looks like the
 property never changed.
 
+<Callout type="note" title="property_contexts is three columns, not two">
+A `property_contexts` entry is a property-name prefix, an SELinux type, and
+an optional third field — a type restriction such as `exact bool` or
+`exact int` (e.g. `u:object_r:some_prop:s0 exact int`). That third column
+feeds a value-type check at property-set time, separate from the SELinux
+permission check: a property with no type qualifier accepts any string, but
+one declared `exact int` rejects a non-numeric write even from a caller that
+already has permission to set it.
+</Callout>
+
+<Callout type="warning" title="ctl.start/ctl.stop are gated twice, not once">
+Starting or stopping a service through `ctl.start`/`ctl.stop` passes two
+independent checks, in a fixed order. The `start`/`stop` toolbox applet
+itself refuses outright unless the caller is UID 0 — a plain `getuid()`
+check inside the binary, before any property is even touched — and only
+after that does `init` run its own SELinux `property_service:set` check
+against the `ctl_start_prop`/`ctl_stop_prop` type. A denial can come from
+either layer, and the two need debugging differently: `Must be root` points
+at the first, an `avc: denied` line naming `ctl.start$<service>` points at
+the second.
+</Callout>
+
 ## Triggers: how init reacts to property changes
 
 `init`'s configuration language supports `on property:<name>=<value>`

@@ -143,6 +143,26 @@ adb shell lshal --init-vintf     # what the manifest declares
 adb shell vintf                  # compatibility check
 ```
 
+<Callout type="warning" title="An undeclared HAL can abort at registration, not just fail a check">
+Declaring the manifest fragment (`vintf_fragments:` in the module's `Android.bp`)
+is not optional bookkeeping. A binder built with `stability: "vintf"` is checked
+by `servicemanager` at the exact moment it calls `addService()` —
+`Stability::requiresVintfDeclaration()` tags it, and if no matching device
+manifest fragment is found, the call returns `EX_ILLEGAL_ARGUMENT`. Most HAL
+reference implementations wrap that call in a `CHECK_EQ`, so the practical
+result is a real `SIGABRT`, a tombstone, and `init` restarting the service —
+not a soft failure a log line would explain. An interface declared
+`unstable: true` (fine for something that never leaves one build, never for a
+real product HAL) skips this check entirely, since it never carries the VINTF
+stability tag in the first place.
+
+Separately, a device's VINTF `target-level` and `PRODUCT_SHIPPING_API_LEVEL`
+are tracked independently — bumping the shipping API level does not
+automatically raise the manifest's `target-level`. A device can keep an older
+target-level indefinitely as long as it still satisfies that matrix; the two
+numbers matching is not something to assume.
+</Callout>
+
 ## What the boundary forbids
 
 You **cannot**:

@@ -306,6 +306,8 @@ restarts Car Service.
 | `dumpsys` prints nothing | `dump()` not overridden on the Binder stub |
 | Denial on `add` | Missing `service_contexts` / `service.te` entry |
 | Works on car, breaks phone builds | Missing `FEATURE_AUTOMOTIVE` guard |
+| Build error: "we have no fuzzer on file for it" | AOSP requires every new binder service to be fuzz-tested or explicitly exempted — add an `EXCEPTION_NO_FUZZER` entry for your service name in `system/sepolicy/build/soong/service_fuzzer_bindings.go` |
+| Build error: "public types ... without an entry into the compatibility mapping" | A new public SELinux service type isn't tracked for Treble yet — add it to the current `private/compat/<latest>/<latest>.ignore.cil` (find the latest with `ls system/sepolicy/private/compat/`) |
 
 ## Next
 

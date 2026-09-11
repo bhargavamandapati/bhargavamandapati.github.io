@@ -157,6 +157,18 @@ adb shell getevent -lt          # raw input events, live
 adb shell dumpsys input | grep -A5 -i 'Device.*steering\|swc'
 ```
 
+<Callout type="warning" title="Custom input events (F1-F10) go to one client, not every listener">
+Beyond standard media/SWC keys, AAOS reserves ten input codes, F1 through F10,
+for OEM-defined physical buttons with no built-in meaning — a dash button or a
+steering-wheel shortcut with vehicle-specific behaviour. `InputCaptureClientController`
+tracks only the most recently registered client per display and per input
+type; if a second app requests the same input type, it silently takes over
+and the first app stops receiving events, with no error on either side. An app
+handling one of these events should also guard any resulting launch — check
+`resolveActivity()` before firing an implicit intent — since a missing target
+activity throws uncaught and crashes the whole handling process.
+</Callout>
+
 ## Testing without hardware
 
 ```bash title="Driving rotary from adb"

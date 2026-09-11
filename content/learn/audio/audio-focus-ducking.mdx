@@ -177,6 +177,24 @@ topic.
 Most production vehicles use hardware ducking for the navigation-over-media case
 precisely because it does not depend on every app behaving.
 
+<Callout type="note" title="MAY_DUCK is a request, not a guarantee">
+Whether a `..._MAY_DUCK` request actually results in ducking is itself
+per-zone configuration — the zone's `dumpsys` output reports each usage's
+"receives duck events" state independently of what any given request asks
+for. A usage that is not wired to duck in that zone simply is not attenuated,
+granted or not; ducking is not automatic behavior every context gets for free.
+</Callout>
+
+<Callout type="note" title="A denied request can come from something you can't see">
+`requestAudioFocus` returning `AUDIOFOCUS_REQUEST_FAILED` does not always mean
+another foreground app is contending for the floor. An active phone call holds
+`USAGE_VOICE_COMMUNICATION` focus for its entire duration — including a call
+that was never properly ended — and it silently blocks a later plain
+`AUDIOFOCUS_GAIN` media request until that call is torn down. Check the
+current focus holders in `dumpsys car_service --services CarAudioService`
+before assuming your own request logic is at fault.
+</Callout>
+
 ## Sounds that must never be ducked
 
 Safety chimes, collision warnings, seatbelt reminders. These use

@@ -52,6 +52,26 @@ available.
 last few minutes are useful, not an attempt to keep everything.
 </Analogy>
 
+<Callout type="warning" title="A log line can vanish before logd, or logd can drop it after">
+Two independent points of loss are worth telling apart when a log line seems to
+be missing. First, `log.tag.<tag>` (not `ro.log.tag.*`, which the client code
+explicitly does not support) is checked client-side, inside the logging
+process, before anything reaches `logd` at all — set it to a suppressing level
+and the call returns immediately with no write attempted; the operation the log
+line was describing still happened, only the line itself never existed.
+Second, `logd`'s main ring buffer can genuinely overflow under a fast enough
+burst of log lines, silently dropping the oldest entries once it fills faster
+than a reader drains it — confirmed by a real burst test where a small
+percentage of lines sent were never readable afterward. A "missing" log could
+be either: never sent, or sent and since evicted.
+
+`persist.logd.filter` (a documented "prune the chattiest UID first" policy) is
+worth checking for, but its logic lives in an alternate `logd` buffer backend
+that not every build actually runs — on a backend where it's inert, setting it
+changes nothing about which lines survive an overflow. Whether it does anything
+on your build is worth verifying rather than assuming.
+</Callout>
+
 ## Levels, and what they should actually mean
 
 | Level | Use for | In production |

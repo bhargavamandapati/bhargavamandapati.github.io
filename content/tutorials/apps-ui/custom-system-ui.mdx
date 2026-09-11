@@ -169,6 +169,23 @@ adb shell pkill -f com.android.systemui
 sleep 5 && adb shell screencap -p /sdcard/bar.png && adb pull /sdcard/bar.png
 ```
 
+For checking a single resource value without building or pushing an overlay APK
+at all, `cmd overlay fabricate` registers an override directly with the Overlay
+Manager — the same technique used to test the resource names from Step 2 before
+committing to a build.
+
+<Gotcha title="cmd overlay fabricate needs raw TypedValue codes, and forgets everything on reboot">
+The shell tool's type parser only recognizes `color`, `string`, and `drawable`
+by name. Every other resource type — including the `bool` and dimension values
+used above — must be passed as the raw `android.util.TypedValue` type constant
+(`0x12` for `TYPE_INT_BOOLEAN`) together with the resource-compiler's own
+encoding of the value (boolean `true` is `0xffffffff`). A fabricated override
+also has no persistence beyond the current boot: unlike an installed RRO, it
+does not survive a reboot — it disappears entirely from `dumpsys overlay`
+rather than being merely disabled. Treat it as a fast way to confirm a
+resource name and value, not as a substitute for the real overlay above.
+</Gotcha>
+
 ## When an overlay is not enough
 
 Overlays reach resources. They do not reach behaviour. You need to modify

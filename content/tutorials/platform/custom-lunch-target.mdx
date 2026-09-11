@@ -97,6 +97,15 @@ targets look like in the `lunch` menu and match that shape, or your target will
 not appear.
 </Gotcha>
 
+<Gotcha title="Ignore any guide that tells you to write a vendorsetup.sh">
+Older tutorials register a lunch target with a `vendorsetup.sh` file calling
+`add_lunch_combo`. On a current `trunk_staging` tree that function is a
+deprecation stub — it prints a warning and does nothing else. `COMMON_LUNCH_CHOICES`
+inside `AndroidProducts.mk`, as used above, is the mechanism that actually works.
+If you find a guide mentioning `vendorsetup.sh` for this purpose, treat it as a
+sign the guide predates this change.
+</Gotcha>
+
 ## Step 3 — Write the product makefile
 
 ```makefile title="device/oem/vega/vega.mk"
@@ -157,6 +166,15 @@ BOARD_VENDOR_SEPOLICY_DIRS += device/oem/vega/sepolicy/vendor
 # It sits beside the product makefile you inherited in step 3
 ls device/generic/car/emulator/
 ```
+
+<Gotcha title="A BoardConfig variable can come from several includes up">
+`BoardConfig.mk` files chain through `include` just like product makefiles chain
+through `inherit-product`, and a variable you're looking for is not always set in
+the top-level file — it can be set several includes up, occasionally four levels
+deep. Rather than assume where a `BOARD_*` variable comes from, `grep -rn
+VARIABLE_NAME device/` across the whole tree and follow it to wherever it is
+actually assigned.
+</Gotcha>
 
 ## Step 5 — Add a resource overlay
 

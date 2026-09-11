@@ -476,6 +476,34 @@ VTS checks structural things your own testing will not: config well-formedness,
 area consistency, range enforcement, and required-property presence. Run it now,
 while the HAL is small enough to fix easily.
 
+## An alternative: the stock JSON-config path
+
+Everything above is a real vendor HAL implementation — `VegaVehicleHardware`
+answers `getValues`/`setValues` itself. AOSP's reference backend,
+`FakeVehicleHardware`, supports a much lighter path for a brand-new property:
+a single JSON config entry, no C++ at all. Give the property a numeric ID, a
+`defaultValue`, and (since the loader has no built-in default for an ID it
+doesn't recognize) explicit `access` and `changeMode` fields, drop it into a
+`*.json` file under `default_config/config/`, and wire that file into the
+vendor partition with a `filegroup` + `prebuilt_etc` pair —
+`FakeVehicleHardware` reloads every JSON file it finds there on every boot.
+
+That path only exists behind `FakeVehicleHardware`; `VegaVehicleHardware`
+never reads that config directory. It's still worth knowing about, because
+it's the fastest way to prototype a new property's shape — its type, range,
+default — before committing to a real implementation in a vendor HAL like the
+one this tutorial just built.
+
+<Gotcha title="dumpsys only resolves AOSP's own property names">
+The VHAL debug interface (`dumpsys android.hardware.automotive.vehicle.IVehicle/default --get ...`)
+resolves a human-readable name only for AOSP's own built-in `VehicleProperty`
+enum values. A vendor-defined property ID — whether it comes from
+`VegaVehicleHardware` or the JSON-config path above — always prints as a raw
+number in these tools; there's no vendor-enum name resolution at the
+command-line layer, only inside the JSON config loader itself when it parses
+the config file.
+</Gotcha>
+
 ## Troubleshooting
 
 | Symptom | Cause |
