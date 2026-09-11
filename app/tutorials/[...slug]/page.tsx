@@ -23,6 +23,7 @@ import {
 } from '@/lib/tutorials'
 import { trackBySlug } from '@/data/tutorials'
 import { site } from '@/data/site'
+import { isFree } from '@/data/access'
 import { cn } from '@/lib/utils'
 
 type Params = { slug: string[] }
@@ -41,11 +42,13 @@ export async function generateMetadata({
   if (!tutorial) return {}
 
   const track = trackBySlug.get(tutorial.trackSlug)
+  const locked = !isFree('tutorials', tutorial.slug)
   return {
     title: tutorial.title,
     description: tutorial.description,
     keywords: [...tutorial.tags, 'Android Automotive', 'AAOS', 'tutorial'],
     alternates: { canonical: `/tutorials/${tutorial.slug}/` },
+    ...(locked ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: 'article',
       title: `${tutorial.title} — ${track?.name ?? 'AAOS tutorial'}`,
@@ -72,6 +75,7 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
   const headings = extractTutorialHeadings(tutorial.content)
   const steps = countSteps(tutorial.content)
   const { previous, next } = getAdjacentTutorials(tutorial.slug)
+  const locked = !isFree('tutorials', tutorial.slug)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -79,6 +83,7 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
     name: tutorial.title,
     description: tutorial.description,
     totalTime: tutorial.time || undefined,
+    isAccessibleForFree: !locked,
     step: headings
       .filter((h) => h.level === 2 && /^Step\s+\d+/.test(h.text))
       .map((h, i) => ({

@@ -38,6 +38,7 @@ import {
   type VehicleProperty,
 } from "@/lib/vehicle-properties";
 import { site } from "@/data/site";
+import { isFree } from "@/data/access";
 
 type Params = { name: string };
 
@@ -54,12 +55,14 @@ export async function generateMetadata({
   const property = propertyBySlug(name);
   if (!property) return {};
   const description = `${summarise(property)} — ID ${property.hex}, ${property.area} area, ${property.type}, ${property.access} access, ${property.changeMode}.`;
+  const locked = !isFree("properties", propertySlug(property));
   return {
     title: `${property.name} — vehicle property`,
     description,
     alternates: {
       canonical: `/learn/vehicle-properties/${propertySlug(property)}/`,
     },
+    ...(locked ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: "article",
       title: `${property.name} · ${site.name}`,
@@ -164,6 +167,42 @@ export default async function PropertyPage({
   const perms = permissionSnippets(property);
   const flowRows = propertyFlowRows(property);
   const dependencies = groups.filter((g) => g.strength === "dependency");
+  const locked = !isFree("properties", propertySlug(property));
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: `${property.name} — vehicle property`,
+    description: summarise(property),
+    isAccessibleForFree: !locked,
+    keywords: [property.name, property.area, property.type, "VehicleProperty", "Android Automotive"].join(", "),
+    author: { "@type": "Person", name: site.name, url: site.url },
+    publisher: { "@type": "Person", name: site.name, url: site.url },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `${site.url}/learn/vehicle-properties/${propertySlug(property)}/`,
+    },
+  };
+
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Learn", item: `${site.url}/learn/` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Vehicle properties",
+        item: `${site.url}/learn/vehicle-properties/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: property.name,
+        item: `${site.url}/learn/vehicle-properties/${propertySlug(property)}/`,
+      },
+    ],
+  };
 
   // Split the diagram by direction: what this needs, versus what needs this.
   const NEEDS: string[] = [
@@ -180,8 +219,9 @@ export default async function PropertyPage({
 
   return (
     <CodeLanguageProvider>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <div className="container-page py-10 md:py-14">
-        <Gated area="properties" slug={propertySlug(property)} title={property.name}>
         <Link
           href="/learn/vehicle-properties/"
           className="inline-flex items-center gap-2 font-mono text-xs text-muted transition-colors hover:text-accent"
@@ -206,6 +246,11 @@ export default async function PropertyPage({
           {property.name}
         </h1>
 
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+          {summarise(property)}
+        </p>
+
+        <Gated area="properties" slug={propertySlug(property)} title={property.name}>
         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-subtle">

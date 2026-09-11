@@ -22,6 +22,7 @@ import {
 } from '@/lib/sdv'
 import { sdvModuleBySlug } from '@/data/sdv-curriculum'
 import { site } from '@/data/site'
+import { isFree } from '@/data/access'
 import { cn } from '@/lib/utils'
 
 type Params = { slug: string[] }
@@ -40,11 +41,13 @@ export async function generateMetadata({
   if (!topic) return {}
 
   const m = sdvModuleBySlug.get(topic.moduleSlug)
+  const locked = !isFree('sdv', topic.slug)
   return {
     title: topic.title,
     description: topic.description,
     keywords: [...topic.tags, 'software defined vehicle', 'SDV', 'automotive'],
     alternates: { canonical: `/sdv/${topic.slug}/` },
+    ...(locked ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: 'article',
       title: `${topic.title} — ${m?.name ?? 'SDV'}`,
@@ -70,6 +73,7 @@ export default async function SdvTopicPage({ params }: { params: Promise<Params>
   const modules = getSdvCurriculum()
   const headings = extractSdvHeadings(topic.content)
   const { previous, next } = getAdjacentSdvTopics(topic.slug)
+  const locked = !isFree('sdv', topic.slug)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -80,6 +84,7 @@ export default async function SdvTopicPage({ params }: { params: Promise<Params>
     keywords: topic.tags.join(', '),
     wordCount: topic.words,
     proficiencyLevel: topic.difficulty,
+    isAccessibleForFree: !locked,
     author: { '@type': 'Person', name: site.name, url: site.url },
     publisher: { '@type': 'Person', name: site.name, url: site.url },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${site.url}/sdv/${topic.slug}/` },

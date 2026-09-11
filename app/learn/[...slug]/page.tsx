@@ -22,6 +22,7 @@ import {
 } from '@/lib/learn'
 import { categoryBySlug } from '@/data/curriculum'
 import { site } from '@/data/site'
+import { isFree } from '@/data/access'
 import { cn } from '@/lib/utils'
 
 type Params = { slug: string[] }
@@ -40,11 +41,13 @@ export async function generateMetadata({
   if (!topic) return {}
 
   const category = categoryBySlug.get(topic.categorySlug)
+  const locked = !isFree('learn', topic.slug)
   return {
     title: topic.title,
     description: topic.description,
     keywords: [...topic.tags, 'Android Automotive', 'AAOS', 'AOSP'],
     alternates: { canonical: `/learn/${topic.slug}/` },
+    ...(locked ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: 'article',
       title: `${topic.title} — ${category?.name ?? 'Learn AAOS'}`,
@@ -70,6 +73,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
   const curriculum = getCurriculum()
   const headings = extractTopicHeadings(topic.content)
   const { previous, next } = getAdjacentTopics(topic.slug)
+  const locked = !isFree('learn', topic.slug)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -80,6 +84,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
     keywords: topic.tags.join(', '),
     wordCount: topic.words,
     proficiencyLevel: topic.difficulty,
+    isAccessibleForFree: !locked,
     author: { '@type': 'Person', name: site.name, url: site.url },
     publisher: { '@type': 'Person', name: site.name, url: site.url },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${site.url}/learn/${topic.slug}/` },

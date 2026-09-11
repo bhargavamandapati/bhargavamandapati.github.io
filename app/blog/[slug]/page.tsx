@@ -88,11 +88,24 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${site.url}/blog/${post.slug}/` },
   }
 
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Blog', item: `${site.url}/blog/` },
+      { '@type': 'ListItem', position: 2, name: post.title, item: `${site.url}/blog/${post.slug}/` },
+    ],
+  }
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
 
       <header data-copy-guard className="relative overflow-hidden border-b border-line">

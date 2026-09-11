@@ -6,6 +6,7 @@ import { getAllSdvTopics } from '@/lib/sdv'
 import { vehicleProperties, propertySlug } from '@/lib/vehicle-properties'
 import { projects } from '@/data/resume'
 import { site } from '@/data/site'
+import { isFree } from '@/data/access'
 
 export const dynamic = 'force-static'
 
@@ -37,6 +38,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${site.url}/licence/`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${site.url}/terms/`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${site.url}/privacy/`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${site.url}/refunds/`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,
@@ -77,12 +96,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly' as const,
       priority: 0.7,
     })),
-    ...topics.map((t) => ({
-      url: `${site.url}/learn/${t.slug}/`,
-      lastModified: t.updated ? new Date(t.updated) : new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.8,
-    })),
+    ...topics
+      .filter((t) => isFree('learn', t.slug))
+      .map((t) => ({
+        url: `${site.url}/learn/${t.slug}/`,
+        lastModified: t.updated ? new Date(t.updated) : new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.8,
+      })),
     {
       url: `${site.url}/learn/vehicle-properties/`,
       lastModified: new Date(),
@@ -107,24 +128,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     },
-    ...vehicleProperties.map((p) => ({
-      url: `${site.url}/learn/vehicle-properties/${propertySlug(p)}/`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly' as const,
-      priority: 0.4,
-    })),
-    ...sdv.map((t) => ({
-      url: `${site.url}/sdv/${t.slug}/`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.8,
-    })),
-    ...tutorials.map((t) => ({
-      url: `${site.url}/tutorials/${t.slug}/`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.8,
-    })),
+    ...vehicleProperties
+      .filter((p) => isFree('properties', propertySlug(p)))
+      .map((p) => ({
+        url: `${site.url}/learn/vehicle-properties/${propertySlug(p)}/`,
+        lastModified: new Date(),
+        changeFrequency: 'yearly' as const,
+        priority: 0.4,
+      })),
+    ...sdv
+      .filter((t) => isFree('sdv', t.slug))
+      .map((t) => ({
+        url: `${site.url}/sdv/${t.slug}/`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.8,
+      })),
+    ...tutorials
+      .filter((t) => isFree('tutorials', t.slug))
+      .map((t) => ({
+        url: `${site.url}/tutorials/${t.slug}/`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.8,
+      })),
     ...posts.map((p) => ({
       url: `${site.url}/blog/${p.slug}/`,
       lastModified: new Date(p.updated ?? p.date),
