@@ -111,6 +111,24 @@ apps. The real triggers are the adapter turning on, or — on builds that wire
 it up — the driver's seat becoming occupied while the vehicle is parked.
 </Callout>
 
+<Callout type="note" title="The one real doorway back in: profile inhibit for projection">
+`CarProjectionManager` exposes the one app-reachable exception to the above:
+`requestBluetoothProfileInhibit()`/`releaseBluetoothProfileInhibit()`, letting
+a wireless Android Auto host mute a phone's own `HEADSET_CLIENT`/`A2DP_SINK`
+profiles while it takes over calling and music — the only two profiles
+actually wired to anything in the backing implementation. It needs three
+permissions together (`CAR_PROJECTION`, `BLUETOOTH_CONNECT`,
+`BLUETOOTH_PRIVILEGED`), and `BLUETOOTH_CONNECT` is dangerous-level — a
+manifest declaration alone doesn't grant it, even for a platform-signed
+priv-app; it needs an explicit per-user `pm grant`. The call itself only
+checks that the adapter is on and that the profile's own service proxy is
+bound — never that the target device is actually reachable, bonded, or even
+real. A fabricated `BluetoothDevice` for a MAC address that has never touched
+a real radio produces a genuine, tracked inhibit record all the same: this is
+internal bookkeeping, not a live radio operation, so it needs no real peer on
+the other end.
+</Callout>
+
 ## Pairing while driving
 
 Pairing requires reading a code and confirming it — precisely the kind of

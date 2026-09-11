@@ -172,6 +172,18 @@ if (userManager.isGuestUser) {
 }
 ```
 
+<Callout type="note" title="A guest can be replaced at suspend, not just at reboot">
+Some products set an overlay flag (`SwitchGuestUserBeforeSleep`) that makes
+`CarUserService` wipe and recreate the current guest specifically when the
+vehicle suspends — not on every reboot, and only if the foreground user is
+actually a guest. A session that was mid-guest before a suspend/resume cycle
+can come back as a brand-new guest with a different user ID; don't cache a
+guest's user ID across a suspend if this overlay is enabled on your target
+product. Android's general ephemeral-user teardown also removes a guest the
+moment it stops being the foreground user, independent of this AAOS-specific
+hook — so a guest can disappear on a plain user switch too, not only sleep.
+</Callout>
+
 ## Occupant zones tie users to seats
 
 On a multi-display vehicle, `CarOccupantZoneManager` maps users to displays and

@@ -256,6 +256,18 @@ showing nothing, because the driver cannot tell it is fiction.
 | Callback stops after a while | Car Service restarted; you did not re-register |
 | Works on emulator, not on target | Reference VHAL supports it; the real one does not declare it |
 
+<Callout type="warning" title="A manifest declaration is not a grant for a dangerous-level permission">
+Some `android.car.permission.*` constants — `CAR_SPEED` among them, grouped
+under `LOCATION` because vehicle speed counts as sensor data — are
+`protectionLevel="dangerous"`, exactly like ordinary Android runtime
+permissions. Declaring one in the manifest, even signed as a platform
+priv-app, is not enough; it still needs an explicit, per-user grant
+(`adb shell pm grant --user <id> <pkg> <permission>` on a dev build; a real
+runtime request on a production one). Check `CarSvcProps.json` for which
+permission a given property actually maps to before assuming the manifest
+declaration alone should have worked.
+</Callout>
+
 <Recap>
 - `CarPropertyManager` gives you four operations: **get, set, subscribe, and
   check availability**.

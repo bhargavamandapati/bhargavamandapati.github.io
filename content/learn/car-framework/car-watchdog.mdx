@@ -166,6 +166,21 @@ miss an overuse right after boot, check again once the system has settled
 into steady-state periodic collection.
 </Callout>
 
+<Callout type="note" title="The watchdog daemon also fronts real-time thread scheduling, via a separate manager">
+Beyond health checks and I/O overuse, the same native `carwatchdogd` process
+backs a third, less obvious capability: `CarPerformanceManager.setThreadPriority()`
+lets a `signature|privileged` app ask the Linux kernel directly for real-time
+scheduling (`SCHED_FIFO`/`SCHED_RR`) on one of its own threads — a genuine
+`sched_setscheduler()` call, not a Car-Service abstraction over it, with an
+out-of-range priority rejected client-side before it reaches the daemon. A
+sibling API on the same manager, `addCpuAvailabilityChangeListener()`, is
+real in the SDK but throws `UnsupportedOperationException` — it was never
+implemented, and the permission its own annotation names isn't declared
+anywhere as a real `<permission>` either, so a manifest entry for it is
+inert. Check what a "genuinely real vs. still unimplemented" API actually
+does before building against it, even when both live on the same class.
+</Callout>
+
 ## Writing less
 
 The patterns that keep you inside budget:

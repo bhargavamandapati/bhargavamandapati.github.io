@@ -96,6 +96,23 @@ Once Android is up, the framework wants control — to overlay guidelines, to
 composite the camera into a larger UI, to let an OEM app own the reversing
 experience. `CarEvsService` manages that transition.
 
+<Callout type="note" title="The automatic reverse-gear trigger may not be GEAR_SELECTION">
+`CarEvsService` supports two different ways of noticing reverse: reacting to
+`GEAR_SELECTION` directly, or reacting to a purpose-built VHAL property,
+`EVS_SERVICE_REQUEST`, that carries a service type and an on/off state as a
+two-element array. Which one a given product actually uses is a config choice
+(`dumpsys car_service --services CarEvsHalService` reports it), and only one
+is live — setting the property the *other* mechanism listens for produces no
+visible reaction, correctly, because that code path is conditionally skipped
+on that build. If a reverse-gear signal doesn't seem to trigger the camera,
+confirm which trigger mechanism the product is actually configured for before
+assuming the pipeline is broken. Separately, an empty
+`config_evsCameraActivity` resource string means the whole pipeline can be
+live and correctly wired all the way to `requestStartActivity()`, and still
+show nothing — a missing launch-target activity is documented as a valid,
+non-error outcome, not a fault.
+</Callout>
+
 ```kotlin title="An app requesting the camera stream"
 val evs = car.getCarManager(Car.CAR_EVS_SERVICE) as CarEvsManager
 

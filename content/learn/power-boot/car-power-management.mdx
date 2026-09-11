@@ -135,6 +135,20 @@ twenty uninterrupted minutes will be killed at minute three, forever, and never
 make progress.
 </Callout>
 
+<Callout type="warning" title="A network constraint can silently keep your job from ever running">
+Garage Mode's own poll loop only counts a job as pending if it is already
+`isRunnable()` — a job blocked on an unsatisfied constraint like
+`NETWORK_TYPE_UNMETERED` is invisible to Garage Mode's reporting, not queued
+and waiting. On a vehicle with no active validated network connection at the
+time, `garage-mode query`/`dumpsys` can report **zero pending jobs** even
+while your correctly-scheduled job sits blocked, indefinitely, on
+connectivity alone — no error, no timeout, just silence. If a Garage Mode job
+never seems to run, check `dumpsys jobscheduler` for its own unsatisfied
+constraints before assuming Garage Mode itself is at fault; `dumpsys
+connectivity`'s "Active default network" line is the fastest way to confirm
+whether connectivity is the actual blocker.
+</Callout>
+
 ```bash title="Driving Garage Mode by hand"
 adb shell dumpsys car_service --services CarPowerManagementService
 adb shell cmd car_service garage-mode on

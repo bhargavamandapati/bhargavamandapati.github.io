@@ -196,6 +196,22 @@ far less with interpolation. Asking for more than you can render is pure cost.
 | Speed, for a control loop | `FAST` (~10 Hz) | Justify it |
 | Anything | `FASTEST` | Measure first; it is almost never right |
 
+<Callout type="note" title="The rate you get is clamped, and it is measurable, not assumed">
+The current, non-deprecated API is `Subscription.Builder` (replacing the older
+`registerCallback(callback, propId, rate)`), and it sanitizes your requested
+rate against the property's own `minSampleRateHz`/`maxSampleRateHz` before it
+ever reaches the HAL — ask for 100&nbsp;Hz on a property capped at 10&nbsp;Hz
+and you get 10&nbsp;Hz, not an error. Variable Update Rate defaults to **on**,
+meaning a callback only fires when the value actually changes; measuring a raw
+delivery rate against a genuinely continuous source requires
+`setVariableUpdateRateEnabled(false)` or the numbers are meaningless. Timestamp
+your own callbacks (`SystemClock.elapsedRealtime()`) rather than trusting that
+a requested rate is the delivered one — on a real device, the delivered rate
+came in within a fraction of a percent of the (possibly clamped) target, which
+is close enough to build timing-sensitive UI against, but only if you've
+actually measured it for the property you care about.
+</Callout>
+
 <Callout type="tip" title="Ask what the pixel needs">
 A gauge redrawing at 60 fps does not need 60 Hz of data — interpolation between
 5 Hz samples looks identical and costs a twelfth as much. Match the subscription

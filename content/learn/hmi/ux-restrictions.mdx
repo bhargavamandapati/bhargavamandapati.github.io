@@ -131,6 +131,21 @@ Declaring this is a claim that the activity meets the driver-distraction
 guidelines. `CarPackageManager` checks the flag and blocks activities that lack
 it while driving, replacing them with a "not available while driving" screen.
 
+<Callout type="note" title="Region is a second, independent axis — not part of the speed-based configuration">
+A `distractionOptimized` declaration can be narrowed to specific regions with a
+second meta-data key, `android.car.drivingsafetyregions` (comma-separated
+region tokens). This lives entirely in `CarPackageManagerService` and is
+unrelated to the speed-threshold rules in `CarUxRestrictionsConfiguration` —
+region controls whether an activity counts as DO **at all**; speed controls
+what a DO activity is allowed to show once it does. The device-wide current
+region is set via a shell command, not any app-facing API: reading it back
+requires a real permission (`CONTROL_APP_BLOCKING` or `CAR_DRIVING_STATE`),
+but nothing can set it from an app at all, because the setter was never
+exposed over AIDL — only root shell or a boot-time system property can change
+it. A feature can be fully implemented and still have no path in from
+application code, by design.
+</Callout>
+
 <Callout type="note" title="An allowlist is checked before the manifest flag, and the block is a real activity swap">
 `CarPackageManagerService` evaluates a config-driven `activityAllowlist` /
 `activityBlocklist` before it ever looks at an activity's own
