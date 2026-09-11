@@ -16,6 +16,11 @@ import {
 import { FREE_TOPICS, access } from '@/data/access'
 import { site } from '@/data/site'
 import { EmailAccessButton } from '@/components/premium/email-access-button'
+import { getAllTopics } from '@/lib/learn'
+import { getAllSdvTopics } from '@/lib/sdv'
+import { getAllTutorials } from '@/lib/tutorials'
+import { vehicleProperties } from '@/lib/vehicle-properties'
+import { glossary } from '@/data/glossary'
 
 /**
  * The home page.
@@ -26,53 +31,68 @@ import { EmailAccessButton } from '@/components/premium/email-access-button'
  * to reach the rest.
  */
 
-const LIBRARY = [
-  { icon: BookOpen, count: '93', label: 'Learn AAOS topics', note: 'Foundations to homologation, in reading order.', href: '/learn/' },
-  { icon: Layers, count: '40', label: 'SDV topics', note: 'Service-oriented architecture, data, cloud and cluster.', href: '/sdv/' },
-  { icon: Car, count: '280', label: 'Vehicle properties', note: 'Every property, its enums, permissions and dependencies.', href: '/learn/vehicle-properties/' },
-  { icon: Boxes, count: '21', label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.', href: '/tutorials/' },
-  { icon: Gauge, count: '2', label: 'Live simulators', note: 'Change a property and watch the car respond.', href: '/learn/vehicle-simulator/' },
-  { icon: Search, count: '98', label: 'Glossary terms', note: 'The vocabulary, defined without assuming you know it.', href: '/glossary/' },
-]
+/** Counts that drive the stats grid, the feature copy and the "full access" list — computed from the actual content so this page can't go stale when a topic is added. */
+function buildLibraryCounts() {
+  return {
+    learn: getAllTopics().length,
+    sdv: getAllSdvTopics().length,
+    properties: vehicleProperties.length,
+    inCarApiProperties: vehicleProperties.filter((p) => p.javaLine !== undefined).length,
+    tutorials: getAllTutorials().length,
+    glossary: glossary.length,
+  }
+}
 
-const FEATURES = [
-  {
-    src: '/images/screenshots/simulator.png',
-    width: 1700,
-    height: 488,
-    alt: 'The vehicle property simulator: a 3D cabin and top-down exterior view next to a searchable panel of 128 controls, grouped by category.',
-    eyebrow: 'Interactive',
-    title: 'A 3D cabin that answers to real vehicle properties',
-    description:
-      'Move the fan speed slider and the vent icon changes. Every control on the panel is a real AIDL property — 128 of them, searchable by name — and each write lands in a log of exactly what the VHAL received.',
-    cta: 'Open the simulator',
-    href: '/learn/vehicle-simulator/',
-  },
-  {
-    src: '/images/screenshots/property-flow.png',
-    width: 900,
-    height: 969,
-    alt: 'A diagram tracing HVAC_TEMPERATURE_SET across the AAOS stack, from the app through CarService and the VHAL boundary to the vendor bridge and hardware, for both a write request and a change event.',
-    eyebrow: 'Traced, not just described',
-    title: 'Every property, mapped from app to hardware and back',
-    description:
-      '264 reference pages carry a diagram like this one — the exact classes and Binder crossings a value passes through, get and set, generated from the real AIDL rather than drawn from memory.',
-    cta: 'See the full trace',
-    href: '/learn/vehicle-properties/hvac-temperature-set/',
-  },
-  {
-    src: '/images/screenshots/property-browser.png',
-    width: 1700,
-    height: 874,
-    alt: 'The vehicle property reference, searched for "hvac": facets for category, area type, value type, access and change mode, above a filtered list of matching properties.',
-    eyebrow: 'Searchable reference',
-    title: '280 vehicle properties, not a PDF of them',
-    description:
-      'Filter by category, area, value type, access or change mode, and jump straight to the AOSP source for any of them.',
-    cta: 'Browse the reference',
-    href: '/learn/vehicle-properties/',
-  },
-]
+function buildLibrary(counts: ReturnType<typeof buildLibraryCounts>) {
+  return [
+    { icon: BookOpen, count: String(counts.learn), label: 'Learn AAOS topics', note: 'Foundations to homologation, in reading order.', href: '/learn/' },
+    { icon: Layers, count: String(counts.sdv), label: 'SDV topics', note: 'Service-oriented architecture, data, cloud and cluster.', href: '/sdv/' },
+    { icon: Car, count: String(counts.properties), label: 'Vehicle properties', note: 'Every property, its enums, permissions and dependencies.', href: '/learn/vehicle-properties/' },
+    { icon: Boxes, count: String(counts.tutorials), label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.', href: '/tutorials/' },
+    { icon: Gauge, count: '2', label: 'Live simulators', note: 'Change a property and watch the car respond.', href: '/learn/vehicle-simulator/' },
+    { icon: Search, count: String(counts.glossary), label: 'Glossary terms', note: 'The vocabulary, defined without assuming you know it.', href: '/glossary/' },
+  ]
+}
+
+function buildFeatures(counts: ReturnType<typeof buildLibraryCounts>) {
+  return [
+    {
+      src: '/images/screenshots/simulator.png',
+      width: 1700,
+      height: 488,
+      alt: 'The vehicle property simulator: a 3D cabin and top-down exterior view next to a searchable panel of 128 controls, grouped by category.',
+      eyebrow: 'Interactive',
+      title: 'A 3D cabin that answers to real vehicle properties',
+      description:
+        'Move the fan speed slider and the vent icon changes. Every control on the panel is a real AIDL property — 128 of them, searchable by name — and each write lands in a log of exactly what the VHAL received.',
+      cta: 'Open the simulator',
+      href: '/learn/vehicle-simulator/',
+    },
+    {
+      src: '/images/screenshots/property-flow.png',
+      width: 900,
+      height: 969,
+      alt: 'A diagram tracing HVAC_TEMPERATURE_SET across the AAOS stack, from the app through CarService and the VHAL boundary to the vendor bridge and hardware, for both a write request and a change event.',
+      eyebrow: 'Traced, not just described',
+      title: 'Every property, mapped from app to hardware and back',
+      description: `${counts.inCarApiProperties} reference pages carry a diagram like this one — the exact classes and Binder crossings a value passes through, get and set, generated from the real AIDL rather than drawn from memory.`,
+      cta: 'See the full trace',
+      href: '/learn/vehicle-properties/hvac-temperature-set/',
+    },
+    {
+      src: '/images/screenshots/property-browser.png',
+      width: 1700,
+      height: 874,
+      alt: 'The vehicle property reference, searched for "hvac": facets for category, area type, value type, access and change mode, above a filtered list of matching properties.',
+      eyebrow: 'Searchable reference',
+      title: `${counts.properties} vehicle properties, not a PDF of them`,
+      description:
+        'Filter by category, area, value type, access or change mode, and jump straight to the AOSP source for any of them.',
+      cta: 'Browse the reference',
+      href: '/learn/vehicle-properties/',
+    },
+  ]
+}
 
 const AUDIENCE = [
   'Android developers moving into automotive, who keep hitting words nobody defines.',
@@ -83,6 +103,9 @@ const AUDIENCE = [
 
 export function Landing() {
   const freeLearn = FREE_TOPICS.learn[0]
+  const counts = buildLibraryCounts()
+  const LIBRARY = buildLibrary(counts)
+  const FEATURES = buildFeatures(counts)
 
   return (
     <>
@@ -247,8 +270,10 @@ export function Landing() {
                 Full access
               </p>
               <ul className="mt-5 space-y-3 text-sm text-muted">
-                <li>All 93 Learn AAOS topics and all 40 SDV topics</li>
-                <li>The complete vehicle property reference, all 280 of them</li>
+                <li>
+                  All {counts.learn} Learn AAOS topics and all {counts.sdv} SDV topics
+                </li>
+                <li>The complete vehicle property reference, all {counts.properties} of them</li>
                 <li>
                   <span className="inline-flex items-center gap-1.5">
                     <Gauge aria-hidden className="size-3.5" />
