@@ -45,6 +45,17 @@ import {
   VssTree,
   ZonalArchitecture,
 } from '@/components/diagrams/sdv'
+import {
+  CanHalFlow,
+  DexoptPipeline,
+  NativeDaemonPatterns,
+  OccupantAwarenessGates,
+  RemoteAccessLifecycle,
+  RotaryInputPath,
+  TaskViewEmbedding,
+  VmsPubSub,
+  ZygoteForkSequence,
+} from '@/components/diagrams/tutorials'
 
 type CalloutKind = 'note' | 'tip' | 'warning'
 
@@ -164,4 +175,15 @@ export const mdxComponents: MDXComponents = {
   FeatureOnDemand,
   VehicleDataPipeline,
   SdvStack,
+
+  // Tutorial diagrams
+  CanHalFlow,
+  RotaryInputPath,
+  NativeDaemonPatterns,
+  TaskViewEmbedding,
+  VmsPubSub,
+  RemoteAccessLifecycle,
+  OccupantAwarenessGates,
+  ZygoteForkSequence,
+  DexoptPipeline,
 }

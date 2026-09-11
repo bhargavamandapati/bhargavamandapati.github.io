@@ -1,0 +1,142 @@
+---
+title: "Wake a parked car and run a remote task"
+description: "CarRemoteAccessManager — how a parked, sleeping vehicle runs a task it didn't ask for, enabled live, watched firing end to end, including a real out-of-range error along the way."
+order: 5
+difficulty: "Advanced"
+time: "1–2 hours"
+outcome: "A remote task delivered end to end into a running client, proven with a real VHAL property change, plus the platform's own fake-mode wakeup path explained."
+prerequisites:
+  - label: "Add a subservice to Car Service"
+    href: "/tutorials/framework/custom-car-subservice/"
+tags: ["Remote Access", "Power", "CarService"]
+sources:
+  - label: "Android Automotive power management"
+    href: "https://source.android.com/docs/automotive/power"
+---
+
+Remote access is how a parked, sleeping car runs a task it didn't ask for —
+a server says "wake up and do this," and the platform runs real app code
+before deciding whether to go back to sleep. It's a genuinely optional
+feature, off by default, and bringing it up reveals a clean split between
+"the wakeup transport" (often absent on a development build) and "everything
+downstream of a wakeup" (fully real and independently triggerable).
+
+## Step 1 — Turn the feature on
+
+```bash
+adb shell dumpsys car_service --services CarRemoteAccessService
+# No such service!
+```
+
+```java title="CarFeatureController.java"
+// car_remote_access_service is a NON_FLAGGED_OPTIONAL_FEATURE - not
+// constructed by ICarImpl unless explicitly enabled
+```
+
+```bash
+adb shell cmd car_service enable-feature car_remote_access_service
+# Only allowed to root/su
+adb root
+adb shell cmd car_service enable-feature car_remote_access_service
+# Enabled feature:car_remote_access_service
+```
+
+<Gotcha title="Optional-feature changes are staged, not immediate">
+Confirm the change landed in `mPendingEnabledFeatures`, then reboot — this is
+the same staged-enable pattern other optional CarService features use.
+After boot, check `mEnabledFeatures` to confirm it actually took.
+</Gotcha>
+
+## Step 2 — See what's already registered
+
+```bash title="After reboot"
+adb shell dumpsys car_service --services CarRemoteAccessService
+# mClientTokenByUidName:
+#   0: com.example.kitchensink:10066 ==> ClientToken[mClientId=serverless_client_kitchensink,
+#        hasCallback=true, isServerless=true]
+```
+
+"Serverless" means exactly what it sounds like: no cloud backend, just a
+pre-declared client identity — a client-ID-to-package mapping installed via
+overlay — that the car itself already knows about.
+
+## Step 3 — Find out whether the wakeup transport actually exists
+
+```bash title="The HAL's own debug status"
+adb shell dumpsys android.hardware.automotive.remoteaccess.IRemoteAccess/default --status
+# Remote task callback registered: true
+# GRPC server exist: false
+# GRPC read channel for receiving tasks open: false
+```
+
+<Gotcha title="A HAL can be present, registered, and still have no way in">
+The HAL looks for a gRPC "wakeup client" server address at a fixed vendor
+config path. Where it isn't configured, the HAL runs in a real fake mode —
+present, registered, callback-ready, but with no actual external wakeup
+transport connected. `CarRemoteAccessManager.isTaskScheduleSupported()` is
+wired to this exact flag. The vehicle genuinely cannot be woken from outside
+in this state — but everything downstream of "a wakeup happened" still works.
+</Gotcha>
+
+## Step 4 — Trigger the real pipeline anyway
+
+The HAL's own debug hooks include a direct task injector, driving the same
+callback path a real gRPC wakeup would:
+
+```bash
+adb shell dumpsys android.hardware.automotive.remoteaccess.IRemoteAccess/default \
+  --inject-task serverless_client_kitchensink "SetTemp:25"
+```
+
+<DiagramFrame
+  title="The wakeup pipeline"
+  caption="The vehicle only stays awake as long as the task takes — this is true whether the trigger is a real gRPC wakeup or the HAL's own debug injector."
+>
+  <RemoteAccessLifecycle />
+</DiagramFrame>
+
+<Verify title="Verify the task reached a real property write">
+```bash
+adb logcat -d | grep RemoteTaskService
+# Calling onRemoteTaskRequested callback for client ID: serverless_client_kitchensink
+# CarRemoteAccessService: Delivering remote task, taskId: task_1_...
+# RemoteTaskService: onCreate / onBind
+# RemoteTaskService: Setting row 1 left HVAC temp to: 25.0
+
+adb shell dumpsys android.hardware.automotive.vehicle.IVehicle/default --get HVAC_TEMPERATURE_SET
+# floatValues: [25.000000]
+```
+A real VHAL property, physically changed, caused entirely by a task that
+entered through the HAL's wakeup-callback path — no app UI, no button press,
+nothing but a simulated external trigger.
+</Verify>
+
+<Gotcha title="An out-of-range value is a client bug, not a platform failure">
+Sending a value outside the vehicle's configured range throws a caught
+`IllegalArgumentException` inside the task client rather than crashing the
+service — `reportRemoteTaskDone` still fires, and the client is unbound
+cleanly. Validate against the real configured range before trusting
+untrusted server input, the same way you'd validate any other external
+input.
+</Gotcha>
+
+One more detail worth keeping in mind when you design your own client: after
+a task finishes, `CarRemoteAccessService` checks whether it's safe to power
+back down, and a live `adb` session (or an open door, on a real vehicle)
+counts as "in use" — it won't shut down under you mid-task.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `No such service!` for `CarRemoteAccessService` | The feature is off by default — enable it and reboot |
+| `enable-feature` refuses with "Only allowed to root/su" | Run as root first |
+| Feature enabled but nothing changed | Optional-feature changes are staged — reboot before checking again |
+| `GRPC server exist: false` | Expected on a build with no configured wakeup transport — use `--inject-task` to test the rest of the pipeline anyway |
+| A task throws `IllegalArgumentException` on the property write | Validate the value against the property's real configured range before setting it |
+
+## Next
+
+The same "feature off by default, enable and reboot" pattern shows up again
+for cross-zone messaging between occupants — worth trying next while this
+one's fresh.

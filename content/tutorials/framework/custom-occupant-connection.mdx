@@ -1,0 +1,132 @@
+---
+title: "Send data between occupant zones"
+description: "CarOccupantConnectionManager — real Binder routing between the same app running for different occupants, gated behind a disabled-by-default feature, with a reliability gap worth designing around."
+order: 6
+difficulty: "Advanced"
+time: "1 hour"
+outcome: "A connection request driven end to end to a real Binder bind attempt between occupant zones, with the one failure path that doesn't reach the app-facing callback identified and worked around."
+prerequisites:
+  - label: "Wake a parked car and run a remote task"
+    href: "/tutorials/framework/custom-remote-access/"
+  - label: "Occupant zones and multi-display"
+    href: "/learn/car-framework/occupant-zones/"
+tags: ["Occupant Zones", "Binder", "CarService"]
+sources:
+  - label: "Android Automotive multi-display"
+    href: "https://source.android.com/docs/automotive/multi-display"
+---
+
+`CarOccupantConnectionManager` lets an app running for one occupant — the
+driver — send data to the "same" app running for another occupant, such as a
+rear-seat passenger. It's real Binder routing with a real connection state
+machine, gated behind a feature most builds ship disabled.
+
+## Step 1 — Turn the feature on
+
+```bash
+adb shell dumpsys car_service --services CarOccupantConnectionService
+# No such service!
+
+adb shell cmd car_service enable-feature car_occupant_connection_service
+adb shell cmd car_service enable-feature car_remote_device_service
+adb reboot
+```
+
+```bash title="After reboot"
+adb shell dumpsys car_service --services CarRemoteDeviceService
+# mOccupantZoneStateMap:
+#     OccupantZoneInfo{zoneId=0 type=0 seat=1}, state:[on, locked, ready]
+```
+
+<Gotcha title="A second occupant zone needs a compiled config entry">
+A manufactured secondary *display* can be faked with a developer-options
+setting. A genuine second occupant *zone* is one layer deeper — it needs a
+real config entry compiled into the product, not something you can fake at
+runtime. On a single-zone product, the honest test is self-targeted: request
+a connection to the only zone that exists — your own.
+</Gotcha>
+
+## Step 2 — Request a connection
+
+```java title="A minimal probe"
+List<OccupantZoneInfo> zones = zoneManager.getAllOccupantZones();
+OccupantZoneInfo target = zones.get(0);
+connectionManager.requestConnection(target, getMainExecutor(), mCallback);
+```
+
+```bash title="What happens if nothing answers"
+adb logcat -d | grep OccupantConnectionProbe
+# getAllOccupantZones() -> [OccupantZoneInfo{zoneId=0 type=0 seat=1}]
+# requestConnection() -> OccupantZoneInfo{zoneId=0 type=0 seat=1} (zones reported: 1)
+# W ActivityManager: Unable to start service Intent { act=android.car.intent.action.RECEIVER_SERVICE ... } not found
+```
+
+This is expected the first time: the receiving side of a connection needs
+its own declared `AbstractReceiverService` to accept it. Without one, there's
+genuinely nothing to bind to.
+
+## Step 3 — Declare the receiver
+
+```java title="A minimal receiver, declared to answer RECEIVER_SERVICE"
+public class ProbeReceiverService extends AbstractReceiverService {
+    @Override
+    public void onConnectionInitiated(OccupantZoneInfo senderZone) {
+        acceptConnection(senderZone);
+    }
+
+    @Override
+    public void onPayloadReceived(OccupantZoneInfo senderZone, Payload payload) {
+        // handle the incoming payload
+    }
+}
+```
+
+<Gotcha title="A failed bind doesn't always reach onFailed()">
+`ConnectionRequestCallback.onFailed(zone, connectionError)` exists precisely
+to report a bind that didn't work. In practice, a *synchronous* "service not
+found" bind failure — the exact case above, before a receiver is declared —
+has been observed not to trigger it at all. The request stays alive in the
+service's own internal state indefinitely rather than surfacing as a
+callback:
+```bash
+adb shell dumpsys car_service --services CarOccupantConnectionService
+# mConnectingReceiverServices: ClientId[...]
+# mPendingConnectionRequestMap: ConnectionId[...], callback:...Proxy@...
+```
+An app that only listens for `onFailed()` can be left believing a request is
+still pending when it never actually succeeded. Design defensively: pair
+`requestConnection()` with your own timeout rather than assuming `onFailed()`
+always fires, until you've confirmed it does for the specific failure mode
+you're handling.
+</Gotcha>
+
+<Verify title="Verify the connection completes once a receiver exists">
+```bash
+adb shell dumpsys car_service --services CarOccupantConnectionService
+# mConnectingReceiverServices: (empty once connected or cleaned up)
+```
+With `ProbeReceiverService` declared and installed, the same
+`requestConnection()` call should resolve normally through
+`onConnected()`.
+</Verify>
+
+What does reliably clear a stuck request: killing the sender's process. A
+real binder death — not a graceful API call — tears down the pending
+connection record immediately, confirming the death-based teardown path
+itself is correctly wired; it's specifically the softer "the bind attempt
+itself failed" signal that doesn't reach the app-facing callback.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `No such service!` for `CarOccupantConnectionService` | Both `car_occupant_connection_service` and `car_remote_device_service` are optional — enable and reboot |
+| `Unable to start service ... RECEIVER_SERVICE ... not found` | The target app hasn't declared an `AbstractReceiverService` yet |
+| `onFailed()` never fires after a bind failure | Known gap for a synchronous "not found" bind failure — add your own timeout rather than waiting indefinitely |
+| A stuck request needs clearing during testing | Force-stop the sender's process — binder death cleans up reliably even when the callback doesn't fire |
+
+## Next
+
+Cross-zone messaging and cross-zone display work (task embedding, fixed
+activity mode) both build on the same occupant-zone model — worth reading
+together if you're building anything multi-occupant.

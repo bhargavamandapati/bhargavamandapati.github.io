@@ -1,0 +1,172 @@
+---
+title: "Bring up the Occupant Awareness HAL"
+description: "A detection-result HAL for driver monitoring — architecturally distinct from EVS's raw camera streaming — brought up as a real Treble service by clearing three independent, easy-to-conflate gates."
+order: 7
+difficulty: "Advanced"
+time: "1–2 hours"
+outcome: "The Occupant Awareness mock HAL running as a real, VINTF-registered Treble service, connected end to end to CarService's waiting consumer."
+prerequisites:
+  - label: "Define your own AIDL HAL"
+    href: "/tutorials/vehicle/custom-aidl-hal/"
+  - label: "Write SELinux policy for your own service"
+    href: "/tutorials/platform/custom-sepolicy/"
+tags: ["HAL", "Treble", "SEPolicy", "Driver Monitoring"]
+sources:
+  - label: "Treble architecture (source.android.com)"
+    href: "https://source.android.com/docs/core/architecture/hidl/treble"
+  - label: "SELinux for Android"
+    href: "https://source.android.com/docs/security/features/selinux"
+---
+
+`android.hardware.automotive.occupant_awareness` is architecturally distinct
+from EVS: EVS streams raw exterior camera frames to an app, while occupant
+awareness is a *detection-result* HAL — whatever's watching the cabin
+reports structured driver-state events like gaze direction and distraction
+level, never pixels. AOSP ships a real mock implementation of it, and a real
+waiting consumer in CarService — but bringing the two together for the first
+time on a product means clearing three separate gates, each of which fails
+with a message that looks nothing like the others.
+
+## Step 0 — Confirm it's genuinely not wired up
+
+```bash
+adb shell service list | grep -i occupant
+# (nothing)
+```
+
+<FileTree>
+hardware/interfaces/automotive/occupant_awareness/aidl/mock/
+├── Android.bp                          # missing init_rc + vintf_fragments
+├── service.cpp
+├── OccupantAwareness.cpp
+└── DetectionGenerator.cpp
+</FileTree>
+
+The mock binary exists in source; it's simply missing the two properties
+that turn a plain binary into a real, init-managed Treble service:
+
+```json title="Android.bp — add these to the existing cc_binary"
+init_rc: ["occupant_awareness_mock.rc"],
+vintf_fragments: ["occupant_awareness_mock-service.xml"],
+```
+
+```text title="occupant_awareness_mock.rc"
+service hal_occupant_awareness_default /vendor/bin/hw/android.hardware.automotive.occupant_awareness@1.0-service_mock
+    class hal
+    user system
+    group system
+```
+
+## Gate 1 — A build-system inheritance mechanism, not a real policy error
+
+```text
+init: Could not start service 'hal_occupant_awareness_default' ...
+  File ...-service_mock (labeled "u:object_r:vendor_file:s0") has incorrect label
+  or no domain transition from u:r:init:s0 to another SELinux domain defined.
+```
+
+<Gotcha title="Two mechanisms both claim to add vendor sepolicy — only one actually compiles it">
+The upstream product template for this HAL wires its policy through
+`PRODUCT_PRIVATE_SEPOLICY_DIRS`/`PRODUCT_PUBLIC_SEPOLICY_DIRS`. Confirmed by
+pulling the compiled policy off the device: the service binary's label
+never appears in `/vendor/etc/selinux/vendor_file_contexts` at all.
+`BOARD_SEPOLICY_DIRS` is the mechanism that actually reaches vendor-side
+policy for a product built this way.
+</Gotcha>
+
+```makefile title="Fix"
+BOARD_SEPOLICY_DIRS += packages/services/Car/car_product/occupant_awareness/sepolicy
+```
+
+```text title="The HAL itself now starts clean"
+init: starting service 'hal_occupant_awareness_default'...
+...-service_mock: Service default is ready
+servicemanager: Found .../IOccupantAwareness/default in device VINTF manifest.
+```
+
+CarService still doesn't want it:
+
+```text
+ICarImpl: Skip initializing service for class: OccupantAwarenessService
+because feature: occupant_awareness is disabled
+```
+
+## Gate 2 — An overlayable with a real name
+
+Enabling an optional CarService feature is a resource,
+`config_allowed_optional_car_features`, using the same overlay mechanism
+covered in the RRO tutorial — but this target genuinely declares a named
+`<overlayable>`, and demands the overlay match it exactly:
+
+```text
+idmap2d: overlay '.../OccupantAwarenessRRO.apk' is not allowed to overlay
+  resource 'array/config_allowed_optional_car_features' in target:
+  <overlay> android:targetName "" does not match overlayable name "CarServiceCustomization"
+```
+
+<Gotcha title="An empty targetName only works when there's nothing to match">
+Some overlay targets have no `<overlayable>` declaration at all and fall
+back to a default policy where an unnamed overlay works. CarService's own
+resources are explicitly, individually overlayable, and an overlay missing
+the matching `android:targetName` is rejected outright rather than silently
+falling back.
+</Gotcha>
+
+```xml title="Fix"
+<overlay android:targetPackage="com.android.car.updatable"
+         android:targetName="CarServiceCustomization"
+         android:isStatic="true" android:priority="1" />
+```
+
+```text
+CarFeatureController: Loaded default features:{..., occupant_awareness, ...}
+CAR.OccupantAwarenessService: Failed to find OAS hal_service at: [.../IOccupantAwareness/default]
+SELinux: avc: denied { find } ... scontext=u:r:carservice_app:s0 tcontext=u:object_r:hal_occupant_awareness_service:s0
+```
+
+## Gate 3 — An attribute nobody ever assigned
+
+The deepest gate: the upstream sepolicy package defines
+`hal_occupant_awareness_client` as a real attribute and grants it `find`
+permission on the service — but never assigns that attribute to any actual
+domain anywhere in the tree. It was written to be consumable, and never
+actually consumed.
+
+```text title="carservice_app is the one real, in-tree client — spell out the association"
+typeattribute carservice_app hal_occupant_awareness_client;
+```
+
+<Verify title="Verify the connection">
+```bash
+adb shell dumpsys car_service --services OccupantAwarenessService
+# *OccupantAwarenessService*
+# Connected to HAL service
+# 0 change listeners subscribed.
+```
+Three real, independent gates — a build-system inheritance mechanism, a
+named overlay policy, and a sepolicy attribute assignment nobody had ever
+needed before — cleared one at a time, each pointing precisely at its own
+fix.
+</Verify>
+
+<DiagramFrame
+  title="Three gates, one connection"
+  caption="Missing any one gate looks identical from the client side: it just never connects."
+>
+  <OccupantAwarenessGates />
+</DiagramFrame>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Service file has an "incorrect label" at boot | Vendor sepolicy declared via `PRODUCT_*_SEPOLICY_DIRS` instead of `BOARD_SEPOLICY_DIRS` — the latter is what actually compiles for this build type |
+| "Skip initializing service... feature disabled" | The optional feature isn't in `config_allowed_optional_car_features` yet |
+| Overlay rejected with a `targetName` mismatch | The target has a named `<overlayable>` — match it exactly, don't leave it blank |
+| `avc: denied { find }` on the service, after the feature is enabled | The client domain was never assigned the HAL's own client attribute — add the `typeattribute` line |
+
+## Next
+
+A detection-result HAL like this one is only useful once a real consumer
+subscribes to its events — worth pairing with a look at how CarService fans
+a property or event out to more than one listener at once.

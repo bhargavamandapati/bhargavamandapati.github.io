@@ -1,0 +1,196 @@
+---
+title: "ART, dexopt, and the compiler filter that silently changes"
+description: "The name you ask dex2oat to compile with and the filter that actually gets used aren't always the same thing — a build-config gap that quietly downgrades AOT compilation, proven three independent ways."
+order: 3.5
+difficulty: "Advanced"
+tags: ["ART", "dexopt", "Performance", "Compilation"]
+sources:
+  - label: "ART and Dalvik (source.android.com)"
+    href: "https://source.android.com/docs/core/runtime"
+  - label: "Configuring ART (source.android.com)"
+    href: "https://source.android.com/docs/core/runtime/configure"
+---
+
+An app's dex bytecode can run three ways: interpreted, JIT-compiled at
+runtime, or ahead-of-time compiled into an on-device `.odex` file. The
+*compiler filter* decides how much of that AOT work happens and when — and
+the name a product asks for isn't always the name that ends up baked into
+the file.
+
+<Plain>
+`pm compile -m <filter> -f <package>` asks ART Service to recompile an app
+with a specific compiler filter. The request travels through `artd`, a
+native daemon, down to `dex2oat` itself. Along the way, an obsolete filter
+name doesn't fail — it gets silently remapped to a different, real one, with
+only a logged warning to show it happened.
+</Plain>
+
+<DiagramFrame
+  title="A filter name, requested and (sometimes) remapped"
+  caption="An unset build-time default falls back to a filter name that no longer exists as a real enum value."
+>
+  <DexoptPipeline />
+</DiagramFrame>
+
+## A product's dexpreopt default can simply be unset
+
+Every AOSP product can set a build-wide default compiler filter through
+`PRODUCT_DEX_PREOPT_DEFAULT_COMPILER_FILTER`. Plenty don't:
+
+```text title="out/soong/dexpreopt-<product>.config"
+"DefaultCompilerFilter": ""
+```
+
+When that value is empty, Soong's own fallback logic decides instead:
+
+```text title="build/soong/dexpreopt/dexpreopt.go"
+// profile-guided if a profile exists -> "speed-profile"
+// else, if a global default is set -> that
+// else -> "quicken"
+```
+
+<Callout type="warning" title="quicken doesn't exist as a real filter anymore">
+```cpp title="art/libartbase/base/compiler_filter.h"
+enum class Filter {
+  kAssumeVerified, kVerify, kSpaceProfile, kSpace,
+  kSpeedProfile, kSpeed, kEverythingProfile, kEverything
+};  // no kQuicken
+```
+The string is still accepted for backward compatibility, and silently
+remapped:
+```cpp title="art/libartbase/base/compiler_filter.cc"
+// "quicken" -> kVerify, with a logged warning
+```
+Soong's own fallback, on a product with no configured default, literally
+requests this dead name — meaning every plain app dexpreopted there without
+a baseline profile silently gets weaker AOT compilation than the build
+config even claims to be asking for.
+</Callout>
+
+## Confirming it three independent ways
+
+**1. The oat header itself**, read directly with `oatdump`, bypassing any
+Android service entirely:
+
+```bash
+oatdump --oat-file=app.odex --dex-file=app.apk --header-only | grep filter
+# compiler-filter = verify
+```
+
+**2. Live dexopt state**, which calls into `artd` and inspects the real
+on-disk file on every query — not cached metadata:
+
+```bash
+adb shell dumpsys package com.example.app | sed -n '/Dexopt state/,/^ *$/p'
+#   x86_64: [status=verify] [reason=install] [primary-abi]
+```
+
+**3. The full `dex2oat` invocation**, baked verbatim into the oat header
+itself:
+
+```text
+compilation-reason = install
+compiler-filter = verify
+dex2oat-cmdline = /apex/com.android.art/bin/dex2oat64 --zip-fd=7 ...
+  --compiler-filter=verify --compilation-reason=install ...
+```
+
+Not `quicken` anywhere in the actual artifact — `verify`, every time.
+
+## Forcing a recompile, measured three ways
+
+```bash
+adb shell pm compile -m speed -f com.example.app
+# Success
+```
+
+| Signal | Before (`verify`) | After (`speed`) |
+| --- | --- | --- |
+| `dumpsys package` status | `verify` | `speed` |
+| `.odex` file size | 17,240 B | 34,704 B (~2x) |
+| `oatdump` compiler-filter | `verify` | `speed` |
+
+The size jump is the physical signature of AOT compilation actually
+happening — `verify` stores essentially no machine code, just verification
+metadata, while `speed` compiles every method ahead of time.
+
+```bash title="First-launch timing, measured before and after"
+adb shell am force-stop com.example.app
+adb shell am start -W -n com.example.app/.MainActivity | grep TotalTime
+# TotalTime: 371     # baseline, compiler-filter=verify
+
+adb shell pm compile -m speed -f com.example.app
+adb shell am force-stop com.example.app
+adb shell am start -W -n com.example.app/.MainActivity | grep TotalTime
+# TotalTime: 268     # after forcing speed
+```
+
+Roughly 28% faster on first cold launch, even for a small app — a real,
+measured floor for how much interpreter/JIT overhead `verify` leaves on the
+table compared to full ahead-of-time compilation.
+
+## Two sources of truth can disagree
+
+Deliberately requesting the obsolete name live surfaces something genuinely
+subtle:
+
+```bash
+adb shell pm compile -m quicken -f com.example.app
+# Success
+```
+
+```text
+W system_server: 'quicken' is an obsolete compiler filter name that will be
+    removed in future releases, please use 'verify' instead.
+```
+
+```text title="ArtService's own completion log"
+DexContainerFileDexoptResult{... actualCompilerFilter=quicken, status=PERFORMED, ...}
+```
+
+```bash title="But the real dexopt state disagrees"
+adb shell dumpsys package com.example.app | grep status
+#   x86_64: [status=verify] [reason=cmdline] [primary-abi]
+```
+
+<Callout type="warning" title="Don't trust the request-completion log alone">
+`ArtService`'s own completion log reports the filter that was *requested*,
+echoed back uninspected. The live dexopt state, sourced from the real oat
+header, reports what was *actually baked into the file*. They disagree
+specifically because the remapping happens deep inside `dex2oat`, after the
+layer that writes the completion-result log has already captured the string
+the caller originally asked for. When you need ground truth about what a
+build actually shipped, read the oat header or the live dexopt state — not
+a completion log.
+</Callout>
+
+```bash title="Reset back to a clean baseline"
+adb shell pm compile --reset com.example.app
+```
+
+## The background job, without waiting for it
+
+Distinct from install-time and on-demand compilation, a real
+`JobScheduler`-backed periodic job normally runs only when charging, idle,
+and not low on battery. The shell-accessible equivalent runs the identical
+code path directly, blocking until done — useful for testing without
+waiting for real device idle conditions:
+
+```bash
+adb shell pm bg-dexopt-job
+# Job running...  To cancel it, run 'pm bg-dexopt-job --cancel' in a separate shell.
+# Job finished. See logs for details
+```
+
+## Keyword reference
+
+| Term | What it is |
+| --- | --- |
+| Compiler filter | How much AOT work `dex2oat` does — real values: `assume-verified`, `verify`, `space(-profile)`, `speed(-profile)`, `everything(-profile)` |
+| `quicken` | Obsolete filter name, accepted for compatibility, silently remapped to `verify` with a logged warning |
+| `PRODUCT_DEX_PREOPT_DEFAULT_COMPILER_FILTER` | Build-time product config; when unset, Soong falls back to the dead `quicken` name |
+| `artd` | Native daemon backing ART Service; invokes `dex2oat` and answers dexopt-status queries |
+| `pm compile -m <filter> -f <pkg>` | Force an on-demand recompile with a specific filter |
+| `pm compile --reset <pkg>` | Reversible way back to a clean, newly-installed dexopt state |
+| `oatdump --header-only` | Independent, service-free proof of the real compiler filter and full `dex2oat` command line baked into a `.odex` |
+| Compilation reason | `install`, `cmdline`, `bg-dexopt`, `first-boot`, etc. — distinct from the filter itself |

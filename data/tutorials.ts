@@ -91,6 +91,17 @@ export const surfaces: Surface[] = [
   { name: 'Locale & region', what: 'Languages, units, regional behaviour', where: 'Product config + resources', tutorial: 'product/custom-locale-region' },
   { name: 'Kernel & device tree', what: 'Drivers, display ports, CAN interfaces', where: 'kernel/ — outside AOSP', tutorial: 'platform/custom-kernel-devicetree' },
   { name: 'OTA packaging', what: 'How updates are built and signed', where: 'ota_from_target_files', tutorial: 'platform/custom-ota-packaging' },
+  { name: 'CAN bus / SocketCAN', what: 'Kernel-to-VHAL bridge over a vehicle network bus', where: 'device/generic/car/emulator/usbpt/protocan/', tutorial: 'vehicle/custom-can-hal' },
+  { name: 'Rotary / CAN-driven input', what: 'CAN frames decoded into Android key events', where: 'A device-specific IVehicleBus consumer', tutorial: 'vehicle/custom-rotary-input' },
+  { name: 'Native daemon (no Treble)', what: 'A system-partition AIDL service with none of a HAL’s ceremony', where: 'frameworks/native/cmds/<name>/', tutorial: 'framework/custom-native-daemon' },
+  { name: 'Display scaling', what: 'Shrinking an app that was never built for a car screen', where: 'Settings.Secure override + display_compat_config.xml', tutorial: 'apps-ui/custom-display-compat' },
+  { name: 'TaskView embedding', what: 'Embedding another app’s activity inside your own layout', where: 'CarActivityManager.getCarTaskViewController()', tutorial: 'apps-ui/custom-taskview' },
+  { name: 'Calm Mode', what: 'CarLauncher’s ambient dashboard', where: 'packages/apps/Car/Launcher + overlay', tutorial: 'apps-ui/custom-calm-mode' },
+  { name: 'Fixed Activity mode', what: 'Pinning one app to a secondary display', where: 'cmd car_service start-fixed-activity-mode', tutorial: 'apps-ui/custom-fixed-activity' },
+  { name: 'Vehicle Map Service', what: 'Pub/sub map and traffic data between apps', where: 'VmsClientManager + VmsBrokerService', tutorial: 'vehicle/custom-vms-layer' },
+  { name: 'Remote access', what: 'Waking a parked vehicle to run a task', where: 'CarRemoteAccessManager + remote access HAL', tutorial: 'framework/custom-remote-access' },
+  { name: 'Occupant Awareness HAL', what: 'Driver-monitoring detection events, not camera frames', where: 'hardware/interfaces/automotive/occupant_awareness/', tutorial: 'vehicle/custom-occupant-awareness-hal' },
+  { name: 'Occupant connection', what: 'Messaging between apps in different occupant zones', where: 'CarOccupantConnectionManager', tutorial: 'framework/custom-occupant-connection' },
 ]
 
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced'

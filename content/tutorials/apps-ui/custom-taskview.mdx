@@ -1,0 +1,149 @@
+---
+title: "Embed another app's activity in your own layout"
+description: "CarTaskViewController — the mechanism CarLauncher's own map tile uses to live-embed a separate app's task into a rectangle of its layout, and how to drive it yourself."
+order: 7
+difficulty: "Advanced"
+time: "1–2 hours"
+outcome: "Your own host activity embedding a second app's activity as a genuinely separate task, confirmed live via dumpsys, with the surrounding mirroring APIs' naming gotchas explained."
+prerequisites:
+  - label: "Building a privileged system app"
+    href: "/tutorials/apps-ui/custom-system-app/"
+tags: ["TaskView", "Window Manager", "CarActivityManager"]
+sources:
+  - label: "Android Automotive multi-display"
+    href: "https://source.android.com/docs/automotive/multi-display"
+  - label: "ActivityManager (Android Developers)"
+    href: "https://developer.android.com/reference/android/app/ActivityManager"
+---
+
+CarLauncher's home-screen "map tile" isn't a widget or a fragment — it's a
+whole separate app's activity, running in its own task, live-embedded into a
+rectangle of CarLauncher's own layout. The mechanism behind it,
+`CarTaskViewController`, is available to any system app that holds the right
+permission.
+
+## Step 1 — The API and its permission
+
+```java title="packages/services/Car/car-lib/src/android/car/app/CarActivityManager.java"
+@RequiresPermission(allOf = {
+        Car.PERMISSION_MANAGE_CAR_SYSTEM_UI, INTERACT_ACROSS_USERS})
+public void getCarTaskViewController(
+        @NonNull Activity activity, @NonNull Executor callbackExecutor,
+        @NonNull CarTaskViewControllerCallback callback) { ... }
+```
+
+<Gotcha title="This is system-app territory, not a plain app permission">
+`PERMISSION_MANAGE_CAR_SYSTEM_UI` is `signature|privileged`, paired with
+cross-user access. An ordinary third-party app cannot hold this combination
+— it's meant for the launcher, the system UI, or an OEM's own
+platform-signed app, not a general customization surface.
+</Gotcha>
+
+The payoff is a `CarTaskViewController` with factory methods for dropping a
+live, running activity from any package into a `SurfaceView`-backed slot in
+your own layout:
+
+```java
+controller.createControlledRemoteCarTaskView(
+    new ControlledRemoteCarTaskViewConfig.Builder()
+        .setActivityIntent(targetIntent)
+        .build(),
+    executor, callback);
+```
+
+## Step 2 — See it in a real, running example first
+
+CarLauncher already does exactly this for its home-screen map tile — worth
+reading before writing your own.
+
+```java title="packages/apps/Car/Launcher/app/src/com/android/car/carlauncher/CarLauncherViewModel.java"
+getCarTaskViewController(activity, executor, controller ->
+    controller.createControlledRemoteCarTaskView(
+        new ControlledRemoteCarTaskViewConfig.Builder()
+            .setActivityIntent(mMapsIntent)
+            .build(),
+        executor, callback));
+```
+
+`mMapsIntent` resolves via `ACTION_MAIN` + `CATEGORY_APP_MAPS` through the
+real `PackageManager` — whatever app declares that intent filter wins.
+
+<Verify title="Verify the embed is a genuinely separate task">
+```bash
+adb shell dumpsys activity activities
+#   Task{... type=standard A=...:com.android.car.mapsplaceholder
+#       visible=true mode=multi-window sz=1}
+#     mBounds=Rect(416, 76 - 1296, 696)
+#     launchedFromPackage=com.android.car.carlauncher
+#
+#   Task{... type=home}
+#     Task{... type=home A=...:com.android.car.carlauncher rootTaskId=1}
+```
+Two genuinely separate tasks: the host's own home task, and a second,
+independent task for the embedded activity, positioned at a sub-rectangle of
+the screen rather than fullscreen. Two apps, two processes, two tasks, one
+screen — held together by `ControlledRemoteCarTaskView`.
+</Verify>
+
+## Step 3 — Build your own host
+
+```java title="A minimal host embedding a target activity"
+carActivityManager.getCarTaskViewController(this, getMainExecutor(), controller -> {
+    controller.createControlledRemoteCarTaskView(
+        new ControlledRemoteCarTaskViewConfig.Builder()
+            .setActivityIntent(new Intent(ACTION_MAIN).setComponent(targetComponent))
+            .build(),
+        getMainExecutor(),
+        taskView -> {
+            // Attach taskView (a SurfaceView) into your own layout here.
+            containerLayout.addView(taskView);
+        });
+});
+```
+
+The host process never touches the embedded app's code — only its rendered
+surface, positioned inside your layout.
+
+<DiagramFrame
+  title="One screen, two tasks"
+  caption="The host process never touches the embedded app's code — only its rendered surface."
+>
+  <TaskViewEmbedding />
+</DiagramFrame>
+
+## A separate, unrelated mirroring API
+
+`CarActivityManager` also exposes token-based display/task mirroring —
+`createDisplayMirroringToken`, `getMirroredSurface` — backed by a token
+registry with timeout eviction. It's easy to confuse with TaskView embedding,
+but it's a different mechanism entirely, and less exercised in practice: the
+platform's own `EmbeddedKitchenSinkApp` sample uses a completely different,
+lower-level API for its display-mirroring demo —
+`WindowManagerGlobal.mirrorDisplay()` — with no permission gate of its own
+and no connection to the token API.
+
+<Gotcha title="A permission constant name that doesn't match its own string">
+```java
+public static final String PERMISSION_ACCESS_MIRRORRED_SURFACE =
+        "android.car.permission.ACCESS_MIRRORED_SURFACE";
+```
+The Java constant name is misspelled (`MIRRORRED`, with an extra R); its
+actual string value is spelled correctly. Purely cosmetic — every real caller
+uses the constant, never the literal — but worth knowing if you ever go
+searching source for the string instead of the symbol.
+</Gotcha>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `getCarTaskViewController` throws a `SecurityException` | Caller lacks `signature|privileged` status, `PERMISSION_MANAGE_CAR_SYSTEM_UI`, or `INTERACT_ACROSS_USERS` |
+| The embedded activity never appears | Confirm the target intent actually resolves — an unresolved `ACTION_MAIN`/category combination returns no component |
+| Embedded content shows but doesn't reposition with your layout | `ControlledRemoteCarTaskView` follows its own `SurfaceView` bounds — resize the view, not the task |
+| Reaching for `createDisplayMirroringToken` and nothing happens | You may want `WindowManagerGlobal.mirrorDisplay()` instead — two separate mechanisms exist in this codebase |
+
+## Next
+
+An embedded task still runs as its own process — it's a separate customisation
+question whether the *host* app itself should live in one process or many,
+which system apps and RROs already answer for CarSystemUI.

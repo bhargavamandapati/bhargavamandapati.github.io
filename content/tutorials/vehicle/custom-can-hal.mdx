@@ -1,0 +1,296 @@
+---
+title: "Bring up the generic CAN HAL"
+description: "AOSP's reference CAN HAL end to end — a virtual bus, real frames sent and received, and the loopback quirk that makes a bus deaf to its own sender."
+order: 4
+difficulty: "Advanced"
+time: "1–2 hours"
+outcome: "A virtual CAN bus configured and passing real frames through the Treble CAN HAL, plus a small standalone tool that can inject a frame no daemon-owned socket can see."
+prerequisites:
+  - label: "How the VHAL reaches real hardware"
+    href: "/learn/vehicle-data/vhal-fundamentals/"
+  - label: "A vendor VHAL of your own"
+    href: "/tutorials/vehicle/custom-vhal/"
+tags: ["CAN", "HAL", "SocketCAN", "Vehicle"]
+sources:
+  - label: "CAN HAL (source.android.com)"
+    href: "https://source.android.com/docs/automotive/vhal/vehicle-hal"
+  - label: "SocketCAN (kernel docs)"
+    href: "https://www.kernel.org/doc/html/latest/networking/can.html"
+  - label: "hardware/interfaces/automotive/can on cs.android.com"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/automotive/can/"
+---
+
+Plenty of real vehicle networks still reach the VHAL over CAN rather than a
+vendor binder call. AOSP ships a complete, generic reference implementation of
+that path — kernel SocketCAN, a Treble HAL wrapping it, and a device-specific
+consumer that turns frames into vehicle properties — and it runs entirely
+virtually, with no CAN hardware required. This brings it up on an emulator
+build and proves a real frame travels all the way through it.
+
+<FileTree>
+device/generic/car/emulator/usbpt/protocan/
+├── protocan.mk                 # wires the three pieces together
+├── canbus_config.pb            # textproto: logical bus names → interfaces
+└── protocanbus/
+    └── ExtraCanClient.cpp      # decodes one bus's frames into properties
+</FileTree>
+
+## The three pieces that have to line up
+
+<Plain>
+Three independent components have to agree before any CAN traffic moves:
+a kernel-level SocketCAN interface, the Treble `android.hardware.automotive.can@1.0`
+HAL that wraps it, and a configuration file telling the HAL which logical bus
+name maps to which interface. `protocan.mk` pulls in all three, plus a
+device-specific consumer that decodes one particular bus.
+</Plain>
+
+```makefile title="device/generic/car/emulator/usbpt/protocan/protocan.mk"
+PRODUCT_PACKAGES += android.hardware.automotive.can@1.0-service
+PRODUCT_PACKAGES += canhalconfigurator
+PRODUCT_COPY_FILES += device/generic/car/emulator/usbpt/protocan/canbus_config.pb:$(TARGET_COPY_OUT_VENDOR)/etc/canbus_config.pb
+
+PRODUCT_PACKAGES_DEBUG += canhalctrl canhaldump canhalsend
+
+PRODUCT_PACKAGES += android.device.generic.car.emulator@1.0-protocanbus-service
+BOARD_SEPOLICY_DIRS += device/generic/car/emulator/usbpt/protocan/protocanbus/sepolicy
+DEVICE_MANIFEST_FILE += device/generic/car/emulator/usbpt/protocan/manifest.protocan.xml
+```
+
+<DiagramFrame
+  title="A frame becomes a property"
+  caption="Two named buses (BCAN, CCAN) can share one physical interface — a HAL 'bus' is a naming and filtering concept, not necessarily a 1:1 wire."
+>
+  <CanHalFlow />
+</DiagramFrame>
+
+## Step 1 — Load the kernel modules
+
+```bash title="Check what CAN support is already present"
+adb root
+adb shell lsmod | grep -i can
+# can_dev   49152   1 gs_usb
+```
+
+<Gotcha title="A module loaded for a reason that has nothing to do with you">
+`can_dev` — the core netdevice framework CAN drivers register against — is
+often already loaded as a side effect of `gs_usb`, a USB-CAN gadget driver
+that auto-probes at boot whether or not any USB-CAN hardware is attached. The
+modules that actually matter here — `can.ko`, `can-raw.ko`, `vcan.ko` — are
+usually present as prebuilt files but not loaded.
+</Gotcha>
+
+```bash title="Load the ones you need"
+adb shell insmod /system_dlkm/lib/modules/can.ko
+adb shell insmod /system_dlkm/lib/modules/can-raw.ko
+adb shell insmod /system_dlkm/lib/modules/vcan.ko
+
+adb shell lsmod | grep -i can
+# vcan       12288   0
+# can_raw    24576   0
+# can        28672   1 can_raw
+# can_dev    49152   2 vcan,gs_usb
+```
+
+`can_dev`'s refcount growing from one user to two confirms `vcan.ko` attached
+to the same framework module `gs_usb` had already pulled in, rather than the
+two colliding.
+
+## Step 2 — Point the configurator at the real file
+
+```bash title="A fresh boot's own log already tells you where this goes wrong"
+adb logcat -d | grep -i configurator
+# init: starting service 'canhalconfigurator'...
+# CanConfigurator: Can't open /etc/canbus_config.pb for reading
+# init: Service 'canhalconfigurator' (pid 595) exited with status 1
+```
+
+<Gotcha title="The default path and the shipped path are one directory apart">
+`canhalconfigurator`'s init service launches it with no arguments, so it
+defaults to `/etc/canbus_config.pb` — a path nothing populates. The file
+`PRODUCT_COPY_FILES` actually ships lives at `/vendor/etc/canbus_config.pb`.
+The oneshot service fails in milliseconds, logs one easy-to-scroll-past line,
+and never retries — while the CAN HAL daemon starts cleanly and just sits
+there, logging `Waiting for ICanBus/aae` forever. That message is a much more
+inviting place to go looking for the bug than the configurator's own error.
+</Gotcha>
+
+```bash title="Run it by hand against the file that's actually there"
+adb shell /system_ext/bin/canhalconfigurator /vendor/etc/canbus_config.pb
+echo rc=$?
+# CanConfigurator: BCAN has been successfully configured!
+# CanConfigurator: CCAN has been successfully configured!
+# CanConfigurator: Failed to bring aae up: BAD_INTERFACE_ID
+# rc=0
+```
+
+## Step 3 — Read the config
+
+Despite the `.pb` extension, this is plain textproto — `canhalconfigurator`
+parses it directly, with no compiled binary-descriptor step.
+
+```text title="device/generic/car/emulator/usbpt/protocan/canbus_config.pb"
+buses: [
+  { name: "BCAN"  virtual { ifname: "vcan0" }  bitrate: 125000 },
+  { name: "CCAN"  virtual { ifname: "vcan0" }  bitrate: 250000 },
+  { name: "aae"   native  { ifname: "can0"  }  bitrate: 250000 }
+]
+```
+
+`aae` targets `native { ifname: "can0" }` — a real SocketCAN device expected
+to come from genuine hardware. It fails cleanly and exactly as designed on an
+emulator with none: `BAD_INTERFACE_ID`, one unambiguous line, rather than a
+hang.
+
+## Step 4 — Send a frame, and hit a real quirk
+
+```bash title="The interface exists — send something on it"
+adb shell ip link show vcan0
+# 19: vcan0: <NOARP,UP,LOWER_UP> mtu 72 qdisc noqueue state UNKNOWN
+#     link/can
+
+adb shell canhaldump BCAN &
+adb shell canhalsend BCAN 1a5#deadbeef
+# (canhaldump prints nothing, ever)
+```
+
+```bash title="But the interface counters disagree"
+adb shell ip -s link show vcan0
+#     RX: bytes packets errors dropped overrun mcast
+#     29    6      0      0       0      0
+#     TX: bytes packets errors dropped carrier collsns
+#     29    6      0      0       0      0
+```
+
+Six packets really transmitted and looped back at the kernel level. Something
+real happened on the wire, and something real is stopping the listener from
+seeing it.
+
+<Gotcha title="A bus's own sender is deaf to itself">
+`CAN_RAW_RECV_OWN_MSGS` — the socket option that would loop a sent frame back
+to its own reader — is never set anywhere in the CAN HAL's default socket
+setup, so it stays at Linux's default: off. Every named bus is served by
+exactly one daemon process, and both `canhalsend` and `canhaldump` talk to
+that *same* daemon-owned raw socket — one calls `send()`, the other
+`listen()`, but underneath it's one socket wearing two hats. Because that
+socket never asked for loopback of its own outgoing frames, its own read
+callback never fires for anything it just sent. This isn't specific to these
+two tools: any two clients of the same bus name are deaf to each other's
+sends.
+</Gotcha>
+
+```bash title="An independent listener proves the frame really went out"
+adb shell tcpdump -i vcan0 -e -n &
+adb shell canhalsend BCAN 1a5#deadbeef
+# 0x0000:  0000 01a5 0400 0000 dead beef 0000 0000
+```
+
+ID `0x1a5`, length 4, payload `deadbeef` — exactly what was sent, seen the
+instant it was sent, by a socket that isn't the daemon's own.
+
+## Step 5 — Build a socket that isn't the daemon's
+
+To ever see a bus's own daemon deliver a frame back to a listener on the same
+bus, the frame has to come from somewhere else entirely — a raw `AF_CAN`
+socket outside the HAL. It's short enough to write from scratch:
+
+```cpp title="development/samples/CanFrameInject/caninject.cpp"
+int s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+struct ifreq ifr = {};
+strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+ioctl(s, SIOCGIFINDEX, &ifr);
+
+struct sockaddr_can addr = {};
+addr.can_family = AF_CAN;
+addr.can_ifindex = ifr.ifr_ifindex;
+bind(s, (struct sockaddr*)&addr, sizeof(addr));
+
+struct can_frame frame = {};
+frame.can_id = id;
+frame.can_dlc = len;
+// ...fill frame.data from the hex argument...
+write(s, &frame, sizeof(frame));
+```
+
+```json title="development/samples/CanFrameInject/Android.bp"
+cc_binary {
+    name: "caninject",
+    srcs: ["caninject.cpp"],
+    cflags: ["-Wall", "-Werror"],
+}
+```
+
+```bash
+m caninject
+adb push $ANDROID_PRODUCT_OUT/system/bin/caninject /data/local/tmp/
+adb shell chmod 755 /data/local/tmp/caninject
+```
+
+## Step 6 — Redirect a bus to the virtual interface
+
+The payoff target is `aae` — the bus a device-specific consumer actually
+decodes into vehicle properties. Pointing it at the virtual bus instead of
+nonexistent hardware means editing the shipped config:
+
+```diff title="canbus_config.pb"
+   { name: "aae"
+-    native { ifname: "can0" }
++    virtual { ifname: "vcan0" }
+     bitrate: 250000 },
+```
+
+<Gotcha title="A copied file isn't the same as a rebuilt one">
+`PRODUCT_COPY_FILES` artifacts aren't meant to be live-patched — `adb remount`
+fails outright once `ro.boot.veritymode=enforcing` (userdebug and rooted
+over adb are not the same thing as an unlocked, verity-disabled `/vendor`).
+Rebuilding is the correct path: `m vendorimage`. But the file the emulator
+actually boots from is the dynamic-partition-packaged `vendor-qemu.img`, and
+a targeted `vendorimage` build doesn't always fully re-trigger that
+repackaging. Confirm the change actually reached the booted image —
+`adb shell md5sum` the live file against the freshly built one — and if they
+disagree, a full `m` (which visibly rebuilds `super.img`) closes the gap.
+</Gotcha>
+
+## Step 7 — Verify the whole chain
+
+```bash title="Fresh boot, modules reloaded, configurator rerun"
+adb shell insmod /system_dlkm/lib/modules/can.ko
+adb shell insmod /system_dlkm/lib/modules/can-raw.ko
+adb shell insmod /system_dlkm/lib/modules/vcan.ko
+adb shell /system_ext/bin/canhalconfigurator /vendor/etc/canbus_config.pb
+# ProtoCanBusSrv: ICanBus/aae is registered
+# ProtoCanBusSrv: Bus aae successfully configured
+```
+
+<Verify title="Verify a real frame decodes correctly">
+```bash
+# A 5-byte EncEvent frame with Buttons bit 0 set (Intel-style bit packing,
+# LSB0, byte 0 first) is 00 00 00 01 00.
+adb shell /data/local/tmp/caninject vcan0 18a 0000000100
+# sent on vcan0: id=18a data=0000000100
+
+# ProtoCanBusSrv: EncPos: 0
+# ProtoCanBusSrv: EncDir: 0
+# ProtoCanBusSrv: Buttons: 1
+```
+Decoded exactly as encoded. A hand-crafted frame, injected from a socket the
+CAN HAL daemon has never seen before, travels through the kernel, the HAL's
+listener, and the consumer's bit-unpacking — and comes out as the exact
+numbers that went in.
+</Verify>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `canhalconfigurator` exits in milliseconds, one log line | Launched with no args — defaults to `/etc/...`, not `/vendor/etc/...` |
+| HAL logs `Waiting for ICanBus/<bus>` forever | The configurator that was supposed to bring that bus up already failed silently |
+| `canhalsend`/`canhaldump` see nothing, but counters increment | `CAN_RAW_RECV_OWN_MSGS` is unset — the daemon's own socket can't hear itself |
+| A config edit doesn't reach the emulator | `PRODUCT_COPY_FILES` needs a real rebuild, and a targeted `vendorimage` build may not repackage `vendor-qemu.img` — use a full `m` |
+| `BAD_INTERFACE_ID` on a `native{}` bus | Expected — that bus wants real hardware; point it at `virtual{}` instead |
+
+## Next
+
+That decoded `Buttons: 1` should also become a real Android key event — and
+whether it actually reaches `CarInputService` turns out to hinge on one field
+in a reference sample most people would never think to check.

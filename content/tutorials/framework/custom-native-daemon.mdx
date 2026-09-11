@@ -1,0 +1,317 @@
+---
+title: "Add a plain native daemon, no Treble required"
+description: "The third real service pattern AOSP uses constantly — installd, idmap2d, dozens of others — a system-partition C++ daemon that skips the HAL's whole VINTF ceremony because it doesn't cross the vendor boundary."
+order: 4
+difficulty: "Advanced"
+time: "2 hours"
+outcome: "A standalone AIDL daemon on the system partition, registered directly with servicemanager, callable by a completely unprivileged shell — no root, no VINTF, no vendor split."
+prerequisites:
+  - label: "A service inside system_server"
+    href: "/tutorials/framework/custom-system-service/"
+  - label: "Your own AIDL HAL"
+    href: "/tutorials/vehicle/custom-aidl-hal/"
+tags: ["AIDL", "Native", "Binder", "SELinux"]
+sources:
+  - label: "Android init language"
+    href: "https://cs.android.com/android/platform/superproject/main/+/main:system/core/init/README.md"
+  - label: "AIDL overview"
+    href: "https://source.android.com/docs/core/architecture/aidl"
+  - label: "SELinux for Android"
+    href: "https://source.android.com/docs/security/features/selinux"
+---
+
+Not every native daemon is a hardware abstraction. Plenty of real
+system-partition binaries — `installd`, `idmap2d`, dozens of others — are
+ordinary AIDL services written in C++ instead of Java, living on the same
+partition as the framework that calls them. They skip Treble's whole
+vendor-interface apparatus entirely, because nothing about them crosses the
+system/vendor boundary.
+
+<DiagramFrame
+  title="Same job, three homes"
+  caption="A Java system_server service, a plain native daemon, and a Treble HAL — the difference is which boundary each one crosses."
+>
+  <NativeDaemonPatterns />
+</DiagramFrame>
+
+|  | System Service | Plain native daemon (this one) | Treble HAL |
+| --- | --- | --- | --- |
+| Language | Java | C++ | C++ (or Rust) |
+| Process | inside `system_server` | its own daemon | its own daemon |
+| Partition | system | system | vendor |
+| Registered with | `SystemServiceManager`, then `servicemanager` | `servicemanager` directly | `servicemanager`, via VINTF-aware `AServiceManager_addService` |
+| AIDL stability | n/a | unstable — no freeze | `@VintfStability` — frozen, versioned |
+| SELinux domain macro | n/a — runs as `system_server` | `init_daemon_domain` + `coredomain` | `init_daemon_domain` + `hal_server_domain` |
+| Compatibility matrix entry | none | none | required |
+
+<FileTree>
+frameworks/native/cmds/echod/
+├── com/example/echo/
+│   └── IEchoService.aidl    # no @VintfStability — deliberately unstable
+├── Android.bp
+├── EchoService.h / .cpp
+├── Main.cpp
+└── echod.rc
+</FileTree>
+
+## Step 1 — The interface, deliberately unstable
+
+One method, no `@VintfStability`. This is what unlocks skipping the HAL's
+whole freeze/version ceremony — real AOSP daemons like `idmap2d` go even
+further and skip `aidl_interface` entirely for the same reason.
+
+```aidl title="frameworks/native/cmds/echod/com/example/echo/IEchoService.aidl"
+package com.example.echo;
+
+/** @hide */
+interface IEchoService {
+    @utf8InCpp String echo(@utf8InCpp String message);
+}
+```
+
+```json title="Android.bp (interface half)"
+aidl_interface {
+    name: "com.example.echo",
+    unstable: true,
+    srcs: ["com/example/echo/*.aidl"],
+}
+```
+
+<Gotcha title="@utf8InCpp changes the generated C++ signature">
+Without it, a string parameter generates as `String16`. With it, the
+generated method takes a plain `std::string` — match your implementation to
+whichever one you declared.
+</Gotcha>
+
+## Step 2 — The daemon, the real AOSP pattern
+
+`BinderService<EchoService>` plus the generated `BnEchoService` — the same
+base-class shape as `idmap2d`'s real `Idmap2Service`.
+
+```cpp title="EchoService.h"
+#pragma once
+#include <binder/BinderService.h>
+#include <com/example/echo/BnEchoService.h>
+
+namespace com::example::echo {
+
+class EchoService : public android::BinderService<EchoService>, public BnEchoService {
+  public:
+    static char const* getServiceName() { return "echo"; }
+
+    android::binder::Status echo(const std::string& message, std::string* _aidl_return) override;
+};
+
+}  // namespace com::example::echo
+```
+
+```cpp title="EchoService.cpp"
+#include "EchoService.h"
+#include <android-base/logging.h>
+
+namespace com::example::echo {
+
+android::binder::Status EchoService::echo(const std::string& message, std::string* _aidl_return) {
+    LOG(INFO) << "echo() called with: " << message;
+    *_aidl_return = "echo: " + message;
+    return android::binder::Status::ok();
+}
+
+}  // namespace com::example::echo
+```
+
+```cpp title="Main.cpp"
+#define LOG_TAG "echod"
+#include <android-base/logging.h>
+#include <binder/IPCThreadState.h>
+#include <binder/ProcessState.h>
+
+#include "EchoService.h"
+
+using namespace android;
+using com::example::echo::EchoService;
+
+int main() {
+    LOG(INFO) << "Starting";
+    status_t ret = BinderService<EchoService>::publish();
+    if (ret != OK) {
+        LOG(ERROR) << "Failed to start: " << ret;
+        return EXIT_FAILURE;
+    }
+    sp<ProcessState> ps(ProcessState::self());
+    ps->startThreadPool();
+    ps->giveThreadPoolName();
+    IPCThreadState::self()->joinThreadPool();
+    return EXIT_SUCCESS;
+}
+```
+
+## Step 3 — Wire it up: build file and init
+
+`class main`, not `class hal` — the init class real system-partition daemons
+use. No `vendor: true`, no `vintf_fragments` — the two properties that would
+make this a Treble HAL are simply absent.
+
+```json title="Android.bp (daemon half)"
+cc_binary {
+    name: "echod",
+    srcs: ["EchoService.cpp", "Main.cpp"],
+    shared_libs: [
+        "libbase", "libbinder", "liblog", "libutils",
+        "com.example.echo-cpp",
+    ],
+    init_rc: ["echod.rc"],
+}
+```
+
+```text title="echod.rc"
+service echod /system/bin/echod
+    class main
+    user system
+    group system
+```
+
+## Step 4 — Policy, and the client grant
+
+```text title="system/sepolicy/public/echod.te"
+type echod, domain, coredomain;
+type echod_exec, exec_type, system_file_type, file_type;
+```
+
+```text title="system/sepolicy/private/echod.te"
+init_daemon_domain(echod)
+add_service(echod, echo_service)
+```
+
+```text title="system/sepolicy/private/shell.te"
+# Deliberately grant the plain, unprivileged shell user permission to call
+# this daemon — the point of this tutorial is a round trip with no root.
+allow shell echo_service:service_manager find;
+binder_call(shell, echod)
+```
+
+<Gotcha title="coredomain, not a vendor split">
+`coredomain` is the SELinux attribute marking a process as belonging to the
+system partition — the opposite of a HAL's vendor-domain requirement. There
+is no `hal_server_domain`, no `hal_attribute()`, and no compatibility-matrix
+entry for the domain itself, because nothing here crosses Treble's boundary.
+</Gotcha>
+
+## Step 5 — Six real gates, in order
+
+Fewer than a Treble HAL's, in the sense that none touch VINTF — but two of
+these are genuinely new.
+
+**Gate 1 — AIDL import path.** The package directory must sit directly under
+the module's own `Android.bp` directory, not under an extra `aidl/` folder —
+that nesting pattern only applies when the interface has its own separate
+`Android.bp` one level down.
+
+**Gate 2 — GSI artifact-path allowlisting.** A native AIDL service always
+ships at least three real artifacts — the daemon, its auto-installed
+`init.rc`, and its AIDL backend library — and strict GSI checking tracks
+every one of them individually. Miss one and the build fails naming exactly
+which file it doesn't recognise.
+
+**Gate 3 — file_contexts consistency, new to this pattern.** A test requires
+a reference line for every new label, something the Java-service and HAL
+patterns never hit because neither adds a fresh `file_contexts` pattern with
+no existing sibling entry:
+
+```text
+Warning! No matches for (/system/bin/echod, u:object_r:echod_exec:s0)
+No test entries were found for the contexts above.
+```
+
+Fix: add one line to `system/sepolicy/contexts/file_contexts_test_data`,
+matching the pattern already there for a sibling daemon like `idmap2d`.
+
+**Gate 4 — the fuzzer-bindings exception.** One line in
+`EXCEPTION_NO_FUZZER` — this gate fires for any new `service_contexts` entry,
+regardless of which of the three service patterns registered it.
+
+**Gate 5 — the compat-mapping gate, naming three types this time.**
+
+```text
+SELinux: The following public types were found added to the policy without an
+entry into the compatibility mapping file(s):
+echo_service echod echod_exec
+```
+
+A vendor HAL's compat-mapping gate only ever flags the service type itself —
+its domain and exec types live in a device-local sepolicy directory outside
+this check. A system-partition daemon's domain and exec type live in core
+`system/sepolicy/public/`, so all three need adding together to the current
+`*.ignore.cil`'s `new_objects` list.
+
+**Gate 6 — a deprecation nudge, not a build blocker.** Prefer the templated
+`android::waitForService` helper over the deprecated `getService()` — a
+compiler warning, not a failure.
+
+## Step 6 — Package and build
+
+```makefile title="device/oem/vega/vega.mk"
+PRODUCT_PACKAGES += echod
+```
+
+```bash
+m
+emulator -wipe-data -no-snapshot & adb wait-for-device && sleep 45
+```
+
+## Step 7 — Verify a real call, no root required
+
+```bash title="The daemon is real and running"
+adb shell service check echo
+# Service echo: found
+
+adb shell service list | grep echo
+# echo: [com.example.echo.IEchoService]
+
+adb shell ps -A | grep echod
+# system   655   1   ...   echod
+```
+
+<Verify title="Verify a plain, unprivileged shell can call it">
+```bash
+adb shell id
+# uid=2000(shell) gid=2000(shell) ... context=u:r:shell:s0
+
+adb shell LD_LIBRARY_PATH=/data/local/tmp /data/local/tmp/echo_client "hello"
+# ECHO_CLIENT_RESULT: echo: hello
+
+adb logcat -d | grep "echod   :"
+# I echod   : Starting
+# I echod   : echo() called with: hello
+```
+A complete round trip, entirely without root — the direct payoff of the
+explicit `shell` grant in Step 4.
+</Verify>
+
+<Gotcha title="LD_LIBRARY_PATH solves a different problem than root does">
+A test client pushed to `/data/local/tmp/` sits outside the linker namespace
+that `/system`-installed binaries get, so it can't find the AIDL backend
+library at runtime — a linker problem, not a permission one. Pushing the
+library alongside the binary and pointing `LD_LIBRARY_PATH` at it fixes this
+without any elevated privilege. Root and `LD_LIBRARY_PATH` solve two
+different problems — SELinux permission vs. linker namespace — that happen to
+look similar from a plain shell.
+</Gotcha>
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `directory .../aidl/ is not found in any of the import paths` | Package directory nested one level too deep — move it directly under the `Android.bp` directory |
+| GSI build fails naming your `.rc` or `.so` | All three artifacts (daemon, init.rc, AIDL library) need artifact-path allowlisting individually |
+| `No test entries were found for the contexts above` | Add a reference line to `file_contexts_test_data` for the new label |
+| Compat-mapping error names three types at once | A system-partition daemon's domain and exec type live in core policy — add all three to `*.ignore.cil` together |
+| Client gets a permission denial calling as `shell` | The explicit `allow shell ... find` + `binder_call` grant is missing |
+| Client can't find its own AIDL library at runtime | Push the `.so` alongside the binary and set `LD_LIBRARY_PATH` — not a root problem |
+
+## Next
+
+All three service patterns — Java system service, plain native daemon, Treble
+HAL — now exist side by side. The next step across the framework track is the
+permission that guards any of them from an app that shouldn't be calling in
+at all.
