@@ -1,0 +1,71 @@
+name: Build Android app (TWA)
+
+# Builds a signed APK/AAB that wraps the live site in a Trusted Web Activity —
+# a thin Android shell with no separate app code to keep in sync. Manual only:
+# there's nothing to rebuild until the site itself changes in a way that
+# matters to the wrapper (icons, name, theme colors), which is rare.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install the exact SDK platform/build-tools the TWA template needs
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.1.0"
+          # bubblewrap looks for sdkmanager at <androidSdkPath>/bin/sdkmanager (a
+          # pre-2021 SDK layout) — symlink it so the modern cmdline-tools layout
+          # this action installs still satisfies that check.
+          mkdir -p "$ANDROID_HOME/bin"
+          ln -sf "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/bin/sdkmanager"
+
+      - name: Restore the release signing key
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/android-release.keystore"
+        shell: bash
+
+      - name: Point bubblewrap at the JDK/SDK this runner already has
+        run: |
+          mkdir -p "$HOME/.bubblewrap"
+          cat > "$HOME/.bubblewrap/config.json" <<EOF
+          {"jdkPath":"$JAVA_HOME","androidSdkPath":"$ANDROID_HOME"}
+          EOF
+
+      - name: Install the project generator's dependencies
+        run: npm install
+
+      - name: Generate the Android project from the live web manifest
+        env:
+          WEB_MANIFEST_URL: https://bhargavamandapati.com/manifest.webmanifest
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/android-release.keystore
+          TWA_PROJECT_DIR: ${{ github.workspace }}/android/app-project
+        run: node generate-project.mjs
+
+      - name: Build and sign the APK and App Bundle
+        working-directory: android/app-project
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: npx --yes @bubblewrap/cli@1.25.0 build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bhargavamandapati-android
+          path: |
+            android/app-project/app-release-signed.apk
+            android/app-project/app-release-bundle.aab
+          retention-days: 90

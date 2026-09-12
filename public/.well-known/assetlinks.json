@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bhargavamandapati.app",
+      "sha256_cert_fingerprints": [
+        "58:F9:BB:08:39:23:7B:C5:03:EB:86:B0:3D:E9:82:0C:63:74:D0:FE:A5:F6:CF:70:9C:58:07:44:F1:CA:2D:FE"
+      ]
+    }
+  }
+]

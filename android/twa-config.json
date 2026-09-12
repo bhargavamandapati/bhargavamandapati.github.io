@@ -1,0 +1,9 @@
+{
+  "packageId": "com.bhargavamandapati.app",
+  "launcherName": "Bhargava",
+  "appVersionCode": 1,
+  "appVersionName": "1.0.0",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "signingKeyAlias": "bhargavamandapati"
+}

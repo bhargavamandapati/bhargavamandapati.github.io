@@ -54,3 +54,12 @@ yarn-error.log*
 /content/learn/
 /content/sdv/
 /content/tutorials/
+
+# ---------------------------------------------------------------------------
+# Android TWA wrapper (.github/workflows/build-android.yml). The Gradle
+# project is generated fresh from the live site on every run — only the
+# generator and its small override config are tracked.
+# ---------------------------------------------------------------------------
+/android/node_modules/
+/android/app-project/
+/android/*.keystore

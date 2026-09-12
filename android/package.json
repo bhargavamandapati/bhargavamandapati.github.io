@@ -1,0 +1,9 @@
+{
+  "name": "bhargavamandapati-android-twa",
+  "private": true,
+  "description": "Generates the Trusted Web Activity Android project for bhargavamandapati.com. Not part of the site build — only used by .github/workflows/build-android.yml.",
+  "type": "module",
+  "dependencies": {
+    "@bubblewrap/core": "1.25.0"
+  }
+}
