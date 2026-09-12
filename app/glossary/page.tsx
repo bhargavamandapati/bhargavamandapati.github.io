@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { PageHeader } from '@/components/page-header'
 import { Gated } from '@/components/premium/gated'
 import { isFreeTerm } from '@/data/access'
-import { LockBadge } from '@/components/premium/lock-badge'
+import { GlossaryLockNotice } from '@/components/premium/glossary-lock-notice'
 import { glossary, glossaryCategories } from '@/data/glossary'
 import { site } from '@/data/site'
 import { slugify } from '@/lib/utils'
@@ -132,10 +132,7 @@ export default function GlossaryPage() {
           </dl>
         </section>
 
-        <p className="mb-8 inline-flex items-center gap-2 text-sm text-muted">
-          <LockBadge />
-          The remaining {glossary.length - openTerms.length} terms need a Learn AAOS key.
-        </p>
+        <GlossaryLockNotice count={glossary.length - openTerms.length} />
 
         <Gated area="glossary" title="The glossary" locked>
         <nav aria-label="Glossary categories" className="flex flex-wrap gap-2">
