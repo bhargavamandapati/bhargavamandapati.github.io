@@ -4,6 +4,8 @@ import { ProgressProvider } from '@/components/paths/progress'
 import { CopyGuard } from '@/components/copy-guard'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
+import { RegisterServiceWorker } from '@/components/pwa/register-sw'
+import { InstallPrompt } from '@/components/pwa/install-prompt'
 import { site } from '@/data/site'
 import { profile } from '@/data/resume'
 import './globals.css'
@@ -45,6 +47,11 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: site.shortName,
   },
 }
 
@@ -124,6 +131,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main id="main">{children}</main>
           <SiteFooter />
         </ProgressProvider>
+        <RegisterServiceWorker />
+        <InstallPrompt />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}

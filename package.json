@@ -2,10 +2,10 @@
   "name": "bhargava-mandapati-portfolio",
   "version": "1.0.0",
   "private": true,
-  "description": "Portfolio and engineering blog of Bhargava Mandapati \u2014 Android Automotive / AOSP engineer.",
+  "description": "Portfolio and engineering blog of Bhargava Mandapati — Android Automotive / AOSP engineer.",
   "scripts": {
     "dev": "node scripts/watermark-images.mjs && next dev",
-    "build": "node scripts/watermark-images.mjs && node --experimental-strip-types --no-warnings scripts/build-search-index.mjs && PREMIUM_RENDER_ALL=1 next build && node -e \"require('node:fs').renameSync('out','out-premium-src')\" && next build && node scripts/encrypt-premium.mjs",
+    "build": "node scripts/watermark-images.mjs && node --experimental-strip-types --no-warnings scripts/build-search-index.mjs && PREMIUM_RENDER_ALL=1 next build && node -e \"require('node:fs').renameSync('out','out-premium-src')\" && next build && node scripts/encrypt-premium.mjs && node scripts/generate-service-worker.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -42,6 +42,7 @@
     "sharp": "^0.35.4",
     "simple-icons": "^16.28.0",
     "tailwindcss": "^4.1.13",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "workbox-build": "^7.4.1"
   }
 }
