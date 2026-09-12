@@ -10,7 +10,7 @@
 
 import { TwaManifest, TwaGenerator, ConsoleLog } from '@bubblewrap/core'
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -34,6 +34,7 @@ twaManifest.minSdkVersion = overrides.minSdkVersion
 twaManifest.orientation = overrides.orientation
 twaManifest.signingKey = { path: keystorePath, alias: overrides.signingKeyAlias }
 
+mkdirSync(targetDirectory, { recursive: true })
 const manifestFile = join(targetDirectory, 'twa-manifest.json')
 await twaManifest.saveToFile(manifestFile)
 
