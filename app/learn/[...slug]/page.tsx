@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
-import { ArrowLeft, ArrowRight, Clock } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarClock, Clock } from 'lucide-react'
 import { LearnSidebar } from '@/components/learn/sidebar'
 import { CategoryIcon } from '@/components/learn/category-icon'
 import { MarkRead } from '@/components/paths/mark-read'
@@ -23,7 +23,7 @@ import {
 import { categoryBySlug } from '@/data/curriculum'
 import { site } from '@/data/site'
 import { isFree } from '@/data/access'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 
 type Params = { slug: string[] }
 
@@ -148,6 +148,12 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
                 <Clock aria-hidden className="size-3.5" />
                 {topic.readingMinutes} min
               </span>
+              {topic.updated && (
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarClock aria-hidden className="size-3.5" />
+                  Updated {formatDate(topic.updated)}
+                </span>
+              )}
               {topic.tags.length > 0 && <span>{topic.tags.join(' · ')}</span>}
             </div>
           </header>

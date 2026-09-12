@@ -53,7 +53,10 @@ export const categories: Category[] = [
   },
   {
     slug: 'cluster-displays',
-    name: 'Cluster, Camera & Displays',
+    // Was "Cluster, Camera & Displays" — too close to the interactive
+    // "Cockpit & displays" tool's own name to tell apart at a glance. This
+    // category is the written reference material; that tool is a live demo.
+    name: 'Instrument Cluster & Camera',
     blurb:
       'The rear-view camera path, the instrument cluster, and the multi-screen cockpit — where AAOS stops looking like Android.',
     icon: 'Monitor',
@@ -102,7 +105,11 @@ export const categories: Category[] = [
   },
   {
     slug: 'sdv',
-    name: 'SDV & Standards',
+    // Was "SDV & Standards" — the same word as the site's separate, much
+    // larger SDV section (/sdv/), which this category is not. This one stays
+    // narrowly on the Android-side interop seam; see the callouts in its
+    // articles for the explicit pointer to the wider section.
+    name: 'Standards & Interop',
     blurb:
       'VSS, AUTOSAR, SOME/IP and Eclipse Kuksa — bridging the vehicle network to the Android middleware.',
     icon: 'Network',

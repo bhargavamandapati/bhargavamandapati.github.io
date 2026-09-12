@@ -46,6 +46,12 @@ export default function CockpitDisplaysPage() {
             <ArrowLeft aria-hidden className="size-4" />
             Property simulator
           </Link>
+          <Link
+            href="/learn/#cat-cluster-displays"
+            className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-medium transition-colors hover:border-line-strong hover:bg-surface"
+          >
+            Instrument Cluster & Camera reading
+          </Link>
         </div>
       </PageHeader>
 

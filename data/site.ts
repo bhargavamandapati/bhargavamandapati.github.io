@@ -79,7 +79,50 @@ export const site = {
         },
       ],
     },
-    { label: 'SDV', href: '/sdv/' },
+    {
+      // Ten modules and ~35 topics deserved the same sub-nav treatment as
+      // Learn AAOS gets, not one flat link — these anchor into the module
+      // sections already on /sdv/ rather than needing dedicated pages.
+      label: 'SDV',
+      href: '/sdv/',
+      children: [
+        {
+          label: 'SDV',
+          href: '/sdv/',
+          description: 'The full curriculum — architecture, standards, platforms and delivery.',
+        },
+        {
+          label: 'Foundations',
+          href: '/sdv/#sdv-foundations',
+          description: 'What a software-defined vehicle actually is, and why the shift is happening.',
+        },
+        {
+          label: 'Vehicle architecture',
+          href: '/sdv/#sdv-architecture',
+          description: 'Zonal wiring, central compute, hypervisors and mixed criticality.',
+        },
+        {
+          label: 'Communication & standards',
+          href: '/sdv/#sdv-communication',
+          description: 'SOME/IP, DDS, Automotive Ethernet, VSS and the data broker.',
+        },
+        {
+          label: 'The cluster in an SDV',
+          href: '/sdv/#sdv-cluster',
+          description: 'Safety-rated display and rendering when the cluster shares a chip.',
+        },
+        {
+          label: 'Infotainment in an SDV',
+          href: '/sdv/#sdv-ivi',
+          description: 'IVI as a consumer of vehicle services, and the cockpit domain controller.',
+        },
+        {
+          label: 'Development & delivery',
+          href: '/sdv/#sdv-delivery',
+          description: 'Virtual ECUs, CI for vehicles, digital twins, OTA and feature-on-demand.',
+        },
+      ],
+    },
     { label: 'Writing', href: '/blog/' },
     {
       // The portfolio sections live together so the nav is not half CV and

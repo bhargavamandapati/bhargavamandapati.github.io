@@ -9,10 +9,13 @@
  *      a ReferenceError at build time.
  *   2. Unbalanced custom components. A stray closing tag produces a compiler
  *      error whose message points at the wrong line.
+ *   3. A content/{learn,sdv,tutorials} folder that drifted out of sync with
+ *      its registry (data/curriculum.ts etc.) — silent otherwise, since those
+ *      loaders only ever scan folders already named in the registry.
  *
  * Run with: node scripts/check-mdx.mjs
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { globSync } from 'node:fs'
 import path from 'node:path'
 
@@ -74,6 +77,44 @@ for (const rel of files) {
       problems.push(
         `${rel}  <${tag}> unbalanced: ${open - selfClose} opening, ${close} closing`,
       )
+    }
+  }
+}
+
+// 4. Every content/{learn,sdv,tutorials} subfolder must be a registered
+//    category/track/module, and vice versa. A folder that isn't registered
+//    produces no build error at all — it just never appears anywhere, which
+//    is a much easier mistake to miss than a build failure.
+const REGISTRIES = [
+  { dataFile: 'data/curriculum.ts', contentDir: 'content/learn', kind: 'Learn category' },
+  { dataFile: 'data/tutorials.ts', contentDir: 'content/tutorials', kind: 'tutorial track' },
+  { dataFile: 'data/sdv-curriculum.ts', contentDir: 'content/sdv', kind: 'SDV module' },
+]
+
+for (const { dataFile, contentDir, kind } of REGISTRIES) {
+  const dataPath = path.join(ROOT, dataFile)
+  const contentPath = path.join(ROOT, contentDir)
+  if (!existsSync(dataPath) || !existsSync(contentPath)) continue
+
+  const registered = new Set(
+    [...readFileSync(dataPath, 'utf8').matchAll(/^\s*slug:\s*'([^']+)'/gm)].map((m) => m[1]),
+  )
+  const onDisk = new Set(
+    readdirSync(contentPath, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name),
+  )
+
+  for (const slug of onDisk) {
+    if (!registered.has(slug)) {
+      problems.push(
+        `${contentDir}/${slug}/  has no matching ${kind} in ${dataFile} — its content is unreachable`,
+      )
+    }
+  }
+  for (const slug of registered) {
+    if (!onDisk.has(slug)) {
+      problems.push(`${dataFile}  ${kind} '${slug}' has no matching ${contentDir}/${slug}/ folder`)
     }
   }
 }
