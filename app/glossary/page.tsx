@@ -89,7 +89,10 @@ export default function GlossaryPage() {
     hasDefinedTerm: glossary.map((t) => ({
       '@type': 'DefinedTerm',
       name: t.term,
-      description: t.short,
+      // Locked terms keep their name and URL in the term set (so it reads as
+      // complete), but never their definition — the whole point of the gate
+      // below is that the definition itself needs a key.
+      ...(isFreeTerm(t.term) ? { description: t.short } : null),
       url: `${site.url}/glossary/#${slugify(t.term)}`,
     })),
   }
