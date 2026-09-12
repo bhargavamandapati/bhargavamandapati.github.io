@@ -10,15 +10,31 @@ as a fully static site and deployed to GitHub Pages.
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
+npm run content:fetch   # pulls Learn/SDV/tutorial article source — see below
+npm run dev             # http://localhost:3000
 ```
 
 | Script | What it does |
 | --- | --- |
+| `npm run content:fetch` | Pulls `content/learn`, `content/sdv`, `content/tutorials` from the private `aaos-premium-content` repo. Requires read access to it (SSH key or credential helper) — see below. |
 | `npm run dev` | Dev server with hot reload. Draft posts are visible here. |
 | `npm run build` | Static export to `out/`. Drafts are excluded. |
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
+
+> **Learn AAOS, SDV and tutorial article source lives in a separate private
+> repo** (`bhargavamandapati/aaos-premium-content`), not here — that content
+> is paywalled on the live site, and keeping it in this public repo would
+> put it in plaintext in public git history regardless of the paywall.
+> `npm run content:fetch` clones it into `content/learn`, `content/sdv` and
+> `content/tutorials` (all three are gitignored here). Without running it
+> first, the site still builds, but those sections will be empty. CI does
+> the equivalent automatically via a deploy key — see
+> `.github/workflows/deploy.yml`.
+>
+> After editing content in that repo, a push there does **not** by itself
+> redeploy this site — trigger this repo's "Deploy to GitHub Pages" workflow
+> manually (Actions tab → Run workflow) afterward.
 
 > **Node 20+ is required.** This machine uses nvm — run `nvm use --lts` first if
 > `node` is not on your PATH.

@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "check:mdx": "node scripts/check-mdx.mjs",
     "watermark": "node scripts/watermark-images.mjs",
-    "premium:encrypt": "node scripts/encrypt-premium.mjs"
+    "premium:encrypt": "node scripts/encrypt-premium.mjs",
+    "content:fetch": "node scripts/fetch-premium-content.mjs"
   },
   "dependencies": {
     "github-slugger": "^2.0.0",

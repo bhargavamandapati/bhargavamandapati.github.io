@@ -43,3 +43,14 @@ yarn-error.log*
 
 # Harvest build for premium encryption — contains every locked topic in full.
 /out-premium-src/
+
+# ---------------------------------------------------------------------------
+# Premium article source. Lives in the private bhargavamandapati/
+# aaos-premium-content repo instead of here, and is checked out into these
+# paths at build time (see .github/workflows/deploy.yml) or by
+# scripts/fetch-premium-content.sh for local dev. Never track it here again —
+# that would put paywalled content back in this public repo's history.
+# ---------------------------------------------------------------------------
+/content/learn/
+/content/sdv/
+/content/tutorials/

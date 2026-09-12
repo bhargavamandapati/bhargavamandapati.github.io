@@ -22,6 +22,25 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Learn AAOS, SDV and tutorial article source lives in a separate
+      # private repo (bhargavamandapati/aaos-premium-content) rather than
+      # here, so that paywalled content isn't sitting in plaintext in this
+      # public repo's git history. This checkout pulls it in read-only via a
+      # deploy key scoped to that one repo, then the merge step below lays
+      # it over this repo's own content/ directory before anything reads it.
+      - name: Check out premium content
+        uses: actions/checkout@v5
+        with:
+          repository: bhargavamandapati/aaos-premium-content
+          ssh-key: ${{ secrets.PREMIUM_CONTENT_DEPLOY_KEY }}
+          path: premium-content
+
+      - name: Merge premium content into content/
+        run: |
+          mkdir -p content
+          cp -r premium-content/content/. content/
+          rm -rf premium-content
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
