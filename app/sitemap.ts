@@ -7,6 +7,7 @@ import { vehicleProperties, propertySlug } from '@/lib/vehicle-properties'
 import { projects } from '@/data/resume'
 import { site } from '@/data/site'
 import { isFree } from '@/data/access'
+import { changelog } from '@/data/changelog'
 
 export const dynamic = 'force-static'
 
@@ -59,6 +60,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,
+    },
+    {
+      url: `${site.url}/changelog/`,
+      lastModified: new Date(changelog[0].date),
+      changeFrequency: 'daily',
+      priority: 0.4,
     },
     {
       url: `${site.url}/learn/`,

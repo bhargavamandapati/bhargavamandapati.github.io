@@ -288,6 +288,11 @@
   .diff-intermediate { color: var(--accent); }
   .diff-advanced { color: var(--difficulty-advanced); }
 
+  /** Changelog entry-type colors. */
+  .change-added { color: var(--difficulty-beginner); }
+  .change-fixed { color: var(--difficulty-advanced); }
+  .change-security { color: var(--danger); }
+
   .link-underline {
     background-image: linear-gradient(var(--accent), var(--accent));
     background-size: 0% 1.5px;

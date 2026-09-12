@@ -51,6 +51,9 @@ export function SiteFooter() {
               .
             </p>
             <p className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono">
+              <Link href="/changelog/" className="transition-colors hover:text-accent">
+                Changelog
+              </Link>
               <Link href="/privacy/" className="transition-colors hover:text-accent">
                 Privacy
               </Link>
@@ -62,7 +65,6 @@ export function SiteFooter() {
               </Link>
             </p>
           </div>
-          <p className="font-mono">Built with Next.js · Deployed on GitHub Pages</p>
         </div>
       </div>
     </footer>
