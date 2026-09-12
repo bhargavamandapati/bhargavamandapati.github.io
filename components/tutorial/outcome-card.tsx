@@ -17,6 +17,7 @@ export function OutcomeCard({
   return (
     <section
       aria-label="Tutorial summary"
+      data-copy-guard
       className="card mt-8 divide-y divide-line overflow-hidden p-0"
     >
       <div className="p-6">

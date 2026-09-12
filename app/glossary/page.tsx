@@ -125,7 +125,7 @@ export default function GlossaryPage() {
               {openTerms.length} of {glossary.length} terms
             </span>
           </h2>
-          <dl className="mt-8 space-y-8">
+          <dl data-copy-guard className="mt-8 space-y-8">
             {openTerms.map((t) => (
               <Entry key={t.term} t={t} />
             ))}
@@ -161,7 +161,7 @@ export default function GlossaryPage() {
                 {group.category}
               </h2>
 
-              <dl className="mt-8 space-y-8">
+              <dl data-copy-guard className="mt-8 space-y-8">
                 {group.terms.map((t) => (
                   <Entry key={t.term} t={t} />
                 ))}
