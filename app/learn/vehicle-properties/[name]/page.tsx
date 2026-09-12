@@ -173,7 +173,9 @@ export default async function PropertyPage({
     "@context": "https://schema.org",
     "@type": "TechArticle",
     headline: `${property.name} — vehicle property`,
-    description: summarise(property),
+    // Matches propertyRows() on the list page: the summary is AOSP prose
+    // reproduced in full, so it travels only where the property itself is free.
+    ...(locked ? {} : { description: summarise(property) }),
     isAccessibleForFree: !locked,
     keywords: [property.name, property.area, property.type, "VehicleProperty", "Android Automotive"].join(", "),
     author: { "@type": "Person", name: site.name, url: site.url },
@@ -246,9 +248,11 @@ export default async function PropertyPage({
           {property.name}
         </h1>
 
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-          {summarise(property)}
-        </p>
+        {!locked && (
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+            {summarise(property)}
+          </p>
+        )}
 
         <Gated area="properties" slug={propertySlug(property)} title={property.name}>
         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
