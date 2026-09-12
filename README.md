@@ -32,9 +32,10 @@ npm run dev             # http://localhost:3000
 > the equivalent automatically via a deploy key — see
 > `.github/workflows/deploy.yml`.
 >
-> After editing content in that repo, a push there does **not** by itself
-> redeploy this site — trigger this repo's "Deploy to GitHub Pages" workflow
-> manually (Actions tab → Run workflow) afterward.
+> A push to that repo's `main` automatically triggers this repo's "Deploy to
+> GitHub Pages" workflow via `.github/workflows/trigger-site-deploy.yml` over
+> there — no manual step needed. Trigger a deploy from here directly (Actions
+> tab → Run workflow) only if you need to redeploy without a content change.
 
 > **Node 20+ is required.** This machine uses nvm — run `nvm use --lts` first if
 > `node` is not on your PATH.
@@ -326,6 +327,62 @@ Both are handled automatically — no config edits.
 
 Add `NEXT_PUBLIC_SITE_URL=https://yourdomain.com` to the build step, put a `CNAME`
 file containing the domain in `public/`, and point DNS at GitHub Pages.
+
+---
+
+## Progressive Web App
+
+The site is installable and works offline for pages you've already visited.
+
+- **`app/manifest.ts`** — the web app manifest (name, icons, theme colors,
+  `display: 'standalone'`), served at `/manifest.webmanifest`.
+- **`scripts/generate-service-worker.mjs`** — runs as the last step of
+  `npm run build`, after `encrypt-premium.mjs`. Uses `workbox-build` to
+  precache the hashed app shell and configure runtime caching: `NetworkFirst`
+  for page navigations, `StaleWhileRevalidate` for encrypted `/premium/*`
+  payloads, `CacheFirst` for images and fonts.
+- **`components/pwa/register-sw.tsx`** — registers the service worker.
+  Production-only; `next dev` has no `out/sw.js` to register.
+- **`components/pwa/install-prompt.tsx`** — a dismissible "Install this site
+  as an app" banner shown when the browser fires `beforeinstallprompt`. Chrome
+  only fires this after its own install heuristics are satisfied (repeat
+  visit, valid manifest and service worker), so it won't appear on a first
+  visit.
+
+No separate build step to remember — `npm run build` produces `out/sw.js` and
+`out/manifest.webmanifest` automatically.
+
+## Android app (Trusted Web Activity)
+
+A signed Android APK/AAB that wraps the live site in a Trusted Web
+Activity — Chrome renders `bhargavamandapati.com` full-screen with no
+browser UI. There's no separate app code: `.github/workflows/build-android.yml`
+regenerates the Android project from the *live* web manifest on every run,
+so nothing about the wrapper needs to be kept in sync by hand.
+
+| Path | What it is |
+| --- | --- |
+| `android/twa-config.json` | Package ID, launcher name, version, signing key alias — the only hand-maintained config. |
+| `android/generate-project.mjs` | Fetches the live web manifest and generates the Gradle project via `@bubblewrap/core`. Not committed — CI runs it fresh each build. |
+| `.github/workflows/build-android.yml` | Manual trigger only (Actions tab → **Build Android app (TWA)** → Run workflow). Builds and signs both the APK and the App Bundle, uploaded as a single workflow artifact. |
+
+**Required repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | What it is |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | The release signing keystore, base64-encoded. |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password. |
+| `ANDROID_KEY_PASSWORD` | Key password (same as the keystore password — it's a PKCS12 keystore). |
+
+The keystore itself (plus these exact values) is backed up in the private
+`aaos-premium-content` repo under `android-signing/`, and nowhere in this
+repo's history. **If it's ever lost, there is no recovery path** — Android
+treats an app re-signed with a different key as a different app, so no
+future update could be published against the same installed app again.
+
+Rebuilding is only needed after a change to the manifest, icons, theme
+colors, or the app's own version — routine content or article updates don't
+require it.
 
 ---
 
