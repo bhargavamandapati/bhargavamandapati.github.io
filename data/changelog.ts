@@ -42,6 +42,11 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       {
         type: 'added',
+        text: 'Sixteen more glossary terms, rounding out general Android/AOSP basics (ADB, logcat, fastboot, Perfetto, APK, Intent, Zygote) and automotive standards (OBD-II, DTC, ISO-TP, HUD, eCall, V2X, homologation, ISO 21434, gateway).',
+        links: [{ label: 'Glossary', href: '/glossary/' }],
+      },
+      {
+        type: 'added',
         text: 'Ten new glossary terms, covering app focus, TaskMonitor, remote access, CarTelemetryManager, the assistant role, Scalable UI, Variable Update Rate, UDS, SecOC and eSIM.',
         links: [{ label: 'Glossary', href: '/glossary/' }],
       },

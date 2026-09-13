@@ -259,7 +259,7 @@ export const glossary: Term[] = [
     short: 'A seat position, together with the screens and the user that belong to it.',
     long: 'A cockpit may have a driver display, a cluster, a passenger screen and rear screens, with different people using them at once. Occupant zones model who is sitting where, which screens they own, and which user account is theirs.',
     category: 'Framework',
-    related: ['headless system user', 'multi-display'],
+    related: ['headless system user', 'cluster'],
   },
   {
     term: 'CarWatchdog',
@@ -928,6 +928,139 @@ export const glossary: Term[] = [
     long: 'A vehicle needs a cellular identity before it has an owner and has to keep working for years after sale, which rules out a swappable physical SIM. An eUICC is soldered in and provisioned over the air, typically starting with the vehicle maker\'s own connectivity rather than the eventual owner\'s carrier.',
     category: 'Platform',
     related: ['digital key'],
+  },
+
+  // ------------------------------------------------------ Android and AOSP
+  {
+    term: 'ADB',
+    aliases: ['Android Debug Bridge', 'adb shell'],
+    short: 'The command-line tool used to talk to a running Android device or emulator from a development machine.',
+    long: 'ADB is the bridge between a developer\'s machine and a device — install an app, read logs, open a root shell, push and pull files. Nearly every debugging and verification step across AAOS development runs through it, whether against a real head unit or an emulator.',
+    category: 'Build',
+    related: ['logcat', 'userdebug'],
+  },
+  {
+    term: 'logcat',
+    aliases: ['adb logcat'],
+    short: 'Android\'s system-wide log stream, read live or captured to a file.',
+    long: 'Every process on the device — apps, system services, the kernel — can write to logcat, and it is usually the first place an investigation starts. Filtering by tag or process is often the difference between a useful capture and unreadable noise.',
+    category: 'Build',
+    related: ['ADB', 'tombstone'],
+  },
+  {
+    term: 'fastboot',
+    aliases: ['fastbootd'],
+    short: 'A bootloader-level protocol for flashing partitions onto a device before Android itself is running.',
+    long: 'Where ADB talks to a booted Android system, fastboot talks to the bootloader directly — flashing a system image, unlocking or locking it, and other operations that have to happen before Android starts. fastbootd is a newer userspace variant that can flash dynamic partitions while a lightweight Android environment is already running.',
+    category: 'Build',
+    related: ['ADB', 'A/B partitions'],
+  },
+  {
+    term: 'Perfetto',
+    short: 'Android\'s system-wide tracing tool for seeing exactly what ran, on which thread, for how long.',
+    long: 'Perfetto captures a timeline across the kernel, Binder calls, app code and system services at once, which is what makes it possible to answer "why did this take 200ms" instead of guessing. It replaced the older systrace tooling and is the standard way to investigate jank and startup latency.',
+    category: 'Build',
+    related: ['Binder', 'ANR'],
+  },
+  {
+    term: 'APK',
+    aliases: ['Android Package', 'Android application package'],
+    short: 'The single installable file format every Android app ships as.',
+    long: 'An APK bundles an app\'s compiled code, resources and manifest into one signed file. On AAOS it is the same format used on phones — what differs is where an APK is allowed to run and what it may touch, not the packaging itself.',
+    category: 'Platform',
+    related: ['signature permission', 'userdebug'],
+  },
+  {
+    term: 'Intent',
+    short: 'A message describing an action to perform or an event that happened, used to start or connect app components.',
+    long: 'An Intent can be explicit (start exactly this Activity) or implicit (start whatever is registered to handle this kind of action). Android matches an implicit intent against every installed app\'s manifest declarations, which is how one app can hand work to another without knowing its name in advance.',
+    category: 'Framework',
+    related: ['android.car'],
+  },
+  {
+    term: 'Zygote',
+    short: 'The template process every Android app is forked from, rather than started from scratch.',
+    long: 'Zygote starts early in boot, preloads the core Android classes and libraries once, and every app process is then forked from it — inheriting that preloaded state for free through copy-on-write memory instead of repeating the work per app. This is most of why an app launches in milliseconds instead of seconds.',
+    analogy: 'Like a master photocopy kept warm and ready, rather than printing every copy from a cold machine.',
+    category: 'Framework',
+    related: ['system_server', 'Binder'],
+  },
+
+  // -------------------------------------------------------- diagnostics II
+  {
+    term: 'OBD-II',
+    aliases: ['On-Board Diagnostics II'],
+    short: 'The small, legally-mandated set of standard vehicle diagnostic data every car must expose.',
+    long: 'OBD-II defines a fixed set of diagnostic modes — emissions data, trouble codes, freeze frames — that regulators require every vehicle to expose the same way, so a generic scan tool works on any car. It is a narrow, standardised slice of the much larger diagnostic protocol underneath it.',
+    category: 'Vehicle data',
+    related: ['UDS', 'DTC'],
+  },
+  {
+    term: 'DTC',
+    aliases: ['Diagnostic Trouble Code'],
+    short: 'A standardised code identifying a specific fault a vehicle has detected.',
+    long: 'When a system detects a fault — a sensor reading out of range, a component not responding — it stores a DTC identifying exactly what and where. The code format is standardised so any diagnostic tool decodes it the same way, regardless of which manufacturer built the vehicle.',
+    category: 'Vehicle data',
+    related: ['OBD-II', 'UDS'],
+  },
+  {
+    term: 'ISO-TP',
+    aliases: ['ISO 15765-2'],
+    short: 'The protocol that lets a CAN message carry more data than a single CAN frame allows.',
+    long: 'A single classic CAN frame holds at most 8 bytes, far too little for a diagnostic response or a firmware payload. ISO-TP splits a larger message into a sequence of CAN frames on the sending side and reassembles it on the receiving side — the transport UDS diagnostic traffic actually rides on.',
+    category: 'Standards',
+    related: ['CAN', 'UDS'],
+  },
+
+  // ---------------------------------------------------- display and safety
+  {
+    term: 'HUD',
+    aliases: ['head-up display'],
+    short: 'A display that projects information onto the windshield, in the driver\'s normal line of sight.',
+    long: 'A HUD shows speed, navigation cues or warnings without the driver looking away from the road. It is usually driven by its own dedicated hardware path rather than being just another Android window, for much the same reason the instrument cluster is often kept separate from the main infotainment display.',
+    category: 'UI',
+    related: ['cluster', 'telltale'],
+  },
+
+  // ------------------------------------------------------ regulation, more
+  {
+    term: 'eCall',
+    short: 'A mandated feature that automatically calls emergency services after a serious crash.',
+    long: 'Required on new vehicles sold in the EU, eCall detects a severe collision and places an emergency call carrying the vehicle\'s location and basic crash data, even if no occupant can act. It has to work independently of whether an infotainment system is running normally, which is why it usually runs on dedicated telematics hardware rather than as an ordinary app.',
+    category: 'Standards',
+    related: ['V2X', 'homologation'],
+  },
+  {
+    term: 'V2X',
+    aliases: ['vehicle-to-everything'],
+    short: 'A vehicle communicating directly with other vehicles, infrastructure, or pedestrians nearby.',
+    long: 'V2X covers vehicle-to-vehicle, vehicle-to-infrastructure and related links, typically over dedicated short-range radio rather than the regular cellular network — used for things like collision warnings that need lower latency than a round trip through the cloud allows.',
+    category: 'Standards',
+    related: ['TSN', 'ADAS'],
+  },
+  {
+    term: 'homologation',
+    aliases: ['type approval'],
+    short: 'The certification process a vehicle must pass before it can legally be sold in a market.',
+    long: 'A regulator checks a vehicle design against a market\'s safety, emissions and cybersecurity requirements before granting type approval. Software is very much in scope now — a cybersecurity management system and an update management process are both conditions of approval in major markets, not just the physical vehicle.',
+    category: 'Process',
+    related: ['UNECE R155', 'ASIL'],
+  },
+  {
+    term: 'ISO 21434',
+    aliases: ['ISO/SAE 21434', 'road vehicle cybersecurity engineering'],
+    short: 'The engineering standard for building cybersecurity into a vehicle across its whole lifecycle.',
+    long: 'Where UNECE R155 is the regulation requiring a cybersecurity management system, ISO 21434 is the engineering standard describing how to actually do the work it requires — threat analysis, risk assessment, and security requirements carried through design, development and post-production monitoring.',
+    category: 'Security',
+    related: ['UNECE R155', 'SecOC'],
+  },
+  {
+    term: 'gateway',
+    aliases: ['CAN gateway', 'central gateway'],
+    short: 'The component that controls which messages are allowed to cross between separate vehicle networks.',
+    long: 'A modern vehicle segments its networks — body, powertrain, infotainment — rather than putting everything on one bus, and a gateway selectively forwards messages between them. This is also a security boundary: a compromised infotainment system reaching the braking network is exactly what gateway segmentation exists to prevent.',
+    category: 'Vehicle data',
+    related: ['CAN', 'zero trust', 'SecOC'],
   },
 ]
 
