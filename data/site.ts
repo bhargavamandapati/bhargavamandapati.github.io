@@ -123,6 +123,7 @@ export const site = {
         },
       ],
     },
+    { label: 'AI ML', href: '/ai-ml/' },
     { label: 'Writing', href: '/blog/' },
     {
       // The portfolio sections live together so the nav is not half CV and

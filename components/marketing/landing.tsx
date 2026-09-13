@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   Boxes,
+  BrainCircuit,
   Car,
   Check,
   Gauge,
@@ -118,7 +119,7 @@ export function Landing() {
         />
         <div className="container-page relative py-20 md:py-28">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
-            Android Automotive · AOSP · Software-defined vehicles
+            Android Automotive · AOSP · Software-defined vehicles · AI/ML soon
           </p>
           <h1 className="mt-6 max-w-4xl text-balance font-display text-4xl font-bold leading-[1.08] tracking-tight md:text-5xl lg:text-6xl">
             The Android Automotive material I wanted when I started.
@@ -285,8 +286,8 @@ export function Landing() {
                 <li>The glossary, and every tutorial</li>
               </ul>
               <p className="mt-5 text-xs leading-relaxed text-subtle">
-                Learn AAOS and the SDV track have separate keys, so you can take one without the
-                other.
+                Learn AAOS and SDV have separate keys, so you can take one without the other —
+                AI &amp; ML for Automotive will follow the same pattern once it launches.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <a
@@ -300,6 +301,50 @@ export function Landing() {
                 </a>
                 <EmailAccessButton subject="Access request — Full library" />
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---- What's next -------------------------------------------------- */}
+      <section className="border-b border-line">
+        <div className="container-page py-16 md:py-20">
+          <div className="card flex flex-col gap-6 border-accent/40 p-6 sm:flex-row sm:items-center sm:justify-between md:p-8">
+            <div className="flex items-start gap-4">
+              <span className="mt-0.5 inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2">
+                <BrainCircuit aria-hidden className="size-5 text-accent" />
+              </span>
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
+                  Coming soon · a third track
+                </p>
+                <h2 className="mt-2 font-display text-xl font-semibold tracking-tight md:text-2xl">
+                  AI &amp; ML for Automotive
+                </h2>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
+                  The same standard as everything else here, applied to AI and machine
+                  learning in the vehicle. Its own separate subscription, alongside Learn
+                  AAOS and SDV — not bundled into either.
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-3 sm:flex-col sm:items-stretch">
+              <Link
+                href="/ai-ml/"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
+              >
+                Learn more
+                <ArrowRight aria-hidden className="size-3.5" />
+              </Link>
+              <a
+                href={site.socials.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:border-line-strong hover:bg-surface"
+              >
+                <Linkedin aria-hidden className="size-4" />
+                Ask for details and cost
+              </a>
             </div>
           </div>
         </div>

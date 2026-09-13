@@ -38,8 +38,17 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.09.13',
     date: '2026-09-13',
-    title: 'A new tutorial, more field-notes findings, and a broken mobile menu',
+    title: 'A third track announced, a redesigned home page, and a broken mobile menu',
     changes: [
+      {
+        type: 'added',
+        text: 'AI & ML for Automotive: a new, separately-subscribed third track alongside Learn AAOS and SDV. Not published yet — a coming-soon page explains what to expect and how to ask about early access.',
+        links: [{ label: 'AI & ML for Automotive', href: '/ai-ml/' }],
+      },
+      {
+        type: 'changed',
+        text: 'Redesigned the home page around three tracks instead of two, with a dedicated section introducing AI & ML for Automotive.',
+      },
       {
         type: 'added',
         text: 'Sixteen more glossary terms, rounding out general Android/AOSP basics (ADB, logcat, fastboot, Perfetto, APK, Intent, Zygote) and automotive standards (OBD-II, DTC, ISO-TP, HUD, eCall, V2X, homologation, ISO 21434, gateway).',

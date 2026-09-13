@@ -92,6 +92,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: `${site.url}/ai-ml/`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.5,
+    },
+    {
       url: `${site.url}/blog/`,
       lastModified: latestPost ? new Date(latestPost) : new Date(),
       changeFrequency: 'weekly',
