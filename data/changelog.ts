@@ -4,13 +4,25 @@
  * One entry per calendar day a change actually deployed. Add a new entry at
  * the top of `changelog` whenever content is added or an issue is fixed —
  * that is the entire point of this file existing.
+ *
+ * When an "added" line is a brand-new page (not an enrichment of an existing
+ * one), give it `links` here pointing straight at the page, and add a
+ * matching entry to `data/new-content.ts` so its card picks up a "New" badge.
  */
 
 export type ChangeType = 'added' | 'changed' | 'fixed' | 'security'
 
+export type ChangeLink = {
+  label: string
+  /** Site-relative path, e.g. "/learn/connectivity/esim-provisioning/". */
+  href: string
+}
+
 export type Change = {
   type: ChangeType
   text: string
+  /** Direct links to what an "added" line is describing, so it's one click away. */
+  links?: ChangeLink[]
 }
 
 export type ChangelogEntry = {
@@ -28,7 +40,11 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-09-13',
     title: 'A new tutorial, and more field-notes findings',
     changes: [
-      { type: 'added', text: 'A new tutorial on registering as the system task monitor with CarActivityManager, and the takeover it causes.' },
+      {
+        type: 'added',
+        text: 'A new tutorial on registering as the system task monitor with CarActivityManager, and the takeover it causes.',
+        links: [{ label: 'Register as the system task monitor', href: '/tutorials/framework/custom-task-monitor/' }],
+      },
       { type: 'changed', text: 'Enriched eight existing tutorials and articles with further field-notes findings — fixed-activity display routing, remote-access client registration, Vehicle Map Service layer filtering, watchdog I/O overuse stats, media playback restore ordering, batched async property reads and writes, a permission-grant/enforcement mismatch, and staged-versus-active UX restriction configs.' },
     ],
   },
@@ -45,7 +61,16 @@ export const changelog: ChangelogEntry[] = [
       { type: 'added', text: 'A branded error page, in place of the framework’s generic one.' },
       { type: 'fixed', text: 'Copy protection extended to the glossary and a tutorial section that had none.' },
       { type: 'fixed', text: 'A glossary notice that kept telling readers they needed a key after they had already unlocked it.' },
-      { type: 'added', text: 'Four new Learn AAOS topics: eSIM provisioning, CAN bus security, the UDS diagnostic protocol underneath OBD-II, and flashing/OTA testing in CI.' },
+      {
+        type: 'added',
+        text: 'Four new Learn AAOS topics: eSIM provisioning, CAN bus security, the UDS diagnostic protocol underneath OBD-II, and flashing/OTA testing in CI.',
+        links: [
+          { label: 'eSIM provisioning', href: '/learn/connectivity/esim-provisioning/' },
+          { label: 'CAN bus security', href: '/learn/security/can-bus-security/' },
+          { label: 'UDS diagnostics', href: '/learn/car-framework/uds-diagnostics/' },
+          { label: 'CI device flashing', href: '/learn/platform-build/ci-device-flashing/' },
+        ],
+      },
       { type: 'fixed', text: 'Content categories are now checked against the curriculum at build time — a mismatch fails the build instead of silently vanishing.' },
       { type: 'changed', text: 'Renamed two curriculum categories that were too easy to confuse with similarly-named parts of the site, and cross-linked both pairs.' },
       { type: 'added', text: 'The SDV section now has the same sub-navigation Learn AAOS has, instead of one flat link.' },

@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { changelog, type ChangeType } from '@/data/changelog'
 import { site } from '@/data/site'
@@ -83,6 +85,23 @@ export default function ChangelogPage() {
                     </span>
                     <span className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
                       {change.text}
+                      {change.links && change.links.length > 0 && (
+                        <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                          {change.links.map((link) => (
+                            <Link
+                              key={link.href}
+                              href={link.href}
+                              className="group inline-flex items-center gap-1 text-[0.8rem] font-medium text-accent link-underline"
+                            >
+                              {link.label}
+                              <ArrowRight
+                                aria-hidden
+                                className="size-3 transition-transform group-hover:translate-x-0.5"
+                              />
+                            </Link>
+                          ))}
+                        </span>
+                      )}
                     </span>
                   </li>
                 ))}

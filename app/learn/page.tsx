@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { ItemLockBadge } from '@/components/premium/item-lock-badge'
+import { NewBadge } from '@/components/new-badge'
 import Link from 'next/link'
 import { ArrowRight, Clock, Database, GraduationCap } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { CategoryIcon } from '@/components/learn/category-icon'
 import { getAllTopics, getCurriculum, totalReadingMinutes } from '@/lib/learn'
 import { vehicleProperties } from '@/lib/vehicle-properties'
+import { isNewContent } from '@/data/new-content'
 import { site } from '@/data/site'
 import { cn } from '@/lib/utils'
 
@@ -177,13 +179,16 @@ export default function LearnPage() {
                           <span className="font-mono text-[0.7rem] text-subtle tabular-nums">
                             {String(counter).padStart(2, '0')}
                           </span>
-                          <span
-                            className={cn(
-                              'font-mono text-[0.65rem] uppercase tracking-wider',
-                              DIFFICULTY_STYLES[topic.difficulty] ?? 'text-subtle'
-                            )}
-                          >
-                            {topic.difficulty}
+                          <span className="inline-flex items-center gap-2">
+                            {isNewContent('learn', topic.slug) && <NewBadge />}
+                            <span
+                              className={cn(
+                                'font-mono text-[0.65rem] uppercase tracking-wider',
+                                DIFFICULTY_STYLES[topic.difficulty] ?? 'text-subtle'
+                              )}
+                            >
+                              {topic.difficulty}
+                            </span>
                           </span>
                         </div>
                         <h3 className="mt-3 font-display text-[0.98rem] font-semibold leading-snug tracking-tight text-fg">

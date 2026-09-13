@@ -293,6 +293,23 @@
   .change-fixed { color: var(--difficulty-advanced); }
   .change-security { color: var(--danger); }
 
+  /** "New" badge on a just-shipped topic/tutorial card. */
+  .new-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--difficulty-beginner);
+    background-color: var(--difficulty-beginner);
+    color: var(--bg);
+    border-radius: 9999px;
+    padding: 0.1rem 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
   .link-underline {
     background-image: linear-gradient(var(--accent), var(--accent));
     background-size: 0% 1.5px;
