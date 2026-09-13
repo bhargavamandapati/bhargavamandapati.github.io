@@ -102,6 +102,7 @@ export const surfaces: Surface[] = [
   { name: 'Remote access', what: 'Waking a parked vehicle to run a task', where: 'CarRemoteAccessManager + remote access HAL', tutorial: 'framework/custom-remote-access' },
   { name: 'Occupant Awareness HAL', what: 'Driver-monitoring detection events, not camera frames', where: 'hardware/interfaces/automotive/occupant_awareness/', tutorial: 'vehicle/custom-occupant-awareness-hal' },
   { name: 'Occupant connection', what: 'Messaging between apps in different occupant zones', where: 'CarOccupantConnectionManager', tutorial: 'framework/custom-occupant-connection' },
+  { name: 'Task monitor', what: 'The exclusive seat CarPackageManager.restartTask() depends on', where: 'CarActivityManager.registerTaskMonitor()', tutorial: 'framework/custom-task-monitor' },
 ]
 
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced'

@@ -24,6 +24,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.09.13',
+    date: '2026-09-13',
+    title: 'A new tutorial, and more field-notes findings',
+    changes: [
+      { type: 'added', text: 'A new tutorial on registering as the system task monitor with CarActivityManager, and the takeover it causes.' },
+      { type: 'changed', text: 'Enriched eight existing tutorials and articles with further field-notes findings — fixed-activity display routing, remote-access client registration, Vehicle Map Service layer filtering, watchdog I/O overuse stats, media playback restore ordering, batched async property reads and writes, a permission-grant/enforcement mismatch, and staged-versus-active UX restriction configs.' },
+    ],
+  },
+  {
     version: '2026.09.12',
     date: '2026-09-12',
     title: 'Private content, an installable app, and two security fixes',
