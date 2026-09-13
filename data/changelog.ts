@@ -38,8 +38,10 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.09.13',
     date: '2026-09-13',
-    title: 'A new tutorial, and more field-notes findings',
+    title: 'A new tutorial, more field-notes findings, and a broken mobile menu',
     changes: [
+      { type: 'fixed', text: 'The mobile menu trapped page scroll behind it once its own link list grew past screen height — everything below the fold, including About and Projects, was unreachable on a phone.' },
+      { type: 'added', text: 'Changelog entries for new pages now link straight to them, and their cards carry a "New" badge for a few weeks after they ship.' },
       {
         type: 'added',
         text: 'A new tutorial on registering as the system task monitor with CarActivityManager, and the takeover it causes.',
