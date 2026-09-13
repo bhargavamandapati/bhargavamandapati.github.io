@@ -110,7 +110,7 @@ export function SiteHeader() {
         <nav
           id="mobile-nav"
           aria-label="Mobile"
-          className="border-t border-line bg-bg lg:hidden"
+          className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-line bg-bg lg:hidden"
         >
           <ul className="container-page flex flex-col py-3">
             {navItems.map((item) =>
