@@ -994,3 +994,600 @@ export function DualBootChains() {
     </svg>
   )
 }
+
+/* ----------------------------------------------------- parked-only reachability -- */
+
+export function ParkedOnlyReachability() {
+  const top = { x: 260, y: 20, w: 200, h: 50 }
+  const colW = 300
+  const leftX = 40
+  const rightX = 380
+  const rowH = 56
+  const r1y = 108
+  const r2y = 188
+  const r3y = 268
+  return (
+    <svg {...svgProps} viewBox="0 0 720 350" aria-label="Two branches of one driving-state change: parked makes a parked-only activity reachable, moving makes it simply not the destination">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>The activity itself never changes — only whether anything can reach it</Label>
+
+      <Box x={top.x} y={top.y} w={top.w} h={top.h} label="Driving state changes" tone="accent" />
+      <Arrow x1={top.x + 50} y1={top.y + top.h + 2} x2={leftX + colW / 2} y2={r1y - 4} accent />
+      <Arrow x1={top.x + top.w - 50} y1={top.y + top.h + 2} x2={rightX + colW / 2} y2={r1y - 4} />
+
+      <Box x={leftX} y={r1y} w={colW} h={rowH} label="Parked" sub="CarDrivingState reports stationary" tone="accent" />
+      <Box x={rightX} y={r1y} w={colW} h={rowH} label="Moving" sub="CarDrivingState reports in motion" tone="muted" />
+
+      <Arrow x1={leftX + colW / 2} y1={r1y + rowH + 4} x2={leftX + colW / 2} y2={r2y - 4} accent />
+      <Arrow x1={rightX + colW / 2} y1={r1y + rowH + 4} x2={rightX + colW / 2} y2={r2y - 4} dashed />
+
+      <Box x={leftX} y={r2y} w={colW} h={rowH} label="Intent filter becomes resolvable" tone="accent" />
+      <Box x={rightX} y={r2y} w={colW} h={rowH} label="No distraction-optimised fallback shown" sub="there is no reduced layout to fall back to" tone="muted" dashed />
+
+      <Arrow x1={leftX + colW / 2} y1={r2y + rowH + 4} x2={leftX + colW / 2} y2={r3y - 4} accent />
+      <Arrow x1={rightX + colW / 2} y1={r2y + rowH + 4} x2={rightX + colW / 2} y2={r3y - 4} dashed />
+
+      <Box x={leftX} y={r3y} w={colW} h={rowH} label="Launcher can navigate to it" tone="accent" />
+      <Box x={rightX} y={r3y} w={colW} h={rowH} label="Not the destination any navigation reaches" sub="not a restricted layout — simply unreachable" tone="muted" dashed />
+    </svg>
+  )
+}
+
+/* ---------------------------------------------------------------- ANC latency budget -- */
+
+export function AncLatencyPipeline() {
+  const w = 460
+  const x = (720 - w) / 2
+  const h = 46
+  const gap = 14
+  const stages = [
+    { label: 'Noise generated at its source', sub: 'tyre · road surface · engine', tone: 'muted' as const },
+    { label: 'Reaches the reference microphone', sub: 'the only measurement of it that exists', tone: 'default' as const },
+    { label: 'DSP predicts the sound at the ear', sub: 'must model travel time to the driver', tone: 'accent' as const },
+    { label: 'Inverse waveform generated', sub: 'the anti-noise signal', tone: 'accent' as const },
+    { label: 'Played through the cabin speakers', sub: 'same output buses as any other audio', tone: 'accent' as const },
+  ]
+  const y = (i: number) => 44 + i * (h + gap)
+  const bottom = y(stages.length - 1) + h
+  return (
+    <svg {...svgProps} viewBox={`0 0 720 ${bottom + 96}`} aria-label="The latency budget active noise cancellation has to beat, from noise generated at its source to an inverse waveform arriving at the driver's ear">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>Every stage below eats into a budget measured in milliseconds</Label>
+
+      {stages.map((s, i) => (
+        <g key={s.label}>
+          <Box x={x} y={y(i)} w={w} h={h} label={s.label} sub={s.sub} tone={s.tone} />
+          {i < stages.length - 1 && <Arrow x1={x + w / 2} y1={y(i) + h + 4} x2={x + w / 2} y2={y(i + 1) - 4} accent={i >= 1} />}
+        </g>
+      ))}
+
+      <rect x={24} y={bottom + 26} width={672} height={54} rx={6} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={1.25} />
+      <text x={360} y={bottom + 46} textAnchor="middle" fill="var(--fg)" fontSize={11.5} fontWeight={600} fontFamily="var(--font-display)">
+        must arrive within a few milliseconds of the real noise
+      </text>
+      <text x={360} y={bottom + 64} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">
+        late, and it stops cancelling the noise — it adds to it
+      </text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------- car service boot tree -- */
+
+export function CarServiceBootTree() {
+  const leafW = 138
+  const leafH = 64
+  const leafGap = 6
+  const leafY = 260
+  const total = 5 * leafW + 4 * leafGap
+  const leafX0 = (720 - total) / 2
+  const leaves = [
+    { label: 'Connect to VHAL', sub: 'waits for the HAL', tone: 'accent' as const },
+    { label: 'Cache prop configs', sub: 'getAllPropConfigs()', tone: 'default' as const },
+    { label: 'Construct subservices', sub: 'dependency order', tone: 'default' as const },
+    { label: 'Init in order', sub: 'one after another', tone: 'default' as const },
+    { label: 'Register itself', sub: 'as "car_service"', tone: 'default' as const },
+  ]
+  const carX = 230, carY = 168, carW = 260, carH = 52
+  return (
+    <svg {...svgProps} viewBox="0 0 720 400" aria-label="The init tree from init through system_server to Car Service, which then connects to the Vehicle HAL, caches the property contract, constructs and initialises its subservices, and registers itself">
+      <DiagramDefs />
+      <Label x={24} y={20} anchor="start" tone="muted" size={12}>Each level exists because the one below it is not up yet</Label>
+
+      <Box x={300} y={30} w={120} h={44} label="init" tone="muted" />
+      <Arrow x1={360} y1={74} x2={360} y2={92} />
+      <Box x={280} y={96} w={160} h={44} label="system_server" tone="default" />
+      <Arrow x1={360} y1={140} x2={360} y2={164} accent />
+      <Box x={carX} y={carY} w={carW} h={carH} label="com.android.car" sub="Car Service" tone="accent" />
+
+      {leaves.map((l, i) => {
+        const lx = leafX0 + i * (leafW + leafGap)
+        return (
+          <g key={l.label}>
+            <Arrow x1={carX + carW / 2} y1={carY + carH + 2} x2={lx + leafW / 2} y2={leafY - 4} accent={i === 0} />
+            <Box x={lx} y={leafY} w={leafW} h={leafH} label={l.label} sub={l.sub} tone={l.tone} />
+          </g>
+        )
+      })}
+
+      <rect x={24} y={352} width={672} height={34} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={373} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        a HAL that never registers stalls this whole tree — the symptom is a black screen, not an error
+      </text>
+    </svg>
+  )
+}
+
+/* ---------------------------------------------------------------- occupant zone tree -- */
+
+export function OccupantZoneTree() {
+  const colW = 210
+  const cols = [24, 255, 486]
+  const zoneY = 56
+  const zoneH = 50
+  const childH = 42
+  const childGap = 10
+  const childY = (i: number) => zoneY + zoneH + 20 + i * (childH + childGap)
+  const zones = [
+    {
+      label: 'DRIVER',
+      sub: 'seat ROW_1_LEFT',
+      children: [
+        { label: 'DISPLAY_TYPE_MAIN', sub: 'centre stack' },
+        { label: 'INSTRUMENT_CLUSTER', sub: 'display' },
+        { label: 'user 10', sub: '' },
+      ],
+    },
+    {
+      label: 'FRONT_PASSENGER',
+      sub: 'seat ROW_1_RIGHT',
+      children: [
+        { label: 'DISPLAY_TYPE_MAIN', sub: 'passenger screen' },
+        { label: 'user 11', sub: '' },
+      ],
+    },
+    {
+      label: 'REAR_PASSENGER_LEFT',
+      sub: 'seat ROW_2_LEFT',
+      children: [
+        { label: 'DISPLAY_TYPE_MAIN', sub: 'rear entertainment' },
+        { label: 'user 12', sub: '' },
+      ],
+    },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 340" aria-label="Three occupant zones, each tying together a seat, one or more displays and a user">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>A zone is a seat that can have a user and one or more displays</Label>
+
+      {zones.map((z, zi) => (
+        <g key={z.label}>
+          <Box x={cols[zi]} y={zoneY} w={colW} h={zoneH} label={z.label} sub={z.sub} tone="accent" />
+          {z.children.map((c, ci) => (
+            <g key={c.label}>
+              <Arrow x1={cols[zi] + colW / 2} y1={ci === 0 ? zoneY + zoneH + 4 : childY(ci - 1) + childH + 4} x2={cols[zi] + colW / 2} y2={childY(ci) - 4} />
+              <Box x={cols[zi]} y={childY(ci)} w={colW} h={childH} label={c.label} sub={c.sub || undefined} />
+            </g>
+          ))}
+        </g>
+      ))}
+
+      <rect x={24} y={300} width={672} height={26} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={317} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        three zones, five displays, three simultaneous users — none of them numbered the same
+      </text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------------------- projection tree -- */
+
+export function ProjectionAppTree() {
+  const rootX = 190, rootY = 20, rootW = 340, rootH = 46
+  const childY = 116, childH = 50
+  const children = [
+    { x: 24, w: 156, label: 'Native media app' },
+    { x: 196, w: 156, label: 'Native navigation' },
+    { x: 368, w: 110, label: 'Settings' },
+    { x: 494, w: 202, label: 'Projection app', sub: 'hosts the phone session', tone: 'accent' as const },
+  ]
+  const grandY = 216
+  return (
+    <svg {...svgProps} viewBox="0 0 720 300" aria-label="Native AAOS apps sit alongside a projection app, which is just another app to the vehicle's own Android and hosts the phone's UI streamed in as pixels">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>The projected session is just another app in this tree, nothing more privileged</Label>
+
+      <Box x={rootX} y={rootY} w={rootW} h={rootH} label="AAOS" sub="the vehicle&rsquo;s own Android" tone="muted" />
+      {children.map((c) => (
+        <g key={c.label}>
+          <Arrow x1={rootX + rootW / 2} y1={rootY + rootH + 2} x2={c.x + c.w / 2} y2={childY - 4} accent={c.label === 'Projection app'} />
+          <Box x={c.x} y={childY} w={c.w} h={childH} label={c.label} sub={c.sub} tone={c.tone ?? 'default'} />
+        </g>
+      ))}
+
+      <Arrow x1={595} y1={childY + childH + 2} x2={595} y2={grandY - 4} accent />
+      <Box x={475} y={grandY} w={240} h={54} label="Phone&rsquo;s UI" sub="pixels in, touch events back" tone="vendor" dashed />
+
+      <rect x={24} y={264} width={672} height={26} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={281} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        everything outside that window — status bar, climate panel — is still the car&rsquo;s own Android
+      </text>
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ V2X direct broadcast -- */
+
+export function V2xDirectBroadcast() {
+  const y = 90
+  const h = 58
+  const stops = [
+    { x: 24, w: 130, label: 'Vehicle B', sub: 'hard braking event' },
+    { x: 178, w: 150, label: 'V2X radio', sub: 'broadcasts a BSM' },
+    { x: 352, w: 150, label: 'PC5 / sidelink', sub: 'direct radio link', tone: 'accent' as const },
+    { x: 526, w: 170, label: 'Vehicle A', sub: 'receives, same range' },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 280" aria-label="A hard-braking safety message broadcast directly between two vehicles over PC5 sidelink, with no cell tower and no server round trip">
+      <DiagramDefs />
+      <Label x={24} y={26} anchor="start" tone="muted" size={12}>No cell tower, no server — one radio hop, in the same instant</Label>
+
+      {stops.map((s, i) => (
+        <g key={s.label}>
+          <Box x={s.x} y={y} w={s.w} h={h} label={s.label} sub={s.sub} tone={s.tone ?? 'default'} />
+          {i < stops.length - 1 && <Arrow x1={s.x + s.w + 4} y1={y + h / 2} x2={stops[i + 1].x - 6} y2={y + h / 2} accent />}
+        </g>
+      ))}
+
+      <Box x={200} y={220} w={320} h={44} label="Safety-relevant application" sub="typically not a general Android app" tone="muted" />
+      <Arrow x1={526 + 85} y1={y + h + 4} x2={200 + 260} y2={216} />
+
+      <rect x={454} y={20} width={220} height={44} rx={6} fill="none" stroke="var(--border)" strokeDasharray="4 4" />
+      <text x={564} y={38} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10} fontFamily="var(--font-mono)">cell tower → server</text>
+      <text x={564} y={54} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10} fontFamily="var(--font-mono)">never involved at all</text>
+      <line x1={462} y1={28} x2={666} y2={56} stroke="var(--fg-subtle)" strokeWidth={1.25} opacity={0.7} />
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------- driving-state restriction chain -- */
+
+export function DrivingStateRestrictionPipeline() {
+  const rows = [
+    { label: 'VHAL properties', sub: 'PERF_VEHICLE_SPEED · GEAR_SELECTION · PARKING_BRAKE_ON', out: undefined, tone: 'muted' as const },
+    { label: 'CarDrivingStateService', sub: 'derives one driving state', out: ['PARKED · IDLING', 'MOVING · UNKNOWN'], tone: 'accent' as const },
+    { label: 'CarUxRestrictionsManagerService', sub: 'maps state to restrictions', out: 'restriction flags', tone: 'accent' as const },
+    { label: 'CarPackageManager', sub: 'enforces the allowlist', out: 'blocks non-DO', tone: 'default' as const },
+  ]
+  const H = 54
+  const G = 30
+  const y = (i: number) => 40 + i * (H + G)
+  return (
+    <svg {...svgProps} viewBox="0 0 720 356" aria-label="VHAL speed, gear and parking-brake properties deriving a driving state, which produces restriction flags, which CarPackageManager enforces by blocking non-distraction-optimised activities">
+      <DiagramDefs />
+      <Label x={24} y={20} anchor="start" tone="muted" size={12}>A fault three layers down shows up as a symptom at the top</Label>
+
+      {rows.map((r, i) => (
+        <g key={r.label}>
+          <Box x={130} y={y(i)} w={460} h={H} label={r.label} sub={r.sub} tone={r.tone} />
+          {Array.isArray(r.out) ? (
+            r.out.map((line, li) => (
+              <text key={line} x={114} y={y(i) + H / 2 + (li === 0 ? -7 : 7)} textAnchor="end" dominantBaseline="middle" fill="var(--fg-subtle)" fontSize={9.5} fontFamily="var(--font-mono)">
+                {line}
+              </text>
+            ))
+          ) : r.out ? (
+            <text x={114} y={y(i) + H / 2} textAnchor="end" dominantBaseline="middle" fill="var(--fg-subtle)" fontSize={9.5} fontFamily="var(--font-mono)">
+              {r.out}
+            </text>
+          ) : null}
+          {i < rows.length - 1 && <Arrow x1={360} y1={y(i) + H + 4} x2={360} y2={y(i + 1) - 4} accent />}
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ binder pool fan-in -- */
+
+export function BinderPoolFanIn() {
+  const srcH = 44
+  const sources = [
+    { y: 44, label: 'App A', sub: 'subscribes PERF_VEHICLE_SPEED' },
+    { y: 100, label: 'App B', sub: 'subscribes HVAC_TEMPERATURE_SET' },
+    { y: 156, label: 'Cluster', sub: 'subscribes ENGINE_RPM', tone: 'accent' as const },
+  ]
+  const pool = { x: 300, y: 90, w: 220, h: 66 }
+  return (
+    <svg {...svgProps} viewBox="0 0 720 300" aria-label="App A, App B and the cluster all subscribing at once, fanning into the same bounded, shared CarService Binder thread pool">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>Every one of these calls is individually fast and well-behaved</Label>
+
+      {sources.map((s) => (
+        <g key={s.label}>
+          <Box x={24} y={s.y} w={220} h={srcH} label={s.label} sub={s.sub} tone={s.tone ?? 'default'} />
+          <Arrow x1={248} y1={s.y + srcH / 2} x2={pool.x - 4} y2={pool.y + pool.h / 2} accent={s.label === 'Cluster'} />
+        </g>
+      ))}
+      <Box x={576} y={100} w={120} h={44} label="+5 more apps" sub="same boot window" tone="muted" dashed />
+      <Arrow x1={576} y1={122} x2={pool.x + pool.w + 4} y2={pool.y + pool.h / 2} dashed />
+
+      <Box x={pool.x} y={pool.y} w={pool.w} h={pool.h} label="CarService Binder pool" sub="bounded · shared by every app" tone="accent" />
+
+      <rect x={24} y={196} width={672} height={70} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={216} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        the pool is not idle waiting for a slow outlier — it is simply full
+      </text>
+      <text x={360} y={234} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">
+        the sixth arriving call queues because the previous five have not finished yet
+      </text>
+      <text x={360} y={252} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">
+        none of the apps above did anything wrong
+      </text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------------- binder pool exhausted trace -- */
+
+export function BinderPoolExhaustedTrace() {
+  const rowH = 38
+  const gap = 10
+  const y = (i: number) => 56 + i * (rowH + gap)
+  const threads = ['Binder:1234_1', 'Binder:1234_2', 'Binder:1234_3', 'Binder:1234_4']
+  const bottom = y(threads.length - 1) + rowH
+  return (
+    <svg {...svgProps} viewBox="0 0 720 320" aria-label="A Perfetto trace showing all four of com.android.car's Binder threads blocked in getProperty, with the pool exhausted and every other caller now waiting">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>com.android.car — every Binder thread in the same state at once</Label>
+
+      {threads.map((t, i) => (
+        <Box key={t} x={140} y={y(i)} w={460} h={rowH} label={t} sub="blocked in getProperty" tone="muted" dashed />
+      ))}
+
+      <Arrow x1={370} y1={bottom + 34} x2={370} y2={bottom + 4} accent />
+      <text x={370} y={bottom + 52} textAnchor="middle" fill="var(--accent)" fontSize={11} fontWeight={600} fontFamily="var(--font-display)">
+        pool exhausted
+      </text>
+      <text x={370} y={bottom + 68} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        every other caller now waits
+      </text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------------------- boot health gate -- */
+
+export function BootHealthGate() {
+  const colW = 420
+  const x = (720 - colW) / 2
+  const h = 42
+  const gap = 14
+  const stages = [
+    { label: 'Boot completes', tone: 'muted' as const },
+    { label: 'Car Service reachable?', tone: 'default' as const },
+    { label: 'Vehicle HAL registered?', tone: 'default' as const },
+    { label: 'Display composing frames?', tone: 'default' as const },
+    { label: 'Critical services responding?', tone: 'accent' as const },
+  ]
+  const y = (i: number) => 30 + i * (h + gap)
+  const gateBottom = y(stages.length - 1) + h
+  const branchY = gateBottom + 54
+  return (
+    <svg {...svgProps} viewBox="0 0 720 430" aria-label="A post-update boot health gate: if Car Service, the Vehicle HAL, the display and critical services all check out, the boot is marked successful, otherwise it is left unmarked so the bootloader reverts">
+      <DiagramDefs />
+      <Label x={24} y={20} anchor="start" tone="muted" size={12}>Every check has to pass — one failure is enough to withhold the mark</Label>
+
+      {stages.map((s, i) => (
+        <g key={s.label}>
+          <Box x={x} y={y(i)} w={colW} h={h} label={s.label} tone={s.tone} />
+          {i < stages.length - 1 && <Arrow x1={360} y1={y(i) + h + 4} x2={360} y2={y(i + 1) - 4} accent={i >= 1} />}
+        </g>
+      ))}
+
+      <Arrow x1={x + 100} y1={gateBottom + 2} x2={170} y2={branchY - 4} accent />
+      <Label x={210} y={(gateBottom + branchY) / 2 + 4} anchor="start" tone="accent">yes</Label>
+
+      <Arrow x1={x + colW - 100} y1={gateBottom + 2} x2={550} y2={branchY - 4} dashed />
+      <Label x={510} y={(gateBottom + branchY) / 2 + 4} anchor="end" tone="subtle">no</Label>
+
+      <Box x={40} y={branchY} w={260} h={54} label="mark-boot-successful" sub="this slot is now trusted" tone="accent" />
+      <Box x={420} y={branchY} w={260} h={54} label="do not mark" sub="bootloader reverts to the other slot" tone="muted" dashed />
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------------------- wake-on-CAN path -- */
+
+export function CanWakePipeline() {
+  const w = 460
+  const x = (720 - w) / 2
+  const h = 46
+  const gap = 12
+  const stages = [
+    { label: 'Door handle touched', tone: 'muted' as const },
+    { label: 'BCM transmits a CAN frame', sub: 'e.g. door unlock request', tone: 'default' as const },
+    { label: 'CAN transceiver interrupt asserts', sub: 'a registered wakeup source', tone: 'accent' as const },
+    { label: 'SoC PMIC exits low-power rail state', tone: 'accent' as const },
+    { label: 'Kernel resume', sub: 'drivers re-init, clocks re-gate on', tone: 'default' as const },
+    { label: 'CarPowerManagementService moves ON', sub: 'CarService resumes', tone: 'accent' as const },
+  ]
+  const y = (i: number) => 40 + i * (h + gap)
+  const bottom = y(stages.length - 1) + h
+  return (
+    <svg {...svgProps} viewBox={`0 0 720 ${bottom + 60}`} aria-label="A representative wake path from a door handle touch through a CAN frame, the transceiver's registered wakeup interrupt, PMIC and kernel resume, to CarPowerManagementService moving the state to ON">
+      <DiagramDefs />
+      <Label x={24} y={20} anchor="start" tone="muted" size={12}>The wake decision is made on the vehicle network, before Android&rsquo;s own resume path ever runs</Label>
+
+      {stages.map((s, i) => (
+        <g key={s.label}>
+          <Box x={x} y={y(i)} w={w} h={h} label={s.label} sub={s.sub} tone={s.tone} />
+          {i < stages.length - 1 && <Arrow x1={x + w / 2} y1={y(i) + h + 2} x2={x + w / 2} y2={y(i + 1) - 4} accent={i >= 1} />}
+        </g>
+      ))}
+
+      <rect x={24} y={bottom + 24} width={672} height={26} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={bottom + 41} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        surfaces come back — cluster and infotainment race the same boot budget as a cold start
+      </text>
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ no-display power policy -- */
+
+export function NoDisplayPolicyFlow() {
+  const w = 480
+  const x = (720 - w) / 2
+  const h = 48
+  const gap = 14
+  const stages = [
+    { label: 'Ignition off, door sensor still armed', tone: 'muted' as const },
+    { label: 'VHAL reports a low-power wake reason', sub: 'to CarPowerManagementService', tone: 'default' as const },
+    { label: 'CPMS applies policy_id_no_display', sub: 'DISPLAY off · AUDIO off · WIFI on', tone: 'accent' as const },
+    { label: 'AP is awake, shows and plays nothing', sub: 'watches only for the next relevant CAN frame', tone: 'muted' as const },
+    { label: 'A real unlock event arrives', tone: 'default' as const },
+    { label: 'CPMS applies policy_id_all_on', sub: 'display and audio power back up together', tone: 'accent' as const },
+  ]
+  const y = (i: number) => 40 + i * (h + gap)
+  const bottom = y(stages.length - 1) + h
+  return (
+    <svg {...svgProps} viewBox={`0 0 720 ${bottom + 32}`} aria-label="A wake-with-no-display flow: the AP stays awake under a power policy that leaves display and audio off, watching only for the CAN frame that justifies fully waking up">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>The AP is technically on for most of this — the policy decides what that is allowed to mean</Label>
+
+      {stages.map((s, i) => (
+        <g key={s.label}>
+          <Box x={x} y={y(i)} w={w} h={h} label={s.label} sub={s.sub} tone={s.tone} />
+          {i < stages.length - 1 && <Arrow x1={x + w / 2} y1={y(i) + h + 2} x2={x + w / 2} y2={y(i + 1) - 4} accent={i >= 1} />}
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------------------- CAN to VHAL bridge -- */
+
+export function CanToVhalBridge() {
+  const y = 90
+  const h = 60
+  const stops = [
+    { x: 20, w: 130, label: 'CAN frame', sub: 'ID 0x123 · 8 bytes' },
+    { x: 166, w: 150, label: 'Gateway / SocketCAN', sub: 'decodes using the DBC' },
+    { x: 332, w: 160, label: 'Databroker', sub: 'Vehicle.Speed = 87.3', tone: 'accent' as const },
+    { x: 508, w: 190, label: 'Mapping layer', sub: 'VSS path → AIDL property', tone: 'accent' as const },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 220" aria-label="A CAN frame decoded by a gateway using its DBC, published on a databroker as a VSS path, then mapped by a translation layer to the AIDL vehicle property PERF_VEHICLE_SPEED">
+      <DiagramDefs />
+      <Label x={24} y={26} anchor="start" tone="muted" size={12}>Three independent translations sit between the wire and your app</Label>
+
+      {stops.map((s, i) => (
+        <g key={s.label}>
+          <Box x={s.x} y={y} w={s.w} h={h} label={s.label} sub={s.sub} tone={s.tone ?? 'default'} />
+          {i < stops.length - 1 && <Arrow x1={s.x + s.w + 4} y1={y + h / 2} x2={stops[i + 1].x - 6} y2={y + h / 2} accent />}
+        </g>
+      ))}
+
+      <rect x={220} y={178} width={280} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={198} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        → PERF_VEHICLE_SPEED, delivered by CarPropertyManager
+      </text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------------------- zonal round trip -- */
+
+export function ZonalRoundTrip() {
+  const h = 54
+  const stops = [
+    { x: 20, w: 168, label: 'Seat motor sensor', sub: 'position' },
+    { x: 208, w: 168, label: 'Zone controller', sub: 'front-left, local bus' },
+    { x: 396, w: 150, label: 'Central compute', sub: 'over Ethernet backbone', tone: 'accent' as const },
+    { x: 566, w: 134, label: 'Seat service', sub: 'applies logic — software', tone: 'accent' as const },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 260" aria-label="A seat-position signal travelling out to a central compute service and a command travelling back down the same path to the seat motor driver">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>The signal travels out to central compute; the command travels back the same way</Label>
+
+      {stops.map((s, i) => (
+        <g key={s.label}>
+          <Box x={s.x} y={70} w={s.w} h={h} label={s.label} sub={s.sub} tone={s.tone ?? 'default'} />
+          {i < stops.length - 1 && <Arrow x1={s.x + s.w + 4} y1={70 + h / 2} x2={stops[i + 1].x - 6} y2={70 + h / 2} accent />}
+        </g>
+      ))}
+
+      <path d="M633 124 C 633 210, 104 210, 104 128" fill="none" stroke="var(--fg-subtle)" strokeWidth={1.4} strokeDasharray="4 4" markerEnd="url(#d-arrow)" />
+      <Label x={368} y={228} tone="subtle">command sent back down the same path</Label>
+
+      <Box x={20} y={158} w={168} h={44} label="Seat motor driver" tone="muted" dashed />
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------------------- CAN gateway filtering -- */
+
+export function CanGatewayFiltering() {
+  const srcY = 40, srcH = 50
+  const gwY = 140, gwH = 56
+  const dstY = 240, dstH = 54
+  return (
+    <svg {...svgProps} viewBox="0 0 720 320" aria-label="A gateway ECU filtering what crosses from infotainment CAN to body CAN, with almost nothing allowed through to powertrain CAN">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>Segmentation limits reach — a forged frame still needs a wire to travel on</Label>
+
+      <Box x={260} y={srcY} w={200} h={srcH} label="Infotainment CAN" tone="muted" />
+      <Arrow x1={360} y1={srcY + srcH + 4} x2={360} y2={gwY - 4} accent />
+
+      <Box x={260} y={gwY} w={200} h={gwH} label="Gateway ECU" sub="filter by ID · rate-limit · direction" tone="accent" />
+
+      <Label x={225} y={gwY - 10} anchor="middle" tone="accent">filtered, limited traffic</Label>
+      <Arrow x1={310} y1={gwY + gwH + 4} x2={140} y2={dstY - 4} accent />
+      <Box x={20} y={dstY} w={240} h={dstH} label="Body CAN" sub="some messages allowed through" tone="default" />
+
+      <Label x={495} y={gwY - 10} anchor="middle" tone="subtle">usually nothing allowed through</Label>
+      <Arrow x1={410} y1={gwY + gwH + 4} x2={560} y2={dstY - 4} dashed />
+      <Box x={460} y={dstY} w={240} h={dstH} label="Powertrain CAN" sub="steering, braking — kept isolated" tone="muted" dashed />
+    </svg>
+  )
+}
+
+/* ----------------------------------------------------------- subscription rate arbitration -- */
+
+export function SubscriptionRateArbitration() {
+  const h = 46
+  const apps = [
+    { y: 48, label: 'App A', sub: 'SENSOR_RATE_UI (5 Hz)' },
+    { y: 110, label: 'App B', sub: 'SENSOR_RATE_NORMAL (1 Hz)' },
+    { y: 172, label: 'App C', sub: 'SENSOR_RATE_FAST (10 Hz)', tone: 'accent' as const },
+  ]
+  const hub = { x: 272, y: 110, w: 200, h }
+  const hal = { x: 528, y: 110, w: 168, h }
+  return (
+    <svg {...svgProps} viewBox="0 0 720 300" aria-label="Three apps requesting different sample rates for the same property, with CarPropertyService opening one HAL subscription at the fastest rate and delivering every event to all three">
+      <DiagramDefs />
+      <Label x={24} y={22} anchor="start" tone="muted" size={12}>One property, three requested rates, one subscription actually opened</Label>
+
+      {apps.map((a) => (
+        <g key={a.label}>
+          <Box x={24} y={a.y} w={200} h={h} label={a.label} sub={a.sub} tone={a.tone ?? 'default'} />
+          <Arrow x1={228} y1={a.y + h / 2} x2={hub.x - 4} y2={hub.y + hub.h / 2} accent={a.label === 'App C'} />
+        </g>
+      ))}
+
+      <Box x={hub.x} y={hub.y} w={hub.w} h={hub.h} label="CarPropertyService" sub="subscribes to the HAL ONCE, at 10 Hz" tone="accent" />
+      <Arrow x1={hub.x + hub.w + 4} y1={hub.y + hub.h / 2} x2={hal.x - 4} y2={hal.y + hal.h / 2} accent />
+      <Box x={hal.x} y={hal.y} w={hal.w} h={hal.h} label="Vehicle HAL" sub="publishes at 10 Hz" />
+
+      <path d="M600 156 C 600 250, 120 250, 114 96" fill="none" stroke="var(--accent)" strokeWidth={1.4} strokeDasharray="4 4" markerEnd="url(#d-arrow-accent)" />
+      <Label x={360} y={252} tone="accent">every event is delivered to A, B and C</Label>
+
+      <rect x={24} y={272} width={672} height={22} rx={5} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={284} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        the slower subscribers now receive events faster than they asked for
+      </text>
+    </svg>
+  )
+}

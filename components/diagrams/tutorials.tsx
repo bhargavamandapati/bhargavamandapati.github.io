@@ -201,7 +201,7 @@ export function VmsPubSub() {
       <Arrow x1={266} y1={y + h / 2 + 12} x2={184} y2={y + h / 2 + 12} dashed />
 
       <Label x={24} y={190} anchor="start">
-        A provider needs no subscribers to exist, and a subscriber needs no provider — the broker outlives both.
+        A provider needs no subscribers, and a subscriber needs no provider — the broker outlives both.
       </Label>
     </svg>
   )
@@ -286,7 +286,7 @@ export function ZygoteForkSequence() {
     <svg {...svgProps} viewBox={`0 0 700 ${bottom + 20}`} aria-label="Zygote forking and specializing into a new app process">
       <DiagramDefs />
       <Label x={24} y={18} anchor="start" tone="muted" size={12}>
-        Seccomp is applied before setuid on purpose — root is more dangerous with a wide syscall table
+        Seccomp after setuid, on purpose — root is more dangerous with a wide syscall table
       </Label>
       {rows.map((r, i) => (
         <g key={r.label}>

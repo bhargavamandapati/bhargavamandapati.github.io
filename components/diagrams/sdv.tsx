@@ -113,13 +113,13 @@ export function SignalVsService() {
 
       <line x1={378} y1={30} x2={378} y2={280} stroke="var(--border)" strokeDasharray="4 4" />
 
-      <Label x={400} y={22} anchor="start" tone="accent" size={12}>Service-oriented — components offer and call</Label>
+      <Label x={400} y={22} anchor="start" tone="accent" size={12}>Service-oriented — offer and call</Label>
       <Box x={400} y={40} w={140} h={50} label="Seat service" sub="offers: setPosition()" tone="accent" />
       <Box x={400} y={104} w={140} h={50} label="Light service" sub="offers: setBeam()" tone="accent" />
       <Box x={572} y={72} w={126} h={50} label="Cockpit app" sub="discovers · calls" />
       <Arrow x1={544} y1={65} x2={568} y2={88} accent both />
       <Arrow x1={544} y1={129} x2={568} y2={106} accent both />
-      <Label x={556} y={172} tone="accent">discovered at runtime · request/response · versioned</Label>
+      <Label x={696} y={172} anchor="end" tone="accent">discovered at runtime · request/response · versioned</Label>
 
       <rect x={22} y={244} width={676} height={44} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
       <text x={360} y={262} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
@@ -218,7 +218,7 @@ export function VssTree() {
   ]
   const H = 38
   return (
-    <svg {...svgProps} viewBox="0 0 720 292" aria-label="The Vehicle Signal Specification is a tree of named signals with types and units">
+    <svg {...svgProps} viewBox="0 0 720 332" aria-label="The Vehicle Signal Specification is a tree of named signals with types and units">
       <DiagramDefs />
       <Label x={22} y={22} anchor="start" tone="muted" size={12}>One shared vocabulary, agreed across ECU, platform and HMI teams</Label>
       {rows.map((r, i) => {
@@ -234,7 +234,7 @@ export function VssTree() {
           </g>
         )
       })}
-      <Label x={360} y={282} tone="subtle">every node carries a datatype, a unit and whether it can be written</Label>
+      <Label x={360} y={318} tone="subtle">every node carries a datatype, a unit and whether it can be written</Label>
     </svg>
   )
 }
@@ -688,7 +688,7 @@ export function ClassicAdaptiveTopology() {
   return (
     <svg {...svgProps} viewBox="0 0 720 320" aria-label="Adaptive and Android share a central compute, connected over Ethernet to Classic zone and powertrain controllers">
       <DiagramDefs />
-      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Classic at the edges where things must be fast and certain; Adaptive and Android in the centre</Label>
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Classic at the edges, fast and deterministic; Adaptive and Android in the centre</Label>
 
       <rect x={140} y={44} width={440} height={92} rx={12} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={1.5} />
       <text x={360} y={66} textAnchor="middle" fill="var(--fg)" fontSize={13.5} fontWeight={600} fontFamily="var(--font-display)">Central compute</text>
@@ -851,6 +851,290 @@ export function PerSignalAccessControl() {
           </g>
         )
       })}
+    </svg>
+  )
+}
+
+/* ------------------------------------------------- cluster rendering paths -- */
+
+export function ClusterRenderNativeFlow() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 170" aria-label="Android sends structured content to the safety guest, which draws every pixel itself before it reaches the display">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>One system draws everything — the safety guest owns every pixel</Label>
+
+      <Box x={20} y={46} w={180} h={60} label="Android" sub="structured content" tone="muted" />
+      <Arrow x1={200} y1={76} x2={276} y2={76} />
+      <Label x={238} y={62} tone="subtle">structured message</Label>
+
+      <Box x={276} y={46} w={200} h={60} label="Safety guest" sub="renders in its own style" tone="accent" />
+      <Arrow x1={476} y1={76} x2={552} y2={76} accent />
+
+      <Box x={552} y={46} w={148} h={60} label="Display" tone="default" />
+
+      <rect x={20} y={128} width={680} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={147} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">cleanest safety argument — but every visual change means a change to certified software</text>
+    </svg>
+  )
+}
+
+export function ClusterRenderStreamedFlow() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 170" aria-label="Android renders its own region into a pixel buffer and streams it to the safety guest, which composites it under its rated layer before the display">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Android renders; the safety guest only composites what arrives</Label>
+
+      <Box x={20} y={46} w={180} h={60} label="Android" sub="renders its region" tone="accent" />
+      <Arrow x1={200} y1={76} x2={276} y2={76} accent />
+      <Label x={238} y={62} tone="accent">pixel buffer</Label>
+
+      <Box x={276} y={46} w={200} h={60} label="Safety guest" sub="composites under rated layer" tone="muted" />
+      <Arrow x1={476} y1={76} x2={552} y2={76} />
+      <Label x={514} y={62} tone="subtle">composites</Label>
+
+      <Box x={552} y={46} w={148} h={60} label="Display" tone="default" />
+
+      <rect x={20} y={128} width={680} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={147} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">no renderer to build twice — but what happens on screen when the stream simply stops?</text>
+    </svg>
+  )
+}
+
+export function ClusterRenderHardwareComposite() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 280" aria-label="Safety guest and Android each render into their own layer; a display controller composites both in hardware, with the rated layer always on top, before the display">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Two layers, composited in silicon — Android cannot touch the rated one</Label>
+
+      <Box x={20} y={44} w={150} h={56} label="Safety guest" tone="accent" />
+      <Box x={20} y={140} w={150} h={56} label="Android" tone="muted" />
+
+      <Arrow x1={170} y1={72} x2={220} y2={72} accent />
+      <Arrow x1={170} y1={168} x2={220} y2={168} />
+
+      <Box x={220} y={44} w={150} h={56} label="Layer 0" sub="rated" tone="accent" />
+      <Box x={220} y={140} w={150} h={56} label="Layer 1" sub="info" tone="muted" />
+
+      <Arrow x1={370} y1={72} x2={428} y2={104} accent />
+      <Arrow x1={370} y1={168} x2={428} y2={136} />
+
+      <Box x={430} y={80} w={150} h={80} label="Display controller" sub="hardware compositing" tone="default" />
+      <Arrow x1={580} y1={120} x2={628} y2={120} accent />
+
+      <Box x={628} y={92} w={72} h={56} label="Display" tone="default" />
+
+      <rect x={20} y={210} width={680} height={44} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={228} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">if Android stops, its layer goes stale or empty — the rated layer is untouched</text>
+      <text x={360} y={244} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">provably, because the compositing happens in hardware Android cannot influence</text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------- SOME/IP sequence detail -- */
+
+export function SomeIpDiscoverySequence() {
+  const clientX = 110
+  const serverX = 610
+  return (
+    <svg {...svgProps} viewBox="0 0 720 270" aria-label="Sequence diagram: a client multicasts a query for a service, the server replies by unicast with its address, then the client subscribes or calls">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The client does not know where the service lives — it asks, and the reply comes straight back</Label>
+
+      <Box x={40} y={38} w={140} h={44} label="Client" tone="muted" />
+      <Box x={540} y={38} w={140} h={44} label="Server" tone="muted" />
+      <line x1={clientX} y1={82} x2={clientX} y2={216} stroke="var(--border)" strokeDasharray="3 4" />
+      <line x1={serverX} y1={82} x2={serverX} y2={216} stroke="var(--border)" strokeDasharray="3 4" />
+
+      <Label x={360} y={110} tone="subtle" size={10}>multicast — who offers SeatService (0x1234, v1.x)?</Label>
+      <Arrow x1={clientX} y1={124} x2={serverX} y2={124} dashed />
+
+      <Label x={360} y={154} tone="accent" size={10}>unicast — I do, at 192.168.1.20:30501 (v1.2)</Label>
+      <Arrow x1={serverX} y1={166} x2={clientX} y2={166} accent />
+
+      <Label x={360} y={196} tone="subtle">subscribe / call</Label>
+      <Arrow x1={clientX} y1={208} x2={serverX} y2={208} />
+
+      <rect x={20} y={232} width={680} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={251} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">the server also offers periodically, unasked — a client that starts late still finds it</text>
+    </svg>
+  )
+}
+
+export function SomeIpMethodCallSequence() {
+  const clientX = 110
+  const serverX = 610
+  return (
+    <svg {...svgProps} viewBox="0 0 720 270" aria-label="Sequence diagram: a client calls setPosition on the server, which replies either ok or an error such as BLOCKED">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>A method can answer back, with a reason — a broadcast signal never could</Label>
+
+      <Box x={40} y={38} w={140} h={44} label="Client" tone="muted" />
+      <Box x={540} y={38} w={140} h={44} label="Server" tone="muted" />
+      <line x1={clientX} y1={82} x2={clientX} y2={216} stroke="var(--border)" strokeDasharray="3 4" />
+      <line x1={serverX} y1={82} x2={serverX} y2={216} stroke="var(--border)" strokeDasharray="3 4" />
+
+      <Label x={360} y={110} tone="subtle" size={10}>setPosition(seat = ROW1_LEFT, position = 42)</Label>
+      <Arrow x1={clientX} y1={124} x2={serverX} y2={124} />
+
+      <Label x={360} y={152} tone="accent">ok</Label>
+      <Arrow x1={serverX} y1={164} x2={clientX} y2={164} accent />
+
+      <Label x={360} y={182} tone="subtle" size={9.5}>or</Label>
+
+      <Label x={360} y={198} tone="muted">error: BLOCKED</Label>
+      <Arrow x1={serverX} y1={210} x2={clientX} y2={210} dashed />
+
+      <rect x={20} y={232} width={680} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={251} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">a meaningful error is the gain a broadcast signal could never give you</text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------- vehicle-to-cloud (MQTT) -- */
+
+export function MqttBridgePipeline() {
+  const targets = [
+    { y: 140, label: 'Fleet analytics' },
+    { y: 190, label: 'Billing' },
+    { y: 240, label: 'Diagnostics' },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 360" aria-label="A signal moves from the vehicle data broker through a bridge process onto an MQTT topic, then a broker fans it out to whichever backend services subscribed">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Left of the broker is in-vehicle; right of it is a subscriber that may not exist yet</Label>
+
+      <Box x={20} y={50} w={130} h={60} label="Databroker" sub="VSS values" tone="muted" />
+      <Arrow x1={150} y1={80} x2={196} y2={80} />
+
+      <Box x={196} y={50} w={150} h={60} label="Bridge" sub="subscribes to exported signals" tone="accent" />
+      <Arrow x1={346} y1={80} x2={392} y2={80} accent />
+
+      <Box x={392} y={50} w={150} h={60} label="MQTT broker" sub="cloud or regional edge" tone="default" />
+
+      <Label x={369} y={132} tone="accent" size={10}>{`topic: vehicle/{vin}/telemetry/speed`}</Label>
+
+      {targets.map((t) => (
+        <g key={t.label}>
+          <Arrow x1={542} y1={80} x2={588} y2={t.y + 20} accent />
+          <Box x={588} y={t.y} w={112} h={40} label={t.label} tone="default" />
+        </g>
+      ))}
+
+      <rect x={20} y={300} width={680} height={40} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={317} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">the bridge decides what is worth exporting</text>
+      <text x={360} y={333} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">nothing downstream can see a signal it never publishes</text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------- OTA campaign flow -- */
+
+export function OtaPackageGeneration() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 250" aria-label="A signed v4.2.1 target-files archive produces both a full OTA package that works from any prior build and an incremental package diffed against v4.2.0 only" >
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>One signed build, two packages — one general, one only valid for a specific starting point</Label>
+
+      <Box x={260} y={40} w={200} h={56} label="v4.2.1 target-files" sub="signed" tone="accent" />
+
+      <Arrow x1={330} y1={96} x2={205} y2={132} />
+      <Arrow x1={390} y1={96} x2={515} y2={132} accent />
+
+      <Box x={20} y={136} w={330} h={60} label="Full OTA package" sub="works from any prior build" tone="default" />
+      <Box x={370} y={136} w={330} h={60} label="Incremental OTA package" sub="diffed against v4.2.0 only" tone="accent" />
+
+      <text x={185} y={214} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">valid for a vehicle on any prior build</text>
+      <text x={535} y={214} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">smaller — but only valid if already on</text>
+      <text x={535} y={230} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">exactly v4.2.0</text>
+    </svg>
+  )
+}
+
+export function OtaCanaryHalt() {
+  const stages = [
+    { label: 'Stage 1: 1% of fleet', sub: '4,200 vehicles updated', tone: 'default' as const },
+    { label: '31 crash-loop reports', sub: '0.74% error rate, 6 hrs', tone: 'muted' as const },
+    { label: '0.74% > 0.5%', sub: 'haltOnErrorRateAbove exceeded', tone: 'muted' as const },
+    { label: 'Campaign paused', sub: 'no further vehicles receive it', tone: 'accent' as const },
+  ]
+  const W = 156
+  return (
+    <svg {...svgProps} viewBox="0 0 720 190" aria-label="A canary rollout stage crosses its configured error-rate threshold and the campaign automatically pauses before any further vehicles receive the package">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The halt is automatic — it fires on the numbers, not on someone noticing</Label>
+      {stages.map((s, i) => {
+        const x = 22 + i * (W + 14)
+        return (
+          <g key={s.label}>
+            <Box x={x} y={48} w={W} h={72} label={s.label} sub={s.sub} tone={s.tone} />
+            {i < stages.length - 1 && <Arrow x1={x + W + 2} y1={84} x2={x + W + 12} y2={84} />}
+          </g>
+        )
+      })}
+      <rect x={22} y={140} width={676} height={36} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={162} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">31 vehicles caught in a 48-hour hold is contained — the same defect fleet-wide is a headline</text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------- AUTOSAR Classic build -- */
+
+export function AutosarBuildPipeline() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 290" aria-label="Function code and ARXML configuration both feed a build-time generator, which emits C that is compiled into the ECU binary">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The generator, not a settings file, is what turns ARXML into a running ECU</Label>
+
+      <Box x={20} y={44} w={170} h={56} label="Your function code" sub="the SWC" tone="muted" />
+      <Box x={20} y={148} w={170} h={72} label="ARXML configuration" sub="signals, timing, bus, ECU" tone="muted" />
+
+      <Arrow x1={190} y1={72} x2={206} y2={118} accent />
+      <Arrow x1={190} y1={184} x2={206} y2={154} accent />
+
+      <Box x={210} y={92} w={150} h={88} label="Generator" sub="runs at build time" tone="accent" />
+
+      <Arrow x1={362} y1={136} x2={398} y2={136} />
+      <Box x={400} y={108} w={140} h={56} label="Generated C" tone="default" />
+
+      <Arrow x1={542} y1={136} x2={576} y2={136} accent />
+      <Box x={580} y={100} w={120} h={72} label="Compiled binary" sub="flashed to the ECU" tone="accent" />
+
+      <rect x={20} y={232} width={680} height={40} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={249} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">one new signal means the generator re-runs on every ECU sharing that message</text>
+      <text x={360} y={265} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">there is no settings file to hot-reload — this whole pipeline is the configuration</text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------- Yocto meta-layers -- */
+
+export function YoctoLayerStack() {
+  const layers = [
+    { label: 'meta', sub: 'Yocto core recipes' },
+    { label: 'meta-poky', sub: 'reference distro policy' },
+    { label: 'meta-openembedded', sub: 'community recipes' },
+    { label: 'meta-<soc-vendor>', sub: 'kernel, bootloader, GPU drivers' },
+    { label: 'meta-agl', sub: 'automotive services and profiles', tone: 'accent' as const },
+    { label: 'meta-<oem>', sub: 'your apps, your branding, your policy', tone: 'accent' as const },
+  ]
+  const H = 42
+  const G = 8
+  const top = 44
+  const stackBottom = top + layers.length * (H + G) - G
+  const bitbakeY = stackBottom + 30
+  const outputY = bitbakeY + 40 + 30
+  const total = outputY + 64 + 20
+  return (
+    <svg {...svgProps} viewBox={`0 0 720 ${total}`} aria-label="Yocto layers stacked from generic core recipes to OEM-specific applications, built by bitbake into an image, SDK, licence manifest and SBOM">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Generic at the bottom, yours at the top — bitbake resolves the whole stack</Label>
+      {layers.map((l, i) => (
+        <Box key={l.label} x={140} y={top + i * (H + G)} w={440} h={H} label={l.label} sub={l.sub} tone={l.tone ?? 'default'} />
+      ))}
+      <Arrow x1={360} y1={stackBottom + 4} x2={360} y2={bitbakeY - 4} accent />
+      <Box x={280} y={bitbakeY} w={160} h={40} label="bitbake" tone="accent" />
+      <Arrow x1={360} y1={bitbakeY + 44} x2={360} y2={outputY - 4} accent />
+      <Box x={160} y={outputY} w={400} h={64} label="Output" sub="image · SDK · licence manifest · SBOM" tone="default" />
     </svg>
   )
 }
