@@ -477,3 +477,291 @@ export function SdvStack() {
     </svg>
   )
 }
+
+/* --------------------------------------------- vulnerability response flow -- */
+
+export function VulnerabilityResponsePipeline() {
+  const stages = [
+    { label: 'Report arrives', sub: 'researcher · supplier · CVE feed · bug bounty' },
+    { label: 'Triage: are we affected?', sub: 'SBOM makes this minutes, not weeks' },
+    { label: 'Assess: exploitable here?', sub: 'reachable? behind the gateway? · impact if exploited' },
+    { label: 'Fix + verify', sub: 'including a regression test' },
+    { label: 'Safety impact analysis', sub: 'does this touch the safety case?' },
+    { label: 'Release + staged rollout', sub: 'R156 evidence produced here' },
+    { label: 'Confirm fleet coverage', sub: 'who has not updated, and why?' },
+  ]
+  const W = 420
+  const H = 56
+  const G = 22
+  const x = 150
+  const top = 44
+  const bottom = top + stages.length * (H + G) - G
+  return (
+    <svg {...svgProps} viewBox={`0 0 720 ${bottom + 66}`} aria-label="The path a security vulnerability takes from first report to confirmed fleet coverage">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Seven stages — an SBOM only speeds up the second one</Label>
+      {stages.map((s, i) => {
+        const y = top + i * (H + G)
+        return (
+          <g key={s.label}>
+            <Box x={x} y={y} w={W} h={H} label={s.label} sub={s.sub} tone={i === 4 ? 'accent' : 'default'} />
+            {i < stages.length - 1 && <Arrow x1={360} y1={y + H} x2={360} y2={y + H + G} accent={i === 4} />}
+          </g>
+        )
+      })}
+      <rect x={22} y={bottom + 14} width={676} height={40} rx={6} fill="var(--accent-soft)" stroke="var(--accent)" />
+      <text x={360} y={bottom + 30} textAnchor="middle" fill="var(--fg)" fontSize={11} fontFamily="var(--font-mono)">the safety impact step is what turns a routine patch into a recall decision</text>
+      <text x={360} y={bottom + 46} textAnchor="middle" fill="var(--fg-muted)" fontSize={11} fontFamily="var(--font-mono)">and coverage is never assumed — it is confirmed, vehicle by vehicle</text>
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------- ARXML to VSS gen -- */
+
+export function ArxmlToVssGeneration() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 320" aria-label="ARXML and a reviewed overlay generate the VSS tree, which in turn generates several downstream artefacts">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>One generated tree feeds every downstream artefact — nothing here is hand-edited</Label>
+
+      <Box x={60} y={44} w={260} h={56} label="ARXML" sub="from the ECU team" tone="muted" />
+      <Box x={400} y={44} w={260} h={56} label="Reviewed overlay" sub="rates · permissions · area mappings" tone="vendor" dashed />
+
+      <Arrow x1={210} y1={100} x2={300} y2={150} accent />
+      <Arrow x1={550} y1={100} x2={420} y2={150} accent />
+      <Label x={360} y={122} tone="accent">generate</Label>
+
+      <rect x={250} y={154} width={220} height={60} rx={12} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={1.5} />
+      <text x={360} y={180} textAnchor="middle" fill="var(--fg)" fontSize={13.5} fontWeight={600} fontFamily="var(--font-display)">VSS tree</text>
+      <text x={360} y={199} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">generated definitions</text>
+
+      {[
+        { x: 22, label: 'Vehicle HAL', sub: 'property configuration' },
+        { x: 194, label: 'Service interfaces', sub: 'definitions' },
+        { x: 366, label: 'Data broker', sub: 'configuration' },
+        { x: 538, label: 'Client libraries', sub: 'for app teams' },
+      ].map((o) => (
+        <g key={o.label}>
+          <Box x={o.x} y={252} w={160} h={52} label={o.label} sub={o.sub} />
+          <Arrow x1={360} y1={214} x2={o.x + 80} y2={248} />
+        </g>
+      ))}
+
+      <Label x={360} y={230} tone="subtle">generate</Label>
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------ entitlement -- */
+
+export function EntitlementFlow() {
+  const w = 220
+  return (
+    <svg {...svgProps} viewBox="0 0 720 380" aria-label="How a purchase becomes a signed entitlement token that unlocks a feature on the vehicle">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The token is the product — everything after it is verification</Label>
+
+      <Box x={250} y={40} w={w} h={54} label="Purchase" sub="app, web, in-car store" tone="muted" />
+      <Arrow x1={360} y1={94} x2={360} y2={128} />
+      <Label x={378} y={112} anchor="start" tone="subtle">authority: which VIN owns what, until when</Label>
+
+      <Box x={250} y={132} w={w} h={54} label="Entitlement service (cloud)" sub="issues the token" tone="accent" />
+      <Arrow x1={360} y1={186} x2={360} y2={220} accent />
+      <Label x={378} y={204} anchor="start" tone="accent">signed token, bound to VIN, with expiry</Label>
+
+      <Box x={250} y={224} w={w} h={54} label="Vehicle entitlement mgr" sub="verifies signature, stores securely" tone="accent" />
+
+      <Arrow x1={300} y1={278} x2={140} y2={316} />
+      <Arrow x1={360} y1={278} x2={360} y2={316} />
+      <Arrow x1={420} y1={278} x2={580} y2={316} />
+
+      <Box x={40} y={320} w={200} h={50} label="Feature flag" sub="in the ECU · performs the function" />
+      <Box x={260} y={320} w={200} h={50} label="Capability" sub="in the VHAL · permits the write" />
+      <Box x={480} y={320} w={200} h={50} label="UI visibility" sub="in the app · presents the control" />
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------- SIL rig arch -- */
+
+export function SilRigArchitecture() {
+  const boxes = [
+    { x: 40, label: 'Android emulator', sub: 'AAOS', tag: 'VHAL' },
+    { x: 264, label: 'Cluster renderer', sub: '', tag: 'subscribe' },
+    { x: 488, label: 'Test scripts', sub: 'pytest', tag: 'set' },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 380" aria-label="A software-in-the-loop rig on a laptop: three clients feeding a data broker backed by a vehicle simulation">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Everything below runs on a laptop — no ECU, no vehicle</Label>
+
+      <rect x={20} y={38} width={680} height={302} rx={14} fill="none" stroke="var(--border-strong)" strokeWidth={1.4} strokeDasharray="6 5" />
+      <text x={40} y={58} fill="var(--fg-muted)" fontSize={11} fontWeight={600} fontFamily="var(--font-display)">your laptop</text>
+
+      {boxes.map((b) => (
+        <g key={b.label}>
+          <Box x={b.x} y={72} w={192} h={60} label={b.label} sub={b.sub || undefined} tone="muted" />
+          <Arrow x1={b.x + 96} y1={132} x2={310 + (b.x - 264) * 0.18} y2={190} />
+          <Label x={b.x + 96} y={148} tone="subtle">{b.tag}</Label>
+        </g>
+      ))}
+
+      <Box x={260} y={196} w={200} h={58} label="Data broker (VSS)" sub="holds current values" tone="accent" />
+      <Arrow x1={360} y1={254} x2={360} y2={288} accent />
+
+      <Box x={220} y={292} w={280} h={64} label="Vehicle simulation" sub="or recorded traces" tone="accent" />
+      <Label x={520} y={316} anchor="start" tone="subtle">drive cycles, faults,</Label>
+      <Label x={520} y={330} anchor="start" tone="subtle">battery models</Label>
+    </svg>
+  )
+}
+
+/* ------------------------------------------ consolidated cockpit hypervisor -- */
+
+export function ConsolidatedCockpitHypervisor() {
+  const guests = [
+    { x: 40, label: 'Guest: RTOS', sub: 'vehicle net · safety fns', note: 'early boot' },
+    { x: 264, label: 'Guest: AAOS', sub: 'infotainment apps · media', note: '' },
+    { x: 488, label: 'Guest: cluster/safety', sub: 'telltales, ADAS view', note: 'ASIL-rated' },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 300" aria-label="Three guest operating systems on one hypervisor, joined by shared memory and virtio">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>A typical consolidated cockpit — one SoC, three very different guests</Label>
+
+      {guests.map((g) => (
+        <g key={g.label}>
+          <Box x={g.x} y={44} w={192} h={92} label={g.label} sub={g.sub} tone={g.note ? 'accent' : 'default'} />
+          {g.note && (
+            <text x={g.x + 96} y={152} textAnchor="middle" fill="var(--accent)" fontSize={10.5} fontWeight={600} fontFamily="var(--font-mono)">{g.note}</text>
+          )}
+        </g>
+      ))}
+
+      <rect x={30} y={172} width={660} height={52} rx={10} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={1.5} />
+      <text x={360} y={194} textAnchor="middle" fill="var(--fg)" fontSize={13.5} fontWeight={600} fontFamily="var(--font-display)">Hypervisor</text>
+      <text x={360} y={213} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">partitions CPU, memory and devices per guest</text>
+
+      <Box x={30} y={240} w={660} h={44} label="Shared memory / virtio" sub="the only path between guests" tone="muted" />
+      {guests.map((g) => <Arrow key={g.x} x1={g.x + 96} y1={136} x2={g.x + 96} y2={170} />)}
+      <Arrow x1={360} y1={224} x2={360} y2={236} />
+    </svg>
+  )
+}
+
+/* --------------------------------------------------- A/B update decision -- */
+
+export function AbUpdateDecisionFlow() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 340" aria-label="Slot B is written and booted, then either becomes active or the vehicle falls back to slot A automatically">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The running slot is never touched — that is what makes the fallback safe</Label>
+
+      <Box x={60} y={44} w={280} h={60} label="Slot A (running)" sub="system, vendor, product · untouched" tone="muted" />
+      <Box x={380} y={44} w={280} h={60} label="Slot B (idle)" sub="new image written while driving" tone="accent" />
+
+      <Arrow x1={200} y1={104} x2={330} y2={150} />
+      <Arrow x1={520} y1={104} x2={390} y2={150} accent />
+      <Label x={360} y={128} tone="subtle">reboot into B</Label>
+
+      <Box x={250} y={154} w={220} h={56} label="Boots and marks good?" tone="default" />
+
+      <Arrow x1={300} y1={210} x2={190} y2={254} accent />
+      <Arrow x1={420} y1={210} x2={550} y2={254} />
+      <Label x={230} y={230} tone="accent">yes</Label>
+      <Label x={492} y={230} tone="subtle">no</Label>
+
+      <Box x={70} y={258} w={240} h={56} label="B becomes active" tone="accent" />
+      <Box x={410} y={258} w={260} h={56} label="Fall back to A automatically" tone="muted" />
+    </svg>
+  )
+}
+
+/* ------------------------------------------- Classic/Adaptive topology -- */
+
+export function ClassicAdaptiveTopology() {
+  const zones = [
+    { x: 40, label: 'Zone (front) — Classic', bus: 'CAN, LIN', endpoint: 'sensors' },
+    { x: 268, label: 'Zone (rear) — Classic', bus: 'CAN', endpoint: 'actuators' },
+    { x: 496, label: 'Powertrain — Classic', bus: 'CAN, FlexRay', endpoint: 'inverter, motors' },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 320" aria-label="Adaptive and Android share a central compute, connected over Ethernet to Classic zone and powertrain controllers">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Classic at the edges where things must be fast and certain; Adaptive and Android in the centre</Label>
+
+      <rect x={140} y={44} width={440} height={92} rx={12} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={1.5} />
+      <text x={360} y={66} textAnchor="middle" fill="var(--fg)" fontSize={13.5} fontWeight={600} fontFamily="var(--font-display)">Central compute</text>
+      <text x={360} y={86} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">Adaptive: ADAS stack, sensor fusion, gateway</text>
+      <text x={360} y={103} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">Android: cluster + infotainment</text>
+      <text x={360} y={120} textAnchor="middle" fill="var(--accent)" fontSize={10.5} fontFamily="var(--font-mono)">both on a hypervisor, plus a safety island</text>
+
+      <Arrow x1={360} y1={136} x2={360} y2={158} accent />
+      <Label x={360} y={150} tone="accent">Automotive Ethernet, SOME/IP</Label>
+
+      {zones.map((z) => (
+        <g key={z.label}>
+          <Arrow x1={360} y1={162} x2={z.x + 92} y2={200} accent={z.x === 268} />
+          <Box x={z.x} y={204} w={184} h={54} label={z.label} tone="default" />
+          <text x={z.x + 92} y={276} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">{z.bus}</text>
+          <text x={z.x + 92} y={294} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">{z.endpoint}</text>
+          <Arrow x1={z.x + 92} y1={258} x2={z.x + 92} y2={266} />
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+/* -------------------------------------------- monolithic vs microkernel -- */
+
+export function MonolithicVsMicrokernel() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 300" aria-label="A monolithic kernel where a bad driver panics the whole system, compared with a microkernel where a bad driver is a restartable process">
+      <DiagramDefs />
+
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>MONOLITHIC (Linux, Android)</Label>
+      <Box x={30} y={44} w={300} h={44} label="Applications" tone="default" />
+      <Box x={30} y={88} w={300} h={68} label="Kernel space" sub="drivers · fs · net · mm — one address space" tone="muted" />
+      <Label x={180} y={182} tone="subtle">a bad driver panics</Label>
+      <Label x={180} y={196} tone="subtle">the whole system</Label>
+
+      <line x1={365} y1={30} x2={365} y2={260} stroke="var(--border)" strokeDasharray="4 4" />
+
+      <Label x={398} y={22} anchor="start" tone="accent">MICROKERNEL (QNX)</Label>
+      <Box x={398} y={44} w={140} h={48} label="Apps" sub="user space" />
+      <Box x={558} y={44} w={140} h={48} label="Drivers" sub="user space" />
+      <Arrow x1={438} y1={92} x2={470} y2={124} accent />
+      <Arrow x1={618} y1={92} x2={586} y2={124} accent />
+      <Label x={556} y={104} tone="accent">message</Label>
+
+      <Box x={398} y={128} w={300} h={54} label="Microkernel" sub="scheduling · IPC · memory protection" tone="accent" />
+      <Label x={548} y={198} tone="accent">a bad driver is a process</Label>
+      <Label x={548} y={212} tone="accent">that can be restarted</Label>
+
+      <rect x={22} y={238} width={676} height={40} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={254} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">same silicon, same drivers — the difference is what a crash takes down with it</text>
+      <text x={360} y={270} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">that is the whole argument for putting safety functions on a microkernel</text>
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------ zero trust zones -- */
+
+export function ZeroTrustSegmentation() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 320" aria-label="Three trust tiers: untrusted apps and connectivity, the cockpit platform, and the vehicle domain, separated by a narrow interface and a gateway">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Trust decreases toward the edge; the gateway is the only door inward</Label>
+
+      <Box x={100} y={44} w={520} h={64} label="Untrusted" sub="apps, browser, Bluetooth, USB, media, connected services" tone="muted" />
+      <Arrow x1={360} y1={108} x2={360} y2={148} />
+      <Label x={378} y={128} anchor="start" tone="subtle">narrow, validated interface</Label>
+
+      <Box x={140} y={152} w={440} h={56} label="Cockpit platform (Android, IVI)" tone="default" />
+      <Arrow x1={360} y1={208} x2={360} y2={248} accent />
+      <Label x={378} y={228} anchor="start" tone="accent">gateway: filters, rate-limits, authenticates</Label>
+
+      <Box x={100} y={252} w={520} h={64} label="Vehicle domain" sub="powertrain · chassis · body · ADAS" tone="accent" />
+    </svg>
+  )
+}

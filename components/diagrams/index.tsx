@@ -753,3 +753,244 @@ export function SignalPathFull() {
     </svg>
   )
 }
+
+/* ------------------------------------------------------ audio config layering -- */
+
+export function AudioConfigLayering() {
+  const w = 380
+  const x = (720 - w) / 2
+  const h = 64
+  const y1 = 54
+  const y2 = 190
+  return (
+    <svg {...svgProps} viewBox="0 0 720 360" aria-label="audio_policy_configuration.xml declaring output devices, feeding into car_audio_configuration.xml which groups them into zones">
+      <DiagramDefs />
+      <Label x={24} y={24} anchor="start" tone="muted" size={12}>Two files, two owners, joined by one address string</Label>
+
+      <Box x={x} y={y1} w={w} h={h} label="audio_policy_configuration.xml" sub="audio HAL — declares output devices (Android's view)" tone="accent" />
+      <Arrow x1={x + w / 2} y1={y1 + h + 4} x2={x + w / 2} y2={y2 - 4} accent />
+      <Label x={x + w / 2 + 20} y={(y1 + h + y2) / 2 - 9} anchor="start">declares addresses:</Label>
+      <Label x={x + w / 2 + 20} y={(y1 + h + y2) / 2 + 9} anchor="start" tone="accent">bus0_media_out, bus1_navigation_out, …</Label>
+
+      <Box x={x} y={y2} w={w} h={h} label="car_audio_configuration.xml" sub="CarAudioService — groups devices into zones (car's view)" />
+
+      <rect x={24} y={284} width={672} height={48} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={302} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        car_audio_configuration.xml references those SAME address strings
+      </text>
+      <text x={360} y={318} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">
+        one character off in either file → silence, no exception, no log
+      </text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------- echo cancellation pipeline -- */
+
+export function EchoCancellationPipeline() {
+  const speaker = { x: 60, y: 40, w: 220, h: 54 }
+  const mic = { x: 440, y: 40, w: 220, h: 54 }
+  const aec = { x: 210, y: 150, w: 300, h: 60 }
+  const ns = { x: 210, y: 250, w: 300, h: 54 }
+  const out = { x: 170, y: 340, w: 380, h: 54 }
+  return (
+    <svg {...svgProps} viewBox="0 0 720 420" aria-label="Speaker output and microphone capture both feeding acoustic echo cancellation, then noise suppression, then the processed signal reaching the modem stack">
+      <DiagramDefs />
+      <Label x={24} y={24} anchor="start" tone="muted" size={12}>The mic&rsquo;s capture and a copy of what the speaker is playing, both go into AEC</Label>
+
+      <Box x={speaker.x} y={speaker.y} w={speaker.w} h={speaker.h} label="Speaker output" sub="call / media playback" />
+      <Box x={mic.x} y={mic.y} w={mic.w} h={mic.h} label="Microphone" sub="raw capture" />
+      <Box x={aec.x} y={aec.y} w={aec.w} h={aec.h} label="AEC" sub="subtract predicted echo" tone="accent" />
+
+      <Arrow x1={mic.x + mic.w / 2 - 30} y1={mic.y + mic.h} x2={aec.x + aec.w - 30} y2={aec.y} />
+      <Label x={mic.x - 6} y={mic.y + mic.h + 20} anchor="end">raw capture</Label>
+
+      <Arrow x1={speaker.x + speaker.w / 2 + 30} y1={speaker.y + speaker.h} x2={aec.x + 30} y2={aec.y} dashed accent />
+      <Label x={speaker.x + 6} y={speaker.y + speaker.h + 20} anchor="start" tone="accent">reference copy — acoustic path,</Label>
+      <Label x={speaker.x + 6} y={speaker.y + speaker.h + 36} anchor="start" tone="accent">bounces around the cabin</Label>
+
+      <Arrow x1={aec.x + aec.w / 2} y1={aec.y + aec.h + 4} x2={ns.x + ns.w / 2} y2={ns.y - 4} accent />
+      <Box x={ns.x} y={ns.y} w={ns.w} h={ns.h} label="NS" sub="suppress road / wind / HVAC noise" />
+
+      <Arrow x1={ns.x + ns.w / 2} y1={ns.y + ns.h + 4} x2={out.x + out.w / 2} y2={out.y - 4} accent />
+      <Box x={out.x} y={out.y} w={out.w} h={out.h} label="Processed signal" sub="→ modem stack / voice pipeline" tone="accent" />
+    </svg>
+  )
+}
+
+/* ---------------------------------------------------------- surround view pipeline -- */
+
+export function SurroundViewPipeline() {
+  const camW = 170
+  const camH = 40
+  const cams = [
+    { y: 40, label: 'Front camera' },
+    { y: 88, label: 'Rear camera' },
+    { y: 136, label: 'Left camera' },
+    { y: 184, label: 'Right camera' },
+  ]
+  const stage = { x: 250, w: 250, h: 64 }
+  const undist = { ...stage, y: 110 }
+  const warp = { x: 250, y: 210, w: 250, h: 54 }
+  const blend = { x: 250, y: 294, w: 250, h: 54 }
+  const comp = { x: 250, y: 378, w: 250, h: 54 }
+  const cx = undist.x + undist.w / 2
+  return (
+    <svg {...svgProps} viewBox="0 0 720 460" aria-label="Four camera feeds converging on lens undistortion, then perspective warp, blend and a composite top-down display">
+      <DiagramDefs />
+      <Label x={24} y={24} anchor="start" tone="muted" size={12}>Four wide-angle feeds, stitched into one image no camera ever captured</Label>
+
+      {cams.map((c) => (
+        <g key={c.label}>
+          <Box x={24} y={c.y} w={camW} h={camH} label={c.label} />
+          <Arrow x1={24 + camW + 4} y1={c.y + camH / 2} x2={undist.x - 4} y2={undist.y + undist.h / 2} />
+        </g>
+      ))}
+
+      <Box x={undist.x} y={undist.y} w={undist.w} h={undist.h} label="Lens undistortion" sub="fisheye correction, per camera" tone="accent" />
+      <Arrow x1={cx} y1={undist.y + undist.h + 4} x2={cx} y2={warp.y - 4} accent />
+
+      <Box x={warp.x} y={warp.y} w={warp.w} h={warp.h} label="Perspective warp" sub="shared ground-plane mesh — calibrated per vehicle" />
+      <Arrow x1={cx} y1={warp.y + warp.h + 4} x2={cx} y2={blend.y - 4} accent />
+
+      <Box x={blend.x} y={blend.y} w={blend.w} h={blend.h} label="Blend overlaps" sub="two cameras, same patch of ground, different angles" />
+      <Arrow x1={cx} y1={blend.y + blend.h + 4} x2={cx} y2={comp.y - 4} accent />
+
+      <Box x={comp.x} y={comp.y} w={comp.w} h={comp.h} label="Composite top-down image" sub="displayed — same EVS boot & handover rules" tone="accent" />
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------- eCall trigger flow -- */
+
+export function ECallTriggerFlow() {
+  const crash = { x: 250, y: 30, w: 220, h: 50 }
+  const ecallModule = { x: 210, y: 120, w: 300, h: 66 }
+  const voice = { x: 70, y: 246, w: 280, h: 54 }
+  const data = { x: 390, y: 246, w: 280, h: 54 }
+  const headunit = { x: 390, y: 336, w: 280, h: 54 }
+  return (
+    <svg {...svgProps} viewBox="0 0 720 420" aria-label="Crash sensors triggering the independent eCall module, which opens a voice channel and a data channel, with Android's status display as an optional, best-effort extra">
+      <DiagramDefs />
+      <Label x={24} y={24} anchor="start" tone="muted" size={12}>One hardwired trigger, one independent module, one optional readout</Label>
+
+      <Box x={crash.x} y={crash.y} w={crash.w} h={crash.h} label="Crash sensors / airbag ECU" />
+      <Arrow x1={crash.x + crash.w / 2} y1={crash.y + crash.h + 4} x2={ecallModule.x + ecallModule.w / 2} y2={ecallModule.y - 4} accent />
+      <Label x={crash.x + crash.w / 2 + 16} y={(crash.y + crash.h + ecallModule.y) / 2} anchor="start">hardwired trigger</Label>
+
+      <Box x={ecallModule.x} y={ecallModule.y} w={ecallModule.w} h={ecallModule.h} label="eCall module" sub="own backup battery · own modem · own antenna" tone="accent" />
+
+      <Arrow x1={ecallModule.x + 70} y1={ecallModule.y + ecallModule.h} x2={voice.x + voice.w - 40} y2={voice.y} accent />
+      <Arrow x1={ecallModule.x + ecallModule.w - 70} y1={ecallModule.y + ecallModule.h} x2={data.x + 40} y2={data.y} accent />
+
+      <Box x={voice.x} y={voice.y} w={voice.w} h={voice.h} label="Voice channel" sub="to emergency services" tone="accent" />
+      <Box x={data.x} y={data.y} w={data.w} h={data.h} label="Minimum data set" sub="position, VIN, time, occupants — same channel" tone="accent" />
+
+      <Arrow x1={data.x + data.w / 2} y1={data.y + data.h + 4} x2={headunit.x + headunit.w / 2} y2={headunit.y - 4} dashed />
+      <Box x={headunit.x} y={headunit.y} w={headunit.w} h={headunit.h} label="Android head unit" sub="displays status only — optional, best-effort" tone="muted" dashed />
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------- verified boot chain -- */
+
+export function VerifiedBootChain() {
+  const w = 480
+  const x = (720 - w) / 2
+  const h = 50
+  const stages = [
+    { label: 'Hardware root of trust', sub: 'fused key, immutable', tone: 'muted' as const },
+    { label: 'Bootloader', sub: undefined, tone: 'default' as const },
+    { label: 'boot / init_boot', sub: 'kernel, ramdisk', tone: 'default' as const },
+    { label: 'system / vendor / product', sub: 'read-only partitions', tone: 'default' as const },
+    { label: 'Android', sub: undefined, tone: 'accent' as const },
+  ]
+  const y = (i: number) => 50 + i * 90
+  const links = ['verifies', 'verifies — AVB (signature over vbmeta)', 'verifies — dm-verity (hash tree)', '']
+  return (
+    <svg {...svgProps} viewBox="0 0 720 550" aria-label="The verified boot chain from the hardware root of trust through the bootloader, kernel and read-only partitions to Android">
+      <DiagramDefs />
+      <Label x={24} y={24} anchor="start" tone="muted" size={12}>Each stage verifies the next before handing over control</Label>
+
+      {stages.map((s, i) => (
+        <Box key={s.label} x={x} y={y(i)} w={w} h={h} label={s.label} sub={s.sub} tone={s.tone} />
+      ))}
+
+      {stages.slice(0, -1).map((s, i) => (
+        <g key={s.label}>
+          <Arrow x1={360} y1={y(i) + h + 4} x2={360} y2={y(i + 1) - 4} accent={i >= 1} />
+          {links[i] && (
+            <Label x={380} y={(y(i) + h + y(i + 1)) / 2} anchor="start" tone={i === 0 ? 'subtle' : 'accent'}>
+              {links[i]}
+            </Label>
+          )}
+        </g>
+      ))}
+
+      <rect x={24} y={480} width={672} height={44} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={498} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        break any link and the device halts, or drops into a degraded / recovery state
+      </text>
+      <text x={360} y={514} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">
+        the goal is not to stop tampering — it is to make it detectable
+      </text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------------- dual boot chains -- */
+
+export function DualBootChains() {
+  const leftX = 40
+  const rightX = 420
+  const colW = 260
+  const bh = 46
+  const gap = 70
+  const ly = (i: number) => 56 + i * gap
+  const leftStages = [
+    { label: 'SoC boot ROM', sub: 'immutable, OTP key', tone: 'muted' as const },
+    { label: 'Bootloader', sub: undefined, tone: 'default' as const },
+    { label: 'System image', sub: 'verified by AVB at boot', tone: 'default' as const },
+    { label: 'dm-verity runtime checks', sub: 'keeps verifying while running', tone: 'accent' as const },
+  ]
+  const leftLinks = ['verifies', 'verifies (AVB / vbmeta)', 'checked continually']
+  const rightTop = { y: ly(0), h: bh }
+  const rightBottom = { y: ly(3), h: bh }
+  return (
+    <svg {...svgProps} viewBox="0 0 720 400" aria-label="Two independently rooted boot chains side by side: the AP's SoC chain and a peripheral ECU's HSM-rooted chain, neither trusting the other by default">
+      <DiagramDefs />
+      <Label x={24} y={24} anchor="start" tone="muted" size={12}>Two roots of trust, two chains — one per ECU</Label>
+
+      <Label x={leftX + colW / 2} y={44} tone="muted" size={12}>AP (SoC)</Label>
+      <Label x={rightX + colW / 2} y={44} tone="muted" size={12}>Peripheral ECU (e.g. gateway)</Label>
+
+      <line x1={360} y1={50} x2={360} y2={316} stroke="var(--border-strong)" strokeDasharray="5 4" />
+
+      {leftStages.map((s, i) => (
+        <Box key={s.label} x={leftX} y={ly(i)} w={colW} h={bh} label={s.label} sub={s.sub} tone={s.tone} />
+      ))}
+      {leftStages.slice(0, -1).map((s, i) => (
+        <g key={s.label}>
+          <Arrow x1={leftX + colW / 2} y1={ly(i) + bh + 4} x2={leftX + colW / 2} y2={ly(i + 1) - 4} accent={i >= 1} />
+          <Label x={leftX + colW / 2 + 16} y={(ly(i) + bh + ly(i + 1)) / 2} anchor="start" tone={i === 0 ? 'subtle' : 'accent'}>
+            {leftLinks[i]}
+          </Label>
+        </g>
+      ))}
+
+      <Box x={rightX} y={rightTop.y} w={colW} h={rightTop.h} label="HSM/SHE boot ROM" sub="immutable, own key" tone="muted" />
+      <Arrow x1={rightX + colW / 2} y1={rightTop.y + rightTop.h + 4} x2={rightX + colW / 2} y2={rightBottom.y - 4} accent dashed />
+      <Label x={rightX + colW / 2 - 16} y={(rightTop.y + rightTop.h + rightBottom.y) / 2 - 8} anchor="end" tone="accent">unlocks / attests</Label>
+      <Label x={rightX + colW / 2 - 16} y={(rightTop.y + rightTop.h + rightBottom.y) / 2 + 8} anchor="end" tone="accent">to main core</Label>
+      <Box x={rightX} y={rightBottom.y} w={colW} h={rightBottom.h} label="ECU firmware" sub="trusts the HSM's attestation, not its own judgement" tone="accent" />
+
+      <rect x={24} y={332} width={672} height={44} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={350} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">
+        neither chain trusts the other by default
+      </text>
+      <text x={360} y={366} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">
+        the vehicle architecture must explicitly decide how much the AP trusts a signal from another ECU
+      </text>
+    </svg>
+  )
+}

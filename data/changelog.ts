@@ -40,6 +40,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-09-13',
     title: 'A third track announced, a redesigned home page, and a broken mobile menu',
     changes: [
+      { type: 'fixed', text: 'Fifteen diagrams across Learn AAOS and SDV articles were rendering as ASCII-art text inside a code block instead of an actual diagram — audio routing, echo cancellation, surround view, eCall triggering, verified/secure boot, vulnerability response, VSS generation, feature entitlements, virtual-ECU/SIL rigs, cockpit hypervisor consolidation, OTA A/B rollout, AUTOSAR Classic/Adaptive, QNX microkernel isolation, and zero-trust segmentation now render as real SVG diagrams.' },
       {
         type: 'added',
         text: 'AI & ML for Automotive: a new, separately-subscribed third track alongside Learn AAOS and SDV. Not published yet — a coming-soon page explains what to expect and how to ask about early access.',
