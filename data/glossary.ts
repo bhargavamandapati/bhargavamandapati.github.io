@@ -839,6 +839,96 @@ export const glossary: Term[] = [
     category: 'Vehicle data',
     related: ['central compute', 'SDV'],
   },
+
+  // ------------------------------------------------- framework internals
+  {
+    term: 'app focus',
+    aliases: ['CarAppFocusManager', 'APP_FOCUS_TYPE_NAVIGATION'],
+    short: 'The platform deciding which one of several competing apps currently owns a role like navigation.',
+    long: 'Two navigation apps can both believe they are giving turn-by-turn guidance unless something arbitrates. App focus is a small set of exclusive roles — navigation and voice command — that a public, permission-free API hands to whichever app should currently hold one, based on which app is on screen right now rather than which asked first.',
+    category: 'Framework',
+    related: ['Car Service', 'android.car'],
+  },
+  {
+    term: 'TaskMonitor',
+    aliases: ['registerTaskMonitor', 'task monitor'],
+    short: 'The one client the platform lets track and restart other apps\' tasks.',
+    long: 'Exactly one component at a time can register as the system TaskMonitor and report running tasks into a shared registry. Whatever last took that seat is what makes a "restart this task" call actually work — and taking it displaces whatever held it before.',
+    category: 'Framework',
+    related: ['Car Service', 'app focus'],
+  },
+  {
+    term: 'remote access',
+    aliases: ['CarRemoteAccessManager', 'remote task'],
+    short: 'Waking a parked, powered-down vehicle briefly to run a scheduled task.',
+    long: 'A parked car is normally fully asleep, but a remote-access mechanism can wake it for a short window to run a task — checking for updates, syncing data — and let it go back to sleep afterward, all without the driver present.',
+    category: 'Framework',
+    related: ['Garage Mode', 'power state'],
+  },
+  {
+    term: 'CarTelemetryManager',
+    aliases: ['ScriptExecutor', 'car telemetry'],
+    short: 'A privileged API that runs a small script against live vehicle data inside its own disposable process.',
+    long: 'Built for one kind of client — an OEM\'s own cloud-connected application — CarTelemetryManager accepts a metrics config embedding a script, and executes it in a fresh, isolated process created for that one run and killed immediately afterward. It is a sandbox for semi-trusted analysis code, not just another permission-gated API.',
+    category: 'Framework',
+    related: ['Car Service', 'signature permission'],
+  },
+  {
+    term: 'assistant role',
+    aliases: ['Digital Assistant role', 'VoiceInteractionService'],
+    short: 'The ordinary, car-independent Android setting that decides which app is "the" voice assistant.',
+    long: 'A vehicle\'s voice assistant is not chosen through any car-specific API — it is the same system-wide Digital Assistant role every Android device has, backed by a VoiceInteractionService. Car-specific mechanisms like app focus exist alongside it but are not how the platform actually picks the active assistant.',
+    category: 'Framework',
+    related: ['app focus', 'android.car'],
+  },
+
+  // ---------------------------------------------------- UI internals
+  {
+    term: 'Scalable UI',
+    aliases: ['scalable panel', 'wm/scalableui'],
+    short: 'CarSystemUI\'s newer, declarative framework for arranging on-screen panels.',
+    long: 'Rather than each panel being hand-coded into CarSystemUI, Scalable UI reads panel definitions declaratively and lays them out at runtime. It is compiled in and active by default on modern builds, but sits idle until panels are actually configured for it — and because it is declarative, the older overlay-based theming technique cannot simply add a panel that was never declared to begin with.',
+    category: 'UI',
+    related: ['CarSystemUI', 'RRO'],
+  },
+
+  // ------------------------------------------------ vehicle data internals
+  {
+    term: 'Variable Update Rate',
+    aliases: ['VUR', 'variable update rate'],
+    short: 'A subscription mode that only delivers an update when a continuously-sampled value actually changes.',
+    long: 'A CONTINUOUS property is normally sampled at a fixed rate whether or not the value moved. Variable Update Rate, on by default, suppresses the repeats — a subscriber effectively sees the property behave like an ON_CHANGE one, which can look like "nothing is arriving" if a test expects the raw sampling rate instead.',
+    category: 'Vehicle data',
+    related: ['change mode', 'subscription'],
+  },
+
+  // -------------------------------------------------------- diagnostics
+  {
+    term: 'UDS',
+    aliases: ['Unified Diagnostic Services', 'ISO 14229'],
+    short: 'The full diagnostic protocol that OBD-II is only a small, standardised slice of.',
+    long: 'OBD-II covers a legally-mandated handful of read-only diagnostic modes. UDS is the much larger protocol underneath it, also covering security-gated calibration writes, actuator tests and full ECU reflashing — none of which Android\'s own diagnostic APIs expose.',
+    category: 'Standards',
+    related: ['ECU', 'OTA'],
+  },
+  {
+    term: 'SecOC',
+    aliases: ['Secure Onboard Communication', 'AUTOSAR SecOC'],
+    short: 'An AUTOSAR mechanism that adds authentication to otherwise-unauthenticated CAN messages.',
+    long: 'Plain CAN has no way to tell a genuine message from a forged one. SecOC adds a cryptographic authentication code and a freshness counter to a message, so a receiving ECU can verify it actually came from the claimed sender and was not replayed.',
+    category: 'Security',
+    related: ['CAN', 'AUTOSAR'],
+  },
+
+  // -------------------------------------------------------- connectivity
+  {
+    term: 'eSIM',
+    aliases: ['eUICC', 'embedded SIM'],
+    short: 'A SIM built into the vehicle rather than a physical card, provisioned remotely.',
+    long: 'A vehicle needs a cellular identity before it has an owner and has to keep working for years after sale, which rules out a swappable physical SIM. An eUICC is soldered in and provisioned over the air, typically starting with the vehicle maker\'s own connectivity rather than the eventual owner\'s carrier.',
+    category: 'Platform',
+    related: ['digital key'],
+  },
 ]
 
 /** Lookup by display text or alias, case- and punctuation-insensitive. */

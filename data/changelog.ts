@@ -42,6 +42,11 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       {
         type: 'added',
+        text: 'Ten new glossary terms, covering app focus, TaskMonitor, remote access, CarTelemetryManager, the assistant role, Scalable UI, Variable Update Rate, UDS, SecOC and eSIM.',
+        links: [{ label: 'Glossary', href: '/glossary/' }],
+      },
+      {
+        type: 'added',
         text: 'A new Learn AAOS topic on CarAppFocusManager — how the platform arbitrates exclusive roles like navigation between competing apps.',
         links: [{ label: 'App focus arbitration', href: '/learn/car-framework/app-focus-arbitration/' }],
       },
