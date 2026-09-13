@@ -41,6 +41,8 @@ export const changelog: ChangelogEntry[] = [
     title: 'A new tutorial, more field-notes findings, and a broken mobile menu',
     changes: [
       { type: 'fixed', text: 'The mobile menu trapped page scroll behind it once its own link list grew past screen height — everything below the fold, including About and Projects, was unreachable on a phone.' },
+      { type: 'fixed', text: 'The "Start here" guided-paths page still claimed a fixed topic count left over from an earlier stage of the curriculum; it now reads the real number.' },
+      { type: 'changed', text: 'Added three of today’s new topics — CAN bus security, CI device flashing, UDS diagnostics — to the embedded-developer guided path; they had shipped without a route pointing at them.' },
       { type: 'added', text: 'Changelog entries for new pages now link straight to them, and their cards carry a "New" badge for a few weeks after they ship.' },
       {
         type: 'added',
