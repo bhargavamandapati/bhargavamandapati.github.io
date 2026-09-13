@@ -21,6 +21,7 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'learn', slug: 'car-framework/app-focus-arbitration', date: '2026-09-13' },
   { area: 'tutorials', slug: 'framework/custom-task-monitor', date: '2026-09-13' },
   { area: 'learn', slug: 'connectivity/esim-provisioning', date: '2026-09-12' },
   { area: 'learn', slug: 'security/can-bus-security', date: '2026-09-12' },

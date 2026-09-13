@@ -40,6 +40,12 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-09-13',
     title: 'A new tutorial, more field-notes findings, and a broken mobile menu',
     changes: [
+      {
+        type: 'added',
+        text: 'A new Learn AAOS topic on CarAppFocusManager — how the platform arbitrates exclusive roles like navigation between competing apps.',
+        links: [{ label: 'App focus arbitration', href: '/learn/car-framework/app-focus-arbitration/' }],
+      },
+      { type: 'changed', text: 'Enriched 21 existing Learn AAOS articles and one tutorial with further field-notes findings, spanning media apps, voice assistant, notifications, multi-user isolation, UX restrictions, ADAS permissions, audio zone configuration, car property internals, and more.' },
       { type: 'fixed', text: 'The mobile menu trapped page scroll behind it once its own link list grew past screen height — everything below the fold, including About and Projects, was unreachable on a phone.' },
       { type: 'fixed', text: 'The "Start here" guided-paths page still claimed a fixed topic count left over from an earlier stage of the curriculum; it now reads the real number.' },
       { type: 'changed', text: 'Added three of today’s new topics — CAN bus security, CI device flashing, UDS diagnostics — to the embedded-developer guided path; they had shipped without a route pointing at them.' },
