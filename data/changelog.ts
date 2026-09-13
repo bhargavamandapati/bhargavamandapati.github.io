@@ -38,9 +38,10 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.09.13',
     date: '2026-09-13',
-    title: 'A third track announced, a redesigned home page, and a broken mobile menu',
+    title: 'A third track announced, 41 diagrams fixed, and a broken mobile menu',
     changes: [
-      { type: 'fixed', text: 'Fifteen diagrams across Learn AAOS and SDV articles were rendering as ASCII-art text inside a code block instead of an actual diagram — audio routing, echo cancellation, surround view, eCall triggering, verified/secure boot, vulnerability response, VSS generation, feature entitlements, virtual-ECU/SIL rigs, cockpit hypervisor consolidation, OTA A/B rollout, AUTOSAR Classic/Adaptive, QNX microkernel isolation, and zero-trust segmentation now render as real SVG diagrams.' },
+      { type: 'fixed', text: 'A full site-wide sweep for diagrams rendering as ASCII-art text instead of an actual diagram — 41 in total across Learn AAOS and SDV, including audio routing, echo cancellation, surround view, eCall triggering, verified/secure boot, vulnerability response, VSS generation, feature entitlements, virtual-ECU/SIL rigs, cockpit hypervisor consolidation, OTA rollout and package generation, AUTOSAR Classic/Adaptive, QNX microkernel isolation, zero-trust segmentation, process and zone trees, gateway filtering, a Perfetto trace view, and SOME/IP sequence exchanges — all now render as real SVG diagrams.' },
+      { type: 'fixed', text: 'While auditing every diagram against its declared bounds, found and fixed 6 unrelated diagrams elsewhere on the site where a label silently overflowed and was clipped.' },
       {
         type: 'added',
         text: 'AI & ML for Automotive: a new, separately-subscribed third track alongside Learn AAOS and SDV. Not published yet — a coming-soon page explains what to expect and how to ask about early access.',
