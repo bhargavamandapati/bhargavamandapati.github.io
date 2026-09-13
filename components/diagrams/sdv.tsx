@@ -765,3 +765,92 @@ export function ZeroTrustSegmentation() {
     </svg>
   )
 }
+
+/* -------------------------------------------------- Ethernet + TSN topology -- */
+
+export function EthernetTsnTopology() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 210" aria-label="Sensors and actuators on CAN and LIN feed a zone controller, which bridges onto an Automotive Ethernet and TSN backbone to central compute">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>CAN survives at the edges — Ethernet + TSN is the backbone between them</Label>
+
+      <Box x={20} y={60} w={170} h={64} label="Sensors / actuators" sub="simple, cheap, robust" tone="muted" />
+      <Arrow x1={190} y1={92} x2={275} y2={92} />
+      <Label x={232} y={78} tone="subtle">CAN / LIN</Label>
+
+      <Box x={275} y={60} w={170} h={64} label="Zone controller" sub="bridges CAN ↔ Ethernet" />
+      <Arrow x1={445} y1={92} x2={530} y2={92} accent />
+      <Label x={487} y={72} tone="accent">Automotive</Label>
+      <Label x={487} y={84} tone="accent">Ethernet (+ TSN)</Label>
+
+      <Box x={530} y={60} w={170} h={64} label="Central compute" sub="ADAS, cockpit, gateway" tone="accent" />
+
+      <rect x={20} y={152} width={680} height={40} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={168} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">CAN does not disappear — it stays at the edges where cost and robustness win</text>
+      <text x={360} y={184} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">the zone controller and its gateway are significant, ongoing work</text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------- DDS / SOME-IP bridge -- */
+
+export function DdsSomeIpBridge() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 296" aria-label="DDS carries perception data from cameras and radar through ADAS on one side, SOME/IP carries body signals through the cockpit on the other, joined by a bridge that forwards derived state rather than raw data">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Most real vehicles run both, with a bridge where the domains meet</Label>
+
+      <Box x={20} y={50} w={170} h={56} label="Cameras, radar" sub="raw sensor data" tone="muted" />
+      <Arrow x1={190} y1={78} x2={275} y2={78} />
+      <Label x={232} y={66} tone="subtle">DDS</Label>
+      <Box x={275} y={50} w={170} h={56} label="ADAS perception" />
+      <Arrow x1={445} y1={78} x2={530} y2={78} />
+      <Label x={487} y={66} tone="subtle">DDS</Label>
+      <Box x={530} y={50} w={170} h={56} label="ADAS control" />
+
+      <Arrow x1={360} y1={106} x2={360} y2={136} accent />
+      <Box x={275} y={136} w={170} h={54} label="Bridge" sub="state only, not raw data" tone="accent" />
+      <Arrow x1={360} y1={190} x2={360} y2={220} accent />
+
+      <Box x={20} y={220} w={170} h={56} label="Seat, lights, doors" sub="body signals" tone="muted" />
+      <Arrow x1={190} y1={248} x2={275} y2={248} />
+      <Label x={232} y={236} tone="subtle">SOME/IP</Label>
+      <Box x={275} y={220} w={170} h={56} label="Cockpit" />
+      <Arrow x1={445} y1={248} x2={530} y2={248} />
+      <Label x={487} y={236} tone="subtle">SOME/IP</Label>
+      <Box x={530} y={220} w={170} h={56} label="Cluster & IVI" />
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------- per-signal access -- */
+
+export function PerSignalAccessControl() {
+  const clients = [
+    { name: 'telemetry-uploader', read: 'Vehicle.Speed, Vehicle.Powertrain.*', write: '(none)' },
+    { name: 'cockpit-app', read: 'Vehicle.**', write: 'Vehicle.Cabin.**' },
+    { name: 'charging-service', read: 'Vehicle.Powertrain.TractionBattery.**', write: 'Vehicle.Powertrain.TractionBattery.Charging.**' },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 340" aria-label="The data broker granting each client a different read and write scope over the vehicle signal tree">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Same broker, different permissions per client</Label>
+
+      <Box x={20} y={132} w={180} h={100} label="Data broker" sub="access control per signal" tone="accent" />
+
+      {clients.map((c, i) => {
+        const y = 44 + i * 98
+        const cy = y + 40
+        return (
+          <g key={c.name}>
+            <Arrow x1={200} y1={182} x2={296} y2={cy} accent />
+            <rect x={300} y={y} width={400} height={80} rx={8} fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth={1.25} />
+            <text x={316} y={y + 22} fill="var(--fg)" fontSize={12.5} fontWeight={600} fontFamily="var(--font-display)">{c.name}</text>
+            <text x={316} y={y + 44} fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">read: {c.read}</text>
+            <text x={316} y={y + 62} fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">write: {c.write}</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
