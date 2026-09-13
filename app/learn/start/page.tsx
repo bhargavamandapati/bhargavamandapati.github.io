@@ -4,7 +4,7 @@ import { ArrowLeft, Compass } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { PathList, type ResolvedPath } from '@/components/paths/path-list'
 import { paths } from '@/data/paths'
-import { getTopic } from '@/lib/learn'
+import { getAllTopics, getTopic } from '@/lib/learn'
 import { getSdvTopic } from '@/lib/sdv'
 import { getTutorial } from '@/lib/tutorials'
 import { site } from '@/data/site'
@@ -42,13 +42,15 @@ function resolve(): ResolvedPath[] {
 
 export default function StartHerePage() {
   const resolved = resolve()
+  const topicCount = getAllTopics().length
+  const routeWord = paths.length === 1 ? 'route' : 'routes'
 
   return (
     <>
       <PageHeader
         eyebrow="Learn AAOS"
         title="Start here"
-        description="There are 128 topics across the curriculum, which is a reference rather than a course. These are four routes through the same material, ordered for where you are starting from — each step says why it follows the last."
+        description={`There are ${topicCount} topics across the curriculum, which is a reference rather than a course. These are ${paths.length} ${routeWord} through the same material, ordered for where you are starting from — each step says why it follows the last.`}
       >
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 font-mono text-xs text-muted">
           <span className="inline-flex items-center gap-2">
