@@ -36,6 +36,18 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.09.14',
+    date: '2026-09-14',
+    title: 'Diagrams for the version history article',
+    changes: [
+      {
+        type: 'added',
+        text: 'Two diagrams on the AAOS version history article — a release timeline marking Car UI Library, occupant zones and the HIDL-to-AIDL VHAL migration as the releases that actually change what you build against, and a side-by-side HIDL/AIDL VHAL interface comparison.',
+        links: [{ label: 'How AAOS changed, release by release', href: '/learn/foundations/aaos-version-history/' }],
+      },
+    ],
+  },
+  {
     version: '2026.09.13',
     date: '2026-09-13',
     title: 'A third track announced, 41 diagrams fixed, and a broken mobile menu',
