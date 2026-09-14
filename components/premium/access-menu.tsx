@@ -1,11 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { KeyRound, Linkedin, Loader2, Lock, LockOpen } from 'lucide-react'
+import { KeyRound, Loader2, Lock, LockOpen } from 'lucide-react'
 import { REALM_LABEL, access, type Realm } from '@/data/access'
-import { site } from '@/data/site'
 import { decryptPayload, isWrongKeyError, type Payload } from '@/lib/premium-decrypt'
-import { EmailAccessButton } from '@/components/premium/email-access-button'
+import { RequestAccessButton } from '@/components/premium/request-access'
 import { cn } from '@/lib/utils'
 
 /**
@@ -224,17 +223,8 @@ export function AccessMenu() {
 
           <div className="border-t border-line p-4">
             <p className="text-xs leading-relaxed text-muted">Don&rsquo;t have a key?</p>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              <a
-                href={site.socials.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90"
-              >
-                <Linkedin aria-hidden className="size-3.5" />
-                LinkedIn
-              </a>
-              <EmailAccessButton subject="Access request" label="Email" className="px-3 py-1.5 text-xs" />
+            <div className="mt-2.5">
+              <RequestAccessButton label="Request access" className="px-3 py-1.5 text-xs" />
             </div>
           </div>
         </div>

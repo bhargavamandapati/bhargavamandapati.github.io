@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.09.14',
     date: '2026-09-14',
-    title: 'Nine new SDV topics, and diagrams for the version history article',
+    title: 'Nine new SDV topics, version-history diagrams, and a single access-request form',
     changes: [
       {
         type: 'added',
@@ -59,6 +59,10 @@ export const changelog: ChangelogEntry[] = [
         type: 'added',
         text: 'Two diagrams on the AAOS version history article — a release timeline marking Car UI Library, occupant zones and the HIDL-to-AIDL VHAL migration as the releases that actually change what you build against, and a side-by-side HIDL/AIDL VHAL interface comparison.',
         links: [{ label: 'How AAOS changed, release by release', href: '/learn/foundations/aaos-version-history/' }],
+      },
+      {
+        type: 'changed',
+        text: 'Replaced every "request access on LinkedIn or by email" button with a single "Request access" button that opens a short form — name, topics, how long, how many accounts — sent straight to an inbox. Payment still happens off-site; this just replaces two links with one clearer one.',
       },
     ],
   },

@@ -9,14 +9,12 @@ import {
   Check,
   Gauge,
   Layers,
-  Linkedin,
   Lock,
   MonitorSmartphone,
   Search,
 } from 'lucide-react'
 import { FREE_TOPICS, access } from '@/data/access'
-import { site } from '@/data/site'
-import { EmailAccessButton } from '@/components/premium/email-access-button'
+import { RequestAccessButton } from '@/components/premium/request-access'
 import { getAllTopics } from '@/lib/learn'
 import { getAllSdvTopics } from '@/lib/sdv'
 import { getAllTutorials } from '@/lib/tutorials'
@@ -138,16 +136,12 @@ export function Landing() {
               Start reading — free
               <ArrowRight aria-hidden className="size-4" />
             </Link>
-            <a
-              href={site.socials.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-line px-5 py-2.5 text-sm transition-colors hover:border-line-strong hover:bg-surface"
-            >
-              <Linkedin aria-hidden className="size-4" />
-              Request full access
-            </a>
-            <EmailAccessButton subject="Access request — Full library" />
+            <RequestAccessButton
+              label="Request full access"
+              variant="secondary"
+              className="px-5 py-2.5"
+              context="Homepage hero"
+            />
           </div>
 
           <p className="mt-5 font-mono text-xs text-subtle">
@@ -290,16 +284,11 @@ export function Landing() {
                 AI &amp; ML for Automotive will follow the same pattern once it launches.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <a
-                  href={site.socials.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
-                >
-                  <Linkedin aria-hidden className="size-4" />
-                  Ask on LinkedIn
-                </a>
-                <EmailAccessButton subject="Access request — Full library" />
+                <RequestAccessButton
+                  label="Request access"
+                  defaultTopics={['learn', 'sdv']}
+                  context="Full library"
+                />
               </div>
             </div>
           </div>
@@ -336,15 +325,12 @@ export function Landing() {
                 Learn more
                 <ArrowRight aria-hidden className="size-3.5" />
               </Link>
-              <a
-                href={site.socials.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:border-line-strong hover:bg-surface"
-              >
-                <Linkedin aria-hidden className="size-4" />
-                Ask for details and cost
-              </a>
+              <RequestAccessButton
+                label="Ask for details and cost"
+                variant="secondary"
+                defaultTopics={['ai-ml']}
+                context="AI & ML for Automotive"
+              />
             </div>
           </div>
         </div>

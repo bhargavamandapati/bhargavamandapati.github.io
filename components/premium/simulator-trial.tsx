@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Linkedin, Lock } from 'lucide-react'
-import { EmailAccessButton } from '@/components/premium/email-access-button'
+import { Lock } from 'lucide-react'
+import { RequestAccessButton } from '@/components/premium/request-access'
 import { FREE_SIMULATOR_PROPERTIES } from '@/data/access'
-import { site } from '@/data/site'
 import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
 
 const CarSimulator = dynamic(
@@ -49,16 +48,7 @@ export function SimulatorTrial() {
               even once ml-auto pushed it onto its own line at 320px, which
               overflowed the page instead of letting its two buttons wrap. */}
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <a
-              href={site.socials.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
-            >
-              <Linkedin aria-hidden className="size-4" />
-              Request access
-            </a>
-            <EmailAccessButton subject="Access request — Property simulator" />
+            <RequestAccessButton defaultTopics={['learn']} context="Property simulator" />
           </div>
         </div>
       )}

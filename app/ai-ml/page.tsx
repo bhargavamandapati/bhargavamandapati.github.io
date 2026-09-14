@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, BrainCircuit, Linkedin } from 'lucide-react'
+import { ArrowRight, BrainCircuit } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
-import { EmailAccessButton } from '@/components/premium/email-access-button'
+import { RequestAccessButton } from '@/components/premium/request-access'
 import { site } from '@/data/site'
 
 export const metadata: Metadata = {
@@ -61,16 +61,7 @@ export default function AiMlPage() {
               told when it&rsquo;s ready.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <a
-                href={site.socials.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
-              >
-                <Linkedin aria-hidden className="size-4" />
-                Ask on LinkedIn
-              </a>
-              <EmailAccessButton subject="AI & ML for Automotive — early access" label="Email instead" />
+              <RequestAccessButton defaultTopics={['ai-ml']} context="AI & ML for Automotive — early access" />
             </div>
           </div>
 

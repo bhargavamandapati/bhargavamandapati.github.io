@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Check, Copy, KeyRound, Linkedin, Loader2, Lock } from 'lucide-react'
+import { KeyRound, Loader2, Lock } from 'lucide-react'
 import { REALM_LABEL, access, type Realm } from '@/data/access'
-import { site } from '@/data/site'
-import { EmailAccessButton } from '@/components/premium/email-access-button'
+import { RequestAccessButton } from '@/components/premium/request-access'
 import { decryptPayload, isWrongKeyError, type Payload } from '@/lib/premium-decrypt'
 import { CODE_LANGUAGE_STORAGE_KEY, type CodeLanguage } from '@/components/properties/code-sample'
 
@@ -117,7 +116,6 @@ export function PremiumGate({
     'locked',
   )
   const [passphrase, setPassphrase] = useState('')
-  const [copied, setCopied] = useState(false)
   const attempted = useRef(false)
   const fieldId = useId()
 
@@ -197,16 +195,7 @@ export function PremiumGate({
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <a
-            href={site.socials.linkedin}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
-          >
-            <Linkedin aria-hidden className="size-4" />
-            Request access on LinkedIn
-          </a>
-          <EmailAccessButton subject={`Access request — ${title}`} />
+          <RequestAccessButton defaultTopics={[realm]} context={title} />
           <Link
             href="/learn/start/"
             className="text-sm text-muted underline-offset-4 transition-colors hover:text-accent hover:underline"
@@ -258,20 +247,6 @@ export function PremiumGate({
             {status === 'locked' && 'Unlocks every topic on this device, and is remembered here.'}
           </p>
         </form>
-
-        <button
-          type="button"
-          onClick={() => {
-            void navigator.clipboard.writeText(window.location.href).then(() => {
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1600)
-            })
-          }}
-          className="mt-2 inline-flex cursor-pointer items-center gap-1.5 font-mono text-[0.7rem] text-subtle transition-colors hover:text-accent"
-        >
-          {copied ? <Check aria-hidden className="size-3" /> : <Copy aria-hidden className="size-3" />}
-          {copied ? 'Link copied' : 'Copy this page link to mention when you ask'}
-        </button>
       </div>
     </section>
   )
