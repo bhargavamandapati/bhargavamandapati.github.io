@@ -7,6 +7,7 @@ import { T } from '@/components/learn/term-server'
 import { FileTree, Gotcha, Verify } from '@/components/tutorial/blocks'
 import { Doc, Find, SourceList, Src, Sym } from '@/components/learn/source'
 import {
+  AaosReleaseTimeline,
   AaosStack,
   AbPartitions,
   AncLatencyPipeline,
@@ -50,6 +51,7 @@ import {
   V2xDirectBroadcast,
   VerifiedBootChain,
   VhalDataFlow,
+  HidlToAidlVhal,
   ZonalRoundTrip,
 } from '@/components/diagrams'
 import {
@@ -226,6 +228,8 @@ export const mdxComponents: MDXComponents = {
   ZonalRoundTrip,
   CanGatewayFiltering,
   SubscriptionRateArbitration,
+  AaosReleaseTimeline,
+  HidlToAidlVhal,
 
   // SDV diagrams
   EeArchitectureEvolution,

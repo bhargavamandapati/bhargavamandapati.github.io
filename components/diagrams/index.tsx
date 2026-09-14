@@ -1591,3 +1591,75 @@ export function SubscriptionRateArbitration() {
     </svg>
   )
 }
+
+/* ------------------------------------------------------- AAOS release timeline -- */
+
+export function AaosReleaseTimeline() {
+  const releases = [
+    { label: '9', tag: 'AAOS enters AOSP', tone: 'muted' as const },
+    { label: '10', tag: 'Model settles', tone: 'muted' as const },
+    { label: '11', tag: 'Car UI Library', tone: 'accent' as const },
+    { label: '12', tag: 'Occupant zones', tone: 'accent' as const },
+    { label: '13', tag: 'HIDL → AIDL VHAL', tone: 'accent' as const, big: true },
+    { label: '14–16', tag: 'Steady widening', tone: 'muted' as const },
+  ]
+  const X0 = 60, XEnd = 660, Y = 110
+  const x = (i: number) => X0 + (i * (XEnd - X0)) / (releases.length - 1)
+  return (
+    <svg {...svgProps} viewBox="0 0 720 234" aria-label="A timeline of Android Automotive releases from 9 to 16, marking Car UI Library, occupant zones and the HIDL to AIDL VHAL migration as the releases that actually changed what you build against">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Three releases changed what you can build on; the rest widened what was already there</Label>
+
+      <line x1={X0} y1={Y} x2={XEnd + 12} y2={Y} stroke="var(--fg-subtle)" strokeWidth={1.4} markerEnd="url(#d-arrow)" />
+
+      {releases.map((r, i) => {
+        const cx = x(i)
+        const accent = r.tone === 'accent'
+        return (
+          <g key={r.label}>
+            {r.big && <circle cx={cx} cy={Y} r={11} fill="none" stroke="var(--accent)" strokeWidth={1.2} opacity={0.45} />}
+            <circle cx={cx} cy={Y} r={r.big ? 7 : 4.5} fill={accent ? 'var(--accent)' : 'var(--surface)'} stroke={accent ? 'var(--accent)' : 'var(--border-strong)'} strokeWidth={1.5} />
+            <text x={cx} y={Y + 26} textAnchor="middle" fill="var(--fg)" fontSize={13} fontWeight={600} fontFamily="var(--font-display)">{r.label}</text>
+            <text x={cx} y={Y + 44} textAnchor="middle" fill={accent ? 'var(--accent)' : 'var(--fg-subtle)'} fontSize={10} fontFamily="var(--font-mono)">{r.tag}</text>
+          </g>
+        )
+      })}
+
+      <rect x={20} y={178} width={680} height={40} rx={6} fill="var(--accent-soft)" stroke="var(--accent)" />
+      <text x={360} y={195} textAnchor="middle" fill="var(--fg)" fontSize={10.5} fontFamily="var(--font-mono)">the single biggest interface change in the platform&rsquo;s history is Android 13&rsquo;s AIDL VHAL</text>
+      <text x={360} y={211} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">if you inherit a HIDL VHAL, budget for a migration, not a refactor</text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------- HIDL to AIDL VHAL -- */
+
+export function HidlToAidlVhal() {
+  const leftX = 40, rightX = 400, boxW = 280, boxY = 44, boxH = 128
+  const leftLines = ['Interface: HIDL (.hal)', 'Calls: per-property, one at a time', 'Codegen: hidl-gen', 'Status: long-tail maintenance']
+  const rightLines = ['Interface: AIDL (.aidl)', 'Calls: batched get/set requests', 'Codegen: the AIDL compiler', 'Status: the current standard']
+  return (
+    <svg {...svgProps} viewBox="0 0 720 232" aria-label="HIDL VHAL on Android 12 and earlier compared with AIDL VHAL from Android 13 onward — same conceptual model, a different interface, and batched rather than per-call requests">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Same conceptual model — properties, areas, three operations — the wire format changes</Label>
+
+      <text x={leftX + boxW / 2} y={38} textAnchor="middle" fill="var(--fg-muted)" fontSize={11.5} fontWeight={600} fontFamily="var(--font-display)">HIDL VHAL &mdash; Android ≤ 12</text>
+      <rect x={leftX} y={boxY} width={boxW} height={boxH} rx={10} fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth={1.25} />
+      {leftLines.map((l, i) => (
+        <text key={l} x={leftX + 18} y={boxY + 30 + i * 24} fill="var(--fg-subtle)" fontSize={10.5} fontFamily="var(--font-mono)">{l}</text>
+      ))}
+
+      <text x={rightX + boxW / 2} y={38} textAnchor="middle" fill="var(--accent)" fontSize={11.5} fontWeight={600} fontFamily="var(--font-display)">AIDL VHAL &mdash; Android 13+</text>
+      <rect x={rightX} y={boxY} width={boxW} height={boxH} rx={10} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={1.25} />
+      {rightLines.map((l, i) => (
+        <text key={l} x={rightX + 18} y={boxY + 30 + i * 24} fill="var(--fg)" fontSize={10.5} fontFamily="var(--font-mono)">{l}</text>
+      ))}
+
+      <Arrow x1={leftX + boxW + 6} y1={boxY + boxH / 2} x2={rightX - 6} y2={boxY + boxH / 2} accent />
+      <Label x={360} y={boxY + boxH / 2 + 22} tone="accent">the migration</Label>
+
+      <rect x={20} y={190} width={680} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={209} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">scheduled work, not a weekend refactor &mdash; every property call site is touched</text>
+    </svg>
+  )
+}
