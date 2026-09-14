@@ -1138,3 +1138,215 @@ export function YoctoLayerStack() {
     </svg>
   )
 }
+
+/* ------------------------------------------------------- redundancy voting -- */
+
+export function RedundancyVoting() {
+  const chY = 50, chH = 56
+  const channels = [
+    { x: 40, label: 'Channel A' },
+    { x: 290, label: 'Channel B' },
+    { x: 540, label: 'Channel C' },
+  ]
+  return (
+    <svg {...svgProps} viewBox="0 0 720 300" aria-label="Three redundant channels feeding a voter that takes the majority answer and flags the outlier for diagnosis">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Two channels can detect a mismatch; three can vote on which one is right</Label>
+
+      {channels.map((c, i) => (
+        <g key={c.label}>
+          <Box x={c.x} y={chY} w={140} h={chH} label={c.label} tone="muted" />
+          <Arrow x1={c.x + 70} y1={chY + chH + 4} x2={320 + i * 40} y2={166} accent />
+        </g>
+      ))}
+
+      <Box x={280} y={170} w={160} h={60} label="Voter" sub="majority rules" tone="accent" />
+      <Arrow x1={360} y1={230} x2={360} y2={254} accent />
+      <Box x={290} y={258} w={140} h={40} label="Output" tone="accent" />
+
+      <rect x={470} y={170} width={230} height={60} rx={8} fill="var(--surface-2)" stroke="var(--border)" strokeDasharray="4 4" />
+      <text x={585} y={193} textAnchor="middle" fill="var(--fg-muted)" fontSize={10} fontFamily="var(--font-mono)">two channels only detect</text>
+      <text x={585} y={208} textAnchor="middle" fill="var(--fg-muted)" fontSize={10} fontFamily="var(--font-mono)">a mismatch, not resolve it</text>
+      <text x={585} y={223} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10} fontFamily="var(--font-mono)">— they fall back safe instead</text>
+
+      <rect x={20} y={268} width={230} height={30} rx={6} fill="var(--accent-soft)" stroke="var(--accent)" />
+      <text x={135} y={287} textAnchor="middle" fill="var(--fg)" fontSize={10} fontFamily="var(--font-mono)">the voter needs its own redundancy</text>
+    </svg>
+  )
+}
+
+/* ---------------------------------------------------- sensor onboarding path -- */
+
+export function SensorOnboardingPipeline() {
+  const stages = [
+    { label: 'Radar', sub: 'raw CAN-FD frame', tone: 'muted' as const },
+    { label: 'Zone controller', sub: 'terminate, forward', tone: 'muted' as const },
+    { label: 'Driver', sub: 'decode, not judge', tone: 'default' as const },
+    { label: 'Feeder + VSS', sub: 'named, typed signal', tone: 'accent' as const },
+    { label: 'App', sub: 'subscribes via broker', tone: 'default' as const },
+  ]
+  const W = 128, gap = 12
+  const y = 96
+  return (
+    <svg {...svgProps} viewBox="0 0 720 230" aria-label="A new radar's raw CAN frame passes through a zone controller, a driver, a feeder and VSS mapping, and a safety classification before an app can subscribe to it">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The same five-stage path every signal in this curriculum travels — run once, from zero</Label>
+
+      {stages.map((s, i) => {
+        const x = 20 + i * (W + gap)
+        return (
+          <g key={s.label}>
+            <Box x={x} y={y} w={W} h={60} label={s.label} sub={s.sub} tone={s.tone} />
+            {i < stages.length - 1 && <Arrow x1={x + W + 2} y1={y + 30} x2={x + W + gap - 2} y2={y + 30} accent={i === 2} />}
+          </g>
+        )
+      })}
+
+      <rect x={20} y={176} width={680} height={40} rx={6} fill="var(--accent-soft)" stroke="var(--accent)" />
+      <text x={360} y={192} textAnchor="middle" fill="var(--fg)" fontSize={10.5} fontFamily="var(--font-mono)">a hazard analysis between driver and app sets requirements on all three middle stages</text>
+      <text x={360} y={208} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">plausibility checks, honest fault reporting, and visible degradation on fault</text>
+    </svg>
+  )
+}
+
+/* --------------------------------------------------- projection host mediation -- */
+
+export function ProjectionHostMediation() {
+  const rowH = 56
+  return (
+    <svg {...svgProps} viewBox="0 0 720 220" aria-label="A native app calls vehicle services directly, while a projected phone app has no route to those services at all and depends entirely on the projection host to mediate context on its behalf">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The phone app has no route to vehicle services at all — only the host does</Label>
+
+      <Box x={20} y={50} w={200} h={rowH} label="Native app" sub="on the vehicle" tone="default" />
+      <Arrow x1={220} y1={78} x2={470} y2={78} accent />
+      <Label x={345} y={66} tone="accent">direct call</Label>
+
+      <Box x={20} y={140} w={200} h={rowH} label="Phone app" sub="Android Auto / CarPlay" tone="muted" />
+      <Arrow x1={220} y1={168} x2={276} y2={168} dashed />
+      <Box x={280} y={140} w={190} h={rowH} label="Projection host" sub="mediates, enforces" tone="accent" />
+      <Arrow x1={470} y1={168} x2={470} y2={106} accent />
+
+      <Box x={470} y={50} w={230} h={rowH * 2 + 34} label="Vehicle service layer" sub="drive state, gear, ambient light" tone="default" />
+    </svg>
+  )
+}
+
+/* -------------------------------------------------- model-code traceability -- */
+
+export function ModelToCodeTraceability() {
+  const items = [
+    { label: 'Requirement', sub: 'torque ramp-down bound' },
+    { label: 'Model block', sub: 'rate limiter' },
+    { label: 'Generated C', sub: 'tagged with block ID' },
+    { label: 'Test case', sub: 'same block ID' },
+  ]
+  const W = 156, gap = 16, y = 60
+  return (
+    <svg {...svgProps} viewBox="0 0 720 190" aria-label="A single identifier links a requirement to a model block, the C code generated from it, and the test case that exercises it, traceable in either direction">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>One identifier, walkable in either direction — that walk is what a safety case is built from</Label>
+
+      {items.map((it, i) => {
+        const x = 20 + i * (W + gap)
+        return (
+          <g key={it.label}>
+            <Box x={x} y={y} w={W} h={60} label={it.label} sub={it.sub} tone={i === 1 ? 'accent' : 'default'} />
+            {i < items.length - 1 && <Arrow x1={x + W + 2} y1={y + 26} x2={x + W + gap - 2} y2={y + 26} both accent />}
+          </g>
+        )
+      })}
+
+      <rect x={20} y={144} width={680} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={163} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">the model is the reviewed artifact — the generated C is a build output, not a design</text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------- A2L / XCP calibration -- */
+
+export function CalibrationLiveLoop() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 240" aria-label="A calibration tool reads the A2L description file and writes new parameter values to a running ECU over XCP, while the code and calibration memory stay in separate regions">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The A2L file is the map; XCP is how a laptop reads and writes it while the ECU keeps running</Label>
+
+      <Box x={20} y={50} w={200} h={64} label="Calibration tool" sub="reads the A2L map" tone="default" />
+      <Arrow x1={220} y1={72} x2={296} y2={72} accent />
+      <Label x={258} y={60} tone="accent">XCP write</Label>
+      <Arrow x1={296} y1={102} x2={220} y2={102} />
+      <Label x={258} y={114} tone="subtle">XCP measure</Label>
+
+      <rect x={300} y={50} width={400} height={140} rx={10} fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth={1.25} />
+      <text x={500} y={72} textAnchor="middle" fill="var(--fg)" fontSize={12.5} fontWeight={600} fontFamily="var(--font-display)">Running ECU</text>
+      <rect x={320} y={86} width={170} height={80} rx={8} fill="var(--bg-subtle)" stroke="var(--border)" />
+      <text x={405} y={112} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">Code</text>
+      <text x={405} y={128} textAnchor="middle" fill="var(--fg-subtle)" fontSize={9.5} fontFamily="var(--font-mono)">compiled, flashed</text>
+      <rect x={510} y={86} width={170} height={80} rx={8} fill="var(--accent-soft)" stroke="var(--accent)" />
+      <text x={595} y={112} textAnchor="middle" fill="var(--fg)" fontSize={10.5} fontFamily="var(--font-mono)">Calibration data</text>
+      <text x={595} y={128} textAnchor="middle" fill="var(--fg-muted)" fontSize={9.5} fontFamily="var(--font-mono)">tuned live, no reflash</text>
+
+      <rect x={20} y={204} width={680} height={26} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={221} textAnchor="middle" fill="var(--fg-muted)" fontSize={10} fontFamily="var(--font-mono)">a value written to the wrong address is a bad A2L pairing, not an XCP fault</text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------- hypervisor boot branching -- */
+
+export function HypervisorBootBranching() {
+  return (
+    <svg {...svgProps} viewBox="0 0 720 340" aria-label="A hardware root of trust verifies a secure bootloader and hypervisor, which then independently verifies each guest operating system against that guest's own key">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>The hypervisor is not the end of the chain — it is a branch point</Label>
+
+      <Box x={280} y={44} w={160} h={50} label="Root of trust" sub="fused, immutable" tone="accent" />
+      <Arrow x1={360} y1={94} x2={360} y2={118} accent />
+      <Box x={260} y={122} w={200} h={50} label="Secure bootloader" tone="default" />
+      <Arrow x1={360} y1={172} x2={360} y2={196} accent />
+      <Box x={270} y={200} w={180} h={50} label="Hypervisor" tone="accent" />
+
+      <Arrow x1={330} y1={254} x2={150} y2={266} />
+      <Arrow x1={390} y1={254} x2={570} y2={266} />
+      <Box x={40} y={270} w={220} h={50} label="Android guest" sub="verified against its own key" tone="muted" />
+      <Box x={460} y={270} w={220} h={50} label="Safety RTOS guest" sub="verified against its own key" tone="muted" />
+
+      <rect x={490} y={44} width={210} height={68} rx={8} fill="var(--surface-2)" stroke="var(--border)" strokeDasharray="4 4" />
+      <text x={595} y={66} textAnchor="middle" fill="var(--fg-muted)" fontSize={10} fontFamily="var(--font-mono)">one guest&apos;s key compromised</text>
+      <text x={595} y={81} textAnchor="middle" fill="var(--fg-muted)" fontSize={10} fontFamily="var(--font-mono)">does not verify the other guest —</text>
+      <text x={595} y={96} textAnchor="middle" fill="var(--fg-subtle)" fontSize={10} fontFamily="var(--font-mono)">no shared key across guests</text>
+    </svg>
+  )
+}
+
+/* -------------------------------------------------------- attack path layers -- */
+
+export function AttackPathThroughLayers() {
+  const stages = [
+    { label: 'Compromised app', sub: 'code execution', tone: 'muted' as const },
+    { label: 'Sandbox escape', sub: 'app to system', tone: 'muted' as const },
+    { label: 'Gateway', sub: 'fails closed', tone: 'accent' as const },
+    { label: 'Message auth', sub: 'key + counter', tone: 'default' as const },
+    { label: 'Boot attestation', sub: 'proves boot image', tone: 'default' as const },
+  ]
+  const W = 128, gap = 12, y = 60
+  return (
+    <svg {...svgProps} viewBox="0 0 720 190" aria-label="An attack path from a compromised infotainment app toward the chassis domain, stopped in sequence by sandboxing, network segmentation, gateway filtering, message authentication and boot attestation">
+      <DiagramDefs />
+      <Label x={22} y={22} anchor="start" tone="muted" size={12}>Each step needs a named control — the gateway is where a correct architecture stops this</Label>
+
+      {stages.map((s, i) => {
+        const x = 20 + i * (W + gap)
+        return (
+          <g key={s.label}>
+            <Box x={x} y={y} w={W} h={60} label={s.label} sub={s.sub} tone={s.tone} />
+            {i < stages.length - 1 && <Arrow x1={x + W + 2} y1={y + 30} x2={x + W + gap - 2} y2={y + 30} accent={i === 1} dashed={i >= 2} />}
+          </g>
+        )
+      })}
+
+      <rect x={20} y={144} width={680} height={30} rx={6} fill="var(--surface-2)" stroke="var(--border)" />
+      <text x={360} y={163} textAnchor="middle" fill="var(--fg-muted)" fontSize={10.5} fontFamily="var(--font-mono)">every step past the gateway is a control that already failed once — defence in depth, not the plan</text>
+    </svg>
+  )
+}
