@@ -328,7 +328,6 @@ export function Landing() {
               <RequestAccessButton
                 label="Ask for details and cost"
                 variant="secondary"
-                defaultTopics={['ai-ml']}
                 context="AI & ML for Automotive"
               />
             </div>

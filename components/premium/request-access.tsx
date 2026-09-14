@@ -91,7 +91,10 @@ function RequestAccessModal({
   const [email, setEmail] = useState('')
   const [topics, setTopics] = useState<RequestTopic[]>(defaultTopics)
   const [duration, setDuration] = useState<RequestDuration>('1-month')
-  const [accounts, setAccounts] = useState(1)
+  // Kept as free-typed text, not a number, so clearing the field to type a
+  // new value doesn't get immediately snapped back to 1 on every keystroke —
+  // only normalised (clamped to 1-20, defaulted if empty) on blur and submit.
+  const [accountsInput, setAccountsInput] = useState('1')
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
@@ -113,7 +116,15 @@ function RequestAccessModal({
   }, [onClose])
 
   function toggleTopic(value: RequestTopic) {
+    if (REQUEST_TOPICS.find((t) => t.value === value)?.disabled) return
     setTopics((prev) => (prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]))
+  }
+
+  /** Clamped to 1-20, defaulting to 1 for anything that isn't a positive integer. */
+  function normalisedAccounts(): number {
+    const n = Math.trunc(Number(accountsInput))
+    if (!Number.isFinite(n) || n < 1) return 1
+    return Math.min(20, n)
   }
 
   const canSubmit = name.trim() !== '' && email.trim() !== '' && topics.length > 0
@@ -138,7 +149,7 @@ function RequestAccessModal({
           email: email.trim(),
           topics: topicLabels,
           access_length: durationLabel,
-          accounts_needed: String(accounts),
+          accounts_needed: String(normalisedAccounts()),
           message: message.trim() || '(none)',
           requested_from: context ?? '(none)',
           page: typeof window !== 'undefined' ? window.location.href : '',
@@ -240,16 +251,20 @@ function RequestAccessModal({
                     <button
                       key={t.value}
                       type="button"
+                      disabled={t.disabled}
                       aria-pressed={selected}
                       onClick={() => toggleTopic(t.value)}
                       className={cn(
-                        'cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-                        selected
-                          ? 'border-accent bg-accent-soft text-accent'
-                          : 'border-line text-muted hover:border-line-strong hover:text-fg',
+                        'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                        t.disabled
+                          ? 'cursor-not-allowed border-line text-subtle opacity-60'
+                          : selected
+                            ? 'cursor-pointer border-accent bg-accent-soft text-accent'
+                            : 'cursor-pointer border-line text-muted hover:border-line-strong hover:text-fg',
                       )}
                     >
                       {t.label}
+                      {t.note && <span className="text-subtle"> · {t.note}</span>}
                     </button>
                   )
                 })}
@@ -284,8 +299,9 @@ function RequestAccessModal({
                   min={1}
                   max={20}
                   required
-                  value={accounts}
-                  onChange={(e) => setAccounts(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+                  value={accountsInput}
+                  onChange={(e) => setAccountsInput(e.target.value)}
+                  onBlur={() => setAccountsInput(String(normalisedAccounts()))}
                   className="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
                 />
               </div>

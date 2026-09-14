@@ -36,6 +36,21 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.09.14.1',
+    date: '2026-09-14',
+    title: 'Access-request form fixes and an AI & ML for Automotive waitlist',
+    changes: [
+      {
+        type: 'changed',
+        text: 'The access-request form now shows "AI & ML for Automotive" as a disabled, coming-soon option instead of a selectable topic, since that track has not launched yet.',
+      },
+      {
+        type: 'fixed',
+        text: 'Fixed the "accounts needed" field on the access-request form snapping back to 1 the instant it was cleared, which made it impossible to backspace and type a different number.',
+      },
+    ],
+  },
+  {
     version: '2026.09.14',
     date: '2026-09-14',
     title: 'Nine new SDV topics, version-history diagrams, and a single access-request form',

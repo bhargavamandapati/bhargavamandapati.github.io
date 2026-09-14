@@ -61,7 +61,7 @@ export default function AiMlPage() {
               told when it&rsquo;s ready.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <RequestAccessButton defaultTopics={['ai-ml']} context="AI & ML for Automotive — early access" />
+              <RequestAccessButton context="AI & ML for Automotive — early access" />
             </div>
           </div>
 
