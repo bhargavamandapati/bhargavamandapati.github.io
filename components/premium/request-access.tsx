@@ -3,10 +3,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Check, Loader2, Lock, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { accessEmail } from '@/lib/obscured-email'
 import {
   REQUEST_DURATIONS,
   REQUEST_TOPICS,
-  WEB3FORMS_ACCESS_KEY,
   type RequestDuration,
   type RequestTopic,
 } from '@/data/request-access'
@@ -16,7 +16,7 @@ import {
  *
  * It used to be a pair — a LinkedIn link and a mailto: button — replaced here
  * by a single button that opens a form. The form's submission goes straight
- * to an inbox through Web3Forms (see data/request-access.ts), so there is
+ * to an inbox through FormSubmit (see data/request-access.ts), so there is
  * still no backend to run and no payment gateway to integrate: payment
  * happens off-site, and this form only starts that conversation.
  */
@@ -138,25 +138,47 @@ function RequestAccessModal({
         .map((t) => t.label)
         .join(', ')
       const durationLabel = REQUEST_DURATIONS.find((d) => d.value === duration)?.label ?? duration
+      const accountsCount = normalisedAccounts()
+      const requesterName = name.trim()
 
-      const response = await fetch('https://api.web3forms.com/submit', {
+      // Built here from the real submitted values, not a dashboard template —
+      // sidesteps needing to verify FormSubmit's own placeholder syntax.
+      const autoresponse = [
+        `Hi ${requesterName},`,
+        '',
+        `This confirms your request for ${topicLabels} has been received.`,
+        '',
+        `  Access length:   ${durationLabel}`,
+        `  Accounts needed: ${accountsCount}`,
+        '',
+        "You'll hear back at this address once it's reviewed — no need to follow up in the meantime.",
+        '',
+        'Bhargava Mandapati',
+        'https://bhargavamandapati.com',
+      ].join('\n')
+
+      const response = await fetch(`https://formsubmit.co/ajax/${accessEmail()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
-          access_key: WEB3FORMS_ACCESS_KEY,
-          subject: `Access request — ${topicLabels}`,
-          name: name.trim(),
+          _subject: `Access request — ${topicLabels}`,
+          _template: 'table',
+          _captcha: 'false',
+          _replyto: email.trim(),
+          _autoresponse: autoresponse,
+          name: requesterName,
           email: email.trim(),
           topics: topicLabels,
           access_length: durationLabel,
-          accounts_needed: String(normalisedAccounts()),
+          accounts_needed: String(accountsCount),
           message: message.trim() || '(none)',
           requested_from: context ?? '(none)',
           page: typeof window !== 'undefined' ? window.location.href : '',
         }),
       })
+      if (!response.ok) throw new Error('submit failed')
       const result = await response.json().catch(() => null)
-      if (!response.ok || result?.success === false) throw new Error('submit failed')
+      if (result && result.success === false) throw new Error('submit failed')
       setStatus('sent')
     } catch {
       setStatus('error')

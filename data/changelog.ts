@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.09.14.1',
     date: '2026-09-14',
-    title: 'Access-request form fixes and an AI & ML for Automotive waitlist',
+    title: 'Access-request form fixes, an AI & ML for Automotive waitlist, and a delivery switch',
     changes: [
       {
         type: 'changed',
@@ -47,6 +47,10 @@ export const changelog: ChangelogEntry[] = [
       {
         type: 'fixed',
         text: 'Fixed the "accounts needed" field on the access-request form snapping back to 1 the instant it was cleared, which made it impossible to backspace and type a different number.',
+      },
+      {
+        type: 'changed',
+        text: 'Switched the access-request form’s delivery from Web3Forms to FormSubmit — no account or key needed, and the confirmation email sent back to the requester is now built per-submission with the real request details, instead of a fixed dashboard template.',
       },
     ],
   },
