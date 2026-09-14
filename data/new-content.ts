@@ -21,6 +21,15 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'sdv', slug: 'architecture/fail-operational-and-redundancy', date: '2026-09-14' },
+  { area: 'sdv', slug: 'communication/choosing-a-communication-pattern', date: '2026-09-14' },
+  { area: 'sdv', slug: 'ivi/projection-and-phone-integration', date: '2026-09-14' },
+  { area: 'sdv', slug: 'ivi/personalization-and-profiles', date: '2026-09-14' },
+  { area: 'sdv', slug: 'delivery/model-based-development', date: '2026-09-14' },
+  { area: 'sdv', slug: 'delivery/calibration-and-parameter-management', date: '2026-09-14' },
+  { area: 'sdv', slug: 'safety-security/secure-boot-and-root-of-trust', date: '2026-09-14' },
+  { area: 'sdv', slug: 'safety-security/threat-modeling-an-sdv', date: '2026-09-14' },
+  { area: 'sdv', slug: 'end-to-end/bringing-a-sensor-online', date: '2026-09-14' },
   { area: 'learn', slug: 'car-framework/app-focus-arbitration', date: '2026-09-13' },
   { area: 'tutorials', slug: 'framework/custom-task-monitor', date: '2026-09-13' },
   { area: 'learn', slug: 'connectivity/esim-provisioning', date: '2026-09-12' },

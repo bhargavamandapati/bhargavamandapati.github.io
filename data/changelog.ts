@@ -38,8 +38,23 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.09.14',
     date: '2026-09-14',
-    title: 'Diagrams for the version history article',
+    title: 'Nine new SDV topics, and diagrams for the version history article',
     changes: [
+      {
+        type: 'added',
+        text: 'Nine new SDV topics: fail-operational design and redundancy, choosing a communication pattern, phone projection as a cockpit service, personalization and profiles, model-based development, calibration and parameter management, secure boot and root of trust across a consolidated stack, threat modeling a software-defined vehicle, and a third end-to-end walkthrough following a new sensor from a bare wire to a shipped feature.',
+        links: [
+          { label: 'Fail-operational and redundancy', href: '/sdv/architecture/fail-operational-and-redundancy/' },
+          { label: 'Choosing a communication pattern', href: '/sdv/communication/choosing-a-communication-pattern/' },
+          { label: 'Projection and phone integration', href: '/sdv/ivi/projection-and-phone-integration/' },
+          { label: 'Personalization and profiles', href: '/sdv/ivi/personalization-and-profiles/' },
+          { label: 'Model-based development', href: '/sdv/delivery/model-based-development/' },
+          { label: 'Calibration and parameter management', href: '/sdv/delivery/calibration-and-parameter-management/' },
+          { label: 'Secure boot and root of trust', href: '/sdv/safety-security/secure-boot-and-root-of-trust/' },
+          { label: 'Threat modeling an SDV', href: '/sdv/safety-security/threat-modeling-an-sdv/' },
+          { label: 'End to end: bringing a sensor online', href: '/sdv/end-to-end/bringing-a-sensor-online/' },
+        ],
+      },
       {
         type: 'added',
         text: 'Two diagrams on the AAOS version history article — a release timeline marking Car UI Library, occupant zones and the HIDL-to-AIDL VHAL migration as the releases that actually change what you build against, and a side-by-side HIDL/AIDL VHAL interface comparison.',
