@@ -2,8 +2,9 @@
 
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ExternalLink, Pause, Play, RotateCcw,
-  Info, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Disc, DoorOpen, ExternalLink, Eye,
+  KeyRound, LayoutDashboard, ParkingCircle, Pause, Play, Plug, RotateCcw, SlidersHorizontal,
+  Snowflake, Info, Search, X } from 'lucide-react'
 import { isFreeControl } from '@/data/access'
 import { LockBadge } from '@/components/premium/lock-badge'
 import {
@@ -13,6 +14,7 @@ import {
   type Control,
   type SimState,
 } from '@/data/simulator'
+import { scenarios, type Scenario } from '@/data/simulator-scenarios'
 import type { ExteriorScene } from './exterior-scene'
 import type { InteriorScene, Readout } from './interior-scene'
 import {
@@ -28,6 +30,7 @@ import {
   hvacShownFan,
   hvacChips,
 } from './interior-scene'
+import { CruiseIcon, GROUP_ICONS, HeadlightIcon, LaneKeepIcon, telltaleIcon } from './dashboard-icons'
 import { VehicleInfo } from './vehicle-info'
 import { cn } from '@/lib/utils'
 
@@ -175,6 +178,72 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
     },
     [],
   )
+
+  // Guided scenarios: the same writes a reader could make by hand, applied
+  // as a batch and logged one row per property, exactly like a real one
+  // would read in the event log below.
+  const [activeScenario, setActiveScenario] = useState<number | null>(null)
+  const [activeStep, setActiveStep] = useState(0)
+
+  const applyPatch = useCallback((patch: Partial<SimState>) => {
+    setState((s) => ({ ...s, ...patch }))
+    setLog((entries) => {
+      const time = new Date().toLocaleTimeString('en-GB', { hour12: false })
+      // A dependency this same patch also sets should count as already met —
+      // otherwise turning HVAC on and raising the fan in one step would read
+      // as gated, when the two writes land together.
+      const merged = { ...stateRef.current, ...patch }
+      const fresh: LogEntry[] = Object.entries(patch).map(([key, value]) => {
+        const control = controls.find((c) => c.key === key)
+        const inert = Boolean(control?.requires && !merged[control.requires])
+        return {
+          id: logId.current++,
+          property: control?.property ?? key,
+          value: control ? formatValue(control, value as never) : String(value),
+          time,
+          inert,
+          effect: control?.affects ?? '',
+        }
+      })
+      return [...fresh.reverse(), ...entries].slice(0, 40)
+    })
+  }, [])
+
+  const playScenario = useCallback(
+    (index: number) => {
+      setActiveScenario(index)
+      setActiveStep(0)
+      applyPatch(scenarios[index].steps[0].patch)
+    },
+    [applyPatch],
+  )
+
+  const stepScenario = useCallback(
+    (direction: 1 | -1) => {
+      if (activeScenario === null) return
+      const scenario = scenarios[activeScenario]
+      const next = activeStep + direction
+      if (next < 0 || next >= scenario.steps.length) return
+      setActiveStep(next)
+      // Only forward steps write to the vehicle — stepping back reviews the
+      // narration already logged, rather than pretending a write can be
+      // taken back.
+      if (direction === 1) applyPatch(scenario.steps[next].patch)
+    },
+    [activeScenario, activeStep, applyPatch],
+  )
+
+  // Area-ID highlight: purely imperative, so hovering 128 controls never
+  // triggers a React re-render — only the exterior scene's own ring moves.
+  const onAreaHover = useCallback((ref: string | null) => {
+    exterior.current?.setHighlight(ref)
+  }, [])
+
+  // Below `lg`, the desktop's two-column layout collapses to one; instead of
+  // a long stack (views, then data, then 128 controls), the same three
+  // regions become tabs so a phone never has to scroll past what it isn't
+  // looking at. Above `lg` every region shows regardless of this state.
+  const [mobileTab, setMobileTab] = useState<'views' | 'data' | 'controls'>('views')
 
   // Build both scenes once, on the client, after the modules load.
   useEffect(() => {
@@ -341,10 +410,13 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
   const telltales = clusterTelltales(state, readout, true)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
+    <div className="grid gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_23rem] lg:pb-0">
       <div className="min-w-0">
         {/* ---- Inside the car ---- */}
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.85fr)]">
+        <div className={cn(
+          'grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.85fr)]',
+          mobileTab !== 'views' && 'max-lg:hidden',
+        )}>
           <figure className="min-w-0">
             <div
               ref={insideWrap}
@@ -429,6 +501,54 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
           </figure>
         </div>
 
+        <div className={cn(mobileTab !== 'data' && 'max-lg:hidden')}>
+        {/* ---- Guided scenarios ---- */}
+        <div className="card mt-4 p-5">
+          <h2 className="font-mono text-xs uppercase tracking-wider text-subtle">
+            Guided scenarios
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            The same writes you could make by hand, one property at a time — played for you, with
+            the reason each one matters.
+          </p>
+          <div className="mt-3 flex flex-col gap-1.5">
+            {scenarios.map((scenario, i) => (
+              <button
+                key={scenario.title}
+                type="button"
+                onClick={() => playScenario(i)}
+                className={cn(
+                  'flex cursor-pointer items-center gap-2.5 rounded-lg border border-line px-3 py-2 text-left text-sm transition-colors hover:border-line-strong',
+                  activeScenario === i && 'border-accent bg-accent/[0.06]',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex size-5 shrink-0 items-center justify-center rounded-full border border-line-strong text-subtle',
+                    activeScenario === i && 'border-accent bg-accent text-accent-fg',
+                  )}
+                >
+                  <Play aria-hidden className="size-2.5 fill-current" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium text-fg">{scenario.title}</span>
+                  <span className="block text-xs text-muted">{scenario.summary}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {activeScenario !== null && (
+            <ScenarioStage
+              scenario={scenarios[activeScenario]}
+              step={activeStep}
+              onPrev={() => stepScenario(-1)}
+              onNext={() => stepScenario(1)}
+              onClose={() => setActiveScenario(null)}
+            />
+          )}
+        </div>
+
         {/* ---- Cluster readout ---- */}
         <div className="card mt-4 p-5">
           <h2 className="font-mono text-xs uppercase tracking-wider text-subtle">
@@ -445,22 +565,32 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
             <Readouts label="Battery" value={`${state.batteryLevel}`} unit="%" />
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5" aria-live="polite">
-            {state.ignition < 3 && <Telltale tone="muted">IGNITION OFF</Telltale>}
-            {state.parkingBrake && <Telltale tone="warn">PARKING BRAKE</Telltale>}
-            {readout.lowTyres > 0 && (
-              <Telltale tone="warn">TYRE PRESSURE · {readout.lowTyres} low</Telltale>
+            {state.ignition < 3 && (
+              <Telltale tone="muted" icon={KeyRound}>IGNITION OFF</Telltale>
             )}
-            {openDoors > 0 && <Telltale tone="warn">{openDoors} DOOR OPEN</Telltale>}
-            {state.bootOpen && <Telltale tone="warn">BOOT OPEN</Telltale>}
+            {state.parkingBrake && (
+              <Telltale tone="warn" icon={ParkingCircle}>PARKING BRAKE</Telltale>
+            )}
+            {readout.lowTyres > 0 && (
+              <Telltale tone="warn" icon={Disc}>TYRE PRESSURE · {readout.lowTyres} low</Telltale>
+            )}
+            {openDoors > 0 && (
+              <Telltale tone="warn" icon={DoorOpen}>{openDoors} DOOR OPEN</Telltale>
+            )}
+            {state.bootOpen && <Telltale tone="warn" icon={DoorOpen}>BOOT OPEN</Telltale>}
             {state.chargePortConnected && state.chargePortOpen && (
-              <Telltale tone="ok">CHARGING</Telltale>
+              <Telltale tone="ok" icon={Plug}>CHARGING</Telltale>
             )}
             {state.headlights && (
-              <Telltale tone="ok">{state.highBeam ? 'MAIN BEAM' : 'LIGHTS'}</Telltale>
+              <Telltale tone="ok" icon={HeadlightIcon}>{state.highBeam ? 'MAIN BEAM' : 'LIGHTS'}</Telltale>
             )}
-            {state.cruiseEnabled && <Telltale tone="ok">CRUISE</Telltale>}
-            {state.laneKeepEnabled && <Telltale tone="ok">LANE KEEP</Telltale>}
-            {state.hvacPower && state.hvacAc && <Telltale tone="ok">A/C</Telltale>}
+            {state.cruiseEnabled && <Telltale tone="ok" icon={CruiseIcon}>CRUISE</Telltale>}
+            {state.laneKeepEnabled && (
+              <Telltale tone="ok" icon={LaneKeepIcon}>LANE KEEP</Telltale>
+            )}
+            {state.hvacPower && state.hvacAc && (
+              <Telltale tone="ok" icon={Snowflake}>A/C</Telltale>
+            )}
           </div>
 
           <div className="mt-5 border-t border-line pt-4">
@@ -500,12 +630,14 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {telltales.map((t, i) => {
                   const color = TELLTALE_VAR[t.color]
+                  const Icon = telltaleIcon(t.label, t.color)
                   return (
                     <span
                       key={`${t.label}-${i}`}
-                      className="chip"
+                      className="chip gap-1.5"
                       style={{ color, borderColor: `color-mix(in srgb, ${color} 50%, transparent)` }}
                     >
+                      <Icon aria-hidden className="size-3.5 shrink-0" />
                       {t.label}
                     </span>
                   )
@@ -581,10 +713,14 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
             ))}
           </ul>
         </div>
+        </div>
       </div>
 
       {/* ---- Controls ---- */}
-      <div className="min-w-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
+      <div className={cn(
+        'min-w-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1',
+        mobileTab !== 'controls' && 'max-lg:hidden',
+      )}>
         <div className="sticky top-0 z-10 -mx-px bg-bg pb-3">
           <label htmlFor={searchId} className="sr-only">
             Search the {controls.length} simulator controls by label or property
@@ -621,17 +757,21 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {allGrouped.map(({ group, items }) => (
-                  <button
-                    key={group}
-                    type="button"
-                    onClick={() => jumpToGroup(group)}
-                    className="chip cursor-pointer transition-colors hover:border-accent/50 hover:text-accent"
-                  >
-                    {group}
-                    <span className="text-subtle">· {items.length}</span>
-                  </button>
-                ))}
+                {allGrouped.map(({ group, items }) => {
+                  const GroupIcon = GROUP_ICONS[group]
+                  return (
+                    <button
+                      key={group}
+                      type="button"
+                      onClick={() => jumpToGroup(group)}
+                      className="chip cursor-pointer gap-1.5 transition-colors hover:border-accent/50 hover:text-accent"
+                    >
+                      {GroupIcon && <GroupIcon aria-hidden className="size-3.5 shrink-0" />}
+                      {group}
+                      <span className="text-subtle">· {items.length}</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -652,6 +792,7 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
         )}
         {grouped.map(({ group, items, total }) => {
           const open = expandedGroups.has(group)
+          const GroupIcon = GROUP_ICONS[group]
           return (
             <details
               key={group}
@@ -663,9 +804,10 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
               className="group mb-3 min-w-0 scroll-mt-4"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3.5 py-2.5 font-mono text-[0.7rem] uppercase tracking-wider text-subtle transition-colors hover:border-line-strong hover:text-fg [&::-webkit-details-marker]:hidden">
-                <span>
+                <span className="flex items-center gap-2">
+                  {GroupIcon && <GroupIcon aria-hidden className="size-3.5 shrink-0" />}
                   {group}
-                  <span className="ml-1.5 text-subtle">
+                  <span className="text-subtle">
                     · {searching ? `${items.length} of ${total}` : total}
                   </span>
                 </span>
@@ -684,12 +826,106 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
                     locked={!unlocked && !isFreeControl(control.property)}
                     idPrefix={groupId}
                     onChange={(v) => set(control.key, v as never, control, gated(control))}
+                    onAreaHover={onAreaHover}
                   />
                 ))}
               </div>
             </details>
           )
         })}
+      </div>
+
+      {/* ---- Mobile tab bar ---- */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 backdrop-blur lg:hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-1.5 font-mono text-[0.68rem] text-muted">
+          <span>
+            SPEED <b className="text-fg tabular-nums">{kmh}</b>
+          </span>
+          <span>
+            GEAR <b className="text-fg">{GEAR[state.gear] ?? '—'}</b>
+          </span>
+          <span>
+            BATT <b className="text-fg tabular-nums">{state.batteryLevel}%</b>
+          </span>
+        </div>
+        <div className="grid grid-cols-3 border-t border-line">
+          {(
+            [
+              ['views', 'Views', Eye],
+              ['data', 'Data', LayoutDashboard],
+              ['controls', 'Controls', SlidersHorizontal],
+            ] as const
+          ).map(([tab, label, Icon]) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setMobileTab(tab)}
+              className={cn(
+                'flex cursor-pointer flex-col items-center gap-0.5 py-2 text-[0.65rem]',
+                mobileTab === tab ? 'text-accent' : 'text-subtle',
+              )}
+            >
+              <Icon aria-hidden className="size-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ScenarioStage({
+  scenario,
+  step,
+  onPrev,
+  onNext,
+  onClose,
+}: {
+  scenario: Scenario
+  step: number
+  onPrev: () => void
+  onNext: () => void
+  onClose: () => void
+}) {
+  const current = scenario.steps[step]
+  const atStart = step === 0
+  const atEnd = step === scenario.steps.length - 1
+  return (
+    <div className="mt-4 border-t border-dashed border-line pt-3.5">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[0.68rem] uppercase tracking-wider text-accent">
+          Step {step + 1} of {scenario.steps.length}
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close this scenario"
+          className="cursor-pointer rounded p-0.5 text-subtle hover:text-fg"
+        >
+          <X aria-hidden className="size-3.5" />
+        </button>
+      </div>
+      <p className="mt-1.5 text-sm leading-relaxed text-fg">{current.narration}</p>
+      <div className="mt-3 flex justify-end gap-2">
+        <button
+          type="button"
+          disabled={atStart}
+          onClick={onPrev}
+          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-xs font-medium transition-colors hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ChevronLeft aria-hidden className="size-3.5" />
+          Prev
+        </button>
+        <button
+          type="button"
+          disabled={atEnd}
+          onClick={onNext}
+          className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+          <ChevronRight aria-hidden className="size-3.5" />
+        </button>
       </div>
     </div>
   )
@@ -719,15 +955,26 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function Telltale({ tone, children }: { tone: 'ok' | 'warn' | 'muted'; children: React.ReactNode }) {
+function Telltale({
+  tone,
+  icon: Icon,
+  children,
+}: {
+  tone: 'ok' | 'warn' | 'muted'
+  /** Real automotive telltales are read by shape first — the text stays for
+   * anyone who can't or doesn't want to rely on the icon alone. */
+  icon: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
+}) {
   return (
     <span
       className={cn(
-        'chip',
+        'chip gap-1.5',
         tone === 'warn' && 'border-difficulty-advanced/50 text-difficulty-advanced',
         tone === 'ok' && 'border-accent/50 text-accent',
       )}
     >
+      <Icon aria-hidden className="size-3.5 shrink-0" />
       {children}
     </span>
   )
@@ -740,6 +987,7 @@ function ControlRow({
   locked = false,
   idPrefix,
   onChange,
+  onAreaHover,
 }: {
   control: Control
   value: SimState[keyof SimState]
@@ -749,8 +997,11 @@ function ControlRow({
   locked?: boolean
   idPrefix: string
   onChange: (value: number | boolean) => void
+  /** Rings the control's real VehicleArea in the plan view while hovered or focused. */
+  onAreaHover?: (ref: string | null) => void
 }) {
   const id = `${idPrefix}-${control.key}-${control.label.replace(/\s+/g, '')}`
+  const area = control.area
   return (
     <div
       className={cn(
@@ -763,6 +1014,10 @@ function ControlRow({
         // them to 2.39 contrast.
         locked && 'bg-surface-2/70',
       )}
+      onMouseEnter={area ? () => onAreaHover?.(area.ref) : undefined}
+      onMouseLeave={area ? () => onAreaHover?.(null) : undefined}
+      onFocus={area ? () => onAreaHover?.(area.ref) : undefined}
+      onBlur={area ? () => onAreaHover?.(null) : undefined}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1">
@@ -781,6 +1036,9 @@ function ControlRow({
             <p className="mt-1 font-mono text-[0.64rem] uppercase tracking-wider text-subtle">
               read-only · you are standing in for the vehicle
             </p>
+          )}
+          {area && (
+            <p className="mt-1 font-mono text-[0.64rem] text-accent">{area.label}</p>
           )}
         </div>
         {control.kind === 'toggle' && (

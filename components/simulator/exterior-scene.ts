@@ -19,6 +19,10 @@ export type ExteriorScene = {
   render: () => void
   resize: (w: number, h: number) => void
   dispose: () => void
+  /** Rings the given area (a wheel, door, mirror or seat) so a hovered
+   * control's real VehicleArea is visible, not just named in text. `null`
+   * clears it. */
+  setHighlight: (ref: string | null) => void
 }
 
 function box(w: number, h: number, d: number, color: number, extra: THREE.MeshStandardMaterialParameters = {}) {
@@ -468,6 +472,52 @@ export function createExteriorScene(
   lead.visible = false
   scene.add(lead)
 
+  // Area highlight — rings whichever zone a hovered control's real
+  // VehicleArea maps to. A small pool rather than one ring, since folding
+  // both mirrors in at once needs two rings lit together.
+  const highlightMat = new THREE.MeshBasicMaterial({
+    color: 0x5b8def,
+    transparent: true,
+    opacity: 0,
+    depthTest: false,
+  })
+  const highlightRings = [0, 1].map(() => {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.045, 8, 28), highlightMat.clone())
+    m.rotation.x = -Math.PI / 2
+    car.add(m)
+    return m
+  })
+  let highlightRef: string | null = null
+
+  function highlightTargets(ref: string | null): THREE.Object3D[] {
+    switch (ref) {
+      case 'tyreFrontLeft':
+        return [wheels[0].group]
+      case 'tyreFrontRight':
+        return [wheels[1].group]
+      case 'tyreRearLeft':
+        return [wheels[2].group]
+      case 'tyreRearRight':
+        return [wheels[3].group]
+      case 'doorFrontLeft':
+        return [doors.frontLeft]
+      case 'doorFrontRight':
+        return [doors.frontRight]
+      case 'doorRearLeft':
+        return [doors.rearLeft]
+      case 'doorRearRight':
+        return [doors.rearRight]
+      case 'beltDriver':
+        return [driverFigure]
+      case 'beltPassenger':
+        return [passengerFigure]
+      case 'mirrors':
+        return [mirrors.left.arm, mirrors.right.arm]
+      default:
+        return []
+    }
+  }
+
   // Charge flap.
   const flap = new THREE.Group()
   flap.position.set(0.98, 0.72, -1.6)
@@ -676,10 +726,27 @@ export function createExteriorScene(
 
     hemi.intensity = THREE.MathUtils.damp(hemi.intensity, state.nightMode ? 0.22 : 1.4, 3, delta)
     key.intensity = THREE.MathUtils.damp(key.intensity, state.nightMode ? 0.2 : 2.2, 3, delta)
+
+    // Area highlight — follow the targeted zone(s) and pulse gently while active.
+    const targets = highlightTargets(highlightRef)
+    const pulse = 0.55 + Math.sin(elapsed * 4) * 0.2
+    highlightRings.forEach((ring, i) => {
+      const target = targets[i]
+      const mat = ring.material as THREE.MeshBasicMaterial
+      if (target) {
+        ring.position.set(target.position.x, 0.9, target.position.z)
+        mat.opacity = THREE.MathUtils.damp(mat.opacity, pulse, 8, delta)
+      } else {
+        mat.opacity = THREE.MathUtils.damp(mat.opacity, 0, 10, delta)
+      }
+    })
   }
 
   return {
     update,
+    setHighlight: (ref) => {
+      highlightRef = ref
+    },
     render: () => renderer.render(scene, camera),
     resize: (w, h) => {
       const a = w / h

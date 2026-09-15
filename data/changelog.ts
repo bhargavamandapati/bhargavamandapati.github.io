@@ -36,6 +36,30 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.09.15',
+    date: '2026-09-15',
+    title: 'Four upgrades to the vehicle property simulator',
+    changes: [
+      {
+        type: 'added',
+        text: 'Guided scenarios — the "things worth trying" list is now a set of interactive scenarios inside the simulator itself. Press play and the real controls step through the same writes, narrated one at a time, instead of asking you to go find and flip them by hand.',
+        links: [{ label: 'Vehicle property simulator', href: '/learn/vehicle-simulator/' }],
+      },
+      {
+        type: 'added',
+        text: 'Area-ID highlighting — hovering a per-area control (a specific tyre, door, mirror or seat belt) now rings that exact zone in the plan view and shows the real VehicleArea constant, instead of only naming it in a text note.',
+      },
+      {
+        type: 'added',
+        text: 'A mobile layout — below desktop width the simulator is now Views/Data/Controls tabs with a persistent speed/gear/battery strip, instead of one long scroll past two 3D views before reaching a single control.',
+      },
+      {
+        type: 'changed',
+        text: 'Telltales, control-group headings and the sidebar’s quick-jump chips now lead with a real icon — a battery, a door, a seatbelt, a parking-brake circle — instead of text alone, the way an actual instrument cluster reads at a glance. The property name stays alongside as the accessible label.',
+      },
+    ],
+  },
+  {
     version: '2026.09.14.1',
     date: '2026-09-14',
     title: 'Access-request form fixes, an AI & ML for Automotive waitlist, and a delivery switch',

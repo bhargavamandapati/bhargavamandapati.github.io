@@ -380,6 +380,13 @@ export type Control = {
    * write it.
    */
   reported?: boolean
+  /**
+   * Set only on controls whose real property is scoped to one VehicleArea —
+   * a specific wheel, door, seat or mirror rather than the whole vehicle.
+   * `ref` names the zone in the 3D plan view to highlight; `label` is the
+   * real AIDL area constant, shown next to the control.
+   */
+  area?: { ref: string; label: string }
 }
 
 const kmh = (ms: number) => `${Math.round(ms * 3.6)} km/h`
@@ -599,6 +606,7 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Body',
     affects: 'Swings the door open.',
+    area: { ref: 'doorFrontLeft', label: 'VehicleAreaDoor.ROW_1_LEFT' },
   },
   {
     key: 'doorFrontRight',
@@ -607,6 +615,7 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Body',
     affects: 'Swings the door open.',
+    area: { ref: 'doorFrontRight', label: 'VehicleAreaDoor.ROW_1_RIGHT' },
   },
   {
     key: 'doorRearLeft',
@@ -615,6 +624,7 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Body',
     affects: 'Swings the door open.',
+    area: { ref: 'doorRearLeft', label: 'VehicleAreaDoor.ROW_2_LEFT' },
   },
   {
     key: 'doorRearRight',
@@ -623,6 +633,7 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Body',
     affects: 'Swings the door open.',
+    area: { ref: 'doorRearRight', label: 'VehicleAreaDoor.ROW_2_RIGHT' },
   },
   {
     key: 'bootOpen',
@@ -664,6 +675,7 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Body',
     affects: 'Folds both door mirrors in.',
+    area: { ref: 'mirrors', label: 'VehicleAreaMirror.LEFT | RIGHT' },
   },
 
   // ---- Electric ------------------------------------------------------------
@@ -710,6 +722,7 @@ export const controls: Control[] = [
     max: 300,
     step: 5,
     unit: 'kPa',
+    area: { ref: 'tyreFrontLeft', label: 'VehicleAreaWheel.LEFT_FRONT' },
   },
   {
     key: 'tyreFrontRight',
@@ -722,6 +735,7 @@ export const controls: Control[] = [
     max: 300,
     step: 5,
     unit: 'kPa',
+    area: { ref: 'tyreFrontRight', label: 'VehicleAreaWheel.RIGHT_FRONT' },
   },
   {
     key: 'tyreRearLeft',
@@ -734,6 +748,7 @@ export const controls: Control[] = [
     max: 300,
     step: 5,
     unit: 'kPa',
+    area: { ref: 'tyreRearLeft', label: 'VehicleAreaWheel.LEFT_REAR' },
   },
   {
     key: 'tyreRearRight',
@@ -746,6 +761,7 @@ export const controls: Control[] = [
     max: 300,
     step: 5,
     unit: 'kPa',
+    area: { ref: 'tyreRearRight', label: 'VehicleAreaWheel.RIGHT_REAR' },
   },
 
   // ---- Environment ---------------------------------------------------------
@@ -838,6 +854,7 @@ export const controls: Control[] = [
     kind: 'toggle',
     group: 'Occupants',
     affects: 'Unbuckled lights the belt telltale.',
+    area: { ref: 'beltDriver', label: 'VehicleAreaSeat.ROW_1_LEFT' },
   },
   {
     key: 'beltPassenger',
@@ -847,6 +864,7 @@ export const controls: Control[] = [
     group: 'Occupants',
     affects: 'Only warns when the seat is occupied — two properties, one decision.',
     note: 'Same property, a different area ID. Availability and value are both per seat.',
+    area: { ref: 'beltPassenger', label: 'VehicleAreaSeat.ROW_1_RIGHT' },
   },
   {
     key: 'seatHeat',
@@ -1017,6 +1035,7 @@ export const controls: Control[] = [
     min: -30,
     max: 30,
     step: 5,
+    area: { ref: 'mirrors', label: 'VehicleAreaMirror.LEFT | RIGHT' },
   },
   {
     key: 'mirrorHeat',
@@ -1028,6 +1047,7 @@ export const controls: Control[] = [
     min: 0,
     max: 3,
     step: 1,
+    area: { ref: 'mirrors', label: 'VehicleAreaMirror.LEFT | RIGHT' },
   },
 
   // ---- Electric (extended) -------------------------------------------------
@@ -1822,6 +1842,7 @@ export const controls: Control[] = [
     step: 5,
     unit: '°',
     note: 'Two axes, two properties, one piece of glass.',
+    area: { ref: 'mirrors', label: 'VehicleAreaMirror.LEFT | RIGHT' },
   },
 
   // ---- Climate (more) -----------------------------------------------------

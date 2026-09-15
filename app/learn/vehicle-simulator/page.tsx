@@ -55,52 +55,6 @@ export default function VehicleSimulatorPage() {
 
         <section className="mt-14 max-w-3xl">
           <h2 className="font-display text-xl font-semibold tracking-tight">
-            Things worth trying
-          </h2>
-          <ul className="mt-4 space-y-3 text-[0.95rem] leading-relaxed text-muted">
-            <li>
-              <strong className="font-medium text-fg">Open the driver door.</strong> The plan view
-              shows it swing out on the left. Nothing about it is visible from the driver&rsquo;s
-              seat — which is the reason a cluster carries a door-open telltale at all.
-            </li>
-            <li>
-              <strong className="font-medium text-fg">Turn the fan up with HVAC power off.</strong>{' '}
-              The control moves, the write is logged, and nothing happens — which is exactly what a
-              gated property does on a real vehicle, and why a dependency is worth knowing about
-              before you ship.
-            </li>
-            <li>
-              <strong className="font-medium text-fg">Set the gear to PARK and raise the speed.</strong>{' '}
-              The wheels stay still. Speed is a report from the vehicle, not a command to it.
-            </li>
-            <li>
-              <strong className="font-medium text-fg">Switch the fan direction to DEFROST_AND_FLOOR.</strong>{' '}
-              Air goes to both places at once, because the value is <code className="font-mono text-[0.9em] text-fg">DEFROST | FLOOR</code> —
-              a bit field, not a choice from a list.
-            </li>
-            <li>
-              <strong className="font-medium text-fg">Drop one tyre below 180 kPa.</strong> The
-              wheel is flagged individually. Pressure is a per-area property, so three wheels being
-              fine tells you nothing about the fourth.
-            </li>
-            <li>
-              <strong className="font-medium text-fg">Seat a passenger, then unbuckle their belt.</strong>{' '}
-              The belt telltale only appears once the seat is occupied — two properties, one
-              decision, and both of them per-seat.
-            </li>
-            <li>
-              <strong className="font-medium text-fg">Put a car 20 metres ahead.</strong> It appears
-              through the windscreen and on the cluster. The distance is a property the vehicle
-              reports; nothing an app writes puts a car there.
-            </li>
-            <li>
-              <strong className="font-medium text-fg">Turn the ignition off.</strong> Almost
-              everything stops responding — a good reminder that property availability is a runtime
-              condition, not a fixed fact about the vehicle.
-            </li>
-          </ul>
-
-          <h2 className="mt-10 font-display text-xl font-semibold tracking-tight">
             What this is and is not
           </h2>
           <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">
