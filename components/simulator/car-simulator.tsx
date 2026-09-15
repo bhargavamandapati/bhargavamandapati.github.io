@@ -2,8 +2,8 @@
 
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronLeft, ChevronRight, Disc, DoorOpen, ExternalLink, Eye,
-  KeyRound, LayoutDashboard, ParkingCircle, Pause, Play, Plug, RotateCcw, SlidersHorizontal,
+import { ChevronDown, ChevronLeft, ChevronRight, Disc, DoorOpen, ExternalLink,
+  KeyRound, ParkingCircle, Pause, Play, Plug, RotateCcw,
   Snowflake, Info, Search, X } from 'lucide-react'
 import { isFreeControl } from '@/data/access'
 import { LockBadge } from '@/components/premium/lock-badge'
@@ -239,12 +239,6 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
     exterior.current?.setHighlight(ref)
   }, [])
 
-  // Below `lg`, the desktop's two-column layout collapses to one; instead of
-  // a long stack (views, then data, then 128 controls), the same three
-  // regions become tabs so a phone never has to scroll past what it isn't
-  // looking at. Above `lg` every region shows regardless of this state.
-  const [mobileTab, setMobileTab] = useState<'views' | 'data' | 'controls'>('views')
-
   // Build both scenes once, on the client, after the modules load.
   useEffect(() => {
     let cancelled = false
@@ -410,13 +404,10 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
   const telltales = clusterTelltales(state, readout, true)
 
   return (
-    <div className="grid gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_23rem] lg:pb-0">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
       <div className="min-w-0">
         {/* ---- Inside the car ---- */}
-        <div className={cn(
-          'grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.85fr)]',
-          mobileTab !== 'views' && 'max-lg:hidden',
-        )}>
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.85fr)]">
           <figure className="min-w-0">
             <div
               ref={insideWrap}
@@ -501,7 +492,6 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
           </figure>
         </div>
 
-        <div className={cn(mobileTab !== 'data' && 'max-lg:hidden')}>
         {/* ---- Guided scenarios ---- */}
         <div className="card mt-4 p-5">
           <h2 className="font-mono text-xs uppercase tracking-wider text-subtle">
@@ -713,14 +703,10 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
             ))}
           </ul>
         </div>
-        </div>
       </div>
 
       {/* ---- Controls ---- */}
-      <div className={cn(
-        'min-w-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1',
-        mobileTab !== 'controls' && 'max-lg:hidden',
-      )}>
+      <div className="min-w-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
         <div className="sticky top-0 z-10 -mx-px bg-bg pb-3">
           <label htmlFor={searchId} className="sr-only">
             Search the {controls.length} simulator controls by label or property
@@ -833,43 +819,6 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
             </details>
           )
         })}
-      </div>
-
-      {/* ---- Mobile tab bar ---- */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 backdrop-blur lg:hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-1.5 font-mono text-[0.68rem] text-muted">
-          <span>
-            SPEED <b className="text-fg tabular-nums">{kmh}</b>
-          </span>
-          <span>
-            GEAR <b className="text-fg">{GEAR[state.gear] ?? '—'}</b>
-          </span>
-          <span>
-            BATT <b className="text-fg tabular-nums">{state.batteryLevel}%</b>
-          </span>
-        </div>
-        <div className="grid grid-cols-3 border-t border-line">
-          {(
-            [
-              ['views', 'Views', Eye],
-              ['data', 'Data', LayoutDashboard],
-              ['controls', 'Controls', SlidersHorizontal],
-            ] as const
-          ).map(([tab, label, Icon]) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setMobileTab(tab)}
-              className={cn(
-                'flex cursor-pointer flex-col items-center gap-0.5 py-2 text-[0.65rem]',
-                mobileTab === tab ? 'text-accent' : 'text-subtle',
-              )}
-            >
-              <Icon aria-hidden className="size-4" />
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   )

@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.09.15',
     date: '2026-09-15',
-    title: 'Four upgrades to the vehicle property simulator',
+    title: 'Three upgrades to the vehicle property simulator',
     changes: [
       {
         type: 'added',
@@ -50,8 +50,8 @@ export const changelog: ChangelogEntry[] = [
         text: 'Area-ID highlighting — hovering a per-area control (a specific tyre, door, mirror or seat belt) now rings that exact zone in the plan view and shows the real VehicleArea constant, instead of only naming it in a text note.',
       },
       {
-        type: 'added',
-        text: 'A mobile layout — below desktop width the simulator is now Views/Data/Controls tabs with a persistent speed/gear/battery strip, instead of one long scroll past two 3D views before reaching a single control.',
+        type: 'changed',
+        text: 'Tried a Views/Data/Controls tabbed layout for narrow screens and reverted it — the simulator goes back to one plain scroll on mobile, same as before this round of changes.',
       },
       {
         type: 'changed',
