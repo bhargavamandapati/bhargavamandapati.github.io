@@ -3,7 +3,7 @@
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown, ChevronLeft, ChevronRight, Disc, DoorOpen, ExternalLink,
-  KeyRound, ParkingCircle, Pause, Play, Plug, RotateCcw,
+  KeyRound, Maximize, Minimize, ParkingCircle, Pause, Play, Plug, RotateCcw,
   Snowflake, Info, Search, X } from 'lucide-react'
 import { isFreeControl } from '@/data/access'
 import { LockBadge } from '@/components/premium/lock-badge'
@@ -117,6 +117,27 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
   const logId = useRef(0)
   const groupId = useId()
   const searchId = useId()
+
+  // Full screen: the whole panel — both views and the controls sidebar,
+  // nothing hidden — takes over the viewport, above the site's own header.
+  // A CSS overlay rather than the browser's Fullscreen API, since iOS
+  // Safari refuses requestFullscreen() on anything but a <video>.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [fullscreen, setFullscreen] = useState(false)
+
+  useEffect(() => {
+    if (!fullscreen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [fullscreen])
 
   // 128 controls across 12 groups is a lot to scroll past to set one thing —
   // search filters by label or property name, and groups stay collapsed
@@ -404,7 +425,28 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
   const telltales = clusterTelltales(state, readout, true)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
+    <div
+      ref={containerRef}
+      className={cn(
+        fullscreen && 'fixed inset-0 z-50 overflow-y-auto bg-bg p-4 sm:p-6',
+      )}
+    >
+      <div className="mb-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setFullscreen((f) => !f)}
+          className="chip cursor-pointer hover:text-fg"
+        >
+          {fullscreen ? (
+            <Minimize aria-hidden className="size-3.5" />
+          ) : (
+            <Maximize aria-hidden className="size-3.5" />
+          )}
+          {fullscreen ? 'Exit full screen' : 'Full screen'}
+        </button>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
       <div className="min-w-0">
         {/* ---- Inside the car ---- */}
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.85fr)]">
@@ -819,6 +861,7 @@ export function CarSimulator({ unlocked = true }: { unlocked?: boolean }) {
             </details>
           )
         })}
+      </div>
       </div>
     </div>
   )

@@ -36,6 +36,18 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.09.16',
+    date: '2026-09-16',
+    title: 'Full screen for the vehicle property simulator',
+    changes: [
+      {
+        type: 'added',
+        text: 'A "Full screen" button on the simulator expands the whole panel — both 3D views and the full controls sidebar, nothing hidden — over the site’s own header, so there’s more room without giving anything up. Exit with the button or Escape.',
+        links: [{ label: 'Vehicle property simulator', href: '/learn/vehicle-simulator/' }],
+      },
+    ],
+  },
+  {
     version: '2026.09.15',
     date: '2026-09-15',
     title: 'Three upgrades to the vehicle property simulator',
