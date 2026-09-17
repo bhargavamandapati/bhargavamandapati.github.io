@@ -36,6 +36,33 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.09.17',
+    date: '2026-09-17',
+    title: 'Four new developer tools',
+    changes: [
+      {
+        type: 'added',
+        text: 'VHAL property ID decoder — paste any 32-bit property ID and see its group, area, type and ordinal broken out, matched against a real property where one exists; or build an ID from scratch by picking the fields. Verified against all 280 properties in VehicleProperty.aidl.',
+        links: [{ label: 'VHAL property ID decoder', href: '/learn/vhal-id-decoder/' }],
+      },
+      {
+        type: 'added',
+        text: 'Permission lookup — search by property or by permission string to find the exact android.car.permission a property’s read or write access needs, and its protection level. Covers all 118 permissions generated from Car.java and VehiclePropertyIds.java.',
+        links: [{ label: 'Permission lookup', href: '/learn/permission-lookup/' }],
+      },
+      {
+        type: 'added',
+        text: 'Boot sequence timeline — the nine stages from ignition to home screen as a click-through reference, each with the command that confirms it happened, plus the article’s own debugging order for a head unit that won’t boot.',
+        links: [{ label: 'Boot sequence timeline', href: '/learn/boot-timeline/' }],
+      },
+      {
+        type: 'added',
+        text: 'VSS ↔ VehicleProperty mapper — Vehicle Signal Specification paths matched to their closest AAOS property, with the real unit, encoding or granularity mismatch each pair has stated plainly rather than assumed away.',
+        links: [{ label: 'VSS ↔ VehicleProperty mapper', href: '/learn/vss-mapper/' }],
+      },
+    ],
+  },
+  {
     version: '2026.09.16',
     date: '2026-09-16',
     title: 'Full screen for the vehicle property simulator',

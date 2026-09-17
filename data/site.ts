@@ -67,6 +67,26 @@ export const site = {
           description: 'Occupant zones, multi-display and UX restrictions, live.',
         },
         {
+          label: 'VHAL ID decoder',
+          href: '/learn/vhal-id-decoder/',
+          description: 'Decode any property ID into group, area, type and ordinal — or build one.',
+        },
+        {
+          label: 'Permission lookup',
+          href: '/learn/permission-lookup/',
+          description: 'Which android.car.permission a property needs, and its privilege level.',
+        },
+        {
+          label: 'Boot sequence timeline',
+          href: '/learn/boot-timeline/',
+          description: 'Nine boot stages, click-through, each with a command to confirm it.',
+        },
+        {
+          label: 'VSS ↔ VehicleProperty',
+          href: '/learn/vss-mapper/',
+          description: 'Vehicle Signal Specification paths matched to AAOS properties.',
+        },
+        {
           label: 'Tutorials',
           href: '/tutorials/',
           description: 'Step-by-step builds for the things you customise.',

@@ -118,8 +118,8 @@ export default function LearnPage() {
               </div>
             </div>
 
-            <div className="mt-7">
-              <article className="card group relative flex flex-col p-6 transition-all hover:border-accent/50 hover:shadow-lg sm:flex-row sm:items-center sm:gap-6">
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              <article className="card group relative flex flex-col p-6 transition-all hover:border-accent/50 hover:shadow-lg sm:col-span-2 sm:flex-row sm:items-center sm:gap-6">
                 <div className="min-w-0 flex-1">
                   <h3 className="font-display text-lg font-semibold leading-snug tracking-tight text-fg">
                     <Link
@@ -147,6 +147,60 @@ export default function LearnPage() {
                   className="mt-5 size-5 shrink-0 text-subtle transition-transform group-hover:translate-x-1 group-hover:text-accent sm:mt-0"
                 />
               </article>
+
+              {[
+                {
+                  href: '/learn/vhal-id-decoder/',
+                  title: 'VHAL property ID decoder',
+                  description:
+                    'Decode any 32-bit property ID into its group, area, type and ordinal — or build one from scratch.',
+                  chips: ['decode + encode', 'verified'],
+                },
+                {
+                  href: '/learn/permission-lookup/',
+                  title: 'Permission lookup',
+                  description:
+                    'Search by property or permission to find the exact android.car.permission it needs, and its privilege level.',
+                  chips: ['118 permissions'],
+                },
+                {
+                  href: '/learn/boot-timeline/',
+                  title: 'Boot sequence timeline',
+                  description:
+                    'Nine stages from ignition to home screen, click-through, each with a command to confirm it happened.',
+                  chips: ['9 stages', 'debugging order'],
+                },
+                {
+                  href: '/learn/vss-mapper/',
+                  title: 'VSS ↔ VehicleProperty mapper',
+                  description:
+                    'Vehicle Signal Specification paths matched to AAOS properties — with the real mismatch each pair has.',
+                  chips: ['verified pairs'],
+                },
+              ].map((tool) => (
+                <article
+                  key={tool.href}
+                  className="card group relative flex flex-col p-6 transition-all hover:border-accent/50 hover:shadow-lg"
+                >
+                  <h3 className="font-display text-base font-semibold leading-snug tracking-tight text-fg">
+                    <Link href={tool.href} className="after:absolute after:inset-0">
+                      {tool.title}
+                    </Link>
+                  </h3>
+                  <p className="mt-2 text-[0.88rem] leading-relaxed text-muted">{tool.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {tool.chips.map((chip) => (
+                      <span key={chip} className="chip">
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                  <ArrowRight
+                    aria-hidden
+                    className="absolute right-6 top-6 size-4 shrink-0 text-subtle transition-transform group-hover:translate-x-1 group-hover:text-accent"
+                  />
+                </article>
+              ))}
             </div>
           </section>
 
