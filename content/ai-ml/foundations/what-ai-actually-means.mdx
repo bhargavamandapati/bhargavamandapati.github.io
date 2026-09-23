@@ -1,0 +1,154 @@
+---
+title: "What \"AI\" actually means"
+description: "The word gets used to sell a spreadsheet macro and a language model with the same confidence. Here is the actual hierarchy underneath it, and why it matters before anything else in this track makes sense."
+order: 1
+difficulty: "Beginner"
+tags: ["AI", "Machine Learning", "Fundamentals"]
+sources:
+  - label: "Wikipedia — Artificial intelligence"
+    href: "https://en.wikipedia.org/wiki/Artificial_intelligence"
+  - label: "Wikipedia — Machine learning"
+    href: "https://en.wikipedia.org/wiki/Machine_learning"
+  - label: "Wikipedia — Deep learning"
+    href: "https://en.wikipedia.org/wiki/Deep_learning"
+  - label: "Wikipedia — Large language model"
+    href: "https://en.wikipedia.org/wiki/Large_language_model"
+---
+
+A press release says a car is "AI-powered." So does a job advert for someone who
+will spend their day labelling traffic-sign images. So does the marketing copy
+for a thermostat that averages your last five settings. The word is doing no
+useful work in any of those sentences, and it has been used that way for so long
+that most people who say it couldn't tell you which of four very different
+things they mean.
+
+So before this track goes anywhere near a vehicle, it is worth pinning the word
+down.
+
+## Four words, one hierarchy
+
+<Plain>
+These four terms are not four ways of saying the same thing. They are four
+**nested categories**, each one a specific technique for achieving the one
+before it.
+
+- **Artificial intelligence** — the goal: a machine that performs a task
+  normally requiring human intelligence. Says nothing about *how*.
+- **Machine learning** — one way to reach that goal: a system that learns a
+  function from examples instead of being told the rules directly.
+- **Deep learning** — one way to do machine learning: using neural networks
+  with many layers, rather than simpler statistical models.
+- **Large language model (LLM)** — one particular deep learning model: trained
+  on huge amounts of text to predict the next token, using an architecture
+  called a transformer.
+</Plain>
+
+Every LLM is deep learning. Not all deep learning is an LLM — an image
+classifier is deep learning too. Every instance of deep learning is machine
+learning, but plenty of machine learning has never touched a neural network at
+all. And every one of those things is *an instance of* artificial intelligence —
+but so is a fifty-year-old chess program that has never learned anything from
+data in its life.
+
+<Analogy title="Like transportation, vehicle, car, electric car">
+"Artificial intelligence" is to these three the way "transportation" is to
+"vehicle," "car" and "electric car." Transportation is the goal — get something
+from A to B. A vehicle is one way to do it. A car is one kind of vehicle. An
+electric car is one kind of car.
+
+Calling every one of them "transportation" isn't wrong, exactly. It just tells
+you nothing about which one you're standing next to.
+</Analogy>
+
+## The split that actually matters day to day
+
+The AI/ML/deep-learning/LLM hierarchy explains the *word*. A different split
+explains why two systems that both get called "AI" can behave completely
+differently in production, and it is the one worth remembering:
+
+<Plain>
+**Rule-based systems** are written. An engineer sits down and encodes the logic
+by hand: *if the tank is below 10%, show the warning light.* The behaviour is
+exactly what was written, every time, and you can read the code to know what it
+will do before you run it.
+
+**Learned models** are trained. An engineer does not write the logic; they
+collect examples, and an algorithm finds a function that fits those examples.
+Nobody writes down the rule that comes out — it exists as a large set of
+numbers, and the only way to know exactly what the model will do with a given
+input is to run it.
+</Plain>
+
+Both of these get called "AI." A chess engine that searches a game tree using
+rules written by a programmer is classical, symbolic AI — no learning involved.
+A spam filter trained on a million labelled emails is machine learning. Both are
+legitimately "artificial intelligence" by the field's own definition. They are
+built, debugged, and reasoned about in almost completely different ways.
+
+<Scenario title="The same job, two different systems">
+**A spam filter, written.** An engineer lists rules: block anything with more
+than five exclamation marks in the subject, block certain sender domains,
+lower the score if the sender is in the user's contacts. Miss a new scam
+pattern and the filter simply doesn't catch it — until someone notices and adds
+a rule.
+
+**A spam filter, trained.** An engineer instead collects a hundred thousand
+emails, each labelled spam or not-spam, and trains a model to predict the
+label from the email's content. The model discovers patterns nobody wrote down
+by hand — and it will also occasionally block a legitimate email for a reason
+nobody can point to in one sentence, because "why" is spread across millions of
+numbers rather than living in a readable rule.
+
+Same job. Same label — "AI" — attached to both, in most marketing copy. Wildly
+different engineering.
+</Scenario>
+
+## Why the distinction is worth the effort
+
+This isn't a vocabulary exercise. The two questions — *which layer of the
+hierarchy, and rule-based or learned* — change almost everything about how a
+system gets built and shipped:
+
+- **Debugging.** A rule-based system fails in a way you can trace to a line of
+  code. A learned model fails in a way you usually have to characterise
+  statistically — you cannot always point to the one thing that caused one
+  wrong answer.
+- **Data.** A rule-based system needs none. A learned model needs examples —
+  often a lot of them, often labelled by hand — before it can be trained at
+  all.
+- **Determinism.** Give a rule-based system the same input twice and you get
+  the same output, always. A learned model usually does too *at inference
+  time* for a fixed model, but the model itself was shaped by whichever
+  training data it happened to see, which is a much less predictable process
+  to reason about upfront.
+- **Cost and where it runs.** Training a deep learning model can take
+  enormous compute. Running one afterwards — inference — is a separate,
+  usually far cheaper problem, and where that inference happens (a data
+  centre or the vehicle itself) is most of what later modules in this track
+  are about.
+
+None of that is specific to cars. It's the same distinction whether the system
+in question is a spam filter, a recommendation engine, or a model watching the
+road. Getting it straight now means every later module can say "trained model"
+or "rule-based system" and mean something precise, instead of reaching for "AI"
+and leaving the actual engineering question unanswered.
+
+<Recap>
+- "AI," "machine learning," "deep learning" and "LLM" are **nested
+  categories**, not synonyms — each is one specific technique for achieving
+  the one before it.
+- The split that matters more in practice: **rule-based** (an engineer writes
+  the logic) versus **learned** (an algorithm fits a function to examples,
+  and nobody writes the resulting rule down).
+- Both rule-based and learned systems are legitimately called "AI" — the
+  field's definition is about the *goal*, not the technique.
+- That split drives real engineering differences: how you debug it, whether
+  it needs training data, how deterministic it is, and where it can
+  afford to run.
+</Recap>
+
+## Next
+
+The next topic in this module takes the "learned" branch apart properly: what a
+trained model actually *is* — physically, as a file — once the training is
+done.

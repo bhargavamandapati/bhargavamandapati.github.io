@@ -89,6 +89,7 @@ const REGISTRIES = [
   { dataFile: 'data/curriculum.ts', contentDir: 'content/learn', kind: 'Learn category' },
   { dataFile: 'data/tutorials.ts', contentDir: 'content/tutorials', kind: 'tutorial track' },
   { dataFile: 'data/sdv-curriculum.ts', contentDir: 'content/sdv', kind: 'SDV module' },
+  { dataFile: 'data/ai-ml-curriculum.ts', contentDir: 'content/ai-ml', kind: 'AI & ML module' },
 ]
 
 for (const { dataFile, contentDir, kind } of REGISTRIES) {

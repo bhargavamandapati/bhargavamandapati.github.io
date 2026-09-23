@@ -1,33 +1,36 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, BrainCircuit, Compass } from 'lucide-react'
+import { ArrowRight, BrainCircuit, Clock, Compass } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { RequestAccessButton } from '@/components/premium/request-access'
 import { site } from '@/data/site'
 import { aiMlModules, topicsForModule } from '@/data/ai-ml-curriculum'
+import { getAllAiMlTopics } from '@/lib/ai-ml'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = {
   title: 'AI & ML for Automotive',
   description:
-    'A new track on AI and machine learning in the vehicle, coming soon — the same source-linked, no-hand-waving treatment as the rest of this site, sold as its own separate subscription.',
+    'A new track on AI and machine learning in the vehicle, in progress — the same source-linked, no-hand-waving treatment as the rest of this site. The first lesson is free to read; the rest of the track will be its own separate subscription.',
   alternates: { canonical: '/ai-ml/' },
   openGraph: {
     type: 'website',
     title: `AI & ML for Automotive · ${site.name}`,
-    description: 'A new track on AI and machine learning in the vehicle. Coming soon.',
+    description: 'A new track on AI and machine learning in the vehicle. First lesson live now.',
     url: `${site.url}/ai-ml/`,
     images: [{ url: '/og.png', width: 1200, height: 630, alt: 'AI & ML for Automotive' }],
   },
 }
 
 export default function AiMlPage() {
+  const publishedTopics = getAllAiMlTopics()
+
   return (
     <>
       <PageHeader
-        eyebrow="Coming soon"
+        eyebrow="In progress"
         title="AI & ML for Automotive"
-        description="A third track, alongside Learn AAOS and SDV — AI and machine learning as they actually show up in the vehicle, not a generic ML course with a car in the title. Still being written."
+        description="A third track, alongside Learn AAOS and SDV — AI and machine learning as they actually show up in the vehicle, not a generic ML course with a car in the title. The first lesson is live; the rest is still being written."
       />
 
       <div className="container-page py-14 md:py-16">
@@ -48,9 +51,8 @@ export default function AiMlPage() {
             covers.
           </p>
           <p className="mt-4 leading-relaxed text-muted">
-            It isn&rsquo;t published yet, and there&rsquo;s nothing to unlock here today. What
-            follows is the planned shape of the first module — outline only, so the topics can
-            get reviewed before any lesson gets written.
+            The first lesson below is live and free to read. Everything after it is still just
+            an outline — reviewed here before any more lesson content gets written.
           </p>
         </div>
 
@@ -68,37 +70,66 @@ export default function AiMlPage() {
           </div>
 
           <ol className="mt-6 space-y-3">
-            {topicsForModule(aiMlModules[0].slug).map((topic, i) => (
-              <li
-                key={topic.slug}
-                className="flex gap-4 rounded-xl border border-line bg-surface p-4"
-              >
-                <span className="mt-0.5 shrink-0 font-mono text-xs text-subtle tabular-nums">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <h3 className="font-display text-sm font-semibold tracking-tight text-fg">
-                      {topic.title}
-                    </h3>
-                    <span
-                      className={cn(
-                        'font-mono text-[0.65rem] uppercase tracking-wider',
-                        topic.difficulty === 'Beginner' && 'diff-beginner',
-                        topic.difficulty === 'Intermediate' && 'diff-intermediate',
-                        topic.difficulty === 'Advanced' && 'diff-advanced',
+            {topicsForModule(aiMlModules[0].slug).map((topic, i) => {
+              const published = publishedTopics.find(
+                (t) => t.moduleSlug === topic.moduleSlug && t.topicSlug === topic.topicSlug
+              )
+              return (
+                <li
+                  key={topic.topicSlug}
+                  className={cn(
+                    'flex gap-4 rounded-xl border p-4',
+                    published
+                      ? 'card group relative border-accent/30 bg-surface transition-all hover:border-accent/60 hover:shadow-lg'
+                      : 'border-line bg-surface'
+                  )}
+                >
+                  <span className="mt-0.5 shrink-0 font-mono text-xs text-subtle tabular-nums">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <h3 className="font-display text-sm font-semibold tracking-tight text-fg">
+                        {published ? (
+                          <Link href={`/ai-ml/${published.slug}/`} className="after:absolute after:inset-0">
+                            {topic.title}
+                          </Link>
+                        ) : (
+                          topic.title
+                        )}
+                      </h3>
+                      <span
+                        className={cn(
+                          'font-mono text-[0.65rem] uppercase tracking-wider',
+                          topic.difficulty === 'Beginner' && 'diff-beginner',
+                          topic.difficulty === 'Intermediate' && 'diff-intermediate',
+                          topic.difficulty === 'Advanced' && 'diff-advanced',
+                        )}
+                      >
+                        {topic.difficulty}
+                      </span>
+                      {published ? (
+                        <span className="inline-flex items-center gap-1 font-mono text-[0.65rem] text-subtle">
+                          <Clock aria-hidden className="size-3" />
+                          {published.readingMinutes} min
+                        </span>
+                      ) : (
+                        <span className="chip">planned</span>
                       )}
-                    >
-                      {topic.difficulty}
-                    </span>
-                    <span className="chip">planned</span>
+                    </div>
+                    <p className="mt-1.5 text-[0.85rem] leading-relaxed text-muted">
+                      {topic.description}
+                    </p>
                   </div>
-                  <p className="mt-1.5 text-[0.85rem] leading-relaxed text-muted">
-                    {topic.description}
-                  </p>
-                </div>
-              </li>
-            ))}
+                  {published && (
+                    <ArrowRight
+                      aria-hidden
+                      className="mt-0.5 size-4 shrink-0 self-start text-subtle transition-transform group-hover:translate-x-1 group-hover:text-accent"
+                    />
+                  )}
+                </li>
+              )
+            })}
           </ol>
         </div>
 
