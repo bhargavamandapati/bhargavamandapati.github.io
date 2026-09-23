@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, BrainCircuit } from 'lucide-react'
+import { ArrowRight, BrainCircuit, Compass } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { RequestAccessButton } from '@/components/premium/request-access'
 import { site } from '@/data/site'
+import { aiMlModules, topicsForModule } from '@/data/ai-ml-curriculum'
+import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = {
   title: 'AI & ML for Automotive',
@@ -46,10 +48,62 @@ export default function AiMlPage() {
             covers.
           </p>
           <p className="mt-4 leading-relaxed text-muted">
-            It isn&rsquo;t published yet, and there&rsquo;s nothing to unlock here today.
+            It isn&rsquo;t published yet, and there&rsquo;s nothing to unlock here today. What
+            follows is the planned shape of the first module — outline only, so the topics can
+            get reviewed before any lesson gets written.
           </p>
+        </div>
 
-          <div className="mt-8 rounded-xl border border-line bg-bg-subtle p-6">
+        <div className="mt-12 max-w-3xl">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-2">
+              <Compass aria-hidden className="size-4 text-accent" />
+            </span>
+            <div>
+              <h2 className="font-display text-lg font-semibold tracking-tight">
+                Module 1 · {aiMlModules[0].name}
+              </h2>
+              <p className="mt-0.5 text-sm text-muted">{aiMlModules[0].blurb}</p>
+            </div>
+          </div>
+
+          <ol className="mt-6 space-y-3">
+            {topicsForModule(aiMlModules[0].slug).map((topic, i) => (
+              <li
+                key={topic.slug}
+                className="flex gap-4 rounded-xl border border-line bg-surface p-4"
+              >
+                <span className="mt-0.5 shrink-0 font-mono text-xs text-subtle tabular-nums">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <h3 className="font-display text-sm font-semibold tracking-tight text-fg">
+                      {topic.title}
+                    </h3>
+                    <span
+                      className={cn(
+                        'font-mono text-[0.65rem] uppercase tracking-wider',
+                        topic.difficulty === 'Beginner' && 'diff-beginner',
+                        topic.difficulty === 'Intermediate' && 'diff-intermediate',
+                        topic.difficulty === 'Advanced' && 'diff-advanced',
+                      )}
+                    >
+                      {topic.difficulty}
+                    </span>
+                    <span className="chip">planned</span>
+                  </div>
+                  <p className="mt-1.5 text-[0.85rem] leading-relaxed text-muted">
+                    {topic.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="mt-12 max-w-2xl">
+          <div className="rounded-xl border border-line bg-bg-subtle p-6">
             <h3 className="font-display text-base font-semibold tracking-tight">
               Its own subscription, separate from Learn AAOS and SDV
             </h3>
