@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import './globals.css'
+import './(site)/globals.css'
 
 /**
  * Only fires for an error inside the root layout itself (the theme script,

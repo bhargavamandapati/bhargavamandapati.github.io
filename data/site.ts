@@ -145,18 +145,8 @@ export const site = {
     },
     { label: 'AI ML', href: '/ai-ml/' },
     { label: 'Writing', href: '/blog/' },
-    {
-      // The portfolio sections live together so the nav is not half CV and
-      // half curriculum.
-      label: 'About',
-      href: '/about/',
-      children: [
-        { label: 'About', href: '/about/', description: 'Who I am and what I work on.' },
-        { label: 'Experience', href: '/about/#experience', description: 'Roles, and what each one delivered.' },
-        { label: 'Projects', href: '/projects/', description: 'Selected automotive platform work.' },
-        { label: 'Skills', href: '/about/#skills', description: 'Languages, platforms and ways of working.' },
-      ],
-    },
+    // A plain link: About is its own standalone page, not a menu.
+    { label: 'About', href: '/about/' },
   ],
 } as const
 
