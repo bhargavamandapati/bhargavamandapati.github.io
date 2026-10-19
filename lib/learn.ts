@@ -62,7 +62,15 @@ function readTopic(categorySlug: string, fileName: string): Topic {
 }
 
 /** Every topic, in curriculum order: category order first, then frontmatter `order`. */
+let getAllTopicsCache: Topic[] | undefined
+
+/** A production build renders hundreds of pages in one process; parse the content folder once, not once per page. */
 export function getAllTopics(): Topic[] {
+  if (process.env.NODE_ENV !== 'production') return getAllTopicsUncached()
+  return (getAllTopicsCache ??= getAllTopicsUncached()).slice()
+}
+
+function getAllTopicsUncached(): Topic[] {
   if (!fs.existsSync(LEARN_DIR)) return []
 
   const topics: Topic[] = []

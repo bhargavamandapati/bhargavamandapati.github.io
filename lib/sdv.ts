@@ -59,7 +59,15 @@ function read(moduleSlug: string, fileName: string): SdvTopic {
   }
 }
 
+let getAllSdvTopicsCache: SdvTopic[] | undefined
+
+/** A production build renders hundreds of pages in one process; parse the content folder once, not once per page. */
 export function getAllSdvTopics(): SdvTopic[] {
+  if (process.env.NODE_ENV !== 'production') return getAllSdvTopicsUncached()
+  return (getAllSdvTopicsCache ??= getAllSdvTopicsUncached()).slice()
+}
+
+function getAllSdvTopicsUncached(): SdvTopic[] {
   if (!fs.existsSync(DIR)) return []
   const all: SdvTopic[] = []
   for (const m of sdvModules) {

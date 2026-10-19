@@ -68,7 +68,15 @@ function read(trackSlug: string, fileName: string): Tutorial {
   }
 }
 
+let getAllTutorialsCache: Tutorial[] | undefined
+
+/** A production build renders hundreds of pages in one process; parse the content folder once, not once per page. */
 export function getAllTutorials(): Tutorial[] {
+  if (process.env.NODE_ENV !== 'production') return getAllTutorialsUncached()
+  return (getAllTutorialsCache ??= getAllTutorialsUncached()).slice()
+}
+
+function getAllTutorialsUncached(): Tutorial[] {
   if (!fs.existsSync(DIR)) return []
   const all: Tutorial[] = []
   for (const track of tracks) {
