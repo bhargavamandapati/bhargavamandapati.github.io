@@ -1638,6 +1638,40 @@ import {
   RwZygoteUsap,
 } from '@/components/diagrams/rw-ga'
 import {
+  RwSdvClaimTest,
+  RwSdvFourShifts,
+  RwSdvHighBeamSeq,
+  RwSdvRecap,
+  RwSdvServiceSeq,
+  RwSdvWhatBigPicture,
+} from '@/components/diagrams/rw-gb'
+import {
+  RwWhyBigPicture,
+  RwWhyComplianceFlow,
+  RwWhyCostsStack,
+  RwWhyIntegrationFlow,
+} from '@/components/diagrams/rw-gc'
+import {
+  RwEeBigPicture,
+  RwEeDomainWire,
+  RwEeIsolationShift,
+  RwEeThreeQuestions,
+  RwEeWelcomeSequence,
+  RwEeZonalWire,
+} from '@/components/diagrams/rw-gd'
+import {
+  RwRealityBigPicture,
+  RwRealityFeatureLine,
+  RwRealityMixture,
+  RwRealityUpdateEdge,
+  RwRealityWorkedExample,
+} from '@/components/diagrams/rw-ge'
+import {
+  RwGfBigPicture,
+  RwGfMondayTrace,
+  RwGfRecap,
+} from '@/components/diagrams/rw-gf'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -2970,6 +3004,30 @@ export const mdxComponents: MDXComponents = {
   RwZygoteForkSequence,
   RwZygoteMemory,
   RwZygoteUsap,
+  RwSdvClaimTest,
+  RwSdvFourShifts,
+  RwSdvHighBeamSeq,
+  RwSdvRecap,
+  RwSdvServiceSeq,
+  RwSdvWhatBigPicture,
+  RwWhyBigPicture,
+  RwWhyComplianceFlow,
+  RwWhyCostsStack,
+  RwWhyIntegrationFlow,
+  RwEeBigPicture,
+  RwEeDomainWire,
+  RwEeIsolationShift,
+  RwEeThreeQuestions,
+  RwEeWelcomeSequence,
+  RwEeZonalWire,
+  RwRealityBigPicture,
+  RwRealityFeatureLine,
+  RwRealityMixture,
+  RwRealityUpdateEdge,
+  RwRealityWorkedExample,
+  RwGfBigPicture,
+  RwGfMondayTrace,
+  RwGfRecap,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
