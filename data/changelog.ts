@@ -52,30 +52,49 @@ export const changelog: ChangelogEntry[] = [
         type: 'added',
         text: 'Passenger display (13 tutorials) — enable a second display statically or by hotplug, write the occupant-zone config, then place the launcher and SystemUI on it, control which apps run where, and cover per-display UX restrictions, theming, input routing, cross-zone messaging and what happens to an app when its display disappears. Built and run on the tejas_car_x86_64 product, with confirmed findings kept apart from uncertain ones.',
         links: [
-          { label: 'Enabling a passenger display (static)', href: '/tutorials/passenger-display/enabling-passenger-display-static/' },
-          { label: 'Occupant zone config deep dive', href: '/tutorials/passenger-display/occupant-zone-config-deep-dive/' },
-          { label: 'What happens when a display disappears', href: '/tutorials/passenger-display/app-lifecycle-display-removal/' },
+          { label: 'Enabling a passenger display (static)', href: '/tutorials/multi-display/enabling-passenger-display-static/' },
+          { label: 'Occupant zone config deep dive', href: '/tutorials/multi-display/occupant-zone-config-deep-dive/' },
+          { label: 'What happens when a display disappears', href: '/tutorials/multi-display/app-lifecycle-display-removal/' },
         ],
       },
       {
         type: 'added',
         text: 'Multi-display, multi-user (6 tutorials) — HSUM versus MUMD, assigning a real user to the passenger zone and where it honestly stops, permissions and SELinux, per-user data isolation, audio zones and media per occupant zone.',
         links: [
-          { label: 'HSUM vs MUMD', href: '/tutorials/mdmu/mdmu-concepts-hsum-vs-mumd/' },
-          { label: 'Assigning a user to the passenger zone', href: '/tutorials/mdmu/per-zone-user-assignment/' },
+          { label: 'HSUM vs MUMD', href: '/tutorials/multi-display/mdmu-concepts-hsum-vs-mumd/' },
+          { label: 'Assigning a user to the passenger zone', href: '/tutorials/multi-display/per-zone-user-assignment/' },
         ],
       },
       {
         type: 'added',
         text: 'Multi-display build & debug (3 tutorials) — product-config patterns, the adb toolkit for inspecting zones and displays, and a symptom-to-fix troubleshooting guide.',
         links: [
-          { label: 'The debugging toolkit', href: '/tutorials/multi-display-debugging/debugging-and-adb-toolkit/' },
-          { label: 'Common pitfalls and troubleshooting', href: '/tutorials/multi-display-debugging/common-pitfalls-and-troubleshooting/' },
+          { label: 'The debugging toolkit', href: '/tutorials/multi-display/debugging-and-adb-toolkit/' },
+          { label: 'Common pitfalls and troubleshooting', href: '/tutorials/multi-display/common-pitfalls-and-troubleshooting/' },
         ],
       },
       {
         type: 'added',
         text: 'Every tutorial in the series carries at least one diagram and one reference table — 34 diagrams in all, from the display-to-user mapping to a symptom-to-fix decision tree. The tutorial count on the home page goes from 33 to 57.',
+      },
+      {
+        type: 'changed',
+        text: 'The four multi-display tracks are now one track, “Multi-display & multi-user”, in four sections — Foundations, Passenger display, Multi-user (MDMU) and Build & debug — numbered 1 to 24 in reading order. Their addresses moved from /tutorials/passenger-display/…, /tutorials/mdmu/… and /tutorials/multi-display-debugging/… to /tutorials/multi-display/….',
+        links: [{ label: 'Multi-display & multi-user', href: '/tutorials/multi-display/aaos-multi-display-overview/' }],
+      },
+      {
+        type: 'added',
+        text: 'Learn and Tutorials are now mapped both ways. Every tutorial opens with “Read first in Learn AAOS” — the background topics it assumes, in reading order — and every Learn topic a tutorial builds on ends with “Put it into practice”, listing those tutorials. 57 of the 100 Learn topics have at least one.',
+      },
+      {
+        type: 'changed',
+        text: 'The Learn index is grouped by domain — vehicle data, framework and security, HMI and apps, displays and users, connectivity, platform and build, SDV — and each tutorial track names the Learn domain that explains it, so the same subject no longer sits under two unrelated headings.',
+        links: [{ label: 'Learn AAOS', href: '/learn/' }],
+      },
+      {
+        type: 'added',
+        text: 'Three new guided paths: Adding a passenger display and a second user, Following one signal from the bus to an app, and Building your own OEM product image. Each interleaves Learn topics with tutorials, with a line on why each step follows the last.',
+        links: [{ label: 'Guided paths', href: '/learn/start/' }],
       },
     ],
   },

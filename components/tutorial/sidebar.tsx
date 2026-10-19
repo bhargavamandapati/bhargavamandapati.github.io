@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { ListTree, X } from 'lucide-react'
 import { TrackIcon } from '@/components/tutorial/track-icon'
 import type { TrackWithTutorials } from '@/lib/tutorials'
@@ -22,12 +22,22 @@ function Tree({tracks, currentSlug, unlocked }: {tracks: TrackWithTutorials[]; c
             {track.name}
           </p>
           <ul className="mt-2 border-l border-line">
-            {track.tutorials.map((t) => {
+            {track.tutorials.map((t, i) => {
               index += 1
               const active = t.slug === currentSlug
               const locked = !isFree('tutorials', t.slug) && !unlocked
+              const newSection = t.section && t.section !== track.tutorials[i - 1]?.section
               return (
-                <li key={t.slug}>
+                <Fragment key={t.slug}>
+                {newSection && (
+                  <li
+                    aria-hidden
+                    className="-ml-px border-l border-transparent pb-1 pl-3 pt-3 font-mono text-[0.64rem] uppercase tracking-[0.12em] text-subtle first:pt-1"
+                  >
+                    {t.section}
+                  </li>
+                )}
+                <li>
                   {locked ? (
                     <span
                       aria-disabled="true"
@@ -63,6 +73,7 @@ function Tree({tracks, currentSlug, unlocked }: {tracks: TrackWithTutorials[]; c
                     </Link>
                   )}
                 </li>
+                </Fragment>
               )
             })}
           </ul>

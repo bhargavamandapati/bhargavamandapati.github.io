@@ -8,6 +8,8 @@ import { CategoryIcon } from '@/components/learn/category-icon'
 import { getAllTopics, getCurriculum, totalReadingMinutes } from '@/lib/learn'
 import { vehicleProperties } from '@/lib/vehicle-properties'
 import { isNewContent } from '@/data/new-content'
+import { groupLearnByDomain } from '@/data/domains'
+import { trackBySlug } from '@/data/tutorials'
 import { site } from '@/data/site'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +36,8 @@ const DIFFICULTY_STYLES: Record<string, string> = {
 
 export default function LearnPage() {
   const curriculum = getCurriculum()
+  const { groups, rest } = groupLearnByDomain(curriculum)
+  const domainGroups = [...groups, ...(rest.length ? [{ domain: null, items: rest }] : [])]
   const topics = getAllTopics()
   const minutes = totalReadingMinutes()
   const first = topics[0]
@@ -204,7 +208,26 @@ export default function LearnPage() {
             </div>
           </section>
 
-          {curriculum.map((category) => (
+          {domainGroups.map(({ domain, items }) => (
+          <div key={domain?.slug ?? 'other'} id={domain ? `domain-${domain.slug}` : undefined} className="scroll-mt-24 space-y-16">
+          {domain && (
+            <header className="border-b border-line pb-5">
+              <p className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle">Domain</p>
+              <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight md:text-3xl">{domain.name}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{domain.blurb}</p>
+              {domain.tutorials.length > 0 && (
+                <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span className="font-mono text-[0.7rem] uppercase tracking-wider text-subtle">Hands-on</span>
+                  {domain.tutorials.map((slug) => (
+                    <Link key={slug} href={`/tutorials/#track-${slug}`} className="font-medium text-accent link-underline">
+                      {trackBySlug.get(slug)?.name ?? slug}
+                    </Link>
+                  ))}
+                </p>
+              )}
+            </header>
+          )}
+          {items.map((category) => (
             <section key={category.slug} aria-labelledby={`cat-${category.slug}`}>
               <div className="flex items-start gap-4">
                 <span className="mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2">
@@ -263,6 +286,8 @@ export default function LearnPage() {
                 })}
               </ol>
             </section>
+          ))}
+          </div>
           ))}
         </div>
       </div>

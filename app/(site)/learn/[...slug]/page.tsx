@@ -7,6 +7,8 @@ import { LearnSidebar } from '@/components/learn/sidebar'
 import { CategoryIcon } from '@/components/learn/category-icon'
 import { MarkRead } from '@/components/paths/mark-read'
 import { SourceList } from '@/components/learn/source'
+import { RelatedTopics } from '@/components/related-topics'
+import { tutorialsForLearn } from '@/lib/topic-map'
 import { ContentProvenance } from '@/components/learn/content-provenance'
 import { TableOfContents } from '@/components/table-of-contents'
 import { ReadAloud } from '@/components/read-aloud'
@@ -168,6 +170,13 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
               <MDXRemote source={topic.content} components={mdxComponents} options={mdxOptions} />
             </Gated>
           </article>
+
+          <RelatedTopics
+            heading="Put it into practice"
+            intro="Tutorials that build or configure what this topic explains."
+            items={tutorialsForLearn(topic.slug)}
+            limit={5}
+          />
 
           <SourceList sources={topic.sources} />
           <ContentProvenance />

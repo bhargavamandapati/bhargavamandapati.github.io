@@ -19,6 +19,8 @@ export type TutorialMeta = {
   title: string
   description: string
   order: number
+  /** Optional sub-heading inside a track, for tracks long enough to need one. */
+  section?: string
   difficulty: Difficulty
   /** Human estimate, e.g. "2–3 hours". */
   time: string
@@ -53,6 +55,7 @@ function read(trackSlug: string, fileName: string): Tutorial {
     title: String(data.title),
     description: String(data.description ?? ''),
     order: data.order,
+    section: data.section ? String(data.section) : undefined,
     difficulty: (data.difficulty ?? 'Intermediate') as Difficulty,
     time: String(data.time ?? ''),
     outcome: String(data.outcome),

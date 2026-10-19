@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Fragment } from 'react'
 import { ItemLockBadge } from '@/components/premium/item-lock-badge'
 import { NewBadge } from '@/components/new-badge'
 import Link from 'next/link'
@@ -7,6 +8,7 @@ import { PageHeader } from '@/components/page-header'
 import { TrackIcon } from '@/components/tutorial/track-icon'
 import { getAllTutorials, getTracks } from '@/lib/tutorials'
 import { surfaces } from '@/data/tutorials'
+import { domainByTutorialTrack } from '@/data/domains'
 import { isNewContent } from '@/data/new-content'
 import { site } from '@/data/site'
 import { cn } from '@/lib/utils'
@@ -162,14 +164,32 @@ export default function TutorialsPage() {
                     {track.name}
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{track.blurb}</p>
+                  {domainByTutorialTrack.get(track.slug) && (
+                    <p className="mt-3 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
+                      Background in Learn:{' '}
+                      <Link
+                        href={`/learn/#domain-${domainByTutorialTrack.get(track.slug)?.slug}`}
+                        className="font-sans text-[0.8rem] normal-case tracking-normal text-accent link-underline"
+                      >
+                        {domainByTutorialTrack.get(track.slug)?.name}
+                      </Link>
+                    </p>
+                  )}
                 </div>
               </div>
 
               <ol className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {track.tutorials.map((t) => {
+                {track.tutorials.map((t, i) => {
                   counter += 1
+                  const newSection = t.section && t.section !== track.tutorials[i - 1]?.section
                   return (
-                    <li key={t.slug} className="h-full">
+                    <Fragment key={t.slug}>
+                    {newSection && (
+                      <li className="col-span-full mt-4 border-b border-line pb-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle first:mt-0">
+                        {t.section}
+                      </li>
+                    )}
+                    <li className="h-full">
                       <article className="card group relative flex h-full flex-col p-5 transition-all hover:border-accent/50 hover:shadow-lg">
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-mono text-[0.7rem] text-subtle tabular-nums">
@@ -204,6 +224,7 @@ export default function TutorialsPage() {
                         )}
                       </article>
                     </li>
+                    </Fragment>
                   )
                 })}
               </ol>

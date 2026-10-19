@@ -6,6 +6,8 @@ import { ArrowLeft, ArrowRight, Clock } from 'lucide-react'
 import { TutorialSidebar } from '@/components/tutorial/sidebar'
 import { TrackIcon } from '@/components/tutorial/track-icon'
 import { OutcomeCard } from '@/components/tutorial/outcome-card'
+import { RelatedTopics } from '@/components/related-topics'
+import { learnForTutorial } from '@/lib/topic-map'
 import { SourceList } from '@/components/learn/source'
 import { ContentProvenance } from '@/components/learn/content-provenance'
 import { TableOfContents } from '@/components/table-of-contents'
@@ -161,6 +163,12 @@ export default async function TutorialPage({ params }: { params: Promise<Params>
             time={tutorial.time}
             steps={steps}
             prerequisites={tutorial.prerequisites}
+          />
+
+          <RelatedTopics
+            heading="Read first in Learn AAOS"
+            intro="The background this tutorial assumes, in the order to read it."
+            items={learnForTutorial(tutorial.slug)}
           />
 
           <article
