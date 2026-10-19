@@ -222,6 +222,38 @@ import {
   RwOccWho,
 } from '@/components/diagrams/rw-e'
 import {
+  RwCarUiPerApp,
+  RwLookupOverlay,
+  RwLookupPlain,
+  RwOverlayGate,
+  RwOverlayPriority,
+  RwRroRecap,
+} from '@/components/diagrams/rw-f'
+import {
+  RwDcBeforeAfter,
+  RwDcDecision,
+  RwDcRecap,
+  RwDcScaleSource,
+} from '@/components/diagrams/rw-g'
+import {
+  RwSysUiLevers,
+  RwSysUiReach,
+  RwSysUiRecap,
+  RwSysUiScreen,
+} from '@/components/diagrams/rw-h'
+import {
+  RwAudioPath,
+  RwAudioRecap,
+  RwAudioZoneMap,
+} from '@/components/diagrams/rw-i'
+import {
+  RwVhalFilesMap,
+  RwVhalGetSequence,
+  RwVhalLayers,
+  RwVhalRecap,
+  RwVhalSetSequence,
+} from '@/components/diagrams/rw-j'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -496,6 +528,28 @@ export const mdxComponents: MDXComponents = {
   RwOccRecipe,
   RwOccStates,
   RwOccWho,
+  RwCarUiPerApp,
+  RwLookupOverlay,
+  RwLookupPlain,
+  RwOverlayGate,
+  RwOverlayPriority,
+  RwRroRecap,
+  RwDcBeforeAfter,
+  RwDcDecision,
+  RwDcRecap,
+  RwDcScaleSource,
+  RwSysUiLevers,
+  RwSysUiReach,
+  RwSysUiRecap,
+  RwSysUiScreen,
+  RwAudioPath,
+  RwAudioRecap,
+  RwAudioZoneMap,
+  RwVhalFilesMap,
+  RwVhalGetSequence,
+  RwVhalLayers,
+  RwVhalRecap,
+  RwVhalSetSequence,
   FndForkTimeline,
   FndSourceNavFlow,
   GfxBufferLifecycle,
