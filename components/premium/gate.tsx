@@ -6,6 +6,7 @@ import { KeyRound, Loader2, Lock } from 'lucide-react'
 import { REALM_LABEL, access, type Realm } from '@/data/access'
 import { RequestAccessButton } from '@/components/premium/request-access'
 import { decryptPayload, isWrongKeyError, type Payload } from '@/lib/premium-decrypt'
+import { getSavedEmail, requestRealmKey, saveEmail, UnlockError } from '@/lib/access-client'
 import { CODE_LANGUAGE_STORAGE_KEY, type CodeLanguage } from '@/components/properties/code-sample'
 
 /**
@@ -13,10 +14,19 @@ import { CODE_LANGUAGE_STORAGE_KEY, type CodeLanguage } from '@/components/prope
  *
  * The article body is not in the page: the build encrypts it after export and
  * ships the ciphertext separately, so there is nothing to reveal by editing the
- * DOM or reading the source. This component fetches that payload, derives a key
- * from the reader's passphrase, and puts the prose back where it belongs.
+ * DOM or reading the source. A reader's email+code is exchanged, through the
+ * access-worker, for the realm's current content key; this component fetches
+ * the payload, decrypts it with that key, and puts the prose back where it
+ * belongs.
  *
- * Failure has to be honest. AES-GCM authenticates, so a wrong passphrase throws
+ * The key itself — not the email/code — is what gets cached in this browser,
+ * exactly as a single shared passphrase used to be. That is what makes
+ * monthly revocation work without this component doing anything special: the
+ * realm's key rotates server-side once a month, the cached one silently stops
+ * decrypting anything newly built, and the reader is back here to re-enter
+ * their code — which only succeeds if it is still active.
+ *
+ * Failure has to be honest. AES-GCM authenticates, so a wrong key throws
  * rather than producing plausible nonsense — which is what lets the wrong-key
  * message be a statement rather than a guess.
  */
@@ -112,15 +122,22 @@ export function PremiumGate({
   realm: Realm
   mode?: 'content' | 'key-only'
 }) {
-  const [status, setStatus] = useState<'locked' | 'working' | 'unlocked' | 'wrong' | 'error'>(
-    'locked',
-  )
-  const [passphrase, setPassphrase] = useState('')
+  const [status, setStatus] = useState<
+    'locked' | 'working' | 'unlocked' | 'wrong' | 'rate-limited' | 'error'
+  >('locked')
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
   const attempted = useRef(false)
-  const fieldId = useId()
+  const emailFieldId = useId()
+  const codeFieldId = useId()
 
-  const unlock = useCallback(
-    async (candidate: string, { remember }: { remember: boolean }) => {
+  useEffect(() => {
+    setEmail(getSavedEmail())
+  }, [])
+
+  /** Decrypts with an already-known key. `silent` is for the auto-retry on mount. */
+  const unlockWithKey = useCallback(
+    async (candidate: string, { remember, silent }: { remember: boolean; silent: boolean }) => {
       // The wrapper, not the article: replacing the article would take the
       // audio player with it.
       const target = document.querySelector<HTMLElement>('[data-premium-body]')
@@ -149,14 +166,45 @@ export function PremiumGate({
         // The tool is mounted by a component that reads the key on load.
         if (mode === 'key-only') window.location.reload()
       } catch (error) {
-        // A decrypt failure means the key is wrong; anything else is the fetch.
+        // A cached key that stopped working almost always means it rotated out
+        // last month, not that the reader did anything wrong — so the silent
+        // auto-retry on mount just drops back to the plain locked state
+        // instead of the "that key did not work" message a real wrong answer
+        // gets.
+        if (silent) {
+          try {
+            window.localStorage.removeItem(access.storageKey(realm))
+          } catch {
+            /* nothing to remove */
+          }
+          setStatus('locked')
+          return
+        }
         setStatus(isWrongKeyError(error) ? 'wrong' : 'error')
       }
     },
     [contentId, mode, realm],
   )
 
-  // A reader who has already been given a key should never see the lock again.
+  const submitCode = useCallback(async () => {
+    const trimmedEmail = email.trim()
+    const trimmedCode = code.trim()
+    if (!trimmedEmail || !trimmedCode) return
+    setStatus('working')
+    try {
+      const key = await requestRealmKey(realm, trimmedEmail, trimmedCode)
+      saveEmail(trimmedEmail)
+      await unlockWithKey(key, { remember: true, silent: false })
+    } catch (error) {
+      if (error instanceof UnlockError) {
+        setStatus(error.kind === 'invalid' ? 'wrong' : error.kind === 'rate-limited' ? 'rate-limited' : 'error')
+      } else {
+        setStatus('error')
+      }
+    }
+  }, [code, email, realm, unlockWithKey])
+
+  // A reader who already has a cached key should never see the lock again.
   useEffect(() => {
     if (attempted.current) return
     attempted.current = true
@@ -166,8 +214,8 @@ export function PremiumGate({
     } catch {
       /* storage blocked */
     }
-    if (saved) void unlock(saved, { remember: false })
-  }, [unlock, realm])
+    if (saved) void unlockWithKey(saved, { remember: false, silent: true })
+  }, [unlockWithKey, realm])
 
   if (status === 'unlocked') return null
 
@@ -191,7 +239,7 @@ export function PremiumGate({
           <span className="text-fg">{title}</span> is part of{' '}
           <span className="text-fg">{REALM_LABEL[realm]}</span>. {access.freeCount} topics across
           the site are open to read first, so you can judge the rest before asking. Learn AAOS
-          and the SDV track have separate keys.
+          and the SDV track have separate codes, each tied to your email.
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -208,28 +256,38 @@ export function PremiumGate({
           className="mt-6 border-t border-line pt-5"
           onSubmit={(e) => {
             e.preventDefault()
-            if (passphrase.trim()) void unlock(passphrase.trim(), { remember: true })
+            void submitCode()
           }}
         >
           <label
-            htmlFor={fieldId}
+            htmlFor={emailFieldId}
             className="block font-mono text-[0.7rem] uppercase tracking-wider text-subtle"
           >
-            Already have a key?
+            Already have a code?
           </label>
           <div className="mt-2 flex flex-wrap gap-2">
             <input
-              id={fieldId}
-              type="password"
-              autoComplete="off"
-              value={passphrase}
-              onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="Access key"
+              id={emailFieldId}
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
               className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+            />
+            <input
+              id={codeFieldId}
+              type="text"
+              autoComplete="off"
+              autoCapitalize="characters"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Access code"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 font-mono text-sm uppercase text-fg outline-none placeholder:normal-case focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
             />
             <button
               type="submit"
-              disabled={busy || !passphrase.trim()}
+              disabled={busy || !email.trim() || !code.trim()}
               className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:border-line-strong hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? (
@@ -242,9 +300,10 @@ export function PremiumGate({
           </div>
 
           <p aria-live="polite" className="mt-2 min-h-5 text-xs text-muted">
-            {status === 'wrong' && 'That key did not work. Check for a stray space, or ask again.'}
-            {status === 'error' && 'The content could not be fetched. Check your connection and retry.'}
-            {status === 'locked' && 'Unlocks every topic on this device, and is remembered here.'}
+            {status === 'wrong' && 'That email and code did not match. Check for a typo, or ask again.'}
+            {status === 'rate-limited' && 'Too many attempts. Wait a few minutes and try again.'}
+            {status === 'error' && 'The access system could not be reached. Check your connection and retry.'}
+            {status === 'locked' && 'Unlocks every topic on this device for 30 days, and is remembered here.'}
           </p>
         </form>
       </div>

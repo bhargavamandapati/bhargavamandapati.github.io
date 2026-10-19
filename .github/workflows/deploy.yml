@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # 02:00 UTC on the 1st of each month — a couple of hours after the
+    # access-worker's own Cron Trigger rotates each realm's content key (see
+    # access-worker/wrangler.toml), so this rebuild always picks up that
+    # month's new key even on a month with no content changes.
+    - cron: '0 2 1 * *'
 
 # Allow GITHUB_TOKEN to publish to Pages.
 permissions:
@@ -79,15 +85,35 @@ jobs:
           npm run typecheck
           npm run check:mdx
 
+      # The two realm passphrases scripts/encrypt-premium.mjs uses are no
+      # longer static secrets: access-worker/ owns them, rotating each one
+      # monthly, so every build has to ask it for whatever is current rather
+      # than reading a fixed value. See access-worker/README.md.
+      - name: Fetch current realm keys
+        id: realm_keys
+        env:
+          ACCESS_WORKER_URL: ${{ secrets.ACCESS_WORKER_URL }}
+          ACCESS_WORKER_CI_TOKEN: ${{ secrets.ACCESS_WORKER_CI_TOKEN }}
+        run: |
+          for REALM in learn sdv; do
+            KEY="$(curl -sS -f \
+              -H "Authorization: Bearer ${ACCESS_WORKER_CI_TOKEN}" \
+              "${ACCESS_WORKER_URL}/internal/current-key?realm=${REALM}" | \
+              node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).key)')"
+            echo "::add-mask::${KEY}"
+            echo "${REALM}_key=${KEY}" >> "$GITHUB_OUTPUT"
+          done
+
       - name: Build static site
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
           NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.site_url }}
+          NEXT_PUBLIC_ACCESS_WORKER_URL: ${{ secrets.ACCESS_WORKER_URL }}
           # scripts/encrypt-premium.mjs refuses to run without both of these —
-          # better a failed build than a publish that ships 405 locked
-          # articles in plain text because a secret went missing.
-          PREMIUM_PASSPHRASE_LEARN: ${{ secrets.PREMIUM_PASSPHRASE_LEARN }}
-          PREMIUM_PASSPHRASE_SDV: ${{ secrets.PREMIUM_PASSPHRASE_SDV }}
+          # better a failed build than a publish that ships locked articles in
+          # plain text because a key went missing.
+          PREMIUM_PASSPHRASE_LEARN: ${{ steps.realm_keys.outputs.learn_key }}
+          PREMIUM_PASSPHRASE_SDV: ${{ steps.realm_keys.outputs.sdv_key }}
         run: npm run build
 
       - uses: actions/configure-pages@v6

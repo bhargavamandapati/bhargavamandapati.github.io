@@ -1,0 +1,27 @@
+name = "bm-access-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Starts on the free *.workers.dev subdomain — no DNS changes to
+# bhargavamandapati.com needed. A custom domain (e.g. api.bhargavamandapati.com)
+# can be added later from the Cloudflare dashboard without touching this file's
+# routing logic.
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bm-access"
+# Filled in by `npm run db:create`, which prints the real id to paste here.
+database_id = "81a0bb70-06b1-483a-ba84-b44746da1556"
+
+# Monthly key rotation + expiry sweep. 00:00 UTC on the 1st of each month.
+# The main site's scheduled rebuild (.github/workflows/deploy.yml) runs a
+# couple of hours after this, so it always picks up that month's new key.
+[triggers]
+crons = ["0 0 1 * *"]
+
+# Secrets (never in this file): set with `wrangler secret put <NAME>`.
+#   RESEND_API_KEY   — sends the "here is your code" email
+#   FROM_EMAIL       — the From: address for that email
+#   ADMIN_TOKEN       — required header for POST /admin/issue
+#   CI_TOKEN          — required header for GET /internal/current-key

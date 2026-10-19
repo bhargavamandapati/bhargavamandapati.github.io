@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local `wrangler dev` testing. .dev.vars is gitignored.
+# In production these are set with `wrangler secret put <NAME>` instead —
+# never written to wrangler.toml, never committed.
+
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FROM_EMAIL=onboarding@resend.dev
+ADMIN_TOKEN=generate-a-long-random-string-for-this
+CI_TOKEN=generate-a-different-long-random-string-for-this
