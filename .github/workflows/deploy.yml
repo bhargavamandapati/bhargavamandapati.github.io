@@ -45,6 +45,11 @@ jobs:
         run: |
           mkdir -p content
           cp -r premium-content/content/. content/
+          # Diagram components that only the premium articles use ship with
+          # them, mirroring this repo's paths.
+          if [ -d premium-content/components ]; then
+            cp -r premium-content/components/. components/
+          fi
           rm -rf premium-content
 
       - uses: actions/setup-node@v5

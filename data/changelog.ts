@@ -36,6 +36,50 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.10.19',
+    date: '2026-10-19',
+    title: 'Passenger display and multi-user: a 24-tutorial series',
+    changes: [
+      {
+        type: 'added',
+        text: 'Multi-display foundations (2 tutorials) — the display ↔ occupant zone ↔ user mental model every later tutorial relies on, and the clarification that “zone” means two unrelated things: HVAC zones and occupant zones.',
+        links: [
+          { label: 'The AAOS multi-display mental model', href: '/tutorials/multi-display/aaos-multi-display-overview/' },
+          { label: 'HVAC zones vs. occupant zones', href: '/tutorials/multi-display/hvac-zones-vs-occupant-zones/' },
+        ],
+      },
+      {
+        type: 'added',
+        text: 'Passenger display (13 tutorials) — enable a second display statically or by hotplug, write the occupant-zone config, then place the launcher and SystemUI on it, control which apps run where, and cover per-display UX restrictions, theming, input routing, cross-zone messaging and what happens to an app when its display disappears. Built and run on the tejas_car_x86_64 product, with confirmed findings kept apart from uncertain ones.',
+        links: [
+          { label: 'Enabling a passenger display (static)', href: '/tutorials/passenger-display/enabling-passenger-display-static/' },
+          { label: 'Occupant zone config deep dive', href: '/tutorials/passenger-display/occupant-zone-config-deep-dive/' },
+          { label: 'What happens when a display disappears', href: '/tutorials/passenger-display/app-lifecycle-display-removal/' },
+        ],
+      },
+      {
+        type: 'added',
+        text: 'Multi-display, multi-user (6 tutorials) — HSUM versus MUMD, assigning a real user to the passenger zone and where it honestly stops, permissions and SELinux, per-user data isolation, audio zones and media per occupant zone.',
+        links: [
+          { label: 'HSUM vs MUMD', href: '/tutorials/mdmu/mdmu-concepts-hsum-vs-mumd/' },
+          { label: 'Assigning a user to the passenger zone', href: '/tutorials/mdmu/per-zone-user-assignment/' },
+        ],
+      },
+      {
+        type: 'added',
+        text: 'Multi-display build & debug (3 tutorials) — product-config patterns, the adb toolkit for inspecting zones and displays, and a symptom-to-fix troubleshooting guide.',
+        links: [
+          { label: 'The debugging toolkit', href: '/tutorials/multi-display-debugging/debugging-and-adb-toolkit/' },
+          { label: 'Common pitfalls and troubleshooting', href: '/tutorials/multi-display-debugging/common-pitfalls-and-troubleshooting/' },
+        ],
+      },
+      {
+        type: 'added',
+        text: 'Every tutorial in the series carries at least one diagram and one reference table — 34 diagrams in all, from the display-to-user mapping to a symptom-to-fix decision tree. The tutorial count on the home page goes from 33 to 57.',
+      },
+    ],
+  },
+  {
     version: '2026.09.17',
     date: '2026-09-17',
     title: 'Four new developer tools',

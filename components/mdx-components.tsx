@@ -109,6 +109,47 @@ import {
   VmsPubSub,
   ZygoteForkSequence,
 } from '@/components/diagrams/tutorials'
+import { HvacVsOccupantZones, MultiDisplayThreeLayers } from '@/components/diagrams/multidisplay-foundations'
+import {
+  PassengerHotplugPipe,
+  PassengerLaunchDecisionOrder,
+  PassengerLaunchParamsChain,
+  PassengerOverlayPerUserToggle,
+  PassengerRroArrayReplacement,
+  PassengerSecondaryHomeConflict,
+  PassengerStaticBuildFlow,
+  PassengerStaticDynamicFork,
+  PassengerSystemUiProcessModel,
+  PassengerZoneConfigMapping,
+  PassengerZoneDisplayMap,
+  PassengerZoneQueryMap,
+} from '@/components/diagrams/multidisplay-passenger-a'
+import {
+  DisplayCompatEntryPoint,
+  DisplayRemovalFlow,
+  OccupantConnectionLayers,
+  OverlayRefreshBehavior,
+  SeatToDisplayRouting,
+  ThemeOverlayPriorityLayers,
+  UxRestrictionsPerDisplay,
+} from '@/components/diagrams/multidisplay-passenger-b'
+import {
+  MdmuAccessControlLayers,
+  MdmuAssignmentGates,
+  MdmuAudioOccupantBinding,
+  MdmuMediaKeyRouting,
+  MdmuPerUserProcesses,
+  MdmuStartUserChain,
+  MdmuUserModels,
+  MdmuWhichUserHandle,
+} from '@/components/diagrams/multidisplay-mdmu'
+import {
+  MultiDisplayDeployPaths,
+  MultiDisplayProductConfigMap,
+  MultiDisplayThreeIdSystems,
+  MultiDisplayTroubleshootingTree,
+  MultiDisplayWhereToLook,
+} from '@/components/diagrams/multidisplay-debugging'
 
 type CalloutKind = 'note' | 'tip' | 'warning'
 
@@ -284,6 +325,40 @@ export const mdxComponents: MDXComponents = {
 
   // Tutorial diagrams
   CanHalFlow,
+  HvacVsOccupantZones,
+  MultiDisplayThreeLayers,
+  PassengerHotplugPipe,
+  PassengerLaunchDecisionOrder,
+  PassengerLaunchParamsChain,
+  PassengerOverlayPerUserToggle,
+  PassengerRroArrayReplacement,
+  PassengerSecondaryHomeConflict,
+  PassengerStaticBuildFlow,
+  PassengerStaticDynamicFork,
+  PassengerSystemUiProcessModel,
+  PassengerZoneConfigMapping,
+  PassengerZoneDisplayMap,
+  PassengerZoneQueryMap,
+  DisplayCompatEntryPoint,
+  DisplayRemovalFlow,
+  OccupantConnectionLayers,
+  OverlayRefreshBehavior,
+  SeatToDisplayRouting,
+  ThemeOverlayPriorityLayers,
+  UxRestrictionsPerDisplay,
+  MdmuAccessControlLayers,
+  MdmuAssignmentGates,
+  MdmuAudioOccupantBinding,
+  MdmuMediaKeyRouting,
+  MdmuPerUserProcesses,
+  MdmuStartUserChain,
+  MdmuUserModels,
+  MdmuWhichUserHandle,
+  MultiDisplayDeployPaths,
+  MultiDisplayProductConfigMap,
+  MultiDisplayThreeIdSystems,
+  MultiDisplayTroubleshootingTree,
+  MultiDisplayWhereToLook,
   RotaryInputPath,
   NativeDaemonPatterns,
   TaskViewEmbedding,

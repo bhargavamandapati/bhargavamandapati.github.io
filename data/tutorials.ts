@@ -51,6 +51,34 @@ export const tracks: Track[] = [
       'Audio topology, boot animation and the settings surface — the configuration that makes a build an OEM’s.',
     icon: 'SlidersHorizontal',
   },
+  {
+    slug: 'multi-display',
+    name: 'Multi-display foundations',
+    blurb:
+      'The mental model that keeps displays, occupant zones and users apart — and the one word, “zone”, that means two different things.',
+    icon: 'Monitor',
+  },
+  {
+    slug: 'passenger-display',
+    name: 'Passenger display',
+    blurb:
+      'Add a second screen end to end: static and hotplug display config, occupant zones, the launcher, SystemUI, app control, UX restrictions, theming and input.',
+    icon: 'MonitorSmartphone',
+  },
+  {
+    slug: 'mdmu',
+    name: 'Multi-display, multi-user',
+    blurb:
+      'Put a real user behind the second screen: HSUM versus MUMD, per-zone user assignment, permissions and SELinux, data isolation, audio zones and per-zone media.',
+    icon: 'Users',
+  },
+  {
+    slug: 'multi-display-debugging',
+    name: 'Multi-display build & debug',
+    blurb:
+      'Product-config patterns for the build, the adb toolkit for inspecting zones and displays, and the failures that waste an afternoon.',
+    icon: 'Bug',
+  },
 ]
 
 export const trackBySlug = new Map(tracks.map((t) => [t.slug, t]))
@@ -103,6 +131,10 @@ export const surfaces: Surface[] = [
   { name: 'Occupant Awareness HAL', what: 'Driver-monitoring detection events, not camera frames', where: 'hardware/interfaces/automotive/occupant_awareness/', tutorial: 'vehicle/custom-occupant-awareness-hal' },
   { name: 'Occupant connection', what: 'Messaging between apps in different occupant zones', where: 'CarOccupantConnectionManager', tutorial: 'framework/custom-occupant-connection' },
   { name: 'Task monitor', what: 'The exclusive seat CarPackageManager.restartTask() depends on', where: 'CarActivityManager.registerTaskMonitor()', tutorial: 'framework/custom-task-monitor' },
+  { name: 'Passenger display', what: 'A second screen bound to its own occupant zone', where: 'product makefile + config_occupant_display_mapping RRO', tutorial: 'passenger-display/enabling-passenger-display-static' },
+  { name: 'Occupant zones', what: 'Which seat, display and user belong together', where: 'config_occupant_zones + config_occupant_display_mapping', tutorial: 'passenger-display/occupant-zone-config-deep-dive' },
+  { name: 'Per-display UX restrictions', what: 'Driving-state rules applied display by display', where: 'RestrictionMapping in the UX restrictions config', tutorial: 'passenger-display/ux-restrictions-per-display' },
+  { name: 'Per-zone user assignment', what: 'A real user running behind the passenger screen', where: 'config_multiuserVisibleBackgroundUsers + CarUserService', tutorial: 'mdmu/per-zone-user-assignment' },
 ]
 
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced'

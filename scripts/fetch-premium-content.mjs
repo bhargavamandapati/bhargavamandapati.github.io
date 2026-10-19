@@ -30,6 +30,14 @@ try {
 
   cpSync(src, path.join(ROOT, 'content'), { recursive: true })
   console.log('Premium content copied into content/learn, content/sdv, content/tutorials.')
+
+  // Diagram components used only by premium articles ship in the same repo,
+  // mirroring this repo's paths, and are gitignored here.
+  const components = path.join(tmp, 'components')
+  if (existsSync(components)) {
+    cpSync(components, path.join(ROOT, 'components'), { recursive: true })
+    console.log('Premium diagram components copied into components/diagrams.')
+  }
 } finally {
   rmSync(tmp, { recursive: true, force: true })
 }
