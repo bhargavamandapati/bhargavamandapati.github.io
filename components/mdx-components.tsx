@@ -1143,6 +1143,37 @@ import {
   RwMdmuSecRecap,
 } from '@/components/diagrams/rw-dp'
 import {
+  RwPaxSysUiControllerChoice,
+  RwPaxSysUiOptions,
+  RwPaxSysUiOverlayToggle,
+  RwPaxSysUiRecap,
+  RwPaxSysUiTejasChain,
+  RwPaxSysUiUserToDisplay,
+} from '@/components/diagrams/rw-dq'
+import {
+  RwThemeDispLayers,
+  RwThemeDispRecap,
+  RwThemeDispRefresh,
+  RwThemeDispSwitchFlow,
+} from '@/components/diagrams/rw-dr'
+import {
+  RwUxrDispBinding,
+  RwUxrDispLookup,
+  RwUxrDispRecap,
+  RwUxrDispTarget,
+} from '@/components/diagrams/rw-ds'
+import {
+  RwLunchTgtLayers,
+  RwLunchTgtRecap,
+  RwLunchTgtResolve,
+} from '@/components/diagrams/rw-dt'
+import {
+  RwInitSvcBootSequence,
+  RwInitSvcFiles,
+  RwInitSvcLifecycle,
+  RwInitSvcRecap,
+} from '@/components/diagrams/rw-du'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -2106,6 +2137,27 @@ export const mdxComponents: MDXComponents = {
   RwMdmuSecCrossUserCheck,
   RwMdmuSecLayers,
   RwMdmuSecRecap,
+  RwPaxSysUiControllerChoice,
+  RwPaxSysUiOptions,
+  RwPaxSysUiOverlayToggle,
+  RwPaxSysUiRecap,
+  RwPaxSysUiTejasChain,
+  RwPaxSysUiUserToDisplay,
+  RwThemeDispLayers,
+  RwThemeDispRecap,
+  RwThemeDispRefresh,
+  RwThemeDispSwitchFlow,
+  RwUxrDispBinding,
+  RwUxrDispLookup,
+  RwUxrDispRecap,
+  RwUxrDispTarget,
+  RwLunchTgtLayers,
+  RwLunchTgtRecap,
+  RwLunchTgtResolve,
+  RwInitSvcBootSequence,
+  RwInitSvcFiles,
+  RwInitSvcLifecycle,
+  RwInitSvcRecap,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
