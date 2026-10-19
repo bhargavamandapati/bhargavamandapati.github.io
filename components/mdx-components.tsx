@@ -1039,6 +1039,41 @@ import {
   RwMdPitfallUserNumber,
 } from '@/components/diagrams/rw-da'
 import {
+  RwMdToolkitBootCheck,
+  RwMdToolkitQuestions,
+  RwMdToolkitRecap,
+  RwMdToolkitScreencap,
+  RwMdToolkitSideload,
+  RwMdToolkitThreeIds,
+  RwMdToolkitZoneDump,
+} from '@/components/diagrams/rw-db'
+import {
+  RwMdCompatPath,
+  RwMdCompatRecap,
+  RwMdCompatTwoClasses,
+  RwMdCompatWhereNext,
+} from '@/components/diagrams/rw-dc'
+import {
+  RwPaxDynFork,
+  RwPaxDynPayload,
+  RwPaxDynRecap,
+  RwPaxDynSequence,
+  RwPaxDynSlots,
+} from '@/components/diagrams/rw-dd'
+import {
+  RwPaxStaticAllowlistRule,
+  RwPaxStaticBuildFlow,
+  RwPaxStaticIdChain,
+  RwPaxStaticOverlayPriority,
+  RwPaxStaticRecap,
+} from '@/components/diagrams/rw-de'
+import {
+  RwHvacZonesBits,
+  RwHvacZonesQuestions,
+  RwHvacZonesRecap,
+  RwHvacZonesTwoLists,
+} from '@/components/diagrams/rw-df'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -1928,6 +1963,31 @@ export const mdxComponents: MDXComponents = {
   RwMdPitfallRecap,
   RwMdPitfallShadow,
   RwMdPitfallUserNumber,
+  RwMdToolkitBootCheck,
+  RwMdToolkitQuestions,
+  RwMdToolkitRecap,
+  RwMdToolkitScreencap,
+  RwMdToolkitSideload,
+  RwMdToolkitThreeIds,
+  RwMdToolkitZoneDump,
+  RwMdCompatPath,
+  RwMdCompatRecap,
+  RwMdCompatTwoClasses,
+  RwMdCompatWhereNext,
+  RwPaxDynFork,
+  RwPaxDynPayload,
+  RwPaxDynRecap,
+  RwPaxDynSequence,
+  RwPaxDynSlots,
+  RwPaxStaticAllowlistRule,
+  RwPaxStaticBuildFlow,
+  RwPaxStaticIdChain,
+  RwPaxStaticOverlayPriority,
+  RwPaxStaticRecap,
+  RwHvacZonesBits,
+  RwHvacZonesQuestions,
+  RwHvacZonesRecap,
+  RwHvacZonesTwoLists,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
