@@ -944,6 +944,40 @@ import {
   RwSfHwcVirtualChoice,
 } from '@/components/diagrams/rw-cl'
 import {
+  RwRenderEngBigPicture,
+  RwRenderEngBlurSeq,
+  RwRenderEngDrawLoop,
+  RwRenderEngSelection,
+} from '@/components/diagrams/rw-cm'
+import {
+  RwGrallocBigPicture,
+  RwGrallocConsumers,
+  RwGrallocDepth,
+  RwGrallocProcessSplit,
+  RwGrallocRecap,
+  RwGrallocSequence,
+} from '@/components/diagrams/rw-cn'
+import {
+  RwHwcBackBigPicture,
+  RwHwcBackHostPath,
+  RwHwcBackPriority,
+  RwHwcBackRecap,
+} from '@/components/diagrams/rw-co'
+import {
+  RwDrmBufBigPicture,
+  RwDrmBufChain,
+  RwDrmBufConditions,
+  RwDrmBufHdcp,
+  RwDrmBufRecap,
+} from '@/components/diagrams/rw-cp'
+import {
+  RwChoreoFrameFlow,
+  RwChoreoRecap,
+  RwChoreoRenderQueue,
+  RwChoreoSharedLayers,
+  RwChoreoVsyncSequence,
+} from '@/components/diagrams/rw-cq'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -1768,6 +1802,30 @@ export const mdxComponents: MDXComponents = {
   RwSfHwcRecap,
   RwSfHwcSharedLayers,
   RwSfHwcVirtualChoice,
+  RwRenderEngBigPicture,
+  RwRenderEngBlurSeq,
+  RwRenderEngDrawLoop,
+  RwRenderEngSelection,
+  RwGrallocBigPicture,
+  RwGrallocConsumers,
+  RwGrallocDepth,
+  RwGrallocProcessSplit,
+  RwGrallocRecap,
+  RwGrallocSequence,
+  RwHwcBackBigPicture,
+  RwHwcBackHostPath,
+  RwHwcBackPriority,
+  RwHwcBackRecap,
+  RwDrmBufBigPicture,
+  RwDrmBufChain,
+  RwDrmBufConditions,
+  RwDrmBufHdcp,
+  RwDrmBufRecap,
+  RwChoreoFrameFlow,
+  RwChoreoRecap,
+  RwChoreoRenderQueue,
+  RwChoreoSharedLayers,
+  RwChoreoVsyncSequence,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
