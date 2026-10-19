@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'tutorials', slug: 'graphics/surfaceflinger-hwc-multi-display', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/render-engine-deep-dive', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/gralloc-and-bufferqueue', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/hwc-composition-backends', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/protected-content-and-drm-buffers', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/choreographer-and-app-side-rendering', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/flag-secure-and-screenshots-per-display', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/vsync-per-display', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/insets-and-cutouts-per-display', date: '2026-10-19' },
+  { area: 'tutorials', slug: 'graphics/graphics-topics-elsewhere', date: '2026-10-19' },
   { area: 'tutorials', slug: 'multi-display/aaos-multi-display-overview', date: '2026-10-19' },
   { area: 'tutorials', slug: 'multi-display/hvac-zones-vs-occupant-zones', date: '2026-10-19' },
   { area: 'tutorials', slug: 'multi-display/app-control-per-display', date: '2026-10-19' },

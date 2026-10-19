@@ -150,6 +150,24 @@ import {
   MultiDisplayTroubleshootingTree,
   MultiDisplayWhereToLook,
 } from '@/components/diagrams/multidisplay-debugging'
+import {
+  GfxBufferLifecycle,
+  GfxCompositionFlow,
+  GfxDisplayIdTypes,
+  GfxRenderEngineHierarchy,
+  GfxRenderEngineSelection,
+} from '@/components/diagrams/graphics-a'
+import {
+  GfxAppRenderPipeline,
+  GfxHwcBackends,
+  GfxProtectedContentPath,
+} from '@/components/diagrams/graphics-b'
+import {
+  GfxBlackScreenshotCause,
+  GfxInsetsPerDisplay,
+  GfxTrackNeighbours,
+  GfxVsyncPerDisplay,
+} from '@/components/diagrams/graphics-c'
 
 type CalloutKind = 'note' | 'tip' | 'warning'
 
@@ -359,6 +377,18 @@ export const mdxComponents: MDXComponents = {
   MultiDisplayThreeIdSystems,
   MultiDisplayTroubleshootingTree,
   MultiDisplayWhereToLook,
+  GfxBufferLifecycle,
+  GfxCompositionFlow,
+  GfxDisplayIdTypes,
+  GfxRenderEngineHierarchy,
+  GfxRenderEngineSelection,
+  GfxAppRenderPipeline,
+  GfxHwcBackends,
+  GfxProtectedContentPath,
+  GfxBlackScreenshotCause,
+  GfxInsetsPerDisplay,
+  GfxTrackNeighbours,
+  GfxVsyncPerDisplay,
   RotaryInputPath,
   NativeDaemonPatterns,
   TaskViewEmbedding,

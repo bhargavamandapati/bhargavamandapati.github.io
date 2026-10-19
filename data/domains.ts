@@ -49,10 +49,10 @@ export const domains: readonly Domain[] = [
   },
   {
     slug: 'displays-users',
-    name: 'Displays, zones & users',
-    blurb: 'More than one screen and more than one person: occupant zones, passenger displays, the cluster and the multi-user model.',
+    name: 'Displays, graphics & users',
+    blurb: 'More than one screen and more than one person: occupant zones, passenger displays, the cluster, the multi-user model, and the graphics pipeline that puts pixels on each screen.',
     learn: ['cluster-displays'],
-    tutorials: ['multi-display'],
+    tutorials: ['multi-display', 'graphics'],
   },
   {
     slug: 'connectivity',

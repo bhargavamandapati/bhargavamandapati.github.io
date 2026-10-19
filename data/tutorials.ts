@@ -58,6 +58,13 @@ export const tracks: Track[] = [
       'A second screen and a second person, end to end: the display ↔ zone ↔ user model, enabling a passenger display, putting a real user behind it, and the build and debug toolkit that keeps it working.',
     icon: 'MonitorSmartphone',
   },
+  {
+    slug: 'graphics',
+    name: 'Graphics & compositing',
+    blurb:
+      'What happens between an app drawing a frame and a pixel lighting up: SurfaceFlinger and Hardware Composer, the GPU rendering engine, buffers and VSync, and how each behaves across more than one display.',
+    icon: 'Monitor',
+  },
 ]
 
 export const trackBySlug = new Map(tracks.map((t) => [t.slug, t]))
@@ -114,6 +121,8 @@ export const surfaces: Surface[] = [
   { name: 'Occupant zones', what: 'Which seat, display and user belong together', where: 'config_occupant_zones + config_occupant_display_mapping', tutorial: 'multi-display/occupant-zone-config-deep-dive' },
   { name: 'Per-display UX restrictions', what: 'Driving-state rules applied display by display', where: 'RestrictionMapping in the UX restrictions config', tutorial: 'multi-display/ux-restrictions-per-display' },
   { name: 'Per-zone user assignment', what: 'A real user running behind the passenger screen', where: 'config_multiuserVisibleBackgroundUsers + CarUserService', tutorial: 'multi-display/per-zone-user-assignment' },
+  { name: 'HWC composition backend', what: 'Which of the four composers puts the display together, and how to confirm it', where: 'ro.vendor.hwcomposer.mode + ro.hardware.vulkan', tutorial: 'graphics/hwc-composition-backends' },
+  { name: 'Per-display cutouts and insets', what: 'The cutout shape and window insets each display gets', where: 'config_displayUniqueIdArray + the per-display cutout arrays', tutorial: 'graphics/insets-and-cutouts-per-display' },
 ]
 
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced'

@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.19',
     date: '2026-10-19',
-    title: 'Passenger display and multi-user: a 24-tutorial series',
+    title: 'Passenger display, multi-user and graphics: 34 new tutorials, and Learn and Tutorials mapped both ways',
     changes: [
       {
         type: 'added',
@@ -95,6 +95,15 @@ export const changelog: ChangelogEntry[] = [
         type: 'added',
         text: 'Three new guided paths: Adding a passenger display and a second user, Following one signal from the bus to an app, and Building your own OEM product image. Each interleaves Learn topics with tutorials, with a line on why each step follows the last.',
         links: [{ label: 'Guided paths', href: '/learn/start/' }],
+      },
+      {
+        type: 'added',
+        text: 'Graphics & compositing (10 tutorials) — what happens between an app drawing a frame and a pixel lighting up: SurfaceFlinger and Hardware Composer across displays, the GPU rendering engine, gralloc and BufferQueue, the four HWC composition backends, protected content, Choreographer, and a real investigation into why a passenger display’s screenshot was black. Per-display VSync, insets and cutouts, and a map of the graphics topics covered elsewhere on the site. Each has a diagram and reference tables, with confirmed findings kept apart from uncertain ones.',
+        links: [
+          { label: 'SurfaceFlinger and HWC across displays', href: '/tutorials/graphics/surfaceflinger-hwc-multi-display/' },
+          { label: 'Why the passenger display screenshot was black', href: '/tutorials/graphics/flag-secure-and-screenshots-per-display/' },
+          { label: 'VSync, per display', href: '/tutorials/graphics/vsync-per-display/' },
+        ],
       },
     ],
   },
