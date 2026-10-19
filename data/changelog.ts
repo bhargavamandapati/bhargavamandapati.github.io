@@ -115,6 +115,17 @@ export const changelog: ChangelogEntry[] = [
           { label: 'Your first hour on a running device', href: '/learn/foundations/your-first-hour-on-a-running-device/' },
         ],
       },
+      {
+        type: 'changed',
+        text: 'The first five pages of a rewrite of every Learn topic and tutorial. Each now follows one structure: an introduction with the terms you need first, a “you are here” map of the stack, a plain-words explanation with diagrams, a worked example, a conclusion, and a revision section with a one-screen summary, self-test questions with hidden answers, and an explain-it-back prompt. Advanced detail sits in collapsed “Go deeper” blocks.',
+        links: [
+          { label: 'How Binder and AIDL actually work', href: '/learn/car-framework/binder-and-aidl/' },
+          { label: 'Logging strategy for a vehicle', href: '/learn/build-test/logging-strategy/' },
+          { label: 'Calm Mode', href: '/tutorials/apps-ui/custom-calm-mode/' },
+          { label: 'OTA packaging', href: '/tutorials/platform/custom-ota-packaging/' },
+          { label: 'Send data between occupant zones', href: '/tutorials/framework/custom-occupant-connection/' },
+        ],
+      },
     ],
   },
   {
