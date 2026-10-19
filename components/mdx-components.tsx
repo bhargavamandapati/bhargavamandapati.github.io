@@ -1616,6 +1616,28 @@ import {
   RwFxVendorClocks,
 } from '@/components/diagrams/rw-fx'
 import {
+  RwFyBspStack,
+  RwFyCameraDelay,
+  RwFyCameraPath,
+  RwFyHeadUnitMap,
+  RwFyHypervisorStack,
+  RwFyShutdownOrder,
+} from '@/components/diagrams/rw-fy'
+import {
+  RwFzLogCapture,
+  RwFzQuestionOrder,
+  RwFzThreeChecks,
+  RwFzWhoYouAsk,
+} from '@/components/diagrams/rw-fz'
+import {
+  RwZygoteBigPicture,
+  RwZygoteDomainMatch,
+  RwZygoteFamily,
+  RwZygoteForkSequence,
+  RwZygoteMemory,
+  RwZygoteUsap,
+} from '@/components/diagrams/rw-ga'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -2932,6 +2954,22 @@ export const mdxComponents: MDXComponents = {
   RwFxRecap,
   RwFxVariantMatrix,
   RwFxVendorClocks,
+  RwFyBspStack,
+  RwFyCameraDelay,
+  RwFyCameraPath,
+  RwFyHeadUnitMap,
+  RwFyHypervisorStack,
+  RwFyShutdownOrder,
+  RwFzLogCapture,
+  RwFzQuestionOrder,
+  RwFzThreeChecks,
+  RwFzWhoYouAsk,
+  RwZygoteBigPicture,
+  RwZygoteDomainMatch,
+  RwZygoteFamily,
+  RwZygoteForkSequence,
+  RwZygoteMemory,
+  RwZygoteUsap,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,

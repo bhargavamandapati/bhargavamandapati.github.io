@@ -18,7 +18,7 @@ const all = args.includes('--all')
 const asJson = args.includes('--json')
 const filters = args.filter((a) => !a.startsWith('--'))
 
-const files = globSync('content/{learn,tutorials}/**/*.mdx')
+const files = globSync('content/{learn,tutorials,sdv}/**/*.mdx')
   .sort()
   .filter((f) => !filters.length || filters.some((x) => f.includes(x)))
 
@@ -42,7 +42,7 @@ function check(file) {
   const fm = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
   const flagged = /^rewrite:\s*2\s*$/m.test(fm)
   if (!flagged && !all) return null
-  const area = file.startsWith('content/learn/') ? 'learn' : 'tutorials'
+  const area = file.startsWith('content/tutorials/') ? 'tutorials' : 'learn'
   const body = raw.replace(/^---[\s\S]*?\n---/, '')
   const noCode = body.replace(/```[\s\S]*?```/g, ' ')
   const fails = []
