@@ -978,6 +978,33 @@ import {
   RwChoreoVsyncSequence,
 } from '@/components/diagrams/rw-cq'
 import {
+  RwFlagSecureCommandOrder,
+  RwFlagSecureLayers,
+  RwFlagSecureRecap,
+} from '@/components/diagrams/rw-cr'
+import {
+  RwGfxMapLayers,
+  RwGfxMapNeighbours,
+  RwGfxMapRecipe,
+} from '@/components/diagrams/rw-cs'
+import {
+  RwInsetsBigPicture,
+  RwInsetsInternalGate,
+  RwInsetsLookupSequence,
+  RwInsetsRecap,
+  RwInsetsTwoDisplays,
+} from '@/components/diagrams/rw-ct'
+import {
+  RwVsyncDispMap,
+  RwVsyncDispRates,
+  RwVsyncDispRecap,
+} from '@/components/diagrams/rw-cu'
+import {
+  RwMdOverviewBinding,
+  RwMdOverviewRecap,
+  RwMdOverviewTrackMap,
+} from '@/components/diagrams/rw-cv'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -1826,6 +1853,23 @@ export const mdxComponents: MDXComponents = {
   RwChoreoRenderQueue,
   RwChoreoSharedLayers,
   RwChoreoVsyncSequence,
+  RwFlagSecureCommandOrder,
+  RwFlagSecureLayers,
+  RwFlagSecureRecap,
+  RwGfxMapLayers,
+  RwGfxMapNeighbours,
+  RwGfxMapRecipe,
+  RwInsetsBigPicture,
+  RwInsetsInternalGate,
+  RwInsetsLookupSequence,
+  RwInsetsRecap,
+  RwInsetsTwoDisplays,
+  RwVsyncDispMap,
+  RwVsyncDispRates,
+  RwVsyncDispRecap,
+  RwMdOverviewBinding,
+  RwMdOverviewRecap,
+  RwMdOverviewTrackMap,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
