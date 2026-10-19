@@ -1582,6 +1582,40 @@ import {
   RwFsRecap,
 } from '@/components/diagrams/rw-fs'
 import {
+  RwFtBarrier,
+  RwFtBigPicture,
+  RwFtRequirementTriage,
+  RwFtScale,
+} from '@/components/diagrams/rw-ft'
+import {
+  RwSbBigPicture,
+  RwSbRecap,
+  RwSbRequestPath,
+  RwSbServiceGroups,
+  RwSbSymptomTrace,
+} from '@/components/diagrams/rw-fu'
+import {
+  RwFvBugTrace,
+  RwFvFourPlaces,
+  RwFvProductPick,
+  RwFvServiceSplit,
+} from '@/components/diagrams/rw-fv'
+import {
+  RwFwCameraDefect,
+  RwFwHandoverChain,
+  RwFwRecap,
+  RwFwResponsibilityMap,
+  RwFwTeams,
+} from '@/components/diagrams/rw-fw'
+import {
+  RwFxEvidenceChain,
+  RwFxGateCycle,
+  RwFxGateTimeline,
+  RwFxRecap,
+  RwFxVariantMatrix,
+  RwFxVendorClocks,
+} from '@/components/diagrams/rw-fx'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -2874,6 +2908,30 @@ export const mdxComponents: MDXComponents = {
   RwFsLayerOwnership,
   RwFsLicenceFamilies,
   RwFsRecap,
+  RwFtBarrier,
+  RwFtBigPicture,
+  RwFtRequirementTriage,
+  RwFtScale,
+  RwSbBigPicture,
+  RwSbRecap,
+  RwSbRequestPath,
+  RwSbServiceGroups,
+  RwSbSymptomTrace,
+  RwFvBugTrace,
+  RwFvFourPlaces,
+  RwFvProductPick,
+  RwFvServiceSplit,
+  RwFwCameraDefect,
+  RwFwHandoverChain,
+  RwFwRecap,
+  RwFwResponsibilityMap,
+  RwFwTeams,
+  RwFxEvidenceChain,
+  RwFxGateCycle,
+  RwFxGateTimeline,
+  RwFxRecap,
+  RwFxVariantMatrix,
+  RwFxVendorClocks,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
