@@ -34,6 +34,18 @@ const PAIRED = [
   'CodeWindow',
   'FileTree',
   'T',
+  // Page-anatomy parts (components/learn/page-parts.tsx).
+  'KeyTerms',
+  'PageMap',
+  'InShort',
+  'RevisionCard',
+  'SelfTest',
+  'Q',
+  'ExplainBack',
+  'MemoryHooks',
+  'StepGoal',
+  'IfNot',
+  'GoDeeper',
 ]
 
 /** Strip fenced code, inline code, and frontmatter — braces are legal there. */

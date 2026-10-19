@@ -3,6 +3,20 @@ import type { MDXComponents } from 'mdx/types'
 import { AlertTriangle, Info, Lightbulb } from 'lucide-react'
 import { CodeWindow } from '@/components/learn/code-window'
 import { Analogy, Plain, Recap, Scenario } from '@/components/learn/explain'
+import {
+  ExplainBack,
+  GoDeeper,
+  IfNot,
+  InShort,
+  KeyTerms,
+  MemoryHooks,
+  PageMap,
+  Q,
+  RevisionCard,
+  SelfTest,
+  StepGoal,
+  YouAreHere,
+} from '@/components/learn/page-parts'
 import { T } from '@/components/learn/term-server'
 import { FileTree, Gotcha, Verify } from '@/components/tutorial/blocks'
 import { Doc, Find, SourceList, Src, Sym } from '@/components/learn/source'
@@ -177,6 +191,37 @@ import {
   FndSourceNavFlow,
 } from '@/components/diagrams/foundations-f'
 import {
+  RwBinderCallSequence,
+  RwBinderDomains,
+  RwIdentitySequence,
+  RwProcessBoundary,
+  RwSlowHalChain,
+  RwVhalBatching,
+} from '@/components/diagrams/rw-a'
+import {
+  RwBufferHistory,
+  RwLogLoss,
+  RwLogPath,
+} from '@/components/diagrams/rw-b'
+import {
+  RwCalmEntryFlow,
+  RwCalmFieldGate,
+  RwCalmRecap,
+  RwCalmStates,
+} from '@/components/diagrams/rw-c'
+import {
+  RwOtaPipeline,
+  RwOtaRecap,
+  RwOtaSlotSwitch,
+} from '@/components/diagrams/rw-d'
+import {
+  RwOccGap,
+  RwOccHandshake,
+  RwOccRecipe,
+  RwOccStates,
+  RwOccWho,
+} from '@/components/diagrams/rw-e'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -269,6 +314,18 @@ export const mdxComponents: MDXComponents = {
   Analogy,
   Scenario,
   Recap,
+  ExplainBack,
+  GoDeeper,
+  IfNot,
+  InShort,
+  KeyTerms,
+  MemoryHooks,
+  PageMap,
+  Q,
+  RevisionCard,
+  SelfTest,
+  StepGoal,
+  YouAreHere,
 
   // Tutorial blocks
   Verify,
@@ -418,6 +475,27 @@ export const mdxComponents: MDXComponents = {
   FndDefenceLayers,
   FndWhereToLook,
   FndConceptMap,
+  RwBinderCallSequence,
+  RwBinderDomains,
+  RwIdentitySequence,
+  RwProcessBoundary,
+  RwSlowHalChain,
+  RwVhalBatching,
+  RwBufferHistory,
+  RwLogLoss,
+  RwLogPath,
+  RwCalmEntryFlow,
+  RwCalmFieldGate,
+  RwCalmRecap,
+  RwCalmStates,
+  RwOtaPipeline,
+  RwOtaRecap,
+  RwOtaSlotSwitch,
+  RwOccGap,
+  RwOccHandshake,
+  RwOccRecipe,
+  RwOccStates,
+  RwOccWho,
   FndForkTimeline,
   FndSourceNavFlow,
   GfxBufferLifecycle,

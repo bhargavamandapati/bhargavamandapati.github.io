@@ -58,6 +58,7 @@ yarn-error.log*
 /components/diagrams/multidisplay-*.tsx
 /components/diagrams/graphics-*.tsx
 /components/diagrams/foundations-*.tsx
+/components/diagrams/rw-*.tsx
 /components/diagrams/index.tsx
 /components/diagrams/sdv.tsx
 /components/diagrams/tutorials.tsx
