@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Fragment } from 'react'
 import { ItemLockBadge } from '@/components/premium/item-lock-badge'
 import { NewBadge } from '@/components/new-badge'
 import Link from 'next/link'
@@ -247,10 +248,17 @@ export default function LearnPage() {
               </div>
 
               <ol className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {category.topics.map((topic) => {
+                {category.topics.map((topic, i) => {
                   counter += 1
+                  const newSection = topic.section && topic.section !== category.topics[i - 1]?.section
                   return (
-                    <li key={topic.slug} className="h-full">
+                    <Fragment key={topic.slug}>
+                    {newSection && (
+                      <li className="col-span-full mt-4 border-b border-line pb-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle first:mt-0">
+                        {topic.section}
+                      </li>
+                    )}
+                    <li className="h-full">
                       <article className="card group relative flex h-full flex-col p-5 transition-all hover:border-accent/50 hover:shadow-lg">
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-mono text-[0.7rem] text-subtle tabular-nums">
@@ -282,6 +290,7 @@ export default function LearnPage() {
                         </p>
                       </article>
                     </li>
+                    </Fragment>
                   )
                 })}
               </ol>

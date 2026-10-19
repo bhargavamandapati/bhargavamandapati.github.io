@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.19',
     date: '2026-10-19',
-    title: 'Passenger display, multi-user and graphics: 34 new tutorials, and Learn and Tutorials mapped both ways',
+    title: 'Multi-display, graphics and a complete Foundations section: 50 new pages, with Learn and Tutorials mapped both ways',
     changes: [
       {
         type: 'added',
@@ -107,8 +107,13 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         type: 'added',
-        text: 'The car is not a big phone — a new Foundations topic on the eight assumptions Android makes about a phone that a car breaks: lifetime, power, boot, updates, people, screens, safety and vehicle integration. Two diagrams, a summary table linking each difference to its deeper topic, and seven questions to ask of any feature.',
-        links: [{ label: 'The car is not a big phone', href: '/learn/foundations/the-car-is-not-a-big-phone/' }],
+        text: 'Foundations grows from 8 to 24 topics, in six sections — Orientation, The vehicle around Android, Anatomy, How it runs, Getting hands-on, and Shipping and maintaining. Sixteen are new: why the car is not a big phone, open source and licensing, who is who in a programme, where Android sits in the vehicle, the head-unit hardware, AAOS among other automotive operating systems, safety classes, where the car code lives, partitions and Treble, Android building blocks for embedded engineers, the security sandbox, the services behind android.car, a concept map linking every topic on the site, your first hour on a running device, how to read AOSP source, and living with an AOSP fork. Each has a diagram, reference tables and a worked scenario. Learn topics now support section headings.',
+        links: [
+          { label: 'The car is not a big phone', href: '/learn/foundations/the-car-is-not-a-big-phone/' },
+          { label: 'The AAOS concept map', href: '/learn/foundations/the-aaos-concept-map/' },
+          { label: 'Where the car code lives', href: '/learn/foundations/where-the-car-code-lives/' },
+          { label: 'Your first hour on a running device', href: '/learn/foundations/your-first-hour-on-a-running-device/' },
+        ],
       },
     ],
   },

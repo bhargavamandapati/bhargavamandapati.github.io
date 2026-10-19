@@ -18,6 +18,8 @@ export type TopicMeta = {
   title: string
   description: string
   order: number
+  /** Optional sub-heading inside a category, for categories long enough to need one. */
+  section?: string
   difficulty: Difficulty
   tags: string[]
   sources: SourceLink[]
@@ -48,6 +50,7 @@ function readTopic(categorySlug: string, fileName: string): Topic {
     title: String(data.title),
     description: String(data.description ?? ''),
     order: data.order,
+    section: data.section ? String(data.section) : undefined,
     difficulty: (data.difficulty ?? 'Intermediate') as Difficulty,
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     sources: Array.isArray(data.sources) ? (data.sources as SourceLink[]) : [],

@@ -152,6 +152,31 @@ import {
 } from '@/components/diagrams/multidisplay-debugging'
 import { FndAssumptionsHub, FndLifetimeScale } from '@/components/diagrams/foundations-a'
 import {
+  FndLayerOwnership,
+  FndResponsibilityMap,
+  FndVehicleTopology,
+} from '@/components/diagrams/foundations-b'
+import {
+  FndHeadUnitBlocks,
+  FndMixedOsCockpit,
+  FndSafetySplit,
+} from '@/components/diagrams/foundations-c'
+import {
+  FndAppBlocks,
+  FndCarCodeMap,
+  FndPartitionMap,
+} from '@/components/diagrams/foundations-d'
+import {
+  FndCarServiceMap,
+  FndDefenceLayers,
+  FndWhereToLook,
+} from '@/components/diagrams/foundations-e'
+import {
+  FndConceptMap,
+  FndForkTimeline,
+  FndSourceNavFlow,
+} from '@/components/diagrams/foundations-f'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -380,6 +405,21 @@ export const mdxComponents: MDXComponents = {
   MultiDisplayWhereToLook,
   FndAssumptionsHub,
   FndLifetimeScale,
+  FndLayerOwnership,
+  FndResponsibilityMap,
+  FndVehicleTopology,
+  FndHeadUnitBlocks,
+  FndMixedOsCockpit,
+  FndSafetySplit,
+  FndAppBlocks,
+  FndCarCodeMap,
+  FndPartitionMap,
+  FndCarServiceMap,
+  FndDefenceLayers,
+  FndWhereToLook,
+  FndConceptMap,
+  FndForkTimeline,
+  FndSourceNavFlow,
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { ListTree, X } from 'lucide-react'
 import { CategoryIcon } from '@/components/learn/category-icon'
 import type { CategoryWithTopics } from '@/lib/learn'
@@ -22,12 +22,22 @@ function Tree({curriculum, currentSlug, unlocked }: {curriculum: CategoryWithTop
             {category.name}
           </p>
           <ul className="mt-2 border-l border-line">
-            {category.topics.map((topic) => {
+            {category.topics.map((topic, i) => {
               index += 1
               const active = topic.slug === currentSlug
               const locked = !isFree('learn', topic.slug) && !unlocked
+              const newSection = topic.section && topic.section !== category.topics[i - 1]?.section
               return (
-                <li key={topic.slug}>
+                <Fragment key={topic.slug}>
+                {newSection && (
+                  <li
+                    aria-hidden
+                    className="-ml-px border-l border-transparent pb-1 pl-3 pt-3 font-mono text-[0.64rem] uppercase tracking-[0.12em] text-subtle first:pt-1"
+                  >
+                    {topic.section}
+                  </li>
+                )}
+                <li>
                   {locked ? (
                     <span
                       aria-disabled="true"
@@ -63,6 +73,7 @@ function Tree({curriculum, currentSlug, unlocked }: {curriculum: CategoryWithTop
                     </Link>
                   )}
                 </li>
+                </Fragment>
               )
             })}
           </ul>
