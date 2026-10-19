@@ -1005,6 +1005,40 @@ import {
   RwMdOverviewTrackMap,
 } from '@/components/diagrams/rw-cv'
 import {
+  RwAppCtlBlockPattern,
+  RwAppCtlChain,
+  RwAppCtlDecision,
+  RwAppCtlRecap,
+  RwAppCtlThreeWays,
+} from '@/components/diagrams/rw-cw'
+import {
+  RwDispRemoveDecision,
+  RwDispRemoveRecap,
+  RwDispRemoveSignals,
+} from '@/components/diagrams/rw-cx'
+import {
+  RwAudioZonesBindingChain,
+  RwAudioZonesInheritance,
+  RwAudioZonesParserDecision,
+  RwAudioZonesPropertyDrift,
+  RwAudioZonesRecap,
+} from '@/components/diagrams/rw-cy'
+import {
+  RwMdBuildBigPicture,
+  RwMdBuildDeployPaths,
+  RwMdBuildPartitionRule,
+  RwMdBuildRecap,
+} from '@/components/diagrams/rw-cz'
+import {
+  RwMdPitfallBootCheck,
+  RwMdPitfallCulprits,
+  RwMdPitfallLayers,
+  RwMdPitfallMethod,
+  RwMdPitfallRecap,
+  RwMdPitfallShadow,
+  RwMdPitfallUserNumber,
+} from '@/components/diagrams/rw-da'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -1870,6 +1904,30 @@ export const mdxComponents: MDXComponents = {
   RwMdOverviewBinding,
   RwMdOverviewRecap,
   RwMdOverviewTrackMap,
+  RwAppCtlBlockPattern,
+  RwAppCtlChain,
+  RwAppCtlDecision,
+  RwAppCtlRecap,
+  RwAppCtlThreeWays,
+  RwDispRemoveDecision,
+  RwDispRemoveRecap,
+  RwDispRemoveSignals,
+  RwAudioZonesBindingChain,
+  RwAudioZonesInheritance,
+  RwAudioZonesParserDecision,
+  RwAudioZonesPropertyDrift,
+  RwAudioZonesRecap,
+  RwMdBuildBigPicture,
+  RwMdBuildDeployPaths,
+  RwMdBuildPartitionRule,
+  RwMdBuildRecap,
+  RwMdPitfallBootCheck,
+  RwMdPitfallCulprits,
+  RwMdPitfallLayers,
+  RwMdPitfallMethod,
+  RwMdPitfallRecap,
+  RwMdPitfallShadow,
+  RwMdPitfallUserNumber,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
