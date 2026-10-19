@@ -56,6 +56,9 @@ yarn-error.log*
 /content/tutorials/
 # Diagrams that only the premium articles use ship in the same private repo.
 /components/diagrams/multidisplay-*.tsx
+/components/diagrams/index.tsx
+/components/diagrams/sdv.tsx
+/components/diagrams/tutorials.tsx
 
 # ---------------------------------------------------------------------------
 # Android TWA wrapper (.github/workflows/build-android.yml). The Gradle
