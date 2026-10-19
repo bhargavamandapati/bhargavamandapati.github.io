@@ -57,6 +57,7 @@ yarn-error.log*
 # Diagrams that only the premium articles use ship in the same private repo.
 /components/diagrams/multidisplay-*.tsx
 /components/diagrams/graphics-*.tsx
+/components/diagrams/foundations-*.tsx
 /components/diagrams/index.tsx
 /components/diagrams/sdv.tsx
 /components/diagrams/tutorials.tsx

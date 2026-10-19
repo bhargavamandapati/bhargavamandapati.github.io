@@ -150,6 +150,7 @@ import {
   MultiDisplayTroubleshootingTree,
   MultiDisplayWhereToLook,
 } from '@/components/diagrams/multidisplay-debugging'
+import { FndAssumptionsHub, FndLifetimeScale } from '@/components/diagrams/foundations-a'
 import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
@@ -377,6 +378,8 @@ export const mdxComponents: MDXComponents = {
   MultiDisplayThreeIdSystems,
   MultiDisplayTroubleshootingTree,
   MultiDisplayWhereToLook,
+  FndAssumptionsHub,
+  FndLifetimeScale,
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,

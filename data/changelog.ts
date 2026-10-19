@@ -105,6 +105,11 @@ export const changelog: ChangelogEntry[] = [
           { label: 'VSync, per display', href: '/tutorials/graphics/vsync-per-display/' },
         ],
       },
+      {
+        type: 'added',
+        text: 'The car is not a big phone — a new Foundations topic on the eight assumptions Android makes about a phone that a car breaks: lifetime, power, boot, updates, people, screens, safety and vehicle integration. Two diagrams, a summary table linking each difference to its deeper topic, and seven questions to ask of any feature.',
+        links: [{ label: 'The car is not a big phone', href: '/learn/foundations/the-car-is-not-a-big-phone/' }],
+      },
     ],
   },
   {

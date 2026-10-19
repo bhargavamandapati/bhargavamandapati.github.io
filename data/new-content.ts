@@ -21,6 +21,7 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'learn', slug: 'foundations/the-car-is-not-a-big-phone', date: '2026-10-19' },
   { area: 'tutorials', slug: 'graphics/surfaceflinger-hwc-multi-display', date: '2026-10-19' },
   { area: 'tutorials', slug: 'graphics/render-engine-deep-dive', date: '2026-10-19' },
   { area: 'tutorials', slug: 'graphics/gralloc-and-bufferqueue', date: '2026-10-19' },
