@@ -1110,6 +1110,39 @@ import {
   RwOccConnTwoWay,
 } from '@/components/diagrams/rw-dk'
 import {
+  RwZoneCfgItemParts,
+  RwZoneCfgLoginLevels,
+  RwZoneCfgPriority,
+  RwZoneCfgRecipe,
+  RwZoneCfgTwoLists,
+} from '@/components/diagrams/rw-dl'
+import {
+  RwZoneRtAskSequence,
+  RwZoneRtLayers,
+  RwZoneRtListenerSeq,
+  RwZoneRtRecap,
+} from '@/components/diagrams/rw-dm'
+import {
+  RwUserDataPersist,
+  RwUserDataRecap,
+  RwUserDataStructure,
+  RwUserDataWhenEnough,
+  RwUserDataWhichUser,
+} from '@/components/diagrams/rw-dn'
+import {
+  RwZoneUserAttempt,
+  RwZoneUserFlagTiming,
+  RwZoneUserGates,
+  RwZoneUserPicker,
+  RwZoneUserRecap,
+} from '@/components/diagrams/rw-do'
+import {
+  RwMdmuSecAllowlistBoot,
+  RwMdmuSecCrossUserCheck,
+  RwMdmuSecLayers,
+  RwMdmuSecRecap,
+} from '@/components/diagrams/rw-dp'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -2050,6 +2083,29 @@ export const mdxComponents: MDXComponents = {
   RwOccConnRecap,
   RwOccConnSequence,
   RwOccConnTwoWay,
+  RwZoneCfgItemParts,
+  RwZoneCfgLoginLevels,
+  RwZoneCfgPriority,
+  RwZoneCfgRecipe,
+  RwZoneCfgTwoLists,
+  RwZoneRtAskSequence,
+  RwZoneRtLayers,
+  RwZoneRtListenerSeq,
+  RwZoneRtRecap,
+  RwUserDataPersist,
+  RwUserDataRecap,
+  RwUserDataStructure,
+  RwUserDataWhenEnough,
+  RwUserDataWhichUser,
+  RwZoneUserAttempt,
+  RwZoneUserFlagTiming,
+  RwZoneUserGates,
+  RwZoneUserPicker,
+  RwZoneUserRecap,
+  RwMdmuSecAllowlistBoot,
+  RwMdmuSecCrossUserCheck,
+  RwMdmuSecLayers,
+  RwMdmuSecRecap,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
