@@ -17,5 +17,8 @@
     "paths": { "@/*": ["./*"] }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "out"]
+  // access-worker/ is a separate Cloudflare Worker project with its own
+  // tsconfig.json, dependencies (@cloudflare/workers-types) and typecheck
+  // script — it is not part of this Next.js app's type graph.
+  "exclude": ["node_modules", "out", "access-worker"]
 }

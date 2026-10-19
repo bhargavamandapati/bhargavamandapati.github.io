@@ -1,0 +1,19 @@
+{
+  "name": "bm-access-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create bm-access",
+    "db:migrate:local": "wrangler d1 migrations apply bm-access --local",
+    "db:migrate:remote": "wrangler d1 migrations apply bm-access --remote",
+    "typecheck": "tsc --noEmit",
+    "issue": "node admin-cli.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20251001.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -4,32 +4,38 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { KeyRound, Loader2, Lock, LockOpen } from 'lucide-react'
 import { REALM_LABEL, access, type Realm } from '@/data/access'
 import { decryptPayload, isWrongKeyError, type Payload } from '@/lib/premium-decrypt'
+import { getSavedEmail, requestRealmKey, saveEmail, UnlockError } from '@/lib/access-client'
 import { RequestAccessButton } from '@/components/premium/request-access'
 import { cn } from '@/lib/utils'
 
 /**
  * The header's global unlock control.
  *
- * A key was previously only enterable from the gate on a locked topic itself
- * — someone handed a key had to go find something locked before they could use
- * it. This puts the same form, for both tracks, in the header, reachable from
- * any page including one with nothing locked on it at all.
+ * An email+code was previously only enterable from the gate on a locked topic
+ * itself — someone handed a code had to go find something locked before they
+ * could use it. This puts the same form, for both tracks, in the header,
+ * reachable from any page including one with nothing locked on it at all.
  *
- * Unlocking here has no article to put back in place, so it validates the
- * candidate against a small per-realm token (the same one the tool gates use)
- * and reloads the page. That is not a shortcut taken for convenience — a
- * reload is the one response every gated surface on the site already knows
- * how to handle correctly, because each one reads its stored key on mount.
- * Anything cleverer here would need to be taught to every one of them.
+ * Unlocking here has no article to put back in place: the email+code is
+ * exchanged for the realm's current key through the access-worker, that key
+ * is confirmed against a small per-realm validator token (the same one the
+ * tool gates use), stored, and the page reloads. A reload is the one response
+ * every gated surface on the site already knows how to handle correctly,
+ * because each one reads its stored key on mount. Anything cleverer here
+ * would need to be taught to every one of them.
  */
 
 const REALMS: Realm[] = ['learn', 'sdv']
 
 function RealmRow({ realm }: { realm: Realm }) {
   const [unlocked, setUnlocked] = useState<boolean | null>(null)
-  const [value, setValue] = useState('')
-  const [status, setStatus] = useState<'idle' | 'working' | 'wrong' | 'error'>('idle')
-  const fieldId = useId()
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [status, setStatus] = useState<'idle' | 'working' | 'wrong' | 'rate-limited' | 'error'>(
+    'idle',
+  )
+  const emailFieldId = useId()
+  const codeFieldId = useId()
 
   useEffect(() => {
     try {
@@ -37,22 +43,32 @@ function RealmRow({ realm }: { realm: Realm }) {
     } catch {
       setUnlocked(false)
     }
+    setEmail(getSavedEmail())
   }, [realm])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const candidate = value.trim()
-    if (!candidate) return
+    const trimmedEmail = email.trim()
+    const trimmedCode = code.trim()
+    if (!trimmedEmail || !trimmedCode) return
     setStatus('working')
     try {
+      const key = await requestRealmKey(realm, trimmedEmail, trimmedCode)
       const response = await fetch(`${access.payloadPath}/_validator-${realm}.json`)
       if (!response.ok) throw new Error(String(response.status))
       const payload: Payload = await response.json()
-      await decryptPayload(payload, candidate)
-      window.localStorage.setItem(access.storageKey(realm), candidate)
+      await decryptPayload(payload, key)
+      saveEmail(trimmedEmail)
+      window.localStorage.setItem(access.storageKey(realm), key)
       window.location.reload()
     } catch (error) {
-      setStatus(isWrongKeyError(error) ? 'wrong' : 'error')
+      if (error instanceof UnlockError) {
+        setStatus(
+          error.kind === 'invalid' ? 'wrong' : error.kind === 'rate-limited' ? 'rate-limited' : 'error',
+        )
+      } else {
+        setStatus(isWrongKeyError(error) ? 'wrong' : 'error')
+      }
     }
   }
 
@@ -87,38 +103,54 @@ function RealmRow({ realm }: { realm: Realm }) {
 
   return (
     <form onSubmit={submit}>
-      <label htmlFor={fieldId} className="block text-xs font-medium text-fg">
+      <label htmlFor={emailFieldId} className="block text-xs font-medium text-fg">
         {REALM_LABEL[realm]}
       </label>
-      <div className="mt-1.5 flex gap-1.5">
+      <div className="mt-1.5 space-y-1.5">
         <input
-          id={fieldId}
-          type="password"
-          autoComplete="off"
-          value={value}
+          id={emailFieldId}
+          type="email"
+          autoComplete="email"
+          value={email}
           onChange={(e) => {
-            setValue(e.target.value)
+            setEmail(e.target.value)
             setStatus('idle')
           }}
-          placeholder="Access key"
-          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-fg outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+          placeholder="Email"
+          className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-fg outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
         />
-        <button
-          type="submit"
-          disabled={status === 'working' || !value.trim()}
-          aria-label={`Unlock ${REALM_LABEL[realm]}`}
-          className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-line px-2.5 py-1.5 text-sm transition-colors hover:border-line-strong hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {status === 'working' ? (
-            <Loader2 aria-hidden className="size-3.5 animate-spin" />
-          ) : (
-            <KeyRound aria-hidden className="size-3.5" />
-          )}
-        </button>
+        <div className="flex gap-1.5">
+          <input
+            id={codeFieldId}
+            type="text"
+            autoComplete="off"
+            autoCapitalize="characters"
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value)
+              setStatus('idle')
+            }}
+            placeholder="Access code"
+            className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 font-mono text-sm uppercase text-fg outline-none placeholder:normal-case focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/30"
+          />
+          <button
+            type="submit"
+            disabled={status === 'working' || !email.trim() || !code.trim()}
+            aria-label={`Unlock ${REALM_LABEL[realm]}`}
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-line px-2.5 py-1.5 text-sm transition-colors hover:border-line-strong hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {status === 'working' ? (
+              <Loader2 aria-hidden className="size-3.5 animate-spin" />
+            ) : (
+              <KeyRound aria-hidden className="size-3.5" />
+            )}
+          </button>
+        </div>
       </div>
       <p aria-live="polite" className="mt-1 min-h-4 text-xs text-muted">
-        {status === 'wrong' && 'That key did not work.'}
-        {status === 'error' && 'Could not check that key — try again.'}
+        {status === 'wrong' && 'That email and code did not match.'}
+        {status === 'rate-limited' && 'Too many attempts — wait a few minutes.'}
+        {status === 'error' && 'Could not check that code — try again.'}
       </p>
     </form>
   )
