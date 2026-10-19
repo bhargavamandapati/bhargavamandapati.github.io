@@ -12,7 +12,7 @@ workers_dev = true
 binding = "DB"
 database_name = "bm-access"
 # Filled in by `npm run db:create`, which prints the real id to paste here.
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "81a0bb70-06b1-483a-ba84-b44746da1556"
 
 # Monthly key rotation + expiry sweep. 00:00 UTC on the 1st of each month.
 # The main site's scheduled rebuild (.github/workflows/deploy.yml) runs a
