@@ -1475,6 +1475,39 @@ import {
   RwAaVehicleValue,
 } from '@/components/diagrams/rw-fd'
 import {
+  RwFeBigPicture,
+  RwFeCategoryCount,
+  RwFeLookupFlow,
+} from '@/components/diagrams/rw-fe'
+import {
+  RwBpEightDifferences,
+  RwBpPowerFlow,
+  RwBpQuestions,
+  RwBpReuseAndAdd,
+  RwBpReverseCamera,
+  RwBpSignalPath,
+  RwBpZone,
+} from '@/components/diagrams/rw-ff'
+import {
+  RwArchSixChecks,
+  RwArchStack,
+  RwArchTreble,
+  RwArchValueTrip,
+} from '@/components/diagrams/rw-fg'
+import {
+  RwBootBigPicture,
+  RwBootColdVsResume,
+  RwBootDebugOrder,
+  RwBootInitSteps,
+  RwBootVhalWait,
+} from '@/components/diagrams/rw-fh'
+import {
+  RwFiBigPicture,
+  RwFiConsolidation,
+  RwFiJobLadder,
+  RwFiRestartSequence,
+} from '@/components/diagrams/rw-fi'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -2690,6 +2723,29 @@ export const mdxComponents: MDXComponents = {
   RwAaProjection,
   RwAaThreeJobs,
   RwAaVehicleValue,
+  RwFeBigPicture,
+  RwFeCategoryCount,
+  RwFeLookupFlow,
+  RwBpEightDifferences,
+  RwBpPowerFlow,
+  RwBpQuestions,
+  RwBpReuseAndAdd,
+  RwBpReverseCamera,
+  RwBpSignalPath,
+  RwBpZone,
+  RwArchSixChecks,
+  RwArchStack,
+  RwArchTreble,
+  RwArchValueTrip,
+  RwBootBigPicture,
+  RwBootColdVsResume,
+  RwBootDebugOrder,
+  RwBootInitSteps,
+  RwBootVhalWait,
+  RwFiBigPicture,
+  RwFiConsolidation,
+  RwFiJobLadder,
+  RwFiRestartSequence,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
