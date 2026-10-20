@@ -38,8 +38,62 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.21',
     date: '2026-10-21',
-    title: 'AI & ML: Python toolchain finished and linear algebra begins; core Learn pages reconciled',
+    title: 'AI & ML: Python toolchain finished and linear algebra complete; core Learn pages reconciled',
     changes: [
+      {
+        type: 'added',
+        text: 'Special matrices — identity, diagonal, triangular, symmetric, orthogonal, permutation, positive definite and sparse matrices, what each pattern buys you in speed and stability, and one-hot lookups as matrix products.',
+        links: [{ label: 'Special matrices', href: '/ai-ml/maths-linear-algebra/special-matrices/' }],
+      },
+      {
+        type: 'added',
+        text: 'Determinants — the signed area and volume scale factor, the 2×2 and 3×3 rules derived, properties, why libraries use LU instead of cofactors, and why the determinant misleads (use slogdet and the condition number).',
+        links: [{ label: 'Determinants', href: '/ai-ml/maths-linear-algebra/determinants/' }],
+      },
+      {
+        type: 'added',
+        text: 'Linear systems and elimination — Ax = b as rows and as columns, Gaussian elimination by hand, pivoting with a real failure, LU factorisation, zero, one or many solutions and why you call solve and never inv.',
+        links: [{ label: 'Linear systems and elimination', href: '/ai-ml/maths-linear-algebra/linear-systems-and-elimination/' }],
+      },
+      {
+        type: 'added',
+        text: 'Vector spaces, span and basis — linear combinations, span, independence, basis, dimension and coordinates in a different basis, subspaces, and what redundant features and low-dimensional embeddings mean.',
+        links: [{ label: 'Vector spaces, span and basis', href: '/ai-ml/maths-linear-algebra/vector-spaces-span-and-basis/' }],
+      },
+      {
+        type: 'added',
+        text: 'Rank and null space — column, row and null spaces, rank–nullity, the four fundamental subspaces, rank with a tolerance in NumPy, and why collinear features make XᵀX singular.',
+        links: [{ label: 'Rank and null space', href: '/ai-ml/maths-linear-algebra/rank-and-null-space/' }],
+      },
+      {
+        type: 'added',
+        text: 'Eigenvalues and eigenvectors — directions a matrix only stretches, the characteristic polynomial by hand, complex eigenvalues of rotations, eig versus eigh, power iteration and PageRank, stability and PCA.',
+        links: [{ label: 'Eigenvalues and eigenvectors', href: '/ai-ml/maths-linear-algebra/eigenvalues-and-eigenvectors/' }],
+      },
+      {
+        type: 'added',
+        text: 'Diagonalisation and the spectral theorem — A = PDP⁻¹, matrix powers and Fibonacci, the spectral theorem for symmetric matrices, positive definiteness, quadratic forms and Gaussian ellipses, and learning-rate limits from Hessian eigenvalues.',
+        links: [{ label: 'Diagonalisation and the spectral theorem', href: '/ai-ml/maths-linear-algebra/diagonalisation-and-spectral-theorem/' }],
+      },
+      {
+        type: 'added',
+        text: 'Singular value decomposition — every matrix as turn, stretch, turn; building it from AᵀA by hand, full versus thin forms, low-rank approximation and image compression, the pseudo-inverse and condition number.',
+        links: [{ label: 'Singular value decomposition', href: '/ai-ml/maths-linear-algebra/singular-value-decomposition/' }],
+      },
+      {
+        type: 'added',
+        text: 'Projections and least squares — projecting onto a line and a subspace, the normal equations derived from a right angle, QR and the SVD route, polynomial fits, and why the normal equations lose accuracy.',
+        links: [{ label: 'Projections and least squares', href: '/ai-ml/maths-linear-algebra/projections-and-least-squares/' }],
+      },
+      {
+        type: 'added',
+        text: 'Tensors and broadcasting — shapes and axes, reshape and transpose, einsum built up from scratch, the broadcasting rule and its silent bugs, views versus copies and the same operations in NumPy and PyTorch (with a real GPU check).',
+        links: [{ label: 'Tensors and broadcasting', href: '/ai-ml/maths-linear-algebra/tensors-and-broadcasting/' }],
+      },
+      {
+        type: 'added',
+        text: 'The linear algebra module is now complete: fifteen pages from scalars and vectors to the SVD and tensor broadcasting, each with a hand-worked example and NumPy code whose printed output was produced by running it. Every page was read cold by a fresh reader who answered six questions from the page alone, and the gaps they found (undefined terms, skipped algebra steps) were fixed before publishing.',
+      },
       {
         type: 'added',
         text: 'Git and GitHub for ML — commits, branches, merge conflicts, .gitignore, tags and why a result must be tied to a commit.',

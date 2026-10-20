@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'aiml', slug: 'maths-linear-algebra/special-matrices', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/determinants', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/linear-systems-and-elimination', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/vector-spaces-span-and-basis', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/rank-and-null-space', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/eigenvalues-and-eigenvectors', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/diagonalisation-and-spectral-theorem', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/singular-value-decomposition', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/projections-and-least-squares', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/tensors-and-broadcasting', date: '2026-10-21' },
   { area: 'aiml', slug: 'python-for-ml/git-and-github-for-ml', date: '2026-10-21' },
   { area: 'aiml', slug: 'python-for-ml/reading-papers-and-repos', date: '2026-10-21' },
   { area: 'aiml', slug: 'python-for-ml/gpus-cuda-and-cloud-compute', date: '2026-10-21' },
