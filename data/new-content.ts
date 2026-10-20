@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'learn', slug: 'audio/audio-control-hal', date: '2026-10-20' },
+  { area: 'learn', slug: 'audio/bluetooth-audio-routing', date: '2026-10-20' },
+  { area: 'learn', slug: 'audio/volume-dialog-and-callbacks', date: '2026-10-20' },
+  { area: 'learn', slug: 'connectivity/car-dialer-app', date: '2026-10-20' },
+  { area: 'learn', slug: 'connectivity/telecom-incallservice-chain', date: '2026-10-20' },
+  { area: 'learn', slug: 'connectivity/hfp-client-state-machine', date: '2026-10-20' },
+  { area: 'learn', slug: 'connectivity/pbap-contacts-sync', date: '2026-10-20' },
+  { area: 'learn', slug: 'apps-media/voice-dialing-reference-assistant', date: '2026-10-20' },
+  { area: 'learn', slug: 'cluster-displays/navigation-state-protobuf', date: '2026-10-20' },
+  { area: 'learn', slug: 'cluster-displays/cluster-navigation-bridge', date: '2026-10-20' },
   { area: 'learn', slug: 'foundations/the-car-is-not-a-big-phone', date: '2026-10-19' },
   { area: 'learn', slug: 'foundations/open-source-licensing-and-compatibility', date: '2026-10-19' },
   { area: 'learn', slug: 'foundations/whos-who-in-an-aaos-programme', date: '2026-10-19' },

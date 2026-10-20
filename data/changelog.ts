@@ -36,6 +36,33 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.10.20',
+    date: '2026-10-20',
+    title: 'Every Learn topic, tutorial and SDV topic rewritten to one clear anatomy, plus the first 10 core-module pages',
+    changes: [
+      {
+        type: 'changed',
+        text: 'All 116 Learn topics, 67 tutorials and 49 SDV topics now follow the same page anatomy: orientation at the top, signposts through the body, worked examples, common mistakes, a self-test and a revision card. Sentences are shorter, every page has diagrams and tables, and claims that could not be checked against an official source say “not confirmed here”.',
+      },
+      {
+        type: 'added',
+        text: 'Core modules, part 1 (10 Learn pages, more to follow) — the audio control HAL, Bluetooth audio routing and the volume dialog; the Dialer app, the Telecom and InCallService chain, the HFP client state machine, PBAP contacts sync and voice dialing in a reference assistant; the navigation state protobuf and the cluster navigation bridge. Each page says it rests on a reading of an AOSP source tree and marks what is not confirmed.',
+        links: [
+          { label: 'The audio control HAL', href: '/learn/audio/audio-control-hal/' },
+          { label: 'Bluetooth audio routing', href: '/learn/audio/bluetooth-audio-routing/' },
+          { label: 'The volume dialog and its callbacks', href: '/learn/audio/volume-dialog-and-callbacks/' },
+          { label: 'The car Dialer app', href: '/learn/connectivity/car-dialer-app/' },
+          { label: 'The Telecom and InCallService chain', href: '/learn/connectivity/telecom-incallservice-chain/' },
+          { label: 'The HFP client state machine', href: '/learn/connectivity/hfp-client-state-machine/' },
+          { label: 'PBAP contacts sync', href: '/learn/connectivity/pbap-contacts-sync/' },
+          { label: 'Voice dialing in a reference assistant', href: '/learn/apps-media/voice-dialing-reference-assistant/' },
+          { label: 'The navigation state protobuf', href: '/learn/cluster-displays/navigation-state-protobuf/' },
+          { label: 'The cluster navigation bridge', href: '/learn/cluster-displays/cluster-navigation-bridge/' },
+        ],
+      },
+    ],
+  },
+  {
     version: '2026.10.19',
     date: '2026-10-19',
     title: 'Multi-display, graphics and a complete Foundations section: 50 new pages, with Learn and Tutorials mapped both ways',
