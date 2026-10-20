@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.20',
     date: '2026-10-20',
-    title: 'Every Learn topic, tutorial and SDV topic rewritten to one clear anatomy, plus the first 10 core-module pages',
+    title: 'Every Learn topic, tutorial and SDV topic rewritten to one clear anatomy, plus the first 15 core-module pages',
     changes: [
       {
         type: 'changed',
@@ -105,6 +105,31 @@ export const changelog: ChangelogEntry[] = [
         type: 'added',
         text: 'The cluster navigation bridge (new, cluster and displays) — the five hops from sendNavigationStateChange to the cluster renderer, the three checks at the front door, the start-up guard that lets only one cluster service run, and the five permissions in a table.',
         links: [{ label: 'The cluster navigation bridge', href: '/learn/cluster-displays/cluster-navigation-bridge/' }],
+      },
+      {
+        type: 'added',
+        text: 'Car App Library to the cluster (new, apps and media) — how a templated navigation app reaches the instrument cluster: the Templates Host sits between app and platform, the evidence is the permissions the host holds, and the page separates what is shown from what is inferred. Turn data and the cluster display are two different routes.',
+        links: [{ label: 'Car App Library to the cluster', href: '/learn/apps-media/car-app-library-to-cluster/' }],
+      },
+      {
+        type: 'added',
+        text: 'Map app selection (new, apps and media) — how the map tile picks an app: plain intent resolution on MAIN plus the maps category, the placeholder at priority -1000 as the last resort, the preferred-list resource, and the terms-of-service gate. There is no setter for a navigation app.',
+        links: [{ label: 'Map app selection', href: '/learn/apps-media/map-app-selection/' }],
+      },
+      {
+        type: 'added',
+        text: 'The HVAC property surface (new, vehicle data) — the 22 climate properties behind one permission, which 16 are seat-based and which 6 are not, the area types that trip up a loop over all properties, and how the deprecated CarHvacManager relates to CarPropertyManager.',
+        links: [{ label: 'The HVAC property surface', href: '/learn/vehicle-data/hvac-property-surface/' }],
+      },
+      {
+        type: 'added',
+        text: 'The HVAC panel call chain (new, HMI) — how one tap becomes one property write per real seat area: the panel’s own controller splits the target bitmask, Car Service matches areas exactly, and a widget in the system bar needs its own controller to register.',
+        links: [{ label: 'The HVAC panel call chain', href: '/learn/hmi/hvac-panel-call-chain/' }],
+      },
+      {
+        type: 'added',
+        text: 'HVAC panel customization points (new, HMI) — eight places to change the climate panel in four layers: vehicle data, resource values, the whole layout, and which code runs. Data and resource changes need no Java edit, and the page says which limits were seen only in the author’s tree.',
+        links: [{ label: 'HVAC panel customization points', href: '/learn/hmi/hvac-panel-customization-points/' }],
       },
     ],
   },

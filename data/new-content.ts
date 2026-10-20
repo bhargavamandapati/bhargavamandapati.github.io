@@ -21,6 +21,11 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'learn', slug: 'apps-media/car-app-library-to-cluster', date: '2026-10-20' },
+  { area: 'learn', slug: 'apps-media/map-app-selection', date: '2026-10-20' },
+  { area: 'learn', slug: 'vehicle-data/hvac-property-surface', date: '2026-10-20' },
+  { area: 'learn', slug: 'hmi/hvac-panel-call-chain', date: '2026-10-20' },
+  { area: 'learn', slug: 'hmi/hvac-panel-customization-points', date: '2026-10-20' },
   { area: 'learn', slug: 'audio/audio-control-hal', date: '2026-10-20' },
   { area: 'learn', slug: 'audio/bluetooth-audio-routing', date: '2026-10-20' },
   { area: 'learn', slug: 'audio/volume-dialog-and-callbacks', date: '2026-10-20' },

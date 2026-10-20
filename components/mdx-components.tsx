@@ -2118,6 +2118,38 @@ import {
   RwNavBrPermissions,
 } from '@/components/diagrams/rw-ih'
 import {
+  RwCalClBigPicture,
+  RwCalClClusterFlow,
+  RwCalClEvidence,
+  RwCalClMainSequence,
+} from '@/components/diagrams/rw-ii'
+import {
+  RwMapSelBigPicture,
+  RwMapSelPrecedence,
+  RwMapSelTwoPaths,
+} from '@/components/diagrams/rw-ij'
+import {
+  RwHvacSurfAreaSplit,
+  RwHvacSurfBigPicture,
+  RwHvacSurfSafeRoute,
+} from '@/components/diagrams/rw-ik'
+import {
+  RwHvacChainBigPicture,
+  RwHvacChainClassMap,
+  RwHvacChainFanoutStack,
+  RwHvacChainRecap,
+  RwHvacChainRegisterFlow,
+  RwHvacChainTapSequence,
+  RwHvacChainTwoRules,
+} from '@/components/diagrams/rw-il'
+import {
+  RwHvacCustBigPicture,
+  RwHvacCustFanRange,
+  RwHvacCustPowerGate,
+  RwHvacCustRecap,
+  RwHvacCustWiring,
+} from '@/components/diagrams/rw-im'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -3812,6 +3844,28 @@ export const mdxComponents: MDXComponents = {
   RwNavBrGuardFlow,
   RwNavBrPathASequence,
   RwNavBrPermissions,
+  RwCalClBigPicture,
+  RwCalClClusterFlow,
+  RwCalClEvidence,
+  RwCalClMainSequence,
+  RwMapSelBigPicture,
+  RwMapSelPrecedence,
+  RwMapSelTwoPaths,
+  RwHvacSurfAreaSplit,
+  RwHvacSurfBigPicture,
+  RwHvacSurfSafeRoute,
+  RwHvacChainBigPicture,
+  RwHvacChainClassMap,
+  RwHvacChainFanoutStack,
+  RwHvacChainRecap,
+  RwHvacChainRegisterFlow,
+  RwHvacChainTapSequence,
+  RwHvacChainTwoRules,
+  RwHvacCustBigPicture,
+  RwHvacCustFanRange,
+  RwHvacCustPowerGate,
+  RwHvacCustRecap,
+  RwHvacCustWiring,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
