@@ -38,8 +38,62 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.21',
     date: '2026-10-21',
-    title: 'AI & ML: Python toolchain, linear algebra and the start of calculus and optimisation; two free lessons; core Learn pages reconciled',
+    title: 'AI & ML: linear algebra and calculus complete, optimisation through Adam and Newton; two free lessons; core Learn pages reconciled',
     changes: [
+      {
+        type: 'added',
+        text: 'Integrals and area — sums of thin slices (left, right, midpoint, trapezoid) with real error tables, the fundamental theorem of calculus, substitution, numerical integration, and the area under a ROC curve as an integral.',
+        links: [{ label: 'Integrals and area', href: '/ai-ml/maths-calculus/integrals-and-area/' }],
+      },
+      {
+        type: 'added',
+        text: 'Multiple integrals and expectations — double integrals as volume, the order of integration, polar coordinates and the Jacobian, the Gaussian integral computed by hand, expectation as an integral and Monte Carlo estimation.',
+        links: [{ label: 'Multiple integrals and expectations', href: '/ai-ml/maths-calculus/multiple-integrals-and-expectations/' }],
+      },
+      {
+        type: 'added',
+        text: 'Matrix calculus — gradients with respect to vectors and matrices: the rules for aᵀx and xᵀAx, the squared-error gradient 2Xᵀ(Xw − y) derived two ways, layout conventions, the trace trick, and shape checks as a debugging tool.',
+        links: [{ label: 'Matrix calculus', href: '/ai-ml/maths-calculus/matrix-calculus/' }],
+      },
+      {
+        type: 'added',
+        text: 'Automatic differentiation — why symbolic and numerical differentiation fall short, forward mode with dual numbers and reverse mode built from scratch, cost and memory, and PyTorch autograd in practice.',
+        links: [{ label: 'Automatic differentiation', href: '/ai-ml/maths-calculus/automatic-differentiation/' }],
+      },
+      {
+        type: 'added',
+        text: 'Computational graphs and backprop by hand — a small network differentiated completely by hand with every forward and backward number, the four gradient gates, then NumPy and PyTorch matching to six decimals, gradient checking and XOR training.',
+        links: [{ label: 'Computational graphs and backprop by hand', href: '/ai-ml/maths-calculus/computational-graphs-and-backprop-by-hand/' }],
+      },
+      {
+        type: 'added',
+        text: 'Stochastic and minibatch gradient descent — why one example gives an unbiased noisy gradient, the 1/B variance law, batch-size trade-offs, the noise floor, the scaling rule and silent loop mistakes.',
+        links: [{ label: 'Stochastic and minibatch gradient descent', href: '/ai-ml/maths-optimisation-information/stochastic-and-minibatch-gradient-descent/' }],
+      },
+      {
+        type: 'added',
+        text: 'Momentum, RMSProp and Adam — moving averages, momentum with derived best settings, RMSProp, Adam and its bias correction, AdamW, all implemented from scratch and matched to torch.optim, with tests on a ravine, Rosenbrock and a badly scaled regression.',
+        links: [{ label: 'Momentum, RMSProp and Adam', href: '/ai-ml/maths-optimisation-information/momentum-rmsprop-and-adam/' }],
+      },
+      {
+        type: 'added',
+        text: 'Learning-rate schedules — why a constant rate leaves an error floor, step, exponential, cosine, warmup, cyclical and one-cycle schedules, plateau rules, the learning-rate range test and a practical recipe, matched to torch schedulers.',
+        links: [{ label: 'Learning-rate schedules', href: '/ai-ml/maths-optimisation-information/learning-rate-schedules/' }],
+      },
+      {
+        type: 'added',
+        text: 'Constrained optimisation and Lagrange multipliers — touching contours, the multiplier as a price, KKT conditions with active and inactive constraints, projected gradient descent, ridge as a weight budget and PCA as a constrained problem.',
+        links: [{ label: 'Constrained optimisation and Lagrange multipliers', href: '/ai-ml/maths-optimisation-information/constrained-optimisation-and-lagrange/' }],
+      },
+      {
+        type: 'added',
+        text: 'Newton and second-order methods — the Newton step from a second-order model, quadratic convergence, why one step solves a quadratic, failure modes and damping, BFGS and L-BFGS, and logistic regression by Newton (IRLS).',
+        links: [{ label: 'Newton and second-order methods', href: '/ai-ml/maths-optimisation-information/newton-and-second-order-methods/' }],
+      },
+      {
+        type: 'added',
+        text: 'The calculus module is now complete: twelve pages from limits and derivatives through gradients, Jacobians, Taylor series, integrals, matrix calculus and automatic differentiation to a full backpropagation worked by hand. The optimisation module now covers gradient descent through Adam, schedules, constraints and Newton methods.',
+      },
       {
         type: 'added',
         text: 'Functions, limits and continuity — functions as input–output machines, the common functions of ML, limits from intuition to the formal epsilon–delta definition, continuity, why kinks are fine and jumps are not, and how floating-point numbers limit what a computer can see.',

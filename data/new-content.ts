@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'aiml', slug: 'maths-calculus/integrals-and-area', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/multiple-integrals-and-expectations', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/matrix-calculus', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/automatic-differentiation', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/computational-graphs-and-backprop-by-hand', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/stochastic-and-minibatch-gradient-descent', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/momentum-rmsprop-and-adam', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/learning-rate-schedules', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/constrained-optimisation-and-lagrange', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/newton-and-second-order-methods', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-calculus/functions-limits-and-continuity', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-calculus/derivatives', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-calculus/differentiation-rules-and-the-chain-rule', date: '2026-10-21' },
