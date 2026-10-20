@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'learn', slug: 'hmi/rotary-focus-areas-under-the-hood', date: '2026-10-20' },
+  { area: 'learn', slug: 'hmi/car-qc-lib-quick-controls', date: '2026-10-20' },
+  { area: 'learn', slug: 'car-framework/car-java-internals', date: '2026-10-20' },
+  { area: 'learn', slug: 'car-framework/car-service-process-and-builtin-split', date: '2026-10-20' },
+  { area: 'learn', slug: 'car-framework/car-service-helper-service', date: '2026-10-20' },
+  { area: 'learn', slug: 'car-framework/car-optional-features', date: '2026-10-20' },
+  { area: 'learn', slug: 'car-framework/car-service-crash-recovery', date: '2026-10-20' },
+  { area: 'learn', slug: 'hmi/car-launcher-app-grid-internals', date: '2026-10-20' },
+  { area: 'learn', slug: 'apps-media/launcher-media-card', date: '2026-10-20' },
+  { area: 'learn', slug: 'hmi/car-launcher-recents', date: '2026-10-20' },
   { area: 'learn', slug: 'vehicle-data/hvac-validation-on-the-emulator', date: '2026-10-20' },
   { area: 'learn', slug: 'cluster-displays/evs-below-carevsmanager', date: '2026-10-20' },
   { area: 'learn', slug: 'security/evs-permissions-and-selinux', date: '2026-10-20' },

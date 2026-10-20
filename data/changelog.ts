@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.20',
     date: '2026-10-20',
-    title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 25 new core-module pages',
+    title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 35 new core-module pages',
     changes: [
       {
         type: 'added',
@@ -255,6 +255,56 @@ export const changelog: ChangelogEntry[] = [
         type: 'added',
         text: 'Overfitting, in intuition (new, AI & ML) — a polynomial experiment that shows training error falling while test error turns up, the U-shaped curve, the honest train/test split and the first remedies.',
         links: [{ label: 'Overfitting in intuition', href: '/ai-ml/ai-ml/foundations/overfitting-intuition/' }],
+      },
+      {
+        type: 'added',
+        text: 'Rotary focus areas under the hood (new, HMI) — RotaryService is an accessibility service in its own app that cannot see your views: it recognises FocusArea and FocusParkingView by the class name each node reports, how direct manipulation works, and the three roads (car-ui-lib, car-rotary-lib, your own class).',
+        links: [{ label: 'Rotary focus areas under the hood', href: '/learn/hmi/rotary-focus-areas-under-the-hood/' }],
+      },
+      {
+        type: 'added',
+        text: 'car-qc-lib and Quick Controls (new, HMI) — the separate module that owns the Quick Controls panel code, how apps carry their own copy through static_libs, and which edits are source edits in the tree versus overlay or a new prebuilt.',
+        links: [{ label: 'car-qc-lib and Quick Controls', href: '/learn/hmi/car-qc-lib-quick-controls/' }],
+      },
+      {
+        type: 'added',
+        text: 'Car Java internals (new, car framework) — how createCar waits for Car Service on the modern and legacy paths, the name-keyed manager cache in front of a switch, the reflection fallback, why getCarManager returns null, and the CarManagerBase contract.',
+        links: [{ label: 'Car Java internals', href: '/learn/car-framework/car-java-internals/' }],
+      },
+      {
+        type: 'added',
+        text: 'Car Service process and the builtin split (new, car framework) — Car Service as a persistent app, how ICarImpl registers as car_service, and why the builtin and Mainline-updatable halves are a class-loading boundary, not a process boundary.',
+        links: [{ label: 'Car Service process and builtin split', href: '/learn/car-framework/car-service-process-and-builtin-split/' }],
+      },
+      {
+        type: 'added',
+        text: 'The Car Service helper in system_server (new, car framework) — why the helper lives inside system_server, the two contracts and the handshake, the SYSTEM_UID guard, and what belongs in Car Service instead.',
+        links: [{ label: 'The Car Service helper', href: '/learn/car-framework/car-service-helper-service/' }],
+      },
+      {
+        type: 'added',
+        text: 'Optional car features (new, car framework) — what optional means, the lists and defaults that decide whether a Car Service part is built, the two checks, why a skipped service gives null, and what an app should do about it.',
+        links: [{ label: 'Optional car features', href: '/learn/car-framework/car-optional-features/' }],
+      },
+      {
+        type: 'added',
+        text: 'Car Service crash recovery (new, car framework) — who reacts when Car Service dies: the Car library, the system_server helper and the activity manager; why managers are never revived and how an app should listen for ready and fetch fresh ones.',
+        links: [{ label: 'Car Service crash recovery', href: '/learn/car-framework/car-service-crash-recovery/' }],
+      },
+      {
+        type: 'added',
+        text: 'The launcher app grid internals (new, HMI) — who owns the all-apps button, where the list comes from, the persisted drag-to-reorder order file, Pin to Dock across processes, and the recents row that is switched off.',
+        links: [{ label: 'Launcher app grid internals', href: '/learn/hmi/car-launcher-app-grid-internals/' }],
+      },
+      {
+        type: 'added',
+        text: 'The launcher media card (new, apps and media) — the media card is half of a shared bottom slot with the in-call card, the two flag-selected versions, and how the playing app is found.',
+        links: [{ label: 'The launcher media card', href: '/learn/apps-media/launcher-media-card/' }],
+      },
+      {
+        type: 'added',
+        text: 'Launcher Recents (new, HMI) — Recents as a contact sheet of stored snapshots fed by the window system, the service that answers the Overview button, and what dismiss and Clear all really do.',
+        links: [{ label: 'Launcher Recents', href: '/learn/hmi/car-launcher-recents/' }],
       },
     ],
   },

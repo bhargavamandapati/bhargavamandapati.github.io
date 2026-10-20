@@ -86,9 +86,10 @@ for (const rel of files) {
 
   // 3. Tag balance for paired components.
   for (const tag of PAIRED) {
-    const open = (raw.match(new RegExp(`<${tag}(?=[\\s>])`, 'g')) ?? []).length
-    const selfClose = (raw.match(new RegExp(`<${tag}(?:\\s[^>]*)?/>`, 'g')) ?? []).length
-    const close = (raw.match(new RegExp(`</${tag}>`, 'g')) ?? []).length
+    // Count tags in prose only: generics such as Class<T> inside code are not components.
+    const open = (prose.match(new RegExp(`<${tag}(?=[\\s>])`, 'g')) ?? []).length
+    const selfClose = (prose.match(new RegExp(`<${tag}(?:\\s[^>]*)?/>`, 'g')) ?? []).length
+    const close = (prose.match(new RegExp(`</${tag}>`, 'g')) ?? []).length
     if (open - selfClose !== close) {
       problems.push(
         `${rel}  <${tag}> unbalanced: ${open - selfClose} opening, ${close} closing`,
