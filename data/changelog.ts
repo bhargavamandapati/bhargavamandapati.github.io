@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.20',
     date: '2026-10-20',
-    title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 35 new core-module pages',
+    title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 36 new core-module pages',
     changes: [
       {
         type: 'added',
@@ -305,6 +305,61 @@ export const changelog: ChangelogEntry[] = [
         type: 'added',
         text: 'Launcher Recents (new, HMI) — Recents as a contact sheet of stored snapshots fed by the window system, the service that answers the Overview button, and what dismiss and Clear all really do.',
         links: [{ label: 'Launcher Recents', href: '/learn/hmi/car-launcher-recents/' }],
+      },
+      {
+        type: 'added',
+        text: 'The launcher architecture (new, HMI) — the CarLauncher home screen as one activity with named containers, how a class-name resource becomes a card, the extension ladder from resources to replacing the launcher, and why a separately installed app cannot add a card. This completes the 36 core-module pages.',
+        links: [{ label: 'Launcher architecture', href: '/learn/hmi/car-launcher-architecture/' }],
+      },
+      {
+        type: 'added',
+        text: 'The ML project lifecycle (new, AI & ML) — the eight-stage loop from framing the problem to retraining, and a complete small project on a real dataset with a baseline, an honest test score, error analysis and a drift check.',
+        links: [{ label: 'The ML project lifecycle', href: '/ai-ml/ai-ml/foundations/the-ml-project-lifecycle/' }],
+      },
+      {
+        type: 'added',
+        text: 'The AI vocabulary cheat sheet (new, AI & ML) — about 95 essential terms in grouped tables with a one-line definition, a confusing pair to tell apart and the page to read next, including loss, gradient, softmax, token and epoch with worked numbers.',
+        links: [{ label: 'AI vocabulary cheat sheet', href: '/ai-ml/ai-ml/foundations/ai-vocabulary-cheatsheet/' }],
+      },
+      {
+        type: 'added',
+        text: 'Python crash course for ML (new, AI & ML) — just the Python an ML reader needs, run with real output: collections, functions, the fit and predict class pattern, reading a traceback, and the common traps.',
+        links: [{ label: 'Python crash course for ML', href: '/ai-ml/ai-ml/python-for-ml/python-crash-course-for-ml/' }],
+      },
+      {
+        type: 'added',
+        text: 'Environments: venv, conda and uv (new, AI & ML) — what an environment physically is, how to create and rebuild one with venv and pip, conda or mamba, and uv, lock files, and the PyTorch install trap, with commands that were actually run.',
+        links: [{ label: 'Environments: venv, conda and uv', href: '/ai-ml/ai-ml/python-for-ml/environments-venv-conda-and-uv/' }],
+      },
+      {
+        type: 'added',
+        text: 'Jupyter and Colab (new, AI & ML) — a notebook is a file of cells plus a kernel, the hidden-state bug and why Restart and Run All is the test, magics, Colab, and when to turn a notebook into a script.',
+        links: [{ label: 'Jupyter and Colab', href: '/ai-ml/ai-ml/python-for-ml/jupyter-and-colab/' }],
+      },
+      {
+        type: 'added',
+        text: 'NumPy essentials (new, AI & ML) — arrays, indexing, views versus copies, broadcasting and the axis argument worked on small shapes, and a measured comparison of a Python loop against a vectorised call.',
+        links: [{ label: 'NumPy essentials', href: '/ai-ml/ai-ml/python-for-ml/numpy-essentials/' }],
+      },
+      {
+        type: 'added',
+        text: 'pandas essentials (new, AI & ML) — DataFrames, selecting, missing values, groupby, the four join types, the copy trap, and a messy table cleaned end to end, with every output captured.',
+        links: [{ label: 'pandas essentials', href: '/ai-ml/ai-ml/python-for-ml/pandas-essentials/' }],
+      },
+      {
+        type: 'added',
+        text: 'Visualisation with matplotlib and seaborn (new, AI & ML) — the Figure and Axes model, choosing the right chart for a question, how charts mislead, saving figures and seaborn as a layer on matplotlib, taught through code that was run and the numbers behind each plot.',
+        links: [{ label: 'Visualisation with matplotlib and seaborn', href: '/ai-ml/ai-ml/python-for-ml/visualisation-with-matplotlib-and-seaborn/' }],
+      },
+      {
+        type: 'added',
+        text: 'The scikit-learn API (new, AI & ML) — the few verbs every estimator shares, the fit-on-train-only rule with a leakage experiment, pipelines, cross-validation, and saving a model safely.',
+        links: [{ label: 'The scikit-learn API', href: '/ai-ml/ai-ml/python-for-ml/the-scikit-learn-api/' }],
+      },
+      {
+        type: 'added',
+        text: 'PyTorch tensors and autograd (new, AI & ML) — tensors and their link to NumPy, how autograd records operations and fills gradients, checked against hand derivatives and finite differences, and one hand-written training step.',
+        links: [{ label: 'PyTorch tensors and autograd', href: '/ai-ml/ai-ml/python-for-ml/pytorch-tensors-and-autograd/' }],
       },
     ],
   },

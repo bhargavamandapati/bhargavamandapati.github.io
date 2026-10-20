@@ -21,6 +21,17 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'learn', slug: 'hmi/car-launcher-architecture', date: '2026-10-20' },
+  { area: 'aiml', slug: 'foundations/the-ml-project-lifecycle', date: '2026-10-20' },
+  { area: 'aiml', slug: 'foundations/ai-vocabulary-cheatsheet', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/python-crash-course-for-ml', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/environments-venv-conda-and-uv', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/jupyter-and-colab', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/numpy-essentials', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/pandas-essentials', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/visualisation-with-matplotlib-and-seaborn', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/the-scikit-learn-api', date: '2026-10-20' },
+  { area: 'aiml', slug: 'python-for-ml/pytorch-tensors-and-autograd', date: '2026-10-20' },
   { area: 'learn', slug: 'hmi/rotary-focus-areas-under-the-hood', date: '2026-10-20' },
   { area: 'learn', slug: 'hmi/car-qc-lib-quick-controls', date: '2026-10-20' },
   { area: 'learn', slug: 'car-framework/car-java-internals', date: '2026-10-20' },
