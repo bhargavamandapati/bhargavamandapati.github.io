@@ -2051,6 +2051,40 @@ import {
   RwSensorZoneLink,
 } from '@/components/diagrams/rw-hx'
 import {
+  RwAudCtlDuckCall,
+  RwAudCtlHalFocus,
+  RwAudCtlPolicies,
+  RwAudCtlRecap,
+  RwAudCtlTwoBoundaries,
+  RwAudCtlWhereItStops,
+} from '@/components/diagrams/rw-hy'
+import {
+  RwBtBigPicture,
+  RwBtClassification,
+  RwBtConnectSequence,
+  RwBtNoBridge,
+} from '@/components/diagrams/rw-hz'
+import {
+  RwVolDlgBigPicture,
+  RwVolDlgRecap,
+  RwVolDlgScales,
+  RwVolDlgSequence,
+} from '@/components/diagrams/rw-ia'
+import {
+  RwDialerBigPicture,
+  RwDialerBuildSwap,
+  RwDialerCallBinding,
+  RwDialerInside,
+} from '@/components/diagrams/rw-ib'
+import {
+  RwIcAnswerSequence,
+  RwIcBigPicture,
+  RwIcCallStates,
+  RwIcIncomingSequence,
+  RwIcMvvmFlow,
+  RwIcTwoServices,
+} from '@/components/diagrams/rw-ic'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -3698,6 +3732,30 @@ export const mdxComponents: MDXComponents = {
   RwSensorTestEntry,
   RwSensorTranslations,
   RwSensorZoneLink,
+  RwAudCtlDuckCall,
+  RwAudCtlHalFocus,
+  RwAudCtlPolicies,
+  RwAudCtlRecap,
+  RwAudCtlTwoBoundaries,
+  RwAudCtlWhereItStops,
+  RwBtBigPicture,
+  RwBtClassification,
+  RwBtConnectSequence,
+  RwBtNoBridge,
+  RwVolDlgBigPicture,
+  RwVolDlgRecap,
+  RwVolDlgScales,
+  RwVolDlgSequence,
+  RwDialerBigPicture,
+  RwDialerBuildSwap,
+  RwDialerCallBinding,
+  RwDialerInside,
+  RwIcAnswerSequence,
+  RwIcBigPicture,
+  RwIcCallStates,
+  RwIcIncomingSequence,
+  RwIcMvvmFlow,
+  RwIcTwoServices,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
