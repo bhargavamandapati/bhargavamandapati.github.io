@@ -191,7 +191,7 @@ export default function SoftmaxLab({
           const y0 = i * ROW + 8
           const hasFilter = filterOn
           return (
-            <g key={i}>
+            <g key={i} data-no-fit>
               <text x={X0 - 8} y={y0 + (hasFilter ? 20 : 15)} textAnchor="end" fontSize="12" fill={kept[i] ? C.fg : C.subtle}>
                 {name.length > 12 ? name.slice(0, 11) + '…' : name}
               </text>

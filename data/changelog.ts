@@ -38,7 +38,7 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.20',
     date: '2026-10-20',
-    title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 15 new core-module pages',
+    title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 25 new core-module pages',
     changes: [
       {
         type: 'added',
@@ -155,6 +155,106 @@ export const changelog: ChangelogEntry[] = [
         type: 'added',
         text: 'HVAC panel customization points (new, HMI) — eight places to change the climate panel in four layers: vehicle data, resource values, the whole layout, and which code runs. Data and resource changes need no Java edit, and the page says which limits were seen only in the author’s tree.',
         links: [{ label: 'HVAC panel customization points', href: '/learn/hmi/hvac-panel-customization-points/' }],
+      },
+      {
+        type: 'added',
+        text: 'The HVAC validation cycle (new, vehicle data) — how to prove a climate property works on the emulator: read the zones, range and configArray, test a value on each side of the limit, and read back after every write; what each step proves and what it leaves open, and why the inject command rejects “-a”.',
+        links: [{ label: 'HVAC validation on the emulator', href: '/learn/vehicle-data/hvac-validation-on-the-emulator/' }],
+      },
+      {
+        type: 'added',
+        text: 'What sits below CarEvsManager (new, cluster and displays) — the EVS manager daemon, the EVS HAL and the display proxy, the /default and /hw/0 instances, the bypass that steals the camera, a four-check order for a camera that never opens, and a CarEvsManager reference card.',
+        links: [{ label: 'EVS below CarEvsManager', href: '/learn/cluster-displays/evs-below-carevsmanager/' }],
+      },
+      {
+        type: 'added',
+        text: 'EVS permissions and SELinux (new, security) — two independent gates guard the raw camera path: four signature|privileged permissions in Java and a short HAL-client list in SELinux; why each still protects when the other fails.',
+        links: [{ label: 'EVS permissions and SELinux', href: '/learn/security/evs-permissions-and-selinux/' }],
+      },
+      {
+        type: 'added',
+        text: 'The notification shade as an overlay window (new, HMI) — the shade as one guest controller in a shared overlay window, how a drag opens it, and the five list jobs in the Notification app: filter, trim, group, split and rank.',
+        links: [{ label: 'The notification shade overlay window', href: '/learn/hmi/notification-shade-overlay-window/' }],
+      },
+      {
+        type: 'added',
+        text: 'The Quick Controls framework (new, HMI) — the host draws and the provider decides: a parcelable description crosses a ContentProvider call guarded by a package allowlist, the user-id address rewrite, and how a slider follows a hardware knob without polling.',
+        links: [{ label: 'The Quick Controls framework', href: '/learn/hmi/quick-controls-framework/' }],
+      },
+      {
+        type: 'added',
+        text: 'Driver and passenger keyguard (new, HMI) — the driver’s lock screen is the phone’s bouncer in a thin car wrapper; a passenger’s is a separate pipeline behind three start-up checks; why only the driver’s runs on the emulator product, and the open security question when the flag is off.',
+        links: [{ label: 'Driver and passenger keyguard', href: '/learn/hmi/driver-and-passenger-keyguard/' }],
+      },
+      {
+        type: 'added',
+        text: 'Why your app’s Toast never appears (new, HMI) — the car’s toast gate drops callers that are not system, privileged or platform-signed or on an allowlist, silently; the lock-screen toast that bypasses it, and a one-minute test.',
+        links: [{ label: 'The car toast allowlist', href: '/learn/hmi/car-toast-allowlist/' }],
+      },
+      {
+        type: 'added',
+        text: 'System bar button wiring (new, HMI) — one XML element with three independent jobs: what a tap launches, optional controller logic, and when the button lights up by component, package or category; and why launching and highlighting can fail separately.',
+        links: [{ label: 'System bar button wiring', href: '/learn/hmi/system-bar-button-wiring/' }],
+      },
+      {
+        type: 'added',
+        text: 'car-ui-lib in the source tree (new, HMI) — in the author’s tree the library is four prebuilt files that Soong imports; how to read a screen’s layout to see what it really uses, and why a FocusArea does not mean CarUiRecyclerView.',
+        links: [{ label: 'car-ui-lib in the tree', href: '/learn/hmi/car-ui-lib-in-the-tree/' }],
+      },
+      {
+        type: 'added',
+        text: 'car-ui-lib: RRO or OEM plugin (new, HMI) — two ways to restyle the library: a resource overlay per app that swaps named values, or a plugin APK that replaces widget code; the gates that switch each on, and what was not confirmed on the running product.',
+        links: [{ label: 'car-ui-lib: RRO or OEM plugin', href: '/learn/hmi/car-ui-lib-rro-vs-oem-plugin/' }],
+      },
+      {
+        type: 'added',
+        text: 'What “AI” actually means (new, AI & ML, free) — AI, machine learning, deep learning and large language models as nested sets, narrow versus general AI, what to ask of an “AI-powered” claim, and a runnable contrast between a hand-written rule and a learned rule.',
+        links: [{ label: 'What AI actually means', href: '/ai-ml/ai-ml/foundations/what-ai-actually-means/' }],
+      },
+      {
+        type: 'added',
+        text: 'The history of AI and ML (new, AI & ML) — the waves from Turing and the 1956 workshop to transformers, and why each rose and stalled (data, compute, algorithms, expectations), with a runnable XOR experiment.',
+        links: [{ label: 'The history of AI and ML', href: '/ai-ml/ai-ml/foundations/history-of-ai-and-ml/' }],
+      },
+      {
+        type: 'added',
+        text: 'The AI landscape map (new, AI & ML) — tasks, data types, method families, applications and roles in one map, a decision flow for where to start, and how to sort real claims from hype.',
+        links: [{ label: 'The AI landscape map', href: '/ai-ml/ai-ml/foundations/the-ai-landscape-map/' }],
+      },
+      {
+        type: 'added',
+        text: 'A model is a recipe plus a pile of numbers (new, AI & ML) — architecture versus weights, counting parameters by hand and in code, saving and reloading weights, and why a 7-billion-parameter model is a few gigabytes.',
+        links: [{ label: 'A model is just weights', href: '/ai-ml/ai-ml/foundations/a-model-is-just-weights/' }],
+      },
+      {
+        type: 'added',
+        text: 'Training versus inference (new, AI & ML) — two opposite workloads, measured timings, why training needs about 16 bytes per parameter, latency versus throughput, and why on-device usually means inference only.',
+        links: [{ label: 'Training versus inference', href: '/ai-ml/ai-ml/foundations/training-vs-inference/' }],
+      },
+      {
+        type: 'added',
+        text: 'Learning paradigms (new, AI & ML) — supervised, unsupervised, semi-supervised, self-supervised and reinforcement learning by the signal each learns from, with real runs of a classifier, k-means and a bandit.',
+        links: [{ label: 'Learning paradigms', href: '/ai-ml/ai-ml/foundations/learning-paradigms/' }],
+      },
+      {
+        type: 'added',
+        text: 'Classification, regression and generation (new, AI & ML) — the shape of the answer fixes the loss and the metric; scores to probabilities by hand, and how the wrong shape gives a system that runs but answers the wrong question.',
+        links: [{ label: 'Classification, regression and generation', href: '/ai-ml/ai-ml/foundations/classification-regression-generation/' }],
+      },
+      {
+        type: 'added',
+        text: 'Data, the fuel of ML (new, AI & ML) — examples, features and labels, images and text as numbers, a measured learning curve, label noise and sampling bias, and the train, validation and test idea.',
+        links: [{ label: 'Data, the fuel of ML', href: '/ai-ml/ai-ml/foundations/data-the-fuel-of-ml/' }],
+      },
+      {
+        type: 'added',
+        text: 'How a model learns, in intuition (new, AI & ML) — the five-step loop of guess, loss, slope, nudge and repeat; a line fitted by gradient descent with real loss values and what the learning rate does.',
+        links: [{ label: 'How a model learns', href: '/ai-ml/ai-ml/foundations/how-a-model-learns-intuition/' }],
+      },
+      {
+        type: 'added',
+        text: 'Overfitting, in intuition (new, AI & ML) — a polynomial experiment that shows training error falling while test error turns up, the U-shaped curve, the honest train/test split and the first remedies.',
+        links: [{ label: 'Overfitting in intuition', href: '/ai-ml/ai-ml/foundations/overfitting-intuition/' }],
       },
     ],
   },

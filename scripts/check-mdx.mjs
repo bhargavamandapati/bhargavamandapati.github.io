@@ -49,8 +49,12 @@ const PAIRED = [
 ]
 
 /** Strip fenced code, inline code, and frontmatter — braces are legal there. */
-function stripCode(source) {
-  return source
+function stripCode(source, math = false) {
+  const text = math
+    ? // AI & ML pages hold formulas: braces inside $...$ and $$...$$ are maths, not MDX expressions.
+      source.replace(/\$\$[\s\S]*?\$\$/g, (m) => '\n'.repeat(m.split('\n').length - 1)).replace(/(?<!\\)\$[^$\n]+(?<!\\)\$/g, '')
+    : source
+  return text
     .replace(/^---\n[\s\S]*?\n---\n/, (m) => '\n'.repeat(m.split('\n').length - 1))
     .replace(/```[\s\S]*?```/g, (m) => '\n'.repeat(m.split('\n').length - 1))
     .replace(/`[^`\n]*`/g, '')
@@ -60,7 +64,7 @@ const problems = []
 
 for (const rel of files) {
   const raw = readFileSync(path.join(ROOT, rel), 'utf8')
-  const prose = stripCode(raw)
+  const prose = stripCode(raw, rel.startsWith('content/ai-ml/'))
 
   // 1. Brace expressions in prose.
   prose.split('\n').forEach((line, i) => {
@@ -130,6 +134,27 @@ for (const { dataFile, contentDir, kind, allowEmpty } of REGISTRIES) {
     // written module by module).
     if (!onDisk.has(slug) && !allowEmpty) {
       problems.push(`${dataFile}  ${kind} '${slug}' has no matching ${contentDir}/${slug}/ folder`)
+    }
+  }
+}
+
+// 5. Compile every file with the same MDX pipeline the site uses. The regex checks
+//    above catch the common mistakes; this catches the rest (a nested quote the
+//    patterns missed, a stray angle bracket) in seconds instead of ten minutes
+//    into a build.
+{
+  const { compile } = await import('@mdx-js/mdx')
+  const { default: matter } = await import('gray-matter')
+  const { default: remarkGfm } = await import('remark-gfm')
+  const { default: remarkMath } = await import('remark-math')
+  for (const rel of files) {
+    const { content } = matter(readFileSync(path.join(ROOT, rel), 'utf8'))
+    try {
+      await compile(content, {
+        remarkPlugins: rel.startsWith('content/ai-ml/') ? [remarkGfm, remarkMath] : [remarkGfm],
+      })
+    } catch (e) {
+      problems.push(`${rel}:${e.line ?? '?'}  does not compile: ${String(e.message).split('\n')[0].slice(0, 120)}`)
     }
   }
 }

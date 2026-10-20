@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Widget } from '@/components/ai-ml/widgets/widget'
+import { TrackPosition } from '@/components/ai-ml/track-position'
 import type { MDXComponents } from 'mdx/types'
 import { AlertTriangle, Info, Lightbulb } from 'lucide-react'
 import { CodeWindow } from '@/components/learn/code-window'
@@ -2151,6 +2152,141 @@ import {
   RwHvacCustWiring,
 } from '@/components/diagrams/rw-im'
 import {
+  RwHvacValCycle,
+  RwHvacValInjectArgs,
+  RwHvacValRange,
+  RwHvacValSequence,
+} from '@/components/diagrams/rw-in'
+import {
+  RwEvsBelowBigPicture,
+  RwEvsBelowBypass,
+  RwEvsBelowCheckOrder,
+  RwEvsBelowHalSurface,
+  RwEvsBelowInstances,
+  RwEvsBelowOpenSequence,
+  RwEvsBelowRecap,
+} from '@/components/diagrams/rw-io'
+import {
+  RwEvsSecDomains,
+  RwEvsSecPermissions,
+  RwEvsSecRecap,
+  RwEvsSecTwoGates,
+} from '@/components/diagrams/rw-ip'
+import {
+  RwShadeBigPicture,
+  RwShadeDataPath,
+  RwShadeFiveJobs,
+  RwShadeOpenSequence,
+} from '@/components/diagrams/rw-iq'
+import {
+  RwQuickCtlBigPicture,
+  RwQuickCtlGate,
+  RwQuickCtlLiveUpdate,
+  RwQuickCtlRecap,
+  RwQuickCtlRoundTrip,
+  RwQuickCtlUserUri,
+} from '@/components/diagrams/rw-ir'
+import {
+  RwKeyguardBigPicture,
+  RwKeyguardCredentialStates,
+  RwKeyguardDriverStack,
+  RwKeyguardPassengerGate,
+  RwKeyguardRecap,
+  RwKeyguardTejasChain,
+} from '@/components/diagrams/rw-is'
+import {
+  RwToastBigPicture,
+  RwToastGate,
+  RwToastLayers,
+  RwToastManualPath,
+  RwToastRecap,
+  RwToastSequence,
+} from '@/components/diagrams/rw-it'
+import {
+  RwBarWireBigPicture,
+  RwBarWireClickSeq,
+  RwBarWireHighlightFlow,
+  RwBarWireRecap,
+} from '@/components/diagrams/rw-iu'
+import {
+  RwUiLibTreeBigPicture,
+  RwUiLibTreeFlavours,
+  RwUiLibTreeLauncherCase,
+  RwUiLibTreeModuleChain,
+  RwUiLibTreeRecap,
+  RwUiLibTreeWidgets,
+} from '@/components/diagrams/rw-iv'
+import {
+  RwUiLibRroBigPicture,
+  RwUiLibRroChoose,
+  RwUiLibRroGateChain,
+  RwUiLibRroPerApp,
+  RwUiLibRroPluginLookup,
+} from '@/components/diagrams/rw-iw'
+import {
+  RwAiWhatLabelLadder,
+  RwAiWhatLearningLoop,
+  RwAiWhatNested,
+  RwAiWhatRuleVsLearned,
+} from '@/components/diagrams/rw-ix'
+import {
+  RwAiHistCycle,
+  RwAiHistIngredients,
+  RwAiHistTimeline,
+} from '@/components/diagrams/rw-iy'
+import {
+  RwAiMapDecision,
+  RwAiMapFourLenses,
+  RwAiMapRoles,
+  RwAiMapSameTable,
+  RwAiMapTrackSpine,
+} from '@/components/diagrams/rw-iz'
+import {
+  RwWeightsBigPicture,
+  RwWeightsLifecycle,
+  RwWeightsSizes,
+  RwWeightsTinyNet,
+} from '@/components/diagrams/rw-ja'
+import {
+  RwTrainInfBatch,
+  RwTrainInfBytes,
+  RwTrainInfLoop,
+  RwTrainInfPass,
+  RwTrainInfSevenB,
+} from '@/components/diagrams/rw-jb'
+import {
+  RwParadigmBigPicture,
+  RwParadigmHowToTell,
+  RwParadigmLlmStages,
+  RwParadigmRlLoop,
+  RwParadigmSelfSupervised,
+} from '@/components/diagrams/rw-jc'
+import {
+  RwTaskShapeChain,
+  RwTaskShapeMap,
+  RwTaskShapeOrdinal,
+  RwTaskShapeScores,
+} from '@/components/diagrams/rw-jd'
+import {
+  RwDataFuelBigPicture,
+  RwDataFuelFiveTypes,
+  RwDataFuelLearningCurve,
+  RwDataFuelNoise,
+  RwDataFuelProblems,
+  RwDataFuelSplit,
+} from '@/components/diagrams/rw-je'
+import {
+  RwLearnLoopCycle,
+  RwLearnLoopDeferred,
+  RwLearnLoopLossDrop,
+  RwLearnLoopRates,
+} from '@/components/diagrams/rw-jf'
+import {
+  RwOverfitFits,
+  RwOverfitSplit,
+  RwOverfitUCurve,
+} from '@/components/diagrams/rw-jg'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -2201,6 +2337,7 @@ export function Callout({
 
 export const mdxComponents: MDXComponents = {
   Widget,
+  TrackPosition,
   a: ({ href = '', children, ...props }) => {
     const isInternal = href.startsWith('/') || href.startsWith('#')
     if (isInternal) {
@@ -3868,6 +4005,101 @@ export const mdxComponents: MDXComponents = {
   RwHvacCustPowerGate,
   RwHvacCustRecap,
   RwHvacCustWiring,
+  RwHvacValCycle,
+  RwHvacValInjectArgs,
+  RwHvacValRange,
+  RwHvacValSequence,
+  RwEvsBelowBigPicture,
+  RwEvsBelowBypass,
+  RwEvsBelowCheckOrder,
+  RwEvsBelowHalSurface,
+  RwEvsBelowInstances,
+  RwEvsBelowOpenSequence,
+  RwEvsBelowRecap,
+  RwEvsSecDomains,
+  RwEvsSecPermissions,
+  RwEvsSecRecap,
+  RwEvsSecTwoGates,
+  RwShadeBigPicture,
+  RwShadeDataPath,
+  RwShadeFiveJobs,
+  RwShadeOpenSequence,
+  RwQuickCtlBigPicture,
+  RwQuickCtlGate,
+  RwQuickCtlLiveUpdate,
+  RwQuickCtlRecap,
+  RwQuickCtlRoundTrip,
+  RwQuickCtlUserUri,
+  RwKeyguardBigPicture,
+  RwKeyguardCredentialStates,
+  RwKeyguardDriverStack,
+  RwKeyguardPassengerGate,
+  RwKeyguardRecap,
+  RwKeyguardTejasChain,
+  RwToastBigPicture,
+  RwToastGate,
+  RwToastLayers,
+  RwToastManualPath,
+  RwToastRecap,
+  RwToastSequence,
+  RwBarWireBigPicture,
+  RwBarWireClickSeq,
+  RwBarWireHighlightFlow,
+  RwBarWireRecap,
+  RwUiLibTreeBigPicture,
+  RwUiLibTreeFlavours,
+  RwUiLibTreeLauncherCase,
+  RwUiLibTreeModuleChain,
+  RwUiLibTreeRecap,
+  RwUiLibTreeWidgets,
+  RwUiLibRroBigPicture,
+  RwUiLibRroChoose,
+  RwUiLibRroGateChain,
+  RwUiLibRroPerApp,
+  RwUiLibRroPluginLookup,
+  RwAiWhatLabelLadder,
+  RwAiWhatLearningLoop,
+  RwAiWhatNested,
+  RwAiWhatRuleVsLearned,
+  RwAiHistCycle,
+  RwAiHistIngredients,
+  RwAiHistTimeline,
+  RwAiMapDecision,
+  RwAiMapFourLenses,
+  RwAiMapRoles,
+  RwAiMapSameTable,
+  RwAiMapTrackSpine,
+  RwWeightsBigPicture,
+  RwWeightsLifecycle,
+  RwWeightsSizes,
+  RwWeightsTinyNet,
+  RwTrainInfBatch,
+  RwTrainInfBytes,
+  RwTrainInfLoop,
+  RwTrainInfPass,
+  RwTrainInfSevenB,
+  RwParadigmBigPicture,
+  RwParadigmHowToTell,
+  RwParadigmLlmStages,
+  RwParadigmRlLoop,
+  RwParadigmSelfSupervised,
+  RwTaskShapeChain,
+  RwTaskShapeMap,
+  RwTaskShapeOrdinal,
+  RwTaskShapeScores,
+  RwDataFuelBigPicture,
+  RwDataFuelFiveTypes,
+  RwDataFuelLearningCurve,
+  RwDataFuelNoise,
+  RwDataFuelProblems,
+  RwDataFuelSplit,
+  RwLearnLoopCycle,
+  RwLearnLoopDeferred,
+  RwLearnLoopLossDrop,
+  RwLearnLoopRates,
+  RwOverfitFits,
+  RwOverfitSplit,
+  RwOverfitUCurve,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,

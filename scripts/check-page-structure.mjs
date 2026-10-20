@@ -31,7 +31,12 @@ const count = (s, re) => (s.match(re) || []).length
 
 function prose(body) {
   return body
+    // Maths is not prose: strip display and inline formulas before counting words.
+    .replace(/\$\$[\s\S]*?\$\$/g, ' ')
+    .replace(/(?<!\\)\$[^$\n]+(?<!\\)\$/g, ' ')
     .replace(/```[\s\S]*?```/g, ' ')
+    // Link targets are URLs, not prose: a slug such as a-model-is-just-weights must not trip the banned-word rule.
+    .replace(/\]\([^)]*\)/g, '] ')
     .replace(/^\|.*$/gm, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/^#+.*$/gm, ' ')
@@ -79,7 +84,7 @@ function check(file) {
   need(count(noCode, /<ExplainBack[\s>]/g) >= 1, 'no <ExplainBack>')
   need(count(noCode, /<MemoryHooks[\s>]/g) >= 1, 'no <MemoryHooks>')
   if (area === 'learn') {
-    need(count(noCode, /<YouAreHere[\s/>]/g) >= 1, 'no <YouAreHere>')
+    need(count(noCode, /<(YouAreHere|TrackPosition)[\s/>]/g) >= 1, 'no <YouAreHere> (or <TrackPosition> on AI & ML pages)')
     need(count(noCode, /<InShort[\s>]/g) >= 3, `needs at least 3 <InShort> (has ${count(noCode, /<InShort[\s>]/g)})`)
     need(count(noCode, /<Analogy[\s>]/g) >= 1, 'no <Analogy>')
   } else {

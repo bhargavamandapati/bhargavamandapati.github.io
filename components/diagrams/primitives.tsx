@@ -92,18 +92,20 @@ export function Box({
         strokeWidth={1.25}
         strokeDasharray={dashed ? '5 4' : undefined}
       />
-      <text
-        x={x + w / 2}
-        y={sub ? y + h / 2 - 7 : y + h / 2}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={t.text}
-        fontSize={13}
-        fontWeight={600}
-        fontFamily="var(--font-display)"
-      >
-        {label}
-      </text>
+      {label !== '' && (
+        <text
+          x={x + w / 2}
+          y={sub ? y + h / 2 - 7 : y + h / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={t.text}
+          fontSize={13}
+          fontWeight={600}
+          fontFamily="var(--font-display)"
+        >
+          {label}
+        </text>
+      )}
       {sub && (
         <text
           x={x + w / 2}
