@@ -2085,6 +2085,39 @@ import {
   RwIcTwoServices,
 } from '@/components/diagrams/rw-ic'
 import {
+  RwHfpAccountLife,
+  RwHfpBigPicture,
+  RwHfpCallStates,
+  RwHfpLinkStates,
+  RwHfpPollSequence,
+} from '@/components/diagrams/rw-id'
+import {
+  RwPbapBigPicture,
+  RwPbapDownload,
+  RwPbapLayers,
+  RwPbapLifecycle,
+  RwPbapRecap,
+} from '@/components/diagrams/rw-ie'
+import {
+  RwVoiceDialBigPicture,
+  RwVoiceDialCoverage,
+  RwVoiceDialFrontDoors,
+  RwVoiceDialSequence,
+} from '@/components/diagrams/rw-if'
+import {
+  RwNavPbBigPicture,
+  RwNavPbCheckSequence,
+  RwNavPbRuleFlow,
+  RwNavPbSchemaTree,
+  RwNavPbTypeFamilies,
+} from '@/components/diagrams/rw-ig'
+import {
+  RwNavBrBigPicture,
+  RwNavBrGuardFlow,
+  RwNavBrPathASequence,
+  RwNavBrPermissions,
+} from '@/components/diagrams/rw-ih'
+import {
   GfxBufferLifecycle,
   GfxCompositionFlow,
   GfxDisplayIdTypes,
@@ -3756,6 +3789,29 @@ export const mdxComponents: MDXComponents = {
   RwIcIncomingSequence,
   RwIcMvvmFlow,
   RwIcTwoServices,
+  RwHfpAccountLife,
+  RwHfpBigPicture,
+  RwHfpCallStates,
+  RwHfpLinkStates,
+  RwHfpPollSequence,
+  RwPbapBigPicture,
+  RwPbapDownload,
+  RwPbapLayers,
+  RwPbapLifecycle,
+  RwPbapRecap,
+  RwVoiceDialBigPicture,
+  RwVoiceDialCoverage,
+  RwVoiceDialFrontDoors,
+  RwVoiceDialSequence,
+  RwNavPbBigPicture,
+  RwNavPbCheckSequence,
+  RwNavPbRuleFlow,
+  RwNavPbSchemaTree,
+  RwNavPbTypeFamilies,
+  RwNavBrBigPicture,
+  RwNavBrGuardFlow,
+  RwNavBrPathASequence,
+  RwNavBrPermissions,
   RwVehPropWriteBad,
   RwVehPropWriteOk,
   FndForkTimeline,
