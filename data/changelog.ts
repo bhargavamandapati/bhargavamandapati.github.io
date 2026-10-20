@@ -36,6 +36,79 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '2026.10.21',
+    date: '2026-10-21',
+    title: 'AI & ML: Python toolchain finished and linear algebra begins; core Learn pages reconciled',
+    changes: [
+      {
+        type: 'added',
+        text: 'Git and GitHub for ML — commits, branches, merge conflicts, .gitignore, tags and why a result must be tied to a commit.',
+        links: [{ label: 'Git and GitHub for ML', href: '/ai-ml/python-for-ml/git-and-github-for-ml/' }],
+      },
+      {
+        type: 'added',
+        text: 'Reading papers and repos — a three-pass method for papers, the four questions to ask of a claim, and how to judge a repository and its licence.',
+        links: [{ label: 'Reading papers and repos', href: '/ai-ml/python-for-ml/reading-papers-and-repos/' }],
+      },
+      {
+        type: 'added',
+        text: 'GPUs, CUDA and cloud compute — why parallel hardware is fast, the four layers between your code and the GPU, GPU memory arithmetic and out-of-memory errors, with real timings from an RTX 5050.',
+        links: [{ label: 'GPUs, CUDA and cloud compute', href: '/ai-ml/python-for-ml/gpus-cuda-and-cloud-compute/' }],
+      },
+      {
+        type: 'added',
+        text: 'The Hugging Face Hub — models, datasets and Spaces, a selection checklist, gated models, tokens, safetensors vs pickle and downloading only the files you need.',
+        links: [{ label: 'The Hugging Face Hub', href: '/ai-ml/python-for-ml/the-hugging-face-hub/' }],
+      },
+      {
+        type: 'added',
+        text: 'Tutorial: set up your ML workstation — a reproducible project environment, Jupyter, a pinned requirements file and a rebuild test.',
+        links: [{ label: 'Tutorial: set up your ML workstation', href: '/ai-ml/practical-tutorials/set-up-your-ml-workstation/' }],
+      },
+      {
+        type: 'added',
+        text: 'Scalars, vectors, matrices and tensors — shapes, indexing, what dimension means and the data-as-matrix view.',
+        links: [{ label: 'Scalars, vectors, matrices and tensors', href: '/ai-ml/maths-linear-algebra/scalars-vectors-matrices-tensors/' }],
+      },
+      {
+        type: 'added',
+        text: 'Vector operations and the dot product — both forms of the dot product with a derivation of why they agree, projection, cosine similarity and attention scores.',
+        links: [{ label: 'Vector operations and the dot product', href: '/ai-ml/maths-linear-algebra/vector-operations-and-dot-product/' }],
+      },
+      {
+        type: 'added',
+        text: 'Norms and distances — L1, L2 and max norms, distance versus cosine, distance concentration in high dimensions and regularisation.',
+        links: [{ label: 'Norms and distances', href: '/ai-ml/maths-linear-algebra/norms-and-distances/' }],
+      },
+      {
+        type: 'added',
+        text: 'Matrix multiplication — row-times-column from first principles, shapes, cost, associativity and why stacked linear layers collapse into one.',
+        links: [{ label: 'Matrix multiplication', href: '/ai-ml/maths-linear-algebra/matrix-multiplication/' }],
+      },
+      {
+        type: 'added',
+        text: 'Matrices as transformations — columns as where the basis arrows land, rotation, composition, the determinant as area scaling and why a matrix cannot shift.',
+        links: [{ label: 'Matrices as transformations', href: '/ai-ml/maths-linear-algebra/matrices-as-transformations/' }],
+      },
+      {
+        type: 'added',
+        text: 'Every new AI & ML page was run end to end: the Python and Git commands in them were executed and the printed output pasted exactly, and then each page was read cold by a fresh reader who answered six questions from the page alone. Anything not run is marked “not confirmed here” on the page.',
+      },
+      {
+        type: 'changed',
+        text: 'Real GPU numbers: the GPU, PyTorch tensors, environments and workstation pages now show output from a CUDA build of PyTorch on an NVIDIA RTX 5050 laptop GPU (device checks, matrix-multiply timings against the CPU, and a real out-of-memory error) beside the CPU-only case.',
+      },
+      {
+        type: 'changed',
+        text: 'Learn pages reconciled with the 36 new core-module pages: about 28 existing Learn and tutorial pages (audio focus and ducking, telephony and eCall, CarPropertyManager, property anatomy, in-cabin camera, surround view, custom TaskView, car system UI, launcher and app categories, car service architecture, Binder and AIDL, navigation apps, instrument cluster, EVS rear-view camera, three multi-display tutorials, input methods, Car UI library, notifications, custom rotary input, custom RRO, custom system UI, car audio architecture, VHAL testing and the Bluetooth stack) were checked against the new pages, and where they disagreed the wording was hedged or corrected. Nothing was deleted.',
+      },
+      {
+        type: 'fixed',
+        text: 'The matrix transformation widget no longer lets the transformed-axis labels run off the left edge of the plot.',
+      },
+    ],
+  },
+  {
     version: '2026.10.20',
     date: '2026-10-20',
     title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 36 new core-module pages',

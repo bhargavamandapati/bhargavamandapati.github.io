@@ -157,7 +157,7 @@ export default function MatrixLab({ matrix }: Props) {
     parts.push(
       <text
         key="t"
-        x={x + (len > 1 ? (x / len) * 10 : 10)}
+        x={Math.max(-R * S + 14, x + (len > 1 ? (x / len) * 10 : 10))}
         y={y + (len > 1 ? (y / len) * 10 : -8) + 4}
         fill={color}
         fontSize={13}

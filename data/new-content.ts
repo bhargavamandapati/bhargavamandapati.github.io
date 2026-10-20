@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'aiml', slug: 'python-for-ml/git-and-github-for-ml', date: '2026-10-21' },
+  { area: 'aiml', slug: 'python-for-ml/reading-papers-and-repos', date: '2026-10-21' },
+  { area: 'aiml', slug: 'python-for-ml/gpus-cuda-and-cloud-compute', date: '2026-10-21' },
+  { area: 'aiml', slug: 'python-for-ml/the-hugging-face-hub', date: '2026-10-21' },
+  { area: 'aiml', slug: 'practical-tutorials/set-up-your-ml-workstation', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/scalars-vectors-matrices-tensors', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/vector-operations-and-dot-product', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/norms-and-distances', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/matrix-multiplication', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-linear-algebra/matrices-as-transformations', date: '2026-10-21' },
   { area: 'learn', slug: 'hmi/car-launcher-architecture', date: '2026-10-20' },
   { area: 'aiml', slug: 'foundations/the-ml-project-lifecycle', date: '2026-10-20' },
   { area: 'aiml', slug: 'foundations/ai-vocabulary-cheatsheet', date: '2026-10-20' },
