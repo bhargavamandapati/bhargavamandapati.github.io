@@ -12,11 +12,17 @@ import {
   Lock,
   MonitorSmartphone,
   Search,
+  Sigma,
+  Sparkles,
+  FlaskConical,
 } from 'lucide-react'
 import { FREE_TOPICS, access } from '@/data/access'
 import { RequestAccessButton } from '@/components/premium/request-access'
 import { getAllTopics } from '@/lib/learn'
 import { getAllSdvTopics } from '@/lib/sdv'
+import { getAllAiMlTopics } from '@/lib/ai-ml'
+import { aiMlModules } from '@/data/ai-ml-curriculum'
+import { widgetLoaders } from '@/components/ai-ml/widgets/registry'
 import { getAllTutorials } from '@/lib/tutorials'
 import { vehicleProperties } from '@/lib/vehicle-properties'
 import { glossary } from '@/data/glossary'
@@ -35,6 +41,8 @@ function buildLibraryCounts() {
   return {
     learn: getAllTopics().length,
     sdv: getAllSdvTopics().length,
+    aiml: getAllAiMlTopics().length,
+    widgets: Object.keys(widgetLoaders).length,
     properties: vehicleProperties.length,
     inCarApiProperties: vehicleProperties.filter((p) => p.javaLine !== undefined).length,
     tutorials: getAllTutorials().length,
@@ -49,6 +57,8 @@ function buildLibrary(counts: ReturnType<typeof buildLibraryCounts>) {
     { icon: Car, count: String(counts.properties), label: 'Vehicle properties', note: 'Every property, its enums, permissions and dependencies.', href: '/learn/vehicle-properties/' },
     { icon: Boxes, count: String(counts.tutorials), label: 'Tutorials', note: 'Build a boot animation, an RRO, a system app.', href: '/tutorials/' },
     { icon: Gauge, count: '2', label: 'Live simulators', note: 'Change a property and watch the car respond.', href: '/learn/vehicle-simulator/' },
+    { icon: BrainCircuit, count: String(counts.aiml), label: 'AI & ML topics', note: 'From the maths to LLMs, with code and projects.', href: '/ai-ml/' },
+    { icon: Sparkles, count: String(counts.widgets), label: 'Interactive diagrams', note: 'Drag, tweak and watch gradient descent, matrices and neurons move.', href: '/ai-ml/' },
     { icon: Search, count: String(counts.glossary), label: 'Glossary terms', note: 'The vocabulary, defined without assuming you know it.', href: '/glossary/' },
   ]
 }
@@ -117,7 +127,7 @@ export function Landing() {
         />
         <div className="container-page relative py-20 md:py-28">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
-            Android Automotive · AOSP · Software-defined vehicles · AI/ML soon
+            Android Automotive · AOSP · Software-defined vehicles · AI &amp; ML
           </p>
           <h1 className="mt-6 max-w-4xl text-balance font-display text-4xl font-bold leading-[1.08] tracking-tight md:text-5xl lg:text-6xl">
             The Android Automotive material I wanted when I started.
@@ -126,6 +136,14 @@ export function Landing() {
             A decade of platform work, written down properly: how AAOS actually fits together,
             what the vehicle HAL really is, and why the thing you are debugging behaves the way
             it does. Not API docs, and not a blog — the explanation underneath both.
+          </p>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
+            And now a second body of work: a full AI and machine learning curriculum, from the
+            mathematics up to large language models, with code, interactive diagrams and
+            hands-on projects.{' '}
+            <Link href="/ai-ml/" className="text-accent underline-offset-4 hover:underline">
+              See AI &amp; ML
+            </Link>
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-3">
@@ -156,7 +174,7 @@ export function Landing() {
           <h2 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">
             What is in here
           </h2>
-          <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
             {LIBRARY.map((item) => (
               <div
                 key={item.label}
@@ -245,7 +263,7 @@ export function Landing() {
                 Open to everyone
               </p>
               <ul className="mt-5 space-y-3 text-sm text-muted">
-                <li>{access.freeCount} complete topics across Learn AAOS, SDV and the tutorials</li>
+                <li>{access.freeCount} complete topics across Learn AAOS, SDV, AI &amp; ML and the tutorials</li>
                 <li>Every blog post</li>
                 <li>Search across titles and summaries</li>
                 <li>Read-aloud on every page, with neural voices</li>
@@ -277,16 +295,19 @@ export function Landing() {
                     the cockpit &amp; display tool
                   </span>
                 </li>
+                <li>
+                  All {counts.aiml} AI &amp; ML topics so far, with more added every hour
+                </li>
                 <li>The glossary, and every tutorial</li>
               </ul>
               <p className="mt-5 text-xs leading-relaxed text-subtle">
-                Learn AAOS and SDV have separate keys, so you can take one without the other —
-                AI &amp; ML for Automotive will follow the same pattern once it launches.
+                Learn AAOS, SDV and AI &amp; ML each have their own key, so you can take one
+                without the others.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <RequestAccessButton
                   label="Request access"
-                  defaultTopics={['learn', 'sdv']}
+                  defaultTopics={['learn', 'sdv', 'aiml']}
                   context="Full library"
                 />
               </div>
@@ -295,40 +316,76 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ---- What's next -------------------------------------------------- */}
+      {/* ---- AI & ML ------------------------------------------------------ */}
       <section className="border-b border-line">
         <div className="container-page py-16 md:py-20">
-          <div className="card flex flex-col gap-6 border-accent/40 p-6 sm:flex-row sm:items-center sm:justify-between md:p-8">
+          <div className="card border-accent/40 p-6 md:p-8">
             <div className="flex items-start gap-4">
               <span className="mt-0.5 inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2">
                 <BrainCircuit aria-hidden className="size-5 text-accent" />
               </span>
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
-                  Coming soon · a third track
+                  The third track · growing every hour
                 </p>
                 <h2 className="mt-2 font-display text-xl font-semibold tracking-tight md:text-2xl">
-                  AI &amp; ML for Automotive
+                  AI &amp; ML, from the maths to LLMs
                 </h2>
-                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
-                  The same standard as everything else here, applied to AI and machine
-                  learning in the vehicle. Its own separate subscription, alongside Learn
-                  AAOS and SDV — not bundled into either.
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+                  Not a tour of buzzwords. The mathematics comes first and is taught slowly, with
+                  pictures and code, so that backpropagation, attention and diffusion are things
+                  you can derive rather than things you have heard of. Then classical machine
+                  learning, deep learning, vision, language, large language models, RAG and agents,
+                  each with runnable examples built on open-source tools.
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-3 sm:flex-col sm:items-stretch">
+
+            <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+              <li className="rounded-lg border border-line bg-surface p-4">
+                <Sigma aria-hidden className="size-4 text-accent" />
+                <p className="mt-3 text-sm font-medium text-fg">Maths for machine learning</p>
+                <p className="mt-1 text-[0.85rem] leading-relaxed text-muted">
+                  Linear algebra, calculus, probability and optimisation, each tied to the model
+                  that needs it.
+                </p>
+              </li>
+              <li className="rounded-lg border border-line bg-surface p-4">
+                <Sparkles aria-hidden className="size-4 text-accent" />
+                <p className="mt-3 text-sm font-medium text-fg">Interactive diagrams</p>
+                <p className="mt-1 text-[0.85rem] leading-relaxed text-muted">
+                  Drag a matrix, step gradient descent, move a decision boundary. Hard ideas
+                  you can poke at.
+                </p>
+              </li>
+              <li className="rounded-lg border border-line bg-surface p-4">
+                <FlaskConical aria-hidden className="size-4 text-accent" />
+                <p className="mt-3 text-sm font-medium text-fg">Projects you can run</p>
+                <p className="mt-1 text-[0.85rem] leading-relaxed text-muted">
+                  A local chatbot, image recognition, training and fine-tuning models, RAG over
+                  your own documents, prompt engineering.
+                </p>
+              </li>
+            </ul>
+
+            <p className="mt-6 font-mono text-xs text-subtle">
+              {counts.aiml} topics published · {aiMlModules.length} modules planned · its own key,
+              separate from Learn AAOS and SDV
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 href="/ai-ml/"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
               >
-                Learn more
+                Explore AI &amp; ML
                 <ArrowRight aria-hidden className="size-3.5" />
               </Link>
               <RequestAccessButton
-                label="Ask for details and cost"
+                label="Request access"
                 variant="secondary"
-                context="AI & ML for Automotive"
+                defaultTopics={['aiml']}
+                context="AI & ML"
               />
             </div>
           </div>

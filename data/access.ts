@@ -1,10 +1,10 @@
 /**
  * Which material is open, which needs a key, and which key.
  *
- * Two keys rather than one. Learn AAOS and everything built around it — the
+ * Three keys rather than one. Learn AAOS and everything built around it — the
  * tutorials, the property reference, the simulators, the glossary — is one
- * body of work; the SDV track is another, and someone may want only one of
- * them. Holding a key for one says nothing about the other.
+ * body of work; the SDV track is another; AI & ML is a third, and someone may
+ * want only one of them. Holding a key for one says nothing about the others.
  *
  * The rule is inverted on purpose: material is locked unless it is listed here.
  * Adding a topic should not silently give it away, and the free list is short
@@ -14,8 +14,8 @@
  * and a locked front door has nothing behind it.
  */
 
-/** The two independently purchasable bodies of work. */
-export type Realm = 'learn' | 'sdv'
+/** The three independently purchasable bodies of work. */
+export type Realm = 'learn' | 'sdv' | 'aiml'
 
 /** Everything that can be locked, and which realm's key opens it. */
 export type GatedArea =
@@ -26,6 +26,7 @@ export type GatedArea =
   | 'cockpit'
   | 'glossary'
   | 'sdv'
+  | 'aiml'
 
 const REALM_OF: Record<GatedArea, Realm> = {
   learn: 'learn',
@@ -35,15 +36,17 @@ const REALM_OF: Record<GatedArea, Realm> = {
   cockpit: 'learn',
   glossary: 'learn',
   sdv: 'sdv',
+  aiml: 'aiml',
 }
 
 export const REALM_LABEL: Record<Realm, string> = {
   learn: 'Learn AAOS',
   sdv: 'Software-defined vehicles',
+  aiml: 'AI & ML',
 }
 
 /** Areas whose items are listed individually, so some can be free. */
-type TopicArea = Extract<GatedArea, 'learn' | 'sdv' | 'tutorials' | 'properties'>
+type TopicArea = Extract<GatedArea, 'learn' | 'sdv' | 'tutorials' | 'properties' | 'aiml'>
 
 /**
  * The trial. A reader should be able to judge whether the rest is worth asking
@@ -57,6 +60,16 @@ export const FREE_TOPICS: Record<TopicArea, string[]> = {
     'foundations/boot-sequence',
   ],
   sdv: ['architecture/service-oriented-architecture'],
+  /**
+   * The AI & ML trial: the first lesson, one maths topic and one hands-on
+   * tutorial, so a reader can judge the explanations, the maths and the
+   * practical style before asking for a key.
+   */
+  aiml: [
+    'foundations/what-ai-actually-means',
+    'maths-optimisation-information/gradient-descent',
+    'practical-tutorials/your-first-model-iris',
+  ],
   tutorials: ['apps-ui/custom-rro'],
   /**
    * Four properties, chosen to demonstrate the shape of the reference rather

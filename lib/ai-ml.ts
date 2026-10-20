@@ -17,6 +17,8 @@ export type AiMlTopicMeta = {
   description: string
   order: number
   difficulty: Difficulty
+  /** 'tutorial' for hands-on projects; everything else is a concept page. */
+  kind: 'concept' | 'tutorial'
   tags: string[]
   sources: SourceLink[]
   readingMinutes: number
@@ -45,6 +47,7 @@ function read(moduleSlug: string, fileName: string): AiMlTopic {
     description: String(data.description ?? ''),
     order: data.order,
     difficulty: (data.difficulty ?? 'Beginner') as Difficulty,
+    kind: data.kind === 'tutorial' ? 'tutorial' : 'concept',
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     sources: Array.isArray(data.sources) ? (data.sources as SourceLink[]) : [],
     readingMinutes: Math.max(1, Math.round(stats.minutes)),
@@ -103,3 +106,7 @@ export function getAdjacentAiMlTopics(slug: string): {
 }
 
 export { extractTopicHeadings as extractAiMlHeadings }
+
+export function aiMlTotalMinutes(): number {
+  return getAllAiMlTopics().reduce((n, t) => n + t.readingMinutes, 0)
+}

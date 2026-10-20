@@ -26,7 +26,7 @@ type Entry = {
 
 type Scored = Entry & { score: number }
 
-const KIND_ORDER = ['Page', 'Learn AAOS', 'Tutorial', 'SDV', 'Property', 'Glossary', 'Writing']
+const KIND_ORDER = ['Page', 'Learn AAOS', 'Tutorial', 'SDV', 'AI & ML', 'Property', 'Glossary', 'Writing']
 
 /**
  * Ranks an entry against the query.

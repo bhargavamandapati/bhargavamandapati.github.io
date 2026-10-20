@@ -54,6 +54,7 @@ yarn-error.log*
 /content/learn/
 /content/sdv/
 /content/tutorials/
+/content/ai-ml/
 # Diagrams that only the premium articles use ship in the same private repo.
 /components/diagrams/multidisplay-*.tsx
 /components/diagrams/graphics-*.tsx

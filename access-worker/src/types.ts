@@ -1,9 +1,9 @@
-export type Realm = 'learn' | 'sdv'
+export type Realm = 'learn' | 'sdv' | 'aiml'
 
-export const REALMS: Realm[] = ['learn', 'sdv']
+export const REALMS: Realm[] = ['learn', 'sdv', 'aiml']
 
 export function isRealm(value: unknown): value is Realm {
-  return value === 'learn' || value === 'sdv'
+  return value === 'learn' || value === 'sdv' || value === 'aiml'
 }
 
 export type Env = {

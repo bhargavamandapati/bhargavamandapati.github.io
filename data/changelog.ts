@@ -38,8 +38,33 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.20',
     date: '2026-10-20',
-    title: 'Every Learn topic, tutorial and SDV topic rewritten to one clear anatomy, plus the first 15 core-module pages',
+    title: 'AI & ML launches as the third track; every Learn, tutorial and SDV topic rewritten; 15 new core-module pages',
     changes: [
+      {
+        type: 'added',
+        text: 'AI & ML is now a full track and no longer “for Automotive”: general AI and machine learning from the mathematics up. The plan covers 20 modules — foundations, the Python toolchain, four maths modules (linear algebra, calculus, probability and statistics, optimisation and information theory), classical ML, ML in practice, deep learning, computer vision, NLP, transformers and LLMs, building with LLMs (prompting, RAG, agents, MCP, local models), generative models, reinforcement learning, MLOps, responsible AI, practical tutorials and research frontiers. Ten new topics are added every hour.',
+        links: [{ label: 'AI & ML', href: '/ai-ml/' }],
+      },
+      {
+        type: 'added',
+        text: 'A separate access key for AI & ML, set up exactly like Learn AAOS and SDV: every AI & ML topic is locked by default except a short free trial (the first lesson, gradient descent and a first-model tutorial). The article bodies are encrypted at build time, the key is rotated monthly by the access service, and holding a key for one track opens nothing in the others. “AI & ML” now appears in the Access menu and in the request-access form.',
+      },
+      {
+        type: 'added',
+        text: 'Mathematics on the page: formulas in AI & ML topics are typeset with KaTeX at build time, so they are plain HTML and survive the encryption like any other text.',
+      },
+      {
+        type: 'added',
+        text: 'Interactive diagrams for AI & ML: small widgets you can drag and tweak inside a lesson — a matrix transformation lab, gradient descent on three different curves, a single-neuron playground, a distribution explorer, a least-squares regression lab and a softmax temperature lab. They work inside locked topics too, once the key is entered.',
+      },
+      {
+        type: 'changed',
+        text: 'Home page: the “coming soon” AI & ML card is now a full AI & ML section (maths first, interactive diagrams, projects you can run), the library grid gained AI & ML topic and interactive-diagram counts, the hero names the third track, and the access section now describes three separate keys.',
+      },
+      {
+        type: 'changed',
+        text: 'Navigation and search: “AI & ML” is a menu with sub-sections instead of a single link, search results are grouped under AI & ML, the sitemap lists the free AI & ML topics, and the AI & ML sidebar shows lock badges the way SDV does.',
+      },
       {
         type: 'changed',
         text: 'Learn (116 topics) — every topic rewritten to one anatomy: a short introduction with key terms and a page map, a “what it is” section, “how it works” in numbered parts, a worked example, common mistakes, a conclusion, and a revision card with a self-test. Each page now has at least one diagram and two tables, sentences average under 18 words, and no paragraph runs past 100.',

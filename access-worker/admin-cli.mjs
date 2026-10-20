@@ -58,7 +58,7 @@ if (!WORKER_URL || !ADMIN_TOKEN) {
   process.exit(1)
 }
 if (!args.email || !args.realm || !args.amount) {
-  console.error('Usage: node admin-cli.mjs --email <email> --realm <learn|sdv> --amount <amount>')
+  console.error('Usage: node admin-cli.mjs --email <email> --realm <learn|sdv|aiml> --amount <amount>')
   process.exit(1)
 }
 

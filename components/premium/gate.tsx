@@ -154,6 +154,8 @@ export function PremiumGate({
           target.removeAttribute('data-premium')
           rewireCopyButtons(target)
           rewireLanguageToggles(target)
+          // Interactive diagrams are placeholders until something mounts them.
+          void import('@/components/ai-ml/widgets/mount').then((m) => m.mountWidgets(target))
         }
         if (remember) {
           try {

@@ -143,7 +143,62 @@ export const site = {
         },
       ],
     },
-    { label: 'AI ML', href: '/ai-ml/' },
+    {
+      label: 'AI & ML',
+      href: '/ai-ml/',
+      children: [
+        {
+          label: 'AI & ML',
+          href: '/ai-ml/',
+          description: 'The full curriculum, from the mathematics to large language models.',
+        },
+        {
+          label: 'Foundations & Python',
+          href: '/ai-ml/#aiml-foundations',
+          description: 'What AI and ML are, and the Python toolchain you will use.',
+        },
+        {
+          label: 'Maths for ML',
+          href: '/ai-ml/#aiml-maths-linear-algebra',
+          description: 'Linear algebra, calculus, probability, statistics and optimisation.',
+        },
+        {
+          label: 'Classical ML',
+          href: '/ai-ml/#aiml-classical-ml',
+          description: 'Regression, trees, boosting, clustering, and doing it properly in practice.',
+        },
+        {
+          label: 'Deep learning',
+          href: '/ai-ml/#aiml-deep-learning',
+          description: 'Neural networks, backpropagation, optimisers and PyTorch training.',
+        },
+        {
+          label: 'Vision & language',
+          href: '/ai-ml/#aiml-computer-vision',
+          description: 'CNNs, detection, segmentation, NLP, embeddings and attention.',
+        },
+        {
+          label: 'LLMs & building with them',
+          href: '/ai-ml/#aiml-transformers-llms',
+          description: 'Transformers, fine-tuning, prompting, RAG, agents and local models.',
+        },
+        {
+          label: 'Generative & RL',
+          href: '/ai-ml/#aiml-generative-models',
+          description: 'Diffusion, GANs, VAEs and reinforcement learning.',
+        },
+        {
+          label: 'MLOps & responsible AI',
+          href: '/ai-ml/#aiml-mlops-deployment',
+          description: 'Deploying, monitoring and building AI responsibly.',
+        },
+        {
+          label: 'Practical tutorials',
+          href: '/ai-ml/#aiml-practical-tutorials',
+          description: 'Chatbots, image recognition, training and fine-tuning, step by step.',
+        },
+      ],
+    },
     { label: 'Writing', href: '/blog/' },
     // A plain link: About is its own standalone page, not a menu.
     { label: 'About', href: '/about/' },

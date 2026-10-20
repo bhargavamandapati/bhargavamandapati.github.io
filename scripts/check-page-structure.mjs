@@ -18,11 +18,12 @@ const all = args.includes('--all')
 const asJson = args.includes('--json')
 const filters = args.filter((a) => !a.startsWith('--'))
 
-const files = globSync('content/{learn,tutorials,sdv}/**/*.mdx')
+const files = globSync('content/{learn,tutorials,sdv,ai-ml}/**/*.mdx')
   .sort()
   .filter((f) => !filters.length || filters.some((x) => f.includes(x)))
 
 const SENT_MAX = { learn: 18, tutorials: 20 }
+// AI & ML pages use the Learn anatomy, or the tutorial anatomy when the page sets `kind: tutorial`.
 const PARA_MAX = 100
 const BANNED = /\b(simply|just|obviously|trivial|trivially|easily)\b/i
 
@@ -42,7 +43,10 @@ function check(file) {
   const fm = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
   const flagged = /^rewrite:\s*2\s*$/m.test(fm)
   if (!flagged && !all) return null
-  const area = file.startsWith('content/tutorials/') ? 'tutorials' : 'learn'
+  const area =
+    file.startsWith('content/tutorials/') || (file.startsWith('content/ai-ml/') && /^kind:\s*tutorial\s*$/m.test(fm))
+      ? 'tutorials'
+      : 'learn'
   const body = raw.replace(/^---[\s\S]*?\n---/, '')
   const noCode = body.replace(/```[\s\S]*?```/g, ' ')
   const fails = []

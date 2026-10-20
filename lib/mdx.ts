@@ -4,6 +4,8 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypePrettyCode from 'rehype-pretty-code'
 import rehypeSlug from 'rehype-slug'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 
 const prettyCodeOptions: PrettyCodeOptions = {
   // High-contrast variants: the standard github-light palette puts several
@@ -29,6 +31,24 @@ export const mdxOptions: NonNullable<MDXRemoteProps['options']> = {
           content: { type: 'text', value: '#' },
         },
       ],
+    ],
+  },
+}
+
+/**
+ * AI & ML pages carry mathematics. remark-math reads `$...$` and `$$...$$`
+ * and rehype-katex turns it into plain HTML at build time, so the formulas
+ * survive the encryption step like any other markup and need no script.
+ * Kept separate so the `$` in other tracks' shell snippets and prices is never
+ * read as maths. Write a literal dollar sign as `\$` on these pages.
+ */
+export const aimlMdxOptions: NonNullable<MDXRemoteProps['options']> = {
+  mdxOptions: {
+    remarkPlugins: [remarkGfm, remarkMath],
+    rehypePlugins: [
+      rehypeSlug,
+      [rehypeKatex, { strict: 'ignore', throwOnError: false }],
+      ...((mdxOptions.mdxOptions?.rehypePlugins ?? []).slice(1) as []),
     ],
   },
 }

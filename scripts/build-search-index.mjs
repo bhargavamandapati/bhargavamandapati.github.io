@@ -42,6 +42,7 @@ const SECTIONS = [
   { dir: 'content/learn', base: '/learn', kind: 'Learn AAOS', gate: 'learn' },
   { dir: 'content/sdv', base: '/sdv', kind: 'SDV', gate: 'sdv' },
   { dir: 'content/tutorials', base: '/tutorials', kind: 'Tutorial', gate: 'tutorials' },
+  { dir: 'content/ai-ml', base: '/ai-ml', kind: 'AI & ML', gate: 'aiml' },
 ]
 for (const section of SECTIONS) {
   for (const file of globSync(`${section.dir}/**/*.mdx`, { cwd: ROOT }).sort()) {

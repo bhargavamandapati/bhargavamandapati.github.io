@@ -8,7 +8,7 @@
  * needs to be removed by hand.
  */
 
-export type NewContentArea = 'learn' | 'sdv' | 'tutorials'
+export type NewContentArea = 'learn' | 'sdv' | 'tutorials' | 'aiml'
 
 export type NewContentEntry = {
   area: NewContentArea

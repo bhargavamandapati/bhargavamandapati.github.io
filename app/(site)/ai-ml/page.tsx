@@ -1,162 +1,216 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, BrainCircuit, Clock, Compass } from 'lucide-react'
+import { ArrowRight, BrainCircuit, Clock, FlaskConical, Sigma } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
+import { NewBadge } from '@/components/new-badge'
+import { ItemLockBadge } from '@/components/premium/item-lock-badge'
 import { RequestAccessButton } from '@/components/premium/request-access'
+import { AiMlModuleIcon } from '@/components/ai-ml/module-icon'
+import { aiMlModules } from '@/data/ai-ml-curriculum'
+import { isNewContent } from '@/data/new-content'
 import { site } from '@/data/site'
-import { aiMlModules, topicsForModule } from '@/data/ai-ml-curriculum'
-import { getAllAiMlTopics } from '@/lib/ai-ml'
+import { aiMlTotalMinutes, getAllAiMlTopics, getAiMlCurriculum } from '@/lib/ai-ml'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = {
-  title: 'AI & ML for Automotive',
+  title: 'AI & ML: from the maths to LLMs',
   description:
-    'A new track on AI and machine learning in the vehicle, in progress — the same source-linked, no-hand-waving treatment as the rest of this site. The first lesson is free to read; the rest of the track will be its own separate subscription.',
+    'A complete AI and machine learning curriculum, from the mathematics up: linear algebra, calculus, probability and optimisation, then classical ML, deep learning, vision, NLP, large language models, RAG and agents, with runnable code, interactive diagrams and hands-on projects.',
   alternates: { canonical: '/ai-ml/' },
   openGraph: {
     type: 'website',
-    title: `AI & ML for Automotive · ${site.name}`,
-    description: 'A new track on AI and machine learning in the vehicle. First lesson live now.',
+    title: `AI & ML: from the maths to LLMs · ${site.name}`,
+    description:
+      'The mathematics, the models and the practice, explained plainly, with code, interactive diagrams and open-source projects.',
     url: `${site.url}/ai-ml/`,
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'AI & ML for Automotive' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'AI & ML' }],
   },
 }
 
+const DIFFICULTY_STYLES: Record<string, string> = {
+  Beginner: 'diff-beginner',
+  Intermediate: 'diff-intermediate',
+  Advanced: 'diff-advanced',
+}
+
 export default function AiMlPage() {
-  const publishedTopics = getAllAiMlTopics()
+  const modules = getAiMlCurriculum()
+  const topics = getAllAiMlTopics()
+  const minutes = aiMlTotalMinutes()
+  const first = topics[0]
+  const upcoming = aiMlModules.filter((m) => !modules.some((x) => x.slug === m.slug))
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: 'AI & ML: from the maths to LLMs',
+    description: metadata.description,
+    url: `${site.url}/ai-ml/`,
+    provider: { '@type': 'Person', name: site.name, url: site.url },
+    inLanguage: 'en',
+    hasCourseInstance: {
+      '@type': 'CourseInstance',
+      courseMode: 'online',
+      courseWorkload: `PT${Math.max(1, Math.round(minutes / 60))}H`,
+    },
+    syllabusSections: aiMlModules.map((m, i) => ({
+      '@type': 'Syllabus',
+      name: m.name,
+      description: m.blurb,
+      position: i + 1,
+    })),
+  }
+
+  let counter = 0
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
       <PageHeader
-        eyebrow="In progress"
-        title="AI & ML for Automotive"
-        description="A third track, alongside Learn AAOS and SDV — AI and machine learning as they actually show up in the vehicle, not a generic ML course with a car in the title. The first lesson is live; the rest is still being written."
-      />
+        eyebrow="AI & ML"
+        title="AI and machine learning, from the maths to LLMs"
+        description="A full curriculum for people who want to understand how this works, not just call an API. The mathematics comes first and is taught slowly, with pictures and code. Then classical machine learning, deep learning, vision, language, large language models, RAG and agents, with runnable examples, interactive diagrams and hands-on projects built on open-source tools."
+      >
+        <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-xs text-subtle">
+          <span className="inline-flex items-center gap-2">
+            <BrainCircuit aria-hidden className="size-4 text-accent" />
+            {topics.length} topics · {modules.length} of {aiMlModules.length} modules published
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Clock aria-hidden className="size-4 text-accent" />
+            {Math.floor(minutes / 60)}h {minutes % 60}m of reading
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Sigma aria-hidden className="size-4 text-accent" />
+            Maths first
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <FlaskConical aria-hidden className="size-4 text-accent" />
+            Hands-on projects
+          </span>
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          {first && (
+            <Link
+              href={`/ai-ml/${first.slug}/`}
+              className="group inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover"
+            >
+              Start with {first.title}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          )}
+          <RequestAccessButton
+            label="Request access"
+            variant="secondary"
+            defaultTopics={['aiml']}
+            context="AI & ML"
+          />
+        </div>
+      </PageHeader>
 
       <div className="container-page py-14 md:py-16">
-        <div className="max-w-2xl">
-          <span className="inline-flex size-12 items-center justify-center rounded-xl border border-line bg-surface-2">
-            <BrainCircuit aria-hidden className="size-5 text-accent" />
-          </span>
+        <div className="space-y-16">
+          {modules.map((m) => (
+            <section key={m.slug} aria-labelledby={`aiml-${m.slug}`}>
+              <div className="flex items-start gap-4">
+                <span className="mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2">
+                  <AiMlModuleIcon name={m.icon} className="size-5 text-accent" />
+                </span>
+                <div className="min-w-0">
+                  <h2
+                    id={`aiml-${m.slug}`}
+                    className="font-display text-xl font-semibold tracking-tight md:text-2xl"
+                  >
+                    {m.name}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{m.blurb}</p>
+                </div>
+              </div>
 
-          <h2 className="mt-6 font-display text-xl font-semibold tracking-tight md:text-2xl">
-            Same standard, new subject
-          </h2>
-          <p className="mt-4 leading-relaxed text-muted">
-            Everything else on this site is written a specific way: plain explanations, real
-            source rather than paraphrased docs, and nothing asserted that hasn&rsquo;t been
-            checked. This track applies that to AI and machine learning in the automotive
-            stack — where inference actually runs, what changes when it has to happen
-            on-device, and how it connects to the platform work the rest of this site already
-            covers.
-          </p>
-          <p className="mt-4 leading-relaxed text-muted">
-            The first lesson below is live and free to read. Everything after it is still just
-            an outline — reviewed here before any more lesson content gets written.
-          </p>
-        </div>
-
-        <div className="mt-12 max-w-3xl">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-2">
-              <Compass aria-hidden className="size-4 text-accent" />
-            </span>
-            <div>
-              <h2 className="font-display text-lg font-semibold tracking-tight">
-                Module 1 · {aiMlModules[0].name}
-              </h2>
-              <p className="mt-0.5 text-sm text-muted">{aiMlModules[0].blurb}</p>
-            </div>
-          </div>
-
-          <ol className="mt-6 space-y-3">
-            {topicsForModule(aiMlModules[0].slug).map((topic, i) => {
-              const published = publishedTopics.find(
-                (t) => t.moduleSlug === topic.moduleSlug && t.topicSlug === topic.topicSlug
-              )
-              return (
-                <li
-                  key={topic.topicSlug}
-                  className={cn(
-                    'flex gap-4 rounded-xl border p-4',
-                    published
-                      ? 'card group relative border-accent/30 bg-surface transition-all hover:border-accent/60 hover:shadow-lg'
-                      : 'border-line bg-surface'
-                  )}
-                >
-                  <span className="mt-0.5 shrink-0 font-mono text-xs text-subtle tabular-nums">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <h3 className="font-display text-sm font-semibold tracking-tight text-fg">
-                        {published ? (
-                          <Link href={`/ai-ml/${published.slug}/`} className="after:absolute after:inset-0">
-                            {topic.title}
+              <ol className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {m.topics.map((t) => {
+                  counter += 1
+                  return (
+                    <li key={t.slug} className="h-full">
+                      <article className="card group relative flex h-full flex-col p-5 transition-all hover:border-accent/50 hover:shadow-lg">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-mono text-[0.7rem] text-subtle tabular-nums">
+                            {String(counter).padStart(2, '0')}
+                          </span>
+                          <span className="inline-flex items-center gap-2">
+                            {isNewContent('aiml', t.slug) && <NewBadge />}
+                            {t.kind === 'tutorial' && (
+                              <span className="font-mono text-[0.65rem] uppercase tracking-wider text-accent">
+                                Hands-on
+                              </span>
+                            )}
+                            <span
+                              className={cn(
+                                'font-mono text-[0.65rem] uppercase tracking-wider',
+                                DIFFICULTY_STYLES[t.difficulty] ?? 'text-subtle',
+                              )}
+                            >
+                              {t.difficulty}
+                            </span>
+                          </span>
+                        </div>
+                        <h3 className="mt-3 font-display text-[0.98rem] font-semibold leading-snug tracking-tight text-fg">
+                          <Link href={`/ai-ml/${t.slug}/`} className="after:absolute after:inset-0">
+                            {t.title}
                           </Link>
-                        ) : (
-                          topic.title
-                        )}
-                      </h3>
-                      <span
-                        className={cn(
-                          'font-mono text-[0.65rem] uppercase tracking-wider',
-                          topic.difficulty === 'Beginner' && 'diff-beginner',
-                          topic.difficulty === 'Intermediate' && 'diff-intermediate',
-                          topic.difficulty === 'Advanced' && 'diff-advanced',
-                        )}
-                      >
-                        {topic.difficulty}
-                      </span>
-                      {published ? (
-                        <span className="inline-flex items-center gap-1 font-mono text-[0.65rem] text-subtle">
-                          <Clock aria-hidden className="size-3" />
-                          {published.readingMinutes} min
-                        </span>
-                      ) : (
-                        <span className="chip">planned</span>
-                      )}
-                    </div>
-                    <p className="mt-1.5 text-[0.85rem] leading-relaxed text-muted">
-                      {topic.description}
-                    </p>
-                  </div>
-                  {published && (
-                    <ArrowRight
-                      aria-hidden
-                      className="mt-0.5 size-4 shrink-0 self-start text-subtle transition-transform group-hover:translate-x-1 group-hover:text-accent"
-                    />
-                  )}
-                </li>
-              )
-            })}
-          </ol>
+                          <ItemLockBadge area="aiml" slug={t.slug} className="ml-2" />
+                        </h3>
+                        <p className="mt-2 flex-1 text-[0.85rem] leading-relaxed text-muted">
+                          {t.description}
+                        </p>
+                        <p className="mt-4 font-mono text-[0.7rem] text-subtle">
+                          {t.readingMinutes} min read
+                        </p>
+                      </article>
+                    </li>
+                  )
+                })}
+              </ol>
+            </section>
+          ))}
         </div>
 
-        <div className="mt-12 max-w-2xl">
-          <div className="rounded-xl border border-line bg-bg-subtle p-6">
-            <h3 className="font-display text-base font-semibold tracking-tight">
-              Its own subscription, separate from Learn AAOS and SDV
-            </h3>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              Learn AAOS and SDV already work this way — an access key per track, so holding
-              one says nothing about the other. AI &amp; ML for Automotive will follow the
-              same pattern once it launches: a separate track, on its own key, so you only
-              ever pay for what you actually want. Reach out for details and cost, or to be
-              told when it&rsquo;s ready.
+        {upcoming.length > 0 && (
+          <section className="mt-16 max-w-3xl" aria-labelledby="aiml-upcoming">
+            <h2 id="aiml-upcoming" className="font-display text-xl font-semibold tracking-tight">
+              Coming up
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              New topics are added every hour. These modules are on the way.
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <RequestAccessButton context="AI & ML for Automotive — early access" />
-            </div>
-          </div>
+            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+              {upcoming.map((m) => (
+                <li key={m.slug} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
+                  <AiMlModuleIcon name={m.icon} className="mt-0.5 size-4 shrink-0 text-subtle" />
+                  <div className="min-w-0">
+                    <p className="font-display text-sm font-semibold tracking-tight text-fg">{m.name}</p>
+                    <p className="mt-1 text-[0.8rem] leading-relaxed text-muted">{m.blurb}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-          <Link
-            href="/"
-            className="mt-8 inline-flex items-center gap-1.5 text-sm text-accent underline-offset-4 hover:underline"
-          >
-            Back to the rest of the site
-            <ArrowRight aria-hidden className="size-3.5" />
-          </Link>
+        <div className="mt-14 max-w-2xl rounded-xl border border-line bg-bg-subtle p-6">
+          <h3 className="font-display text-base font-semibold tracking-tight">
+            Its own key, separate from Learn AAOS and SDV
+          </h3>
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            A few topics are free to read so you can judge the explanations, the maths and the
+            projects. The rest of AI &amp; ML is unlocked with its own access key. Holding a key
+            for Learn AAOS or SDV does not open it, and the other way round.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <RequestAccessButton defaultTopics={['aiml']} context="AI & ML" />
+          </div>
         </div>
       </div>
     </>

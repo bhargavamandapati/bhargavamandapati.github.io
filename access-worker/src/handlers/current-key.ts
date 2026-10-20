@@ -18,7 +18,7 @@ export async function handleCurrentKey(req: Request, env: Env): Promise<Response
   const url = new URL(req.url)
   const realm = url.searchParams.get('realm')
   if (!isRealm(realm)) {
-    return jsonResponse({ error: 'realm must be "learn" or "sdv"' }, 400)
+    return jsonResponse({ error: 'realm must be "learn", "sdv" or "aiml"' }, 400)
   }
 
   const key = await getCurrentRealmKey(env.DB, realm)

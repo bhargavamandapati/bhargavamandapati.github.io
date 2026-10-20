@@ -26,12 +26,12 @@
  * autoresponder this replaces.
  */
 
-export type RequestTopic = 'learn' | 'sdv' | 'ai-ml'
+export type RequestTopic = 'learn' | 'sdv' | 'aiml'
 
 export const REQUEST_TOPICS: { value: RequestTopic; label: string; disabled?: boolean; note?: string }[] = [
   { value: 'learn', label: 'Learn AAOS' },
   { value: 'sdv', label: 'SDV' },
-  { value: 'ai-ml', label: 'AI & ML for Automotive', disabled: true, note: 'Coming soon' },
+  { value: 'aiml', label: 'AI & ML' },
 ]
 
 export type RequestDuration = '1-month' | '1-year' | 'other'

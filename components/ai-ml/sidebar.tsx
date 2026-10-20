@@ -7,13 +7,18 @@ import { ListTree, X } from 'lucide-react'
 import { AiMlModuleIcon } from '@/components/ai-ml/module-icon'
 import type { AiMlModuleWithTopics } from '@/lib/ai-ml'
 import { cn } from '@/lib/utils'
+import { isFree } from '@/data/access'
+import { useRealmUnlocked } from '@/lib/use-realm-unlocked'
+import { LockBadge, lockedRowClass } from '@/components/premium/lock-badge'
 
 function Tree({
   modules,
   currentSlug,
+  unlocked,
 }: {
   modules: AiMlModuleWithTopics[]
   currentSlug?: string
+  unlocked: boolean
 }) {
   let index = 0
   return (
@@ -28,10 +33,29 @@ function Tree({
             {m.topics.map((t) => {
               index += 1
               const active = t.slug === currentSlug
+              const locked = !isFree('aiml', t.slug) && !unlocked
               return (
                 <li key={t.slug}>
-                  <Link
-                    href={`/ai-ml/${t.slug}/`}
+                  {locked ? (
+                    <span
+                      aria-disabled="true"
+                      title="Requires access"
+                    className={cn(
+                      '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
+                      active
+                        ? 'border-accent font-medium text-accent'
+                        : cn('border-transparent text-subtle', lockedRowClass)
+                    )}
+                  >
+                    <span className="font-mono text-[0.68rem] text-subtle tabular-nums">
+                      {String(index).padStart(2, '0')}
+                    </span>
+                    <span className="min-w-0">{t.title}</span>
+                      <LockBadge className="ml-auto" label="" />
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/ai-ml/${t.slug}/`}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
                       '-ml-px flex items-baseline gap-2 border-l py-1.5 pl-3 pr-2 text-[0.84rem] leading-snug transition-colors',
@@ -44,7 +68,8 @@ function Tree({
                       {String(index).padStart(2, '0')}
                     </span>
                     <span className="min-w-0">{t.title}</span>
-                  </Link>
+                    </Link>
+                  )}
                 </li>
               )
             })}
@@ -62,6 +87,7 @@ export function AiMlSidebar({
   modules: AiMlModuleWithTopics[]
   currentSlug?: string
 }) {
+  const unlocked = useRealmUnlocked('aiml')
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -85,9 +111,9 @@ export function AiMlSidebar({
       <aside className="hidden lg:block">
         <div className="sticky top-24 max-h-[calc(100dvh-8rem)] overflow-y-auto pr-3">
           <p className="mb-5 px-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-subtle">
-            {total} {total === 1 ? 'topic' : 'topics'} published
+            {total} topics
           </p>
-          <Tree modules={modules} currentSlug={currentSlug} />
+          <Tree modules={modules} currentSlug={currentSlug} unlocked={unlocked} />
         </div>
       </aside>
 
@@ -125,7 +151,7 @@ export function AiMlSidebar({
                 <X className="size-4" />
               </button>
             </div>
-            <Tree modules={modules} currentSlug={currentSlug} />
+            <Tree modules={modules} currentSlug={currentSlug} unlocked={unlocked} />
           </div>
         </div>
       )}

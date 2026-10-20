@@ -3,6 +3,7 @@ import { getAllPosts, getAllTags } from '@/lib/blog'
 import { getAllTopics } from '@/lib/learn'
 import { getAllTutorials } from '@/lib/tutorials'
 import { getAllSdvTopics } from '@/lib/sdv'
+import { getAllAiMlTopics } from '@/lib/ai-ml'
 import { vehicleProperties, propertySlug } from '@/lib/vehicle-properties'
 import { projects } from '@/data/resume'
 import { site } from '@/data/site'
@@ -95,7 +96,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${site.url}/ai-ml/`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
-      priority: 0.5,
+      priority: 0.9,
     },
     {
       url: `${site.url}/blog/`,
@@ -153,6 +154,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       .filter((t) => isFree('sdv', t.slug))
       .map((t) => ({
         url: `${site.url}/sdv/${t.slug}/`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.8,
+      })),
+    ...getAllAiMlTopics()
+      .filter((t) => isFree('aiml', t.slug))
+      .map((t) => ({
+        url: `${site.url}/ai-ml/${t.slug}/`,
         lastModified: new Date(),
         changeFrequency: 'monthly' as const,
         priority: 0.8,

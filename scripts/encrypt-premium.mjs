@@ -45,6 +45,7 @@ function readPassphrase(name) {
 const KEYS = {
   learn: readPassphrase('PREMIUM_PASSPHRASE_LEARN'),
   sdv: readPassphrase('PREMIUM_PASSPHRASE_SDV'),
+  aiml: readPassphrase('PREMIUM_PASSPHRASE_AIML'),
 }
 for (const [realm, key] of Object.entries(KEYS)) {
   if (!key) {
@@ -61,10 +62,10 @@ for (const [realm, key] of Object.entries(KEYS)) {
     process.exit(1)
   }
 }
-if (KEYS.learn === KEYS.sdv) {
+if (new Set(Object.values(KEYS)).size !== Object.keys(KEYS).length) {
   console.error(
-    'encrypt-premium: the two passphrases are identical, which defeats having two.\n' +
-      'One key would open both tracks.',
+    'encrypt-premium: two of the realm passphrases are identical, which defeats having\n' +
+      'separate keys. One key would open both tracks.',
   )
   process.exit(1)
 }
@@ -72,7 +73,7 @@ if (KEYS.learn === KEYS.sdv) {
 /** Which key opens a given payload, from the area encoded in its id. */
 function realmFor(id) {
   const area = id.includes('__') ? id.slice(0, id.indexOf('__')) : id
-  return area === 'sdv' ? 'sdv' : 'learn'
+  return area === 'sdv' ? 'sdv' : area === 'aiml' ? 'aiml' : 'learn'
 }
 
 /** Every index.html under out/, so the marker can be found wherever it is. */

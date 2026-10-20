@@ -101,10 +101,10 @@ const REGISTRIES = [
   { dataFile: 'data/curriculum.ts', contentDir: 'content/learn', kind: 'Learn category' },
   { dataFile: 'data/tutorials.ts', contentDir: 'content/tutorials', kind: 'tutorial track' },
   { dataFile: 'data/sdv-curriculum.ts', contentDir: 'content/sdv', kind: 'SDV module' },
-  { dataFile: 'data/ai-ml-curriculum.ts', contentDir: 'content/ai-ml', kind: 'AI & ML module' },
+  { dataFile: 'data/ai-ml-curriculum.ts', contentDir: 'content/ai-ml', kind: 'AI & ML module', allowEmpty: true },
 ]
 
-for (const { dataFile, contentDir, kind } of REGISTRIES) {
+for (const { dataFile, contentDir, kind, allowEmpty } of REGISTRIES) {
   const dataPath = path.join(ROOT, dataFile)
   const contentPath = path.join(ROOT, contentDir)
   if (!existsSync(dataPath) || !existsSync(contentPath)) continue
@@ -126,7 +126,9 @@ for (const { dataFile, contentDir, kind } of REGISTRIES) {
     }
   }
   for (const slug of registered) {
-    if (!onDisk.has(slug)) {
+    // A registered module may still be waiting for its first topic (AI & ML is
+    // written module by module).
+    if (!onDisk.has(slug) && !allowEmpty) {
       problems.push(`${dataFile}  ${kind} '${slug}' has no matching ${contentDir}/${slug}/ folder`)
     }
   }

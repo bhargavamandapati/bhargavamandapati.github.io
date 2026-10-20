@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Widget } from '@/components/ai-ml/widgets/widget'
 import type { MDXComponents } from 'mdx/types'
 import { AlertTriangle, Info, Lightbulb } from 'lucide-react'
 import { CodeWindow } from '@/components/learn/code-window'
@@ -2199,6 +2200,7 @@ export function Callout({
 }
 
 export const mdxComponents: MDXComponents = {
+  Widget,
   a: ({ href = '', children, ...props }) => {
     const isInternal = href.startsWith('/') || href.startsWith('#')
     if (isInternal) {

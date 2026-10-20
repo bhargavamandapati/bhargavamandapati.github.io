@@ -10,8 +10,10 @@ import { SourceList } from '@/components/learn/source'
 import { ContentProvenance } from '@/components/learn/content-provenance'
 import { TableOfContents } from '@/components/table-of-contents'
 import { ReadAloud } from '@/components/read-aloud'
+import { Gated } from '@/components/premium/gated'
+import { WidgetHost } from '@/components/ai-ml/widgets/widget-host'
 import { mdxComponents } from '@/components/mdx-components'
-import { mdxOptions } from '@/lib/mdx'
+import { aimlMdxOptions } from '@/lib/mdx'
 import {
   extractAiMlHeadings,
   getAdjacentAiMlTopics,
@@ -21,6 +23,7 @@ import {
 } from '@/lib/ai-ml'
 import { aiMlModuleBySlug } from '@/data/ai-ml-curriculum'
 import { site } from '@/data/site'
+import { isFree } from '@/data/access'
 import { cn } from '@/lib/utils'
 
 type Params = { slug: string[] }
@@ -39,11 +42,13 @@ export async function generateMetadata({
   if (!topic) return {}
 
   const m = aiMlModuleBySlug.get(topic.moduleSlug)
+  const locked = !isFree('aiml', topic.slug)
   return {
     title: topic.title,
     description: topic.description,
-    keywords: [...topic.tags, 'AI', 'machine learning', 'automotive'],
+    keywords: [...topic.tags, 'AI', 'machine learning'],
     alternates: { canonical: `/ai-ml/${topic.slug}/` },
+    ...(locked ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: 'article',
       title: `${topic.title} — ${m?.name ?? 'AI & ML'}`,
@@ -69,6 +74,7 @@ export default async function AiMlTopicPage({ params }: { params: Promise<Params
   const modules = getAiMlCurriculum()
   const headings = extractAiMlHeadings(topic.content)
   const { previous, next } = getAdjacentAiMlTopics(topic.slug)
+  const locked = !isFree('aiml', topic.slug)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -79,7 +85,7 @@ export default async function AiMlTopicPage({ params }: { params: Promise<Params
     keywords: topic.tags.join(', '),
     wordCount: topic.words,
     proficiencyLevel: topic.difficulty,
-    isAccessibleForFree: true,
+    isAccessibleForFree: !locked,
     author: { '@type': 'Person', name: site.name, url: site.url },
     publisher: { '@type': 'Person', name: site.name, url: site.url },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${site.url}/ai-ml/${topic.slug}/` },
@@ -140,14 +146,20 @@ export default async function AiMlTopicPage({ params }: { params: Promise<Params
                 <Clock aria-hidden className="size-3.5" />
                 {topic.readingMinutes} min
               </span>
+              {topic.kind === 'tutorial' && (
+                <span className="uppercase tracking-wider text-accent">Hands-on</span>
+              )}
               {topic.tags.length > 0 && <span>{topic.tags.join(' · ')}</span>}
             </div>
           </header>
 
           <article id="topic-body" data-copy-guard className="prose-bm mt-10">
             <ReadAloud targetId="topic-body" className="mb-8" />
-            <MDXRemote source={topic.content} components={mdxComponents} options={mdxOptions} />
+            <Gated area="aiml" slug={topic.slug} title={topic.title}>
+              <MDXRemote source={topic.content} components={mdxComponents} options={aimlMdxOptions} />
+            </Gated>
           </article>
+          <WidgetHost />
 
           <SourceList sources={topic.sources} />
           <ContentProvenance />

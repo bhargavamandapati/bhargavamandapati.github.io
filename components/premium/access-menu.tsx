@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
  * would need to be taught to every one of them.
  */
 
-const REALMS: Realm[] = ['learn', 'sdv']
+const REALMS: Realm[] = ['learn', 'sdv', 'aiml']
 
 function RealmRow({ realm }: { realm: Realm }) {
   const [unlocked, setUnlocked] = useState<boolean | null>(null)

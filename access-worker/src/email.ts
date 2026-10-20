@@ -3,6 +3,7 @@ import type { Env, Realm } from './types'
 const REALM_LABEL: Record<Realm, string> = {
   learn: 'Learn AAOS',
   sdv: 'Software-Defined Vehicles',
+  aiml: 'AI & ML',
 }
 
 export async function sendCodeEmail(
