@@ -38,8 +38,62 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.21',
     date: '2026-10-21',
-    title: 'AI & ML: Python toolchain finished and linear algebra complete; core Learn pages reconciled',
+    title: 'AI & ML: Python toolchain, linear algebra and the start of calculus and optimisation; two free lessons; core Learn pages reconciled',
     changes: [
+      {
+        type: 'added',
+        text: 'Functions, limits and continuity — functions as input–output machines, the common functions of ML, limits from intuition to the formal epsilon–delta definition, continuity, why kinks are fine and jumps are not, and how floating-point numbers limit what a computer can see.',
+        links: [{ label: 'Functions, limits and continuity', href: '/ai-ml/maths-calculus/functions-limits-and-continuity/' }],
+      },
+      {
+        type: 'added',
+        text: 'Derivatives — slope and rate of change from first principles, the difference quotient worked by hand, finite differences with real error tables, sensitivity of a loss to a weight, and where derivatives do not exist (ReLU and absolute value).',
+        links: [{ label: 'Derivatives', href: '/ai-ml/maths-calculus/derivatives/' }],
+      },
+      {
+        type: 'added',
+        text: 'Differentiation rules and the chain rule — sum, product, quotient and chain rules each justified, the sigmoid and tanh derivatives, the log-loss gradient p − y derived and checked against PyTorch, and why deep sigmoid stacks learn slowly.',
+        links: [{ label: 'Differentiation rules and the chain rule', href: '/ai-ml/maths-calculus/differentiation-rules-and-the-chain-rule/' }],
+      },
+      {
+        type: 'added',
+        text: 'Partial derivatives and gradients — functions of several variables, partial derivatives, the gradient as the direction of steepest ascent (proved), perpendicular to contours, and the gradient of a squared-error loss worked by hand.',
+        links: [{ label: 'Partial derivatives and gradients', href: '/ai-ml/maths-calculus/partial-derivatives-and-gradients/' }],
+      },
+      {
+        type: 'added',
+        text: 'The multivariate chain rule — summing over paths, trees of paths, partial versus total derivatives, a tiny two-layer network differentiated by hand and checked with autograd, and why backpropagation shares work.',
+        links: [{ label: 'The multivariate chain rule', href: '/ai-ml/maths-calculus/multivariate-chain-rule/' }],
+      },
+      {
+        type: 'added',
+        text: 'Jacobians and Hessians — the Jacobian of a vector-valued function and of a layer, the determinant as local area scaling, the Hessian and curvature in every direction, and the second-derivative test with saddles.',
+        links: [{ label: 'Jacobians and Hessians', href: '/ai-ml/maths-calculus/jacobians-and-hessians/' }],
+      },
+      {
+        type: 'added',
+        text: 'Taylor series and local approximation — polynomials that match a function near a point, where the factorials come from, error and radius of convergence, the multivariable form, and why gradient descent and Newton\'s method are first- and second-order models.',
+        links: [{ label: 'Taylor series and local approximation', href: '/ai-ml/maths-calculus/taylor-series-and-local-approximation/' }],
+      },
+      {
+        type: 'added',
+        text: 'Optimisation problems and convexity — objectives, variables and constraints, local versus global minima and saddles, convex functions and the chord rule, why convexity makes every local minimum global, and the condition number.',
+        links: [{ label: 'Optimisation problems and convexity', href: '/ai-ml/maths-optimisation-information/optimisation-problems-and-convexity/' }],
+      },
+      {
+        type: 'added',
+        text: 'Gradient descent (free lesson) — the update rule from first principles, learning rates that converge, bounce or diverge, the stretched bowl and the condition number, and a line fit trained from scratch in NumPy and PyTorch with two interactive diagrams.',
+        links: [{ label: 'Gradient descent (free lesson)', href: '/ai-ml/maths-optimisation-information/gradient-descent/' }],
+      },
+      {
+        type: 'added',
+        text: 'Tutorial: your first model on the iris data (free lesson) — a first classifier in scikit-learn: a stratified split, three models, accuracy, the confusion matrix, precision and recall, saving the model, and four beginner mistakes shown with real numbers.',
+        links: [{ label: 'Tutorial: your first model on the iris data (free lesson)', href: '/ai-ml/practical-tutorials/your-first-model-iris/' }],
+      },
+      {
+        type: 'added',
+        text: 'Calculus and optimisation begin: the AI & ML track now has a derivative-to-gradient-descent path. The two free trial lessons (gradient descent and the first iris model) are live, so anyone can try the track before asking for a key.',
+      },
       {
         type: 'added',
         text: 'Special matrices — identity, diagonal, triangular, symmetric, orthogonal, permutation, positive definite and sparse matrices, what each pattern buys you in speed and stability, and one-hot lookups as matrix products.',

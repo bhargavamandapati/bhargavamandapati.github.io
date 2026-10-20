@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'aiml', slug: 'maths-calculus/functions-limits-and-continuity', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/derivatives', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/differentiation-rules-and-the-chain-rule', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/partial-derivatives-and-gradients', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/multivariate-chain-rule', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/jacobians-and-hessians', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-calculus/taylor-series-and-local-approximation', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/optimisation-problems-and-convexity', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/gradient-descent', date: '2026-10-21' },
+  { area: 'aiml', slug: 'practical-tutorials/your-first-model-iris', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-linear-algebra/special-matrices', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-linear-algebra/determinants', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-linear-algebra/linear-systems-and-elimination', date: '2026-10-21' },
