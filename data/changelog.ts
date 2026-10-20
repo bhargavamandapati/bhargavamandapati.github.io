@@ -42,23 +42,69 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       {
         type: 'changed',
-        text: 'All 116 Learn topics, 67 tutorials and 49 SDV topics now follow the same page anatomy: orientation at the top, signposts through the body, worked examples, common mistakes, a self-test and a revision card. Sentences are shorter, every page has diagrams and tables, and claims that could not be checked against an official source say “not confirmed here”.',
+        text: 'Learn (116 topics) — every topic rewritten to one anatomy: a short introduction with key terms and a page map, a “what it is” section, “how it works” in numbered parts, a worked example, common mistakes, a conclusion, and a revision card with a self-test. Each page now has at least one diagram and two tables, sentences average under 18 words, and no paragraph runs past 100.',
+      },
+      {
+        type: 'changed',
+        text: 'Tutorials (67) — every tutorial rewritten to the tutorial anatomy: the idea in 60 seconds, a step map, numbered steps each with a goal, “if it did not work” notes, a verify section, troubleshooting, a conclusion and revision.',
+      },
+      {
+        type: 'changed',
+        text: 'SDV (49 topics) — rewritten to the same anatomy as Learn. Claims about AUTOSAR, SOME/IP, VSS and KUKSA were checked against the official sites where they could be fetched; anything that could not be checked says “not confirmed here”.',
+      },
+      {
+        type: 'changed',
+        text: 'Honesty pass — across all three areas, specifics that could not be confirmed against an official source (regulation texts, command forms that differ between pages, version-specific snippets) are now marked “not confirmed here” instead of stated as fact. The open points are tracked in the content review notes.',
       },
       {
         type: 'added',
-        text: 'Core modules, part 1 (10 Learn pages, more to follow) — the audio control HAL, Bluetooth audio routing and the volume dialog; the Dialer app, the Telecom and InCallService chain, the HFP client state machine, PBAP contacts sync and voice dialing in a reference assistant; the navigation state protobuf and the cluster navigation bridge. Each page says it rests on a reading of an AOSP source tree and marks what is not confirmed.',
-        links: [
-          { label: 'The audio control HAL', href: '/learn/audio/audio-control-hal/' },
-          { label: 'Bluetooth audio routing', href: '/learn/audio/bluetooth-audio-routing/' },
-          { label: 'The volume dialog and its callbacks', href: '/learn/audio/volume-dialog-and-callbacks/' },
-          { label: 'The car Dialer app', href: '/learn/connectivity/car-dialer-app/' },
-          { label: 'The Telecom and InCallService chain', href: '/learn/connectivity/telecom-incallservice-chain/' },
-          { label: 'The HFP client state machine', href: '/learn/connectivity/hfp-client-state-machine/' },
-          { label: 'PBAP contacts sync', href: '/learn/connectivity/pbap-contacts-sync/' },
-          { label: 'Voice dialing in a reference assistant', href: '/learn/apps-media/voice-dialing-reference-assistant/' },
-          { label: 'The navigation state protobuf', href: '/learn/cluster-displays/navigation-state-protobuf/' },
-          { label: 'The cluster navigation bridge', href: '/learn/cluster-displays/cluster-navigation-bridge/' },
-        ],
+        text: 'Audio control HAL (new, audio) — the IAudioControl interface that Car Service uses to talk to the vendor audio stack: its seven groups of methods, how focus and gain requests travel in each direction, and why configured gain on a bus goes through a different door.',
+        links: [{ label: 'The audio control HAL', href: '/learn/audio/audio-control-hal/' }],
+      },
+      {
+        type: 'added',
+        text: 'Bluetooth audio routing (new, audio) — how a connected phone’s audio becomes a device in the audio policy, and how Android decides which output a Bluetooth stream uses. Marks what the author’s grep did and did not cover.',
+        links: [{ label: 'Bluetooth audio routing', href: '/learn/audio/bluetooth-audio-routing/' }],
+      },
+      {
+        type: 'added',
+        text: 'The volume dialog and its callbacks (new, audio) — the path from a volume key or the dialog to a volume group, the car volume callbacks, and why the shell command takes a percent while the dialog works in steps.',
+        links: [{ label: 'The volume dialog and its callbacks', href: '/learn/audio/volume-dialog-and-callbacks/' }],
+      },
+      {
+        type: 'added',
+        text: 'The car Dialer app (new, connectivity) — what the car’s Dialer is made of, read from a prebuilt app’s class and string tables, and how it becomes the default phone app that Telecom binds.',
+        links: [{ label: 'The car Dialer app', href: '/learn/connectivity/car-dialer-app/' }],
+      },
+      {
+        type: 'added',
+        text: 'The Telecom and InCallService chain (new, connectivity) — how a Bluetooth call reaches the screen: the HFP client, the connection service, Telecom, then the InCallServices; the call-state mapping and the 60-second ringing and dialing limit.',
+        links: [{ label: 'The Telecom and InCallService chain', href: '/learn/connectivity/telecom-incallservice-chain/' }],
+      },
+      {
+        type: 'added',
+        text: 'The HFP client state machine (new, connectivity) — the five link states, the eight call states, and why the call states are built by asking the phone for its call list rather than copied from its indicators; one phone account per phone and why the default Dialer cannot choose between two.',
+        links: [{ label: 'The HFP client state machine', href: '/learn/connectivity/hfp-client-state-machine/' }],
+      },
+      {
+        type: 'added',
+        text: 'PBAP contacts sync (new, connectivity) — the car pulls the phone book as a PBAP client in vCard 3.0, 250 contacts a batch, into the Contacts Provider under one account per phone; what is confirmed and what is only inferred about the shared in-memory cache.',
+        links: [{ label: 'PBAP contacts sync', href: '/learn/connectivity/pbap-contacts-sync/' }],
+      },
+      {
+        type: 'added',
+        text: 'Voice dialing in a reference assistant (new, apps and media) — how a spoken “call …” becomes TelecomManager.placeCall, the assistant’s own spoken confirmation, why the Dialer has no voice hook, and the answer-call gap.',
+        links: [{ label: 'Voice dialing in a reference assistant', href: '/learn/apps-media/voice-dialing-reference-assistant/' }],
+      },
+      {
+        type: 'added',
+        text: 'The navigation state protobuf (new, cluster and displays) — the message tree a navigation app sends to the cluster, the 57 maneuver types by family, distance and cue fallbacks, and the one rule Car Service enforces on the old and new maneuver fields.',
+        links: [{ label: 'The navigation state protobuf', href: '/learn/cluster-displays/navigation-state-protobuf/' }],
+      },
+      {
+        type: 'added',
+        text: 'The cluster navigation bridge (new, cluster and displays) — the five hops from sendNavigationStateChange to the cluster renderer, the three checks at the front door, the start-up guard that lets only one cluster service run, and the five permissions in a table.',
+        links: [{ label: 'The cluster navigation bridge', href: '/learn/cluster-displays/cluster-navigation-bridge/' }],
       },
     ],
   },
