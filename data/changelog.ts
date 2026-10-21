@@ -38,8 +38,62 @@ export const changelog: ChangelogEntry[] = [
   {
     version: '2026.10.21',
     date: '2026-10-21',
-    title: 'AI & ML: linear algebra and calculus complete, optimisation through Adam and Newton; two free lessons; core Learn pages reconciled',
+    title: 'AI & ML: linear algebra, calculus and optimisation complete, probability begins; two free lessons; core Learn pages reconciled',
     changes: [
+      {
+        type: 'added',
+        text: 'Loss functions catalogue — squared, absolute, Huber and log-cosh errors, binary and categorical cross-entropy derived with the p − y gradient, hinge and focal losses, outlier robustness with real numbers, class weighting, and the PyTorch conventions that trip people up.',
+        links: [{ label: 'Loss functions catalogue', href: '/ai-ml/maths-optimisation-information/loss-functions-catalogue/' }],
+      },
+      {
+        type: 'added',
+        text: 'Entropy, cross-entropy and KL divergence — surprise and entropy from first principles, cross-entropy as the cost of the wrong belief, KL divergence and why it is never negative, the link to maximum likelihood, perplexity, and the PyTorch log-input trap.',
+        links: [{ label: 'Entropy, cross-entropy and KL divergence', href: '/ai-ml/maths-optimisation-information/entropy-cross-entropy-and-kl-divergence/' }],
+      },
+      {
+        type: 'added',
+        text: 'Mutual information — joint and marginal tables, mutual information as the distance from independence, conditional entropy by hand, estimating it from data with its bias shown, why correlation misses a curve, and feature scoring that fails on XOR.',
+        links: [{ label: 'Mutual information', href: '/ai-ml/maths-optimisation-information/mutual-information/' }],
+      },
+      {
+        type: 'added',
+        text: 'Regularisation: the maths — ridge in closed form and through the SVD, lasso and soft-thresholding, the Bayesian view, weight decay versus L2 in Adam, early stopping and dropout as regularisers, and choosing the strength by cross-validation.',
+        links: [{ label: 'Regularisation: the maths', href: '/ai-ml/maths-optimisation-information/regularisation-the-maths/' }],
+      },
+      {
+        type: 'added',
+        text: 'Numerical stability — float ranges, overflow and cancellation, the log-sum-exp trick, stable softmax and sigmoid, Welford variance, gradient clipping, hunting a nan, float16 loss scaling measured on a real GPU, and why seeds do not make GPU runs reproducible.',
+        links: [{ label: 'Numerical stability', href: '/ai-ml/maths-optimisation-information/numerical-stability/' }],
+      },
+      {
+        type: 'added',
+        text: 'Probability basics — sample spaces and events, the three axioms and what follows, counting and the birthday problem, independence, the gambler’s fallacy, and calibration of a model’s probabilities.',
+        links: [{ label: 'Probability basics', href: '/ai-ml/maths-probability-statistics/probability-basics/' }],
+      },
+      {
+        type: 'added',
+        text: 'Conditional probability and Bayes’ theorem — natural frequencies, Bayes’ theorem in three lines, the medical-test base-rate trap, Monty Hall by enumeration and simulation, odds and sequential updating, naive Bayes spam filtering and the prosecutor’s fallacy.',
+        links: [{ label: 'Conditional probability and Bayes’ theorem', href: '/ai-ml/maths-probability-statistics/conditional-probability-and-bayes/' }],
+      },
+      {
+        type: 'added',
+        text: 'Random variables — variables as functions from outcomes to numbers, PMF, PDF and CDF, quantiles, sampling by inverse transform, functions of a random variable, independence and datasets as realisations.',
+        links: [{ label: 'Random variables', href: '/ai-ml/maths-probability-statistics/random-variables/' }],
+      },
+      {
+        type: 'added',
+        text: 'Expectation, variance and moments — the mean, linearity of expectation, variance and the n − 1 divisor shown by simulation, skewness and kurtosis, Markov and Chebyshev bounds, and the Cauchy case where the mean does not exist.',
+        links: [{ label: 'Expectation, variance and moments', href: '/ai-ml/maths-probability-statistics/expectation-variance-and-moments/' }],
+      },
+      {
+        type: 'added',
+        text: 'Discrete distributions — Bernoulli, Binomial, Geometric, Poisson, Categorical and Multinomial, Hypergeometric, how the Poisson arises from the Binomial, how to choose, and the cross-entropy link.',
+        links: [{ label: 'Discrete distributions', href: '/ai-ml/maths-probability-statistics/discrete-distributions/' }],
+      },
+      {
+        type: 'added',
+        text: 'The optimisation and information-theory module is now complete (twelve pages from convexity and gradient descent through Adam, schedules, Lagrange multipliers and Newton methods to losses, entropy, mutual information, regularisation and numerical stability), and the probability and statistics module has begun.',
+      },
       {
         type: 'added',
         text: 'Integrals and area — sums of thin slices (left, right, midpoint, trapezoid) with real error tables, the fundamental theorem of calculus, substitution, numerical integration, and the area under a ROC curve as an integral.',

@@ -21,6 +21,16 @@ export type NewContentEntry = {
 export const NEW_BADGE_DAYS = 21
 
 export const newContent: NewContentEntry[] = [
+  { area: 'aiml', slug: 'maths-optimisation-information/loss-functions-catalogue', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/entropy-cross-entropy-and-kl-divergence', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/mutual-information', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/regularisation-the-maths', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-optimisation-information/numerical-stability', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-probability-statistics/probability-basics', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-probability-statistics/conditional-probability-and-bayes', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-probability-statistics/random-variables', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-probability-statistics/expectation-variance-and-moments', date: '2026-10-21' },
+  { area: 'aiml', slug: 'maths-probability-statistics/discrete-distributions', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-calculus/integrals-and-area', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-calculus/multiple-integrals-and-expectations', date: '2026-10-21' },
   { area: 'aiml', slug: 'maths-calculus/matrix-calculus', date: '2026-10-21' },

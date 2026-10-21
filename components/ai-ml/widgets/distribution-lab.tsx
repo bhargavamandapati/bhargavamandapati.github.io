@@ -391,7 +391,7 @@ export default function DistributionLab({ dist = 'normal' }: { dist?: DistKey })
             </text>
           </g>
         )}
-        <g fontSize={10} fill={C.muted}>
+        <g fontSize={10} fill={C.muted} data-no-fit>
           <rect x={W - M.r - 150} y={M.t + 2} width={10} height={10} fill={C.accent} opacity={0.5} />
           <text x={W - M.r - 135} y={M.t + 11}>
             mean ± 1σ (σ = {f(sd, 2)})
